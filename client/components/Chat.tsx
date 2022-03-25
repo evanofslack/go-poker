@@ -7,7 +7,6 @@ import { AppContext } from "../providers/AppStore"
 export default function Chat() {
   const socket = useSocket()
   const AppStore = useContext(AppContext)
-  const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
 
   useEffect(() => {
@@ -19,7 +18,7 @@ export default function Chat() {
       socket.onmessage = (e) => {
         let data = JSON.parse(e.data)
         let newMessage: Message = {name: data.params.username, message: data.params.message }
-        setMessages(prevMessages => [...prevMessages, ...[newMessage]]);
+        AppStore.dispatch({type: "addMessage", payload: newMessage})
      }
     };
 
@@ -34,7 +33,7 @@ export default function Chat() {
     socket?.send(JSON.stringify({
       action: "send-message",
       params: {
-        username: "evan",
+        username: AppStore.state.username,
         message: inputValue,
       },
     }))
@@ -49,7 +48,7 @@ export default function Chat() {
       <input id="input" type="text" value={inputValue} onChange={handleChange} />
       <button onClick={handleClick}>Send</button>
       <div>
-        {messages.map((message, index) => (
+        {AppStore.state.messages.map((message, index) => (
           <ChatMessage key={index} name={message.name} message={message.message} />
         ))}
       </div>

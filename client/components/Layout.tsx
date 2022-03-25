@@ -16,7 +16,6 @@ const Layout = ({ children, title = "page" }: Props) => (
             <meta name="viewport" content="initial-scale=1.0, width=device-width" />
         </Head>
         <div className="flex flex-col min-h-screen">
-            <MobileNav />
             <main className="flex-grow">{children}</main>
             <Footer />
         </div>

@@ -8,11 +8,14 @@ const initialState: AppState = {
 
 type ACTIONTYPE =
   | { type: "addMessage"; payload: Message }
+  | { type: "setUsername"; payload: string }
 
 function reducer(state: AppState, action: ACTIONTYPE) {
     switch (action.type) {
       case 'addMessage':
         return {...state, messages: [...state.messages, action.payload ]};
+      case 'setUsername':
+        return {...state, username:  action.payload };
       default:
         throw new Error();
     }

@@ -1,14 +1,15 @@
 import Layout from "../components/Layout";
 import Chat from "../components/Chat";
-import { useEffect } from "react";
+import Join from "../components/Join"
+import { useEffect, useContext } from "react";
+import { AppContext } from "../providers/AppStore"
 
 export default function IndexPage() {
-    useEffect(() => {
-    }, []);
+  const AppStore = useContext(AppContext)
 
     return (
         <Layout title="Poker">
-            <Chat/>
+            {AppStore.state.username != "" ? <Chat/> : <Join/>}
         </Layout>
     );
 }
