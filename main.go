@@ -1,8 +1,17 @@
 package main
 
-import "github.com/evanofslack/go-poker/server"
+import (
+	"log"
+
+	"github.com/evanofslack/go-poker/server"
+	"github.com/joho/godotenv"
+)
 
 func main() {
-	// testGame()
-	server.InitSocket()
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	server.InitServer()
 }
