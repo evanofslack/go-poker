@@ -1,10 +1,12 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { useSocket } from '../hooks/useSocket';
 import {Message} from "../interfaces/index"
 import ChatMessage from './ChatMessage';
+import { AppContext } from "../providers/AppStore"
 
 export default function Chat() {
   const socket = useSocket()
+  const AppStore = useContext(AppContext)
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
 
