@@ -10,6 +10,15 @@ import (
 	"github.com/go-chi/cors"
 )
 
+func InitServer() {
+	s := newServer()
+	s.mountMiddleware()
+	s.mountSocket()
+
+	fmt.Println("listening...")
+	http.ListenAndServe(s.port, s.router)
+}
+
 type server struct {
 	router *chi.Mux
 	hub    *Hub
