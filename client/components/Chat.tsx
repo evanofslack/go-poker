@@ -1,32 +1,40 @@
 import React, { useCallback, useEffect, useState } from 'react';
-
-export const isBrowser = typeof window !== "undefined";
-const socket = isBrowser ? new WebSocket("ws://127.0.0.1:8080/ws") : null;
-
+import { useSocket } from '../hooks/useSocket';
+import {Message} from "../interfaces/index"
+import ChatMessage from './ChatMessage';
 
 export default function Chat() {
-  const [message, setMessage] = useState('')
+  const socket = useSocket()
+  const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
 
   useEffect(() => {
-    socket.onopen = () => {
-      setMessage('Connected')
-    };
+    if (socket) {
+      socket.onopen = () => {
+        console.log("Connected")
+      };
 
-    socket.onmessage = (e) => {
-      setMessage("Get message from server: " + e.data)
+      socket.onmessage = (e) => {
+        let data = JSON.parse(e.data)
+        let newMessage: Message = {name: data.params.username, message: data.params.message }
+        setMessages(prevMessages => [...prevMessages, ...[newMessage]]);
+     }
     };
 
     return () => {
-      socket.close()
+      socket?.close()
     }
   }, [])
 
   const handleClick = useCallback((e) => {
     e.preventDefault()
 
-    socket.send(JSON.stringify({
-      state: inputValue
+    socket?.send(JSON.stringify({
+      action: "send-message",
+      params: {
+        username: "evan",
+        message: inputValue,
+      },
     }))
   }, [inputValue])
 
@@ -38,7 +46,11 @@ export default function Chat() {
     <div className="App">
       <input id="input" type="text" value={inputValue} onChange={handleChange} />
       <button onClick={handleClick}>Send</button>
-      <pre>{message}</pre>
+      <div>
+        {messages.map((message, index) => (
+          <ChatMessage key={index} name={message.name} message={message.message} />
+        ))}
+      </div>
     </div>
   );
 }
