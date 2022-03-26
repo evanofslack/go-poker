@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/alexclewontin/riverboat"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
@@ -36,6 +37,8 @@ type Client struct {
 	send     chan event      // Buffered channel of outbound events
 	id       string          // UUID
 	username string
+	seatID   uint            // Seat number
+	game     *riverboat.Game // Player specific game
 }
 
 // readPump pumps events from the websocket connection to the hub.
@@ -100,7 +103,7 @@ func (c *Client) writePump() {
 }
 
 // serveWs handles websocket requests from the peer.
-func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
+func serveWs(hub *Hub, game *riverboat.Game, w http.ResponseWriter, r *http.Request) {
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -111,7 +114,9 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		hub:  hub,
 		conn: conn,
 		send: make(chan event, 256),
-		id:   uuid.New().String()}
+		id:   uuid.New().String(),
+		game: game,
+	}
 
 	client.hub.register <- client
 
