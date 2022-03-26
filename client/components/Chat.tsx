@@ -1,13 +1,16 @@
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState, useRef } from "react";
 import { useSocket } from "../hooks/useSocket";
 import { Message } from "../interfaces/index";
 import ChatMessage from "./ChatMessage";
 import { AppContext } from "../providers/AppStore";
+import useChatScroll from "../hooks/useChatScroll";
+import { FiSend } from "react-icons/fi";
 
 export default function Chat() {
     const socket = useSocket();
     const AppStore = useContext(AppContext);
     const [inputValue, setInputValue] = useState("");
+    const scrollRef = useChatScroll(AppStore.state.messages);
 
     useEffect(() => {
         if (socket) {
@@ -34,6 +37,7 @@ export default function Chat() {
     const handleClick = useCallback(
         (e) => {
             e.preventDefault();
+            setInputValue("");
 
             socket?.send(
                 JSON.stringify({
@@ -53,21 +57,8 @@ export default function Chat() {
     }, []);
 
     return (
-        <div className="flex h-64 w-96 flex-col items-start justify-start bg-gray-600 p-4 text-white">
-            <div className="flex flex-row justify-between">
-                <input
-                    className="mr-8 bg-gray-800 p-2"
-                    id="input"
-                    type="text"
-                    value={inputValue}
-                    placeholder="say something..."
-                    onChange={handleChange}
-                />
-                <button className="bg-black px-4" onClick={handleClick}>
-                    Send
-                </button>
-            </div>
-            <div className="mt-2 w-full bg-gray-800 p-2">
+        <div className="flex h-64 w-96 flex-col items-start justify-between bg-gray-600 p-4 text-white">
+            <div ref={scrollRef} className="mb-2 w-full overflow-auto bg-gray-800 p-2">
                 {AppStore.state.messages.map((message, index) => (
                     <ChatMessage
                         key={index}
@@ -76,6 +67,19 @@ export default function Chat() {
                         timestamp={message.timestamp}
                     />
                 ))}
+            </div>
+            <div className="flex w-full flex-row justify-between">
+                <input
+                    className="w-full bg-gray-800 p-2 "
+                    id="input"
+                    type="text"
+                    value={inputValue}
+                    placeholder="say something..."
+                    onChange={handleChange}
+                />
+                <button className=" px-4" onClick={handleClick}>
+                    <FiSend />
+                </button>
             </div>
         </div>
     );
