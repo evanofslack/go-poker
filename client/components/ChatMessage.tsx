@@ -1,10 +1,11 @@
 import { Message } from "../interfaces/index";
 
-export default function ChatMessage({ name, message }: Message) {
+export default function ChatMessage({ name, message, timestamp }: Message) {
     return (
-        <div>
-            <p>{name}</p>
+        <div className="flex flex-row">
+            <p className="font-semibold">{name}: </p>
             <p>{message}</p>
+            {/* <p>{timestamp}</p> */}
         </div>
     );
 }
