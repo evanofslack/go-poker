@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -38,9 +39,10 @@ func createNewMessageEvent(username string, message string) event {
 	return event{
 		Action: actionNewMessage,
 		Params: map[string]any{
-			"id":       uuid.New().String(),
-			"message":  message,
-			"username": username,
+			"id":        uuid.New().String(),
+			"message":   message,
+			"username":  username,
+			"timestamp": time.Now(),
 		},
 	}
 }
