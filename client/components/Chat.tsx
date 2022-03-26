@@ -20,6 +20,7 @@ export default function Chat() {
                 let newMessage: Message = {
                     name: data.params.username,
                     message: data.params.message,
+                    timestamp: data.params.timestamp,
                 };
                 AppStore.dispatch({ type: "addMessage", payload: newMessage });
             };
@@ -52,12 +53,28 @@ export default function Chat() {
     }, []);
 
     return (
-        <div className="App">
-            <input id="input" type="text" value={inputValue} onChange={handleChange} />
-            <button onClick={handleClick}>Send</button>
-            <div>
+        <div className="flex h-64 w-96 flex-col items-start justify-start bg-gray-600 p-4 text-white">
+            <div className="flex flex-row justify-between">
+                <input
+                    className="mr-8 bg-gray-800 p-2"
+                    id="input"
+                    type="text"
+                    value={inputValue}
+                    placeholder="say something..."
+                    onChange={handleChange}
+                />
+                <button className="bg-black px-4" onClick={handleClick}>
+                    Send
+                </button>
+            </div>
+            <div className="mt-2 w-full bg-gray-800 p-2">
                 {AppStore.state.messages.map((message, index) => (
-                    <ChatMessage key={index} name={message.name} message={message.message} />
+                    <ChatMessage
+                        key={index}
+                        name={message.name}
+                        message={message.message}
+                        timestamp={message.timestamp}
+                    />
                 ))}
             </div>
         </div>

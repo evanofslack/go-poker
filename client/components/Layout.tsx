@@ -15,10 +15,7 @@ const Layout = ({ children, title = "page" }: Props) => (
             <meta charSet="utf-8" />
             <meta name="viewport" content="initial-scale=1.0, width=device-width" />
         </Head>
-        <div className="flex min-h-screen flex-col">
-            <main className="flex-grow">{children}</main>
-            <Footer />
-        </div>
+        <main>{children}</main>
     </Fragment>
 );
 
