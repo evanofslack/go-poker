@@ -22,16 +22,18 @@ function reducer(state: AppState, action: ACTIONTYPE) {
 }
 
 export const AppContext = createContext<{
-    state: AppState;
+    appState: AppState;
     dispatch: React.Dispatch<any>;
-}>({ state: initialState, dispatch: () => null });
+}>({ appState: initialState, dispatch: () => null });
 
 type StoreProviderProps = {
     children: ReactChild;
 };
 
-export function AppStateProvider(props: StoreProviderProps) {
-    const [state, dispatch] = useReducer(reducer, initialState);
+export function AppStoreProvider(props: StoreProviderProps) {
+    const [appState, dispatch] = useReducer(reducer, initialState);
 
-    return <AppContext.Provider value={{ state, dispatch }}>{props.children}</AppContext.Provider>;
+    return (
+        <AppContext.Provider value={{ appState, dispatch }}>{props.children}</AppContext.Provider>
+    );
 }

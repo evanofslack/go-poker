@@ -1,11 +1,11 @@
 import Layout from "../components/Layout";
 import Game from "../components/Game";
 import Join from "../components/Join";
-import { useEffect, useContext } from "react";
+import { useContext } from "react";
 import { AppContext } from "../providers/AppStore";
 
 export default function IndexPage() {
-    const AppStore = useContext(AppContext);
+    const { appState, dispatch } = useContext(AppContext);
 
-    return <Layout title="Poker">{AppStore.state.username != "" ? <Game /> : <Join />}</Layout>;
+    return <Layout title="Poker">{appState.username != "" ? <Game /> : <Join />}</Layout>;
 }

@@ -5,49 +5,22 @@ import ChatMessage from "./ChatMessage";
 import { AppContext } from "../providers/AppStore";
 import useChatScroll from "../hooks/useChatScroll";
 import { FiSend } from "react-icons/fi";
+import { sendMessage } from "../actions/actions";
 
 export default function Chat() {
     const socket = useSocket();
-    const AppStore = useContext(AppContext);
+    const { appState, dispatch } = useContext(AppContext);
     const [inputValue, setInputValue] = useState("");
-    const scrollRef = useChatScroll(AppStore.state.messages);
-
-    useEffect(() => {
-        if (socket) {
-            socket.onopen = () => {
-                console.log("Connected");
-            };
-
-            socket.onmessage = (e) => {
-                let data = JSON.parse(e.data);
-                let newMessage: Message = {
-                    name: data.params.username,
-                    message: data.params.message,
-                    timestamp: data.params.timestamp,
-                };
-                AppStore.dispatch({ type: "addMessage", payload: newMessage });
-            };
-        }
-
-        return () => {
-            socket?.close();
-        };
-    }, []);
+    const scrollRef = useChatScroll(appState.messages);
 
     const handleClick = useCallback(
         (e) => {
             e.preventDefault();
             setInputValue("");
 
-            socket?.send(
-                JSON.stringify({
-                    action: "send-message",
-                    params: {
-                        username: AppStore.state.username,
-                        message: inputValue,
-                    },
-                })
-            );
+            if (socket) {
+                sendMessage(socket, appState.username, inputValue);
+            }
         },
         [inputValue]
     );
@@ -59,7 +32,7 @@ export default function Chat() {
     return (
         <div className="flex h-64 w-96 flex-col items-start justify-between bg-gray-600 p-4 text-white">
             <div ref={scrollRef} className="mb-2 w-full overflow-auto bg-gray-800 p-2">
-                {AppStore.state.messages.map((message, index) => (
+                {appState.messages.map((message, index) => (
                     <ChatMessage
                         key={index}
                         name={message.name}
