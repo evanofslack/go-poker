@@ -18,7 +18,7 @@ export default function Chat() {
             e.preventDefault();
             setInputValue("");
 
-            if (socket) {
+            if (socket && appState.username) {
                 sendMessage(socket, appState.username, inputValue);
             }
         },

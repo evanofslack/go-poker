@@ -2,6 +2,7 @@ import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import Footer from "./Footer";
+import { newPlayer } from "../actions/actions";
 
 export default function Join() {
     const socket = useSocket();
@@ -13,15 +14,9 @@ export default function Join() {
             e.preventDefault();
 
             AppStore.dispatch({ type: "setUsername", payload: inputValue });
-
-            socket?.send(
-                JSON.stringify({
-                    action: "new-player",
-                    params: {
-                        username: inputValue,
-                    },
-                })
-            );
+            if (socket) {
+                newPlayer(socket, inputValue);
+            }
         },
         [inputValue]
     );

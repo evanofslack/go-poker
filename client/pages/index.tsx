@@ -7,5 +7,5 @@ import { AppContext } from "../providers/AppStore";
 export default function IndexPage() {
     const { appState, dispatch } = useContext(AppContext);
 
-    return <Layout title="Poker">{appState.username != "" ? <Game /> : <Join />}</Layout>;
+    return <Layout title="Poker">{appState.username ? <Game /> : <Join />}</Layout>;
 }
