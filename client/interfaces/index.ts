@@ -6,7 +6,9 @@ export type Message = {
 
 export type AppState = {
     messages: Message[];
-    username: string;
+    username: string | null;
+    seatID: number | null;
+    game: Game | null;
 };
 
 export type Event = {
@@ -18,29 +20,32 @@ export type Card = string;
 
 export type Player = {
     username: string;
-    seatID: number;
-    totalBuyIn: number;
-    stack: number;
+    position: number;
     ready: boolean;
     in: boolean;
     called: boolean;
     left: boolean;
+    totalBuyIn: number;
+    stack: number;
     bet: number;
     totalBet: number;
     cards: Card[];
 };
 
 export type Game = {
-    dealer: Player;
-    action: Player;
-    utg: Player;
-    sb: Player;
-    bb: Player;
+    dealer: number;
+    action: number;
+    utg: number;
+    sb: number;
+    bb: number;
     communityCards: Card[];
     stage: number;
     betting: boolean;
     config: Config;
     players: Player[];
+    pots: Pot[];
+    minRaise: number;
+    readyCount: number;
 };
 
 export type Config = {
@@ -52,8 +57,8 @@ export type Config = {
 export type Pot = {
     topShare: number;
     amount: number;
-    eligiblePlayers: Player[];
-    winningPlayers: Player[];
+    eligiblePlayers: number[];
+    winningPlayers: number[];
     winningHand: Card[];
     winningScore: number;
 };
