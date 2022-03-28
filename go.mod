@@ -2,6 +2,8 @@ module github.com/evanofslack/go-poker
 
 go 1.18
 
+replace github.com/alexclewontin/riverboat => /Users/Evan/Documents/Github/riverboat
+
 require (
 	github.com/alexclewontin/riverboat v0.6.0
 	github.com/go-chi/chi/v5 v5.0.7
