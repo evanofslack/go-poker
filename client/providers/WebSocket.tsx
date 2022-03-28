@@ -1,6 +1,6 @@
 import { createContext, ReactChild, useEffect, useState, useContext } from "react";
 import { AppContext } from "../providers/AppStore";
-import { Event, Message } from "../interfaces";
+import { Event, Message, Game } from "../interfaces";
 
 /*  
 WebSocket context creates a single connection to the server per client. 
@@ -50,6 +50,29 @@ export function SocketProvider(props: SocketProviderProps) {
                         timestamp: event.params.timestamp,
                     };
                     dispatch({ type: "addMessage", payload: newMessage });
+                    return;
+                case "update-game":
+                    let newGame: Game = {
+                        dealer: event.params.dealer,
+                        action: event.params.action,
+                        utg: event.params.utg,
+                        sb: event.params.sb,
+                        bb: event.params.bb,
+                        communityCards: event.params.communityCards,
+                        stage: event.params.stage,
+                        betting: event.params.betting,
+                        config: event.params.config,
+                        players: event.params.players,
+                        pots: event.params.pots,
+                        minRaise: event.params.minRaise,
+                        readyCount: event.params.readyCount,
+                    };
+                    dispatch({ type: "updateGame", payload: newGame });
+                    return;
+                case "update-seat":
+                    let newSeat: number = event.params.seatID;
+                    dispatch({ type: "updateSeat", payload: newSeat });
+                    dispatch({ type: "addPlayer", payload: appState.username });
                     return;
                 default:
                     throw new Error();
