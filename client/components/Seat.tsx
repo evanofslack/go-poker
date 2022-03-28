@@ -1,23 +1,31 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import { AppContext } from "../providers/AppStore";
 import { takeSeat } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
+import { Player } from "../interfaces/index";
 
-export default function Seat() {
+type seatProps = {
+    player: Player | null;
+    id: number;
+};
+
+export default function Seat({ player, id }: seatProps) {
     const socket = useSocket();
     const { appState, dispatch } = useContext(AppContext);
-    const [open, setOpen] = useState(true);
 
     const handleClick = () => {
-        setOpen(!open);
-        if (socket) {
-            takeSeat(socket, appState.username, 1000);
+        if (socket && appState.username) {
+            takeSeat(socket, appState.username, id, 1000);
         }
     };
 
-    if (open) {
-        return <button onClick={handleClick}>Open</button>;
+    if (player) {
+        return <div className="m-2 bg-red-900 p-2 text-white">Taken by {player.username}</div>;
     } else {
-        return <div>Taken by {appState.username}</div>;
+        return (
+            <button className="m-2  bg-gray-800 p-2 text-white" onClick={handleClick}>
+                Open
+            </button>
+        );
     }
 }
