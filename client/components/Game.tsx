@@ -18,24 +18,31 @@ export default function Game() {
     const initialPlayers: (Player | null)[] = [null, null, null, null, null, null];
     const [players, setPlayers] = useState(initialPlayers);
 
+    const filteredPlayers = players.filter((player) => player != null);
+
+    let actionPlayer: Player | null = null;
+    if (appState.game?.action) {
+        actionPlayer = filteredPlayers[appState.game?.action];
+    }
+
     useEffect(() => {
         const updatedPlayers: (Player | null)[] = [...players];
         if (appState.game?.players == null) {
             return;
         }
         for (let i = 0; i < appState.game.players.length; i++) {
-            updatedPlayers[appState.game.players[i].position] = appState.game.players[i];
+            updatedPlayers[appState.game.players[i].position - 1] = appState.game.players[i];
         }
-        console.log(updatedPlayers);
         setPlayers(updatedPlayers);
     }, [appState.game?.players]);
 
     return (
         <div className="flex h-screen flex-row items-center justify-center">
+            <p>{appState.clientID}</p>
             <div className="m-24 flex h-1/2 w-3/5 items-center justify-center rounded-3xl bg-green-600">
                 <div className="flex flex-col">
                     {players.map((player, index) => (
-                        <Seat key={index} player={player} id={index} />
+                        <Seat key={index} player={player} id={index + 1} />
                     ))}
                 </div>
             </div>
