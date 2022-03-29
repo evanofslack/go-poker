@@ -69,10 +69,8 @@ export function SocketProvider(props: SocketProviderProps) {
                     };
                     dispatch({ type: "updateGame", payload: newGame });
                     return;
-                case "update-seat":
-                    let newSeat: number = event.params.seatID;
-                    dispatch({ type: "updateSeat", payload: newSeat });
-                    dispatch({ type: "addPlayer", payload: appState.username });
+                case "update-player-id":
+                    dispatch({ type: "updatePlayerID", payload: event.params.id });
                     return;
                 default:
                     throw new Error();
