@@ -6,14 +6,14 @@ import { newPlayer } from "../actions/actions";
 
 export default function Join() {
     const socket = useSocket();
-    const AppStore = useContext(AppContext);
+    const { appState, dispatch } = useContext(AppContext);
     const [inputValue, setInputValue] = useState("");
 
     const handleClick = useCallback(
         (e) => {
             e.preventDefault();
 
-            AppStore.dispatch({ type: "setUsername", payload: inputValue });
+            dispatch({ type: "setUsername", payload: inputValue });
             if (socket) {
                 newPlayer(socket, inputValue);
             }

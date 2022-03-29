@@ -1,17 +1,18 @@
 import { createContext, useReducer, ReactChild } from "react";
-import { AppState, Message, Game, Seat } from "../interfaces";
+import { AppState, Message, Game } from "../interfaces";
 
 const initialState: AppState = {
     messages: [],
     username: null,
-    seatID: null,
+    clientID: null,
     game: null,
 };
 
 type ACTIONTYPE =
     | { type: "addMessage"; payload: Message }
     | { type: "setUsername"; payload: string }
-    | { type: "updateGame"; payload: Game };
+    | { type: "updateGame"; payload: Game }
+    | { type: "updatePlayerID"; payload: string };
 
 function reducer(state: AppState, action: ACTIONTYPE) {
     switch (action.type) {
@@ -21,6 +22,8 @@ function reducer(state: AppState, action: ACTIONTYPE) {
             return { ...state, username: action.payload };
         case "updateGame":
             return { ...state, game: action.payload };
+        case "updatePlayerID":
+            return { ...state, clientID: action.payload };
         default:
             throw new Error();
     }

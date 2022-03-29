@@ -7,7 +7,7 @@ export type Message = {
 export type AppState = {
     messages: Message[];
     username: string | null;
-    seatID: number | null;
+    clientID: string | null;
     game: Game | null;
 };
 
@@ -20,6 +20,7 @@ export type Card = string;
 
 export type Player = {
     username: string;
+    id: string;
     position: number;
     ready: boolean;
     in: boolean;
