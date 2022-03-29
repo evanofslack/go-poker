@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/alexclewontin/riverboat"
+	"github.com/alexclewontin/riverboat/eval"
 	"github.com/google/uuid"
 )
 
@@ -24,7 +25,7 @@ const startGame action = "start-game"
 // outbound (server) actions
 const newMessage action = "new-message"
 const updateGame action = "update-game"
-const updateSeatID action = "update-seat"
+const updatePlayerID action = "update-player-id"
 
 const gameAdminName string = "system"
 
@@ -50,28 +51,31 @@ func handleSendMessage(c *Client, username string, message string) {
 func handleTakeSeat(c *Client, username string, position uint, buyIn uint) {
 
 	// add player to game
-	c.seatID = c.game.AddPlayer()
+	seatID := c.game.AddPlayer()
+	c.id = c.game.GenerateOmniView().Players[seatID].ID
+	fmt.Println(c.id)
+	c.send <- createUpdatedPlayerIDEvent(c)
 	// set username
-	err := riverboat.SetUsername(c.game, c.seatID, username)
+	err := riverboat.SetUsername(c.game, seatID, username)
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	// player buy in
-	err = riverboat.BuyIn(c.game, c.seatID, buyIn)
+	err = riverboat.BuyIn(c.game, seatID, buyIn)
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	// set player ready
 	// TODO make this a separate action
-	err = riverboat.ToggleReady(c.game, c.seatID, 0)
+	err = riverboat.ToggleReady(c.game, seatID, 0)
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	// player position
-	err = riverboat.SetPosition(c.game, c.seatID, position)
+	err = riverboat.SetPosition(c.game, seatID, position)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -109,12 +113,10 @@ func createUpdatedGameEvent(c *Client) event {
 	}
 }
 
-func createUpdatedSeatIDEvent(seatID uint) event {
+func createUpdatedPlayerIDEvent(c *Client) event {
 	return event{
-		Action: updateSeatID,
-		Params: map[string]any{
-			"seatID": seatID,
-		},
+		Action: updatePlayerID,
+		Params: map[string]any{"id": c.id},
 	}
 }
 
@@ -122,6 +124,14 @@ func handleNewPlayer(c *Client, username string) {
 	c.username = username
 	c.send <- createUpdatedGameEvent(c)
 	c.hub.broadcast <- createNewMessageEvent(gameAdminName, fmt.Sprintf("%s has joined", username))
+}
+
+func cardReader(cards []eval.Card) []string {
+	var readable []string
+	for _, c := range cards {
+		readable = append(readable, c.String())
+	}
+	return readable
 }
 
 func gameSerializer(g *riverboat.Game) map[string]any {
@@ -137,6 +147,7 @@ func gameSerializer(g *riverboat.Game) map[string]any {
 	for _, p := range view.Players {
 		player := map[string]any{
 			"username":   p.Username,
+			"id":         p.ID,
 			"position":   p.Position,
 			"ready":      p.Ready,
 			"in":         p.In,
@@ -146,7 +157,7 @@ func gameSerializer(g *riverboat.Game) map[string]any {
 			"stack":      p.Stack,
 			"bet":        p.Bet,
 			"totalBet":   p.TotalBet,
-			"cards":      p.Cards,
+			"cards":      cardReader(p.Cards[:]),
 		}
 		players = append(players, player)
 	}
@@ -170,7 +181,7 @@ func gameSerializer(g *riverboat.Game) map[string]any {
 		"utg":            view.UTGNum,
 		"sb":             view.SBNum,
 		"bb":             view.BBNum,
-		"communityCards": view.CommunityCards,
+		"communityCards": cardReader(view.CommunityCards),
 		"stage":          view.Stage,
 		"betting":        view.Betting,
 		"config":         config,
