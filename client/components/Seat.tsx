@@ -10,7 +10,23 @@ type seatProps = {
     id: number;
 };
 
-const getActive = () => classNames("bg-red-900", "m-2", "p-2", "text-white");
+const getActive = (player: Player, game: Game) => {
+    const action = player.seatID === game.action;
+    console.log(action);
+    return classNames(
+        {
+            "shadow-[0px_0px_40px_9px_rgba(255,255,255,255.3)]": action && game.betting,
+        },
+        "bg-red-900",
+        "px-4",
+        "py-4",
+        "text-white",
+        "rounded-xl",
+        "m-4",
+        "h-36",
+        "w-36"
+    );
+};
 
 export default function Seat({ player, id }: seatProps) {
     const socket = useSocket();
@@ -27,18 +43,34 @@ export default function Seat({ player, id }: seatProps) {
             cards = player.cards;
         }
         return (
-            <div>
-                <div className={getActive()}>
-                    <p>player: {player.username}</p>
-                    <p>stack: {player.stack}</p>
-                    <p>cards: {cards}</p>
+            <div className="">
+                <div className={getActive(player, appState.game)}>
+                    <p className="text-3xl font-semibold">{player.username}</p>
+                    <p>{player.stack}</p>
+                    <p>{cards}</p>
+                    {player.totalBet !== 0 && (
+                        <p className="flex h-8 w-8 items-center justify-center rounded-3xl bg-yellow-400">
+                            <p>{player.totalBet}</p>
+                        </p>
+                    )}
                 </div>
             </div>
         );
+    } else if (player?.id != appState.clientID) {
+        // disabled
+        return (
+            <button className="m-4 h-36 w-36 rounded-2xl bg-green-800 p-2 text-white opacity-30">
+                <h2 className="text-4xl">{id}</h2>
+            </button>
+        );
     } else {
         return (
-            <button className="m-2  bg-gray-800 p-2 text-white" onClick={handleClick}>
-                Open
+            <button
+                className="m-4 h-36 w-36 rounded-2xl bg-gray-800 p-2 text-white"
+                onClick={handleClick}
+            >
+                <h2 className="text-4xl">{id}</h2>
+                <p className="opacity-70">Open</p>
             </button>
         );
     }

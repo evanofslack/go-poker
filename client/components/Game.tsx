@@ -1,6 +1,8 @@
 import { useContext, useState, useEffect } from "react";
 import Chat from "./Chat";
 import Seat from "./Seat";
+import CommunityCards from "./CommunityCards";
+import Input from "./Input";
 import { useSocket } from "../hooks/useSocket";
 import { startGame } from "../actions/actions";
 import { AppContext } from "../providers/AppStore";
@@ -18,18 +20,12 @@ export default function Game() {
     const initialPlayers: (Player | null)[] = [null, null, null, null, null, null];
     const [players, setPlayers] = useState(initialPlayers);
 
-    const filteredPlayers = players.filter((player) => player != null);
-
-    let actionPlayer: Player | null = null;
-    if (appState.game?.action) {
-        actionPlayer = filteredPlayers[appState.game?.action];
-    }
-
     useEffect(() => {
         const updatedPlayers: (Player | null)[] = [...players];
         if (appState.game?.players == null) {
             return;
         }
+
         for (let i = 0; i < appState.game.players.length; i++) {
             updatedPlayers[appState.game.players[i].position - 1] = appState.game.players[i];
         }
@@ -37,10 +33,12 @@ export default function Game() {
     }, [appState.game?.players]);
 
     return (
-        <div className="flex h-screen flex-row items-center justify-center">
-            <p>{appState.clientID}</p>
-            <div className="m-24 flex h-1/2 w-3/5 items-center justify-center rounded-3xl bg-green-600">
-                <div className="flex flex-col">
+        <div className="flex h-screen flex-row items-start justify-center">
+            <div className="mx-24 mt-24 h-3/5 w-5/6 items-center justify-center rounded-3xl bg-green-600">
+                <div className="flex w-full items-center justify-center">
+                    <CommunityCards />
+                </div>
+                <div className="flex flex-row flex-wrap justify-center">
                     {players.map((player, index) => (
                         <Seat key={index} player={player} id={index + 1} />
                     ))}
@@ -48,6 +46,9 @@ export default function Game() {
             </div>
             <div className="absolute left-0 bottom-0">
                 <Chat />
+            </div>
+            <div className="absolute bottom-36 right-10">
+                <Input />
             </div>
             <button
                 className="absolute right-0 bottom-0 m-10 rounded-md bg-green-800 p-2 text-white"
