@@ -42,3 +42,12 @@ export function newPlayer(socket: WebSocket, username: string) {
         })
     );
 }
+
+export function playerCall(socket: WebSocket) {
+    socket?.send(
+        JSON.stringify({
+            action: "player-call",
+            params: {},
+        })
+    );
+}
