@@ -21,6 +21,8 @@ const sendMessage action = "send-message"
 const newPlayer action = "new-player"
 const takeSeat action = "take-seat"
 const startGame action = "start-game"
+const playerCall action = "player-call"
+const playerRaise action = "player-raise" // todo
 
 // outbound (server) actions
 const newMessage action = "new-message"
@@ -39,6 +41,10 @@ func processEvents(c *Client, e event) {
 		handleTakeSeat(c, e.Params["username"].(string), uint(e.Params["position"].(float64)), uint(e.Params["buyIn"].(float64))) // convert JSON/JS float to int
 	case startGame:
 		handleStartGame(c)
+	case playerCall:
+		handleCall(c)
+	case playerRaise:
+		handleRaise(c, uint(e.Params["amount"].(float64)))
 	default:
 		fmt.Println("Unexpected Action")
 	}
@@ -46,22 +52,25 @@ func processEvents(c *Client, e event) {
 
 func handleSendMessage(c *Client, username string, message string) {
 	c.hub.broadcast <- createNewMessageEvent(username, message)
+
+}
+
+func handleNewPlayer(c *Client, username string) {
+	c.username = username
+	c.send <- createUpdatedGameEvent(c)
+	c.hub.broadcast <- createNewMessageEvent(gameAdminName, fmt.Sprintf("%s has joined", username))
 }
 
 func handleTakeSeat(c *Client, username string, position uint, buyIn uint) {
 
-	// add player to game
 	seatID := c.game.AddPlayer()
 	c.id = c.game.GenerateOmniView().Players[seatID].ID
-	fmt.Println(c.id)
 	c.send <- createUpdatedPlayerIDEvent(c)
-	// set username
 	err := riverboat.SetUsername(c.game, seatID, username)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	// player buy in
 	err = riverboat.BuyIn(c.game, seatID, buyIn)
 	if err != nil {
 		fmt.Println(err)
@@ -74,14 +83,12 @@ func handleTakeSeat(c *Client, username string, position uint, buyIn uint) {
 		fmt.Println(err)
 	}
 
-	// player position
 	err = riverboat.SetPosition(c.game, seatID, position)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	// broadcast updated game
-	event := createUpdatedGameEvent(c)
+	event := createUpdatedGameEvent(c) // broadcast updated game
 	c.hub.broadcast <- event
 }
 
@@ -91,6 +98,50 @@ func handleStartGame(c *Client) {
 	if err != nil {
 		fmt.Println(err)
 	}
+	c.hub.broadcast <- createUpdatedGameEvent(c)
+}
+
+func handleCall(c *Client) {
+	view := c.game.GenerateOmniView()
+	pn := view.ActionNum
+	current_player := view.Players[pn]
+
+	// compute amount needed to call
+	maxBet := view.Players[0].TotalBet
+	for _, p := range view.Players {
+		if p.TotalBet > maxBet {
+			maxBet = p.TotalBet
+		}
+	}
+	fmt.Println("MinRaise: ", view.MinRaise)
+	callAmount := maxBet - current_player.TotalBet
+
+	// player must go all in to call
+	if callAmount >= current_player.Stack {
+		callAmount = current_player.Stack
+	}
+
+	err := riverboat.Bet(c.game, pn, callAmount)
+	if err != nil {
+		fmt.Println(err)
+	}
+	c.hub.broadcast <- createUpdatedGameEvent(c)
+}
+
+func handleRaise(c *Client, raise uint) {
+	view := c.game.GenerateOmniView()
+	pn := view.ActionNum
+	current_player := view.Players[pn]
+	fmt.Println(current_player)
+
+	maxBet := view.Players[0].TotalBet
+	for _, p := range view.Players {
+		if p.TotalBet > maxBet {
+			maxBet = p.TotalBet
+		}
+	}
+	fmt.Println("MinRaise: ", view.MinRaise)
+
 	c.hub.broadcast <- createUpdatedGameEvent(c)
 }
 
@@ -120,12 +171,6 @@ func createUpdatedPlayerIDEvent(c *Client) event {
 	}
 }
 
-func handleNewPlayer(c *Client, username string) {
-	c.username = username
-	c.send <- createUpdatedGameEvent(c)
-	c.hub.broadcast <- createNewMessageEvent(gameAdminName, fmt.Sprintf("%s has joined", username))
-}
-
 func cardReader(cards []eval.Card) []string {
 	var readable []string
 	for _, c := range cards {
@@ -149,6 +194,7 @@ func gameSerializer(g *riverboat.Game) map[string]any {
 			"username":   p.Username,
 			"id":         p.ID,
 			"position":   p.Position,
+			"seatID":     p.SeatID,
 			"ready":      p.Ready,
 			"in":         p.In,
 			"called":     p.Called,
@@ -162,7 +208,7 @@ func gameSerializer(g *riverboat.Game) map[string]any {
 		players = append(players, player)
 	}
 
-	pots := make([]map[string]interface{}, 0)
+	pots := make([]map[string]any, 0)
 	for _, p := range view.Pots {
 		pot := map[string]any{
 			"topShare":           p.TopShare,
