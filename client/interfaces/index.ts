@@ -22,6 +22,7 @@ export type Player = {
     username: string;
     id: string;
     position: number;
+    seatID: number;
     ready: boolean;
     in: boolean;
     called: boolean;
