@@ -21,8 +21,11 @@ const sendMessage action = "send-message"
 const newPlayer action = "new-player"
 const takeSeat action = "take-seat"
 const startGame action = "start-game"
+const dealGame action = "deal-game"
 const playerCall action = "player-call"
-const playerRaise action = "player-raise" // todo
+const playerCheck action = "player-check"
+const playerRaise action = "player-raise"
+const playerFold action = "player-fold"
 
 // outbound (server) actions
 const newMessage action = "new-message"
@@ -41,10 +44,16 @@ func processEvents(c *Client, e event) {
 		handleTakeSeat(c, e.Params["username"].(string), uint(e.Params["position"].(float64)), uint(e.Params["buyIn"].(float64))) // convert JSON/JS float to int
 	case startGame:
 		handleStartGame(c)
+	case dealGame:
+		handleDealGame(c)
 	case playerCall:
 		handleCall(c)
+	case playerCheck:
+		handleCheck(c)
 	case playerRaise:
 		handleRaise(c, uint(e.Params["amount"].(float64)))
+	case playerFold:
+		handleFold(c)
 	default:
 		fmt.Println("Unexpected Action")
 	}
@@ -93,6 +102,14 @@ func handleTakeSeat(c *Client, username string, position uint, buyIn uint) {
 }
 
 func handleStartGame(c *Client) {
+	err := c.game.Start()
+	if err != nil {
+		fmt.Println(err)
+	}
+	c.hub.broadcast <- createUpdatedGameEvent(c)
+}
+
+func handleDealGame(c *Client) {
 	view := c.game.GenerateOmniView()
 	err := riverboat.Deal(c.game, view.DealerNum, 0)
 	if err != nil {
@@ -113,7 +130,6 @@ func handleCall(c *Client) {
 			maxBet = p.TotalBet
 		}
 	}
-	fmt.Println("MinRaise: ", view.MinRaise)
 	callAmount := maxBet - current_player.TotalBet
 
 	// player must go all in to call
@@ -131,17 +147,32 @@ func handleCall(c *Client) {
 func handleRaise(c *Client, raise uint) {
 	view := c.game.GenerateOmniView()
 	pn := view.ActionNum
-	current_player := view.Players[pn]
-	fmt.Println(current_player)
-
-	maxBet := view.Players[0].TotalBet
-	for _, p := range view.Players {
-		if p.TotalBet > maxBet {
-			maxBet = p.TotalBet
-		}
+	err := riverboat.Bet(c.game, pn, raise)
+	if err != nil {
+		fmt.Println(err)
 	}
-	fmt.Println("MinRaise: ", view.MinRaise)
 
+	c.hub.broadcast <- createUpdatedGameEvent(c)
+}
+
+func handleCheck(c *Client) {
+	view := c.game.GenerateOmniView()
+	pn := view.ActionNum
+	err := riverboat.Bet(c.game, pn, 0)
+	if err != nil {
+		fmt.Println(err)
+	}
+	c.hub.broadcast <- createUpdatedGameEvent(c)
+}
+
+func handleFold(c *Client) {
+	view := c.game.GenerateOmniView()
+	pn := view.ActionNum
+	err := riverboat.Fold(c.game, pn, 0)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(c.username, "folds")
 	c.hub.broadcast <- createUpdatedGameEvent(c)
 }
 
@@ -212,7 +243,7 @@ func gameSerializer(g *riverboat.Game) map[string]any {
 	for _, p := range view.Pots {
 		pot := map[string]any{
 			"topShare":           p.TopShare,
-			"amt":                p.Amt,
+			"amount":             p.Amt,
 			"eligiblePlayerNums": p.EligiblePlayerNums,
 			"winningPlayerNums":  p.WinningPlayerNums,
 			"winningHand":        p.WinningHand,
@@ -222,6 +253,7 @@ func gameSerializer(g *riverboat.Game) map[string]any {
 	}
 
 	params := map[string]any{
+		"running":        view.Running,
 		"dealer":         view.DealerNum,
 		"action":         view.ActionNum,
 		"utg":            view.UTGNum,

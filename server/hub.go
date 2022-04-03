@@ -1,7 +1,5 @@
 package server
 
-import "fmt"
-
 // Hub maintains the set of active clients and broadcasts messages to the
 // clients.
 type Hub struct {
@@ -41,7 +39,6 @@ func (h *Hub) run() {
 			for client := range h.clients {
 				select {
 				case client.send <- event:
-					fmt.Println(event)
 				default:
 					close(client.send)
 					delete(h.clients, client)
