@@ -4,39 +4,80 @@ import Seat from "./Seat";
 import CommunityCards from "./CommunityCards";
 import Input from "./Input";
 import { useSocket } from "../hooks/useSocket";
-import { startGame } from "../actions/actions";
+import { startGame, sendMessage, dealGame } from "../actions/actions";
 import { AppContext } from "../providers/AppStore";
-import { Player } from "../interfaces";
+import { Game as GameType, Player } from "../interfaces";
+
+function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function handleWinner(game: GameType | null, socket: WebSocket | null) {
+    if (!game || !socket) {
+        return null;
+    }
+    if (game && game.stage === 1 && game.pots.length !== 0) {
+        const winnerNum = game.pots[game.pots.length - 1].winningPlayerNums[0];
+        const winningPlayer = game.players.filter((player) => player.seatID == winnerNum);
+        const pot = game.pots[game.pots.length - 1].amount;
+        console.log(winningPlayer);
+        const message = winningPlayer[0].username + " wins " + pot;
+        sendMessage(socket, "system", message);
+        dealGame(socket);
+    }
+}
+
+function handleStartGame(socket: WebSocket | null) {
+    if (socket) {
+        startGame(socket);
+    }
+}
 
 export default function Game() {
     const socket = useSocket();
     const { appState, dispatch } = useContext(AppContext);
-    const handleStartGame = () => {
-        if (socket) {
-            startGame(socket);
-        }
-    };
+
+    const game = appState.game;
 
     const initialPlayers: (Player | null)[] = [null, null, null, null, null, null];
     const [players, setPlayers] = useState(initialPlayers);
 
+    // map game players to their visual seats
     useEffect(() => {
         const updatedPlayers: (Player | null)[] = [...players];
-        if (appState.game?.players == null) {
+        if (game?.players == null) {
             return;
         }
-
-        for (let i = 0; i < appState.game.players.length; i++) {
-            updatedPlayers[appState.game.players[i].position - 1] = appState.game.players[i];
+        for (let i = 0; i < game.players.length; i++) {
+            updatedPlayers[game.players[i].position - 1] = game.players[i];
         }
         setPlayers(updatedPlayers);
+    }, [game?.players]);
+
+    useEffect(() => {
+        console.log(game);
     }, [appState.game?.players]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => handleWinner(game, socket), 4000);
+        return () => clearTimeout(timer);
+    }, [game?.pots]);
 
     return (
         <div className="flex h-screen flex-row items-start justify-center">
             <div className="mx-24 mt-24 h-3/5 w-5/6 items-center justify-center rounded-3xl bg-green-600">
                 <div className="flex w-full items-center justify-center">
                     <CommunityCards />
+                </div>
+                <div className="flex w-full items-center justify-center">
+                    {game?.pots.map((p, index) => (
+                        <div
+                            key={index}
+                            className="flex h-8 w-8 items-center justify-center rounded-3xl bg-yellow-400 text-white"
+                        >
+                            {p.amount}
+                        </div>
+                    ))}
                 </div>
                 <div className="flex flex-row flex-wrap justify-center">
                     {players.map((player, index) => (
@@ -47,15 +88,17 @@ export default function Game() {
             <div className="absolute left-0 bottom-0">
                 <Chat />
             </div>
-            <div className="absolute bottom-36 right-10">
+            <div className="absolute bottom-0 right-10">
                 <Input />
             </div>
-            <button
-                className="absolute right-0 bottom-0 m-10 rounded-md bg-green-800 p-2 text-white"
-                onClick={handleStartGame}
-            >
-                Start Game
-            </button>
+            {!game?.running && (
+                <button
+                    className="absolute right-0 bottom-0 m-10 rounded-md bg-green-800 p-2 text-white"
+                    onClick={() => handleStartGame(socket)}
+                >
+                    Start
+                </button>
+            )}
         </div>
     );
 }
