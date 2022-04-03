@@ -35,6 +35,7 @@ export type Player = {
 };
 
 export type Game = {
+    running: boolean;
     dealer: number;
     action: number;
     utg: number;
@@ -59,8 +60,8 @@ export type Config = {
 export type Pot = {
     topShare: number;
     amount: number;
-    eligiblePlayers: number[];
-    winningPlayers: number[];
+    eligiblePlayerNums: number[];
+    winningPlayerNums: number[];
     winningHand: Card[];
     winningScore: number;
 };
