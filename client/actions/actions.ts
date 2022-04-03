@@ -32,13 +32,20 @@ export function startGame(socket: WebSocket) {
     );
 }
 
+export function dealGame(socket: WebSocket) {
+    socket.send(
+        JSON.stringify({
+            action: "deal-game",
+            params: {},
+        })
+    );
+}
+
 export function newPlayer(socket: WebSocket, username: string) {
     socket?.send(
         JSON.stringify({
             action: "new-player",
-            params: {
-                username: username,
-            },
+            params: { username: username },
         })
     );
 }
@@ -47,6 +54,33 @@ export function playerCall(socket: WebSocket) {
     socket?.send(
         JSON.stringify({
             action: "player-call",
+            params: {},
+        })
+    );
+}
+
+export function playerCheck(socket: WebSocket) {
+    socket?.send(
+        JSON.stringify({
+            action: "player-check",
+            params: {},
+        })
+    );
+}
+
+export function playerRaise(socket: WebSocket, amount: number) {
+    socket?.send(
+        JSON.stringify({
+            action: "player-raise",
+            params: { amount: amount },
+        })
+    );
+}
+
+export function playerFold(socket: WebSocket) {
+    socket?.send(
+        JSON.stringify({
+            action: "player-fold",
             params: {},
         })
     );
