@@ -53,6 +53,7 @@ export function SocketProvider(props: SocketProviderProps) {
                     return;
                 case "update-game":
                     let newGame: Game = {
+                        running: event.params.running,
                         dealer: event.params.dealer,
                         action: event.params.action,
                         utg: event.params.utg,

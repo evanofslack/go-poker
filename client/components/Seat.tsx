@@ -12,19 +12,25 @@ type seatProps = {
 
 const getActive = (player: Player, game: Game) => {
     const action = player.seatID === game.action;
-    console.log(action);
+    const winner = player.seatID == game?.pots[game.pots.length - 1]?.winningPlayerNums[0];
     return classNames(
         {
-            "shadow-[0px_0px_40px_9px_rgba(255,255,255,255.3)]": action && game.betting,
+            // betting and player's turn
+            "shadow-[0px_0px_30px_9px_rgba(255,255,255,255.3)] bg-white text-black":
+                action && game.betting,
+
+            // betting and not player's turn
+            "bg-black text-white": !action && game.betting,
+
+            // betting over and winner
+            "shadow-[0px_0px_30px_9px_rgba(255,255,255,255.3)] bg-yellow-200 text-black":
+                winner && !game.betting,
+
+            // betting over and not winner
+            "bg-black text-white ": !winner && !game.betting,
         },
-        "bg-red-900",
-        "px-4",
-        "py-4",
-        "text-white",
-        "rounded-xl",
-        "m-4",
-        "h-36",
-        "w-36"
+
+        "px-4 py-4 rounded-xl m-4 h-36 w-36"
     );
 };
 
@@ -42,27 +48,29 @@ export default function Seat({ player, id }: seatProps) {
         if (appState.clientID == player?.id) {
             cards = player.cards;
         }
+        // This is the player's seat
         return (
             <div className="">
                 <div className={getActive(player, appState.game)}>
                     <p className="text-3xl font-semibold">{player.username}</p>
                     <p>{player.stack}</p>
                     <p>{cards}</p>
-                    {player.totalBet !== 0 && (
+                    {player.bet !== 0 && (
                         <p className="flex h-8 w-8 items-center justify-center rounded-3xl bg-yellow-400">
-                            <p>{player.totalBet}</p>
+                            {player.bet}
                         </p>
                     )}
                 </div>
             </div>
         );
+        // player already sat down, and this seat does not belong to them
     } else if (player?.id != appState.clientID) {
-        // disabled
         return (
             <button className="m-4 h-36 w-36 rounded-2xl bg-green-800 p-2 text-white opacity-30">
                 <h2 className="text-4xl">{id}</h2>
             </button>
         );
+        // player has not yet sat down, all seats are open
     } else {
         return (
             <button

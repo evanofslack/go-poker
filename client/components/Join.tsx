@@ -9,7 +9,7 @@ export default function Join() {
     const { appState, dispatch } = useContext(AppContext);
     const [inputValue, setInputValue] = useState("");
 
-    const handleClick = useCallback(
+    const handleSubmit = useCallback(
         (e) => {
             e.preventDefault();
 
@@ -20,6 +20,12 @@ export default function Join() {
         },
         [inputValue]
     );
+
+    const handleKeypress = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (e.key === "Enter") {
+            handleSubmit(e);
+        }
+    }, []);
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setInputValue(e.target.value);
@@ -37,10 +43,11 @@ export default function Join() {
                         value={inputValue}
                         placeholder="username"
                         onChange={handleChange}
+                        onKeyPress={handleKeypress}
                     />
                     <button
                         className="rounded-sm bg-green-800 px-4 py-1 text-white"
-                        onClick={handleClick}
+                        onClick={handleSubmit}
                     >
                         Join
                     </button>
