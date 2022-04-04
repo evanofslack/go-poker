@@ -9,23 +9,28 @@ export default function Join() {
     const { appState, dispatch } = useContext(AppContext);
     const [inputValue, setInputValue] = useState("");
 
-    const handleSubmit = useCallback(
-        (e) => {
-            e.preventDefault();
+    const handleSubmit = (e: any) => {
+        e.preventDefault();
 
-            dispatch({ type: "setUsername", payload: inputValue });
-            if (socket) {
-                newPlayer(socket, inputValue);
-            }
-        },
-        [inputValue]
-    );
+        dispatch({ type: "setUsername", payload: inputValue });
+        if (socket) {
+            newPlayer(socket, inputValue);
+        }
+        console.log(e.key);
+    };
 
-    const handleKeypress = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    const onKeyDown = (e: KeyboardEvent) => {
         if (e.key === "Enter") {
             handleSubmit(e);
         }
-    }, []);
+    };
+
+    useEffect(() => {
+        document.addEventListener("keydown", onKeyDown);
+        return () => {
+            document.removeEventListener("keydown", onKeyDown);
+        };
+    }, [onKeyDown]);
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setInputValue(e.target.value);
@@ -43,7 +48,7 @@ export default function Join() {
                         value={inputValue}
                         placeholder="username"
                         onChange={handleChange}
-                        onKeyPress={handleKeypress}
+                        // onKeyPress={handleKeypress}
                     />
                     <button
                         className="rounded-sm bg-green-800 px-4 py-1 text-white"
