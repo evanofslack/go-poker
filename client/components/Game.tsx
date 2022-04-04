@@ -64,8 +64,8 @@ export default function Game() {
     }, [game?.pots]);
 
     return (
-        <div className="flex h-screen flex-row items-start justify-center">
-            <div className="mx-24 mt-24 h-3/5 w-5/6 items-center justify-center rounded-3xl bg-green-600">
+        <div className="mx-24 mt-36 flex h-screen justify-center">
+            <div className="relative flex h-1/2 w-5/6 flex-col items-center justify-center rounded-full bg-green-600">
                 <div className="flex w-full items-center justify-center">
                     <CommunityCards />
                 </div>
@@ -73,17 +73,15 @@ export default function Game() {
                     {game?.pots.map((p, index) => (
                         <div
                             key={index}
-                            className="flex h-8 w-8 items-center justify-center rounded-3xl bg-yellow-400 text-white"
+                            className="flex h-8 w-12 items-center justify-center rounded-3xl bg-yellow-400 text-black"
                         >
                             {p.amount}
                         </div>
                     ))}
                 </div>
-                <div className="flex flex-row flex-wrap justify-center">
-                    {players.map((player, index) => (
-                        <Seat key={index} player={player} id={index + 1} />
-                    ))}
-                </div>
+                {players.map((player, index) => (
+                    <Seat key={index} player={player} id={index + 1} />
+                ))}
             </div>
             <div className="absolute left-0 bottom-0">
                 <Chat />

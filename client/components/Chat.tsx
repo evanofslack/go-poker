@@ -30,7 +30,7 @@ export default function Chat() {
     }, []);
 
     return (
-        <div className="flex h-64 w-96 flex-col items-start justify-between bg-gray-600 p-4 text-white">
+        <div className="flex h-48 w-96 flex-col items-start justify-between bg-gray-600 p-4 text-white">
             <div ref={scrollRef} className="mb-2 w-full overflow-auto bg-gray-800 p-2">
                 {appState.messages.map((message, index) => (
                     <ChatMessage
