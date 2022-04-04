@@ -11,8 +11,8 @@ const getAction = (title: string, disabled: boolean) => {
     return classNames(
         {
             // betting over and not winner
-            "text-red-600 border-red-600 ": title === "fold",
-            "text-green-500 border-green-500 ": title !== "fold",
+            "text-red-600 border-red-600 ": title === "fold" || title === "close",
+            "text-green-500 border-green-500 ": title !== "fold" && title !== "close",
             "opacity-20": disabled,
         },
 

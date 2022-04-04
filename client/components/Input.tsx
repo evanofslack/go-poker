@@ -3,18 +3,16 @@ import { AppContext } from "../providers/AppStore";
 import { playerCall, playerCheck, playerFold, playerRaise } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import InputButton from "./InputButton";
+import RaiseInput from "./RaiseInput";
 
 export default function Input() {
     const socket = useSocket();
     const { appState, dispatch } = useContext(AppContext);
+    const [showRaise, setShowRaise] = useState(false);
+
     const handleCall = () => {
         if (socket) {
             playerCall(socket);
-        }
-    };
-    const handleRaise = (amount: number) => {
-        if (socket) {
-            playerRaise(socket, amount);
         }
     };
     const handleCheck = () => {
@@ -41,6 +39,9 @@ export default function Input() {
     const callAmount = maxBet - player.bet < player.stack ? maxBet - player.bet : player.stack;
 
     if (action) {
+        if (showRaise) {
+            return <RaiseInput setShowRaise={setShowRaise} showRaise={showRaise} />;
+        }
         return (
             <div className="flex flex-row p-6">
                 <InputButton
@@ -48,7 +49,11 @@ export default function Input() {
                     title={canCall ? "call" : "call (" + callAmount + ")"}
                     disabled={canCall}
                 />
-                <InputButton action={() => handleRaise(1000)} title={"raise"} disabled={false} />
+                <InputButton
+                    action={() => setShowRaise(!showRaise)}
+                    title={"bet"}
+                    disabled={false}
+                />
                 <InputButton action={handleCheck} title={"check"} disabled={!canCheck} />
                 <InputButton action={handleFold} title={"fold"} disabled={false} />
             </div>
