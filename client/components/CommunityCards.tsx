@@ -7,9 +7,9 @@ export default function CommunityCards() {
 
     if (appState.game?.communityCards) {
         return (
-            <div className="mt-6 mb-4 flex flex-row p-2 text-2xl text-black">
+            <div className="mb-4 flex flex-row p-2 text-2xl text-black">
                 {appState.game?.communityCards.map((c, i) => (
-                    <div key={i} className="m-1">
+                    <div key={i} className="m-0.5">
                         <Card card={c} width={100} height={130} />
                     </div>
                 ))}

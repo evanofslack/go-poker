@@ -61,10 +61,15 @@ export default function Input() {
     }
 
     return (
-        <div className="bg-gray-600 p-4 text-white">
-            <div className="flex flex-col bg-gray-800 p-4">
-                <p>Not your turn bitch</p>
-            </div>
+        <div className="flex flex-row p-6">
+            <InputButton
+                action={handleCall}
+                title={canCall ? "call" : "call (" + callAmount + ")"}
+                disabled={true}
+            />
+            <InputButton action={() => setShowRaise(!showRaise)} title={"bet"} disabled={true} />
+            <InputButton action={handleCheck} title={"check"} disabled={true} />
+            <InputButton action={handleFold} title={"fold"} disabled={true} />
         </div>
     );
 }

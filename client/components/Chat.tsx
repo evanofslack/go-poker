@@ -30,8 +30,8 @@ export default function Chat() {
     }, []);
 
     return (
-        <div className="flex h-48 w-96 flex-col items-start justify-between bg-gray-600 p-4 text-white">
-            <div ref={scrollRef} className="mb-2 w-full overflow-auto bg-gray-800 p-2">
+        <div className="flex h-44 w-96 flex-col items-start justify-between rounded-tr-lg bg-zinc-700 p-3 text-neutral-400">
+            <div ref={scrollRef} className="mb-2 w-full overflow-auto bg-zinc-800 p-2">
                 {appState.messages.map((message, index) => (
                     <ChatMessage
                         key={index}
@@ -41,16 +41,16 @@ export default function Chat() {
                     />
                 ))}
             </div>
-            <div className="flex w-full flex-row justify-between">
+            <div className="flex w-full flex-row justify-between text-neutral-400">
                 <input
-                    className="w-full bg-gray-800 p-2 "
+                    className="w-full bg-zinc-800 p-2 text-red-500"
                     id="input"
                     type="text"
                     value={inputValue}
                     placeholder="say something..."
                     onChange={handleChange}
-                />
-                <button className=" px-4" onClick={handleClick}>
+                ></input>
+                <button className=" bg-zinc-800 px-4 text-neutral-400" onClick={handleClick}>
                     <FiSend />
                 </button>
             </div>

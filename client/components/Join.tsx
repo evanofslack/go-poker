@@ -11,7 +11,6 @@ export default function Join() {
 
     const handleSubmit = (e: any) => {
         e.preventDefault();
-
         dispatch({ type: "setUsername", payload: inputValue });
         if (socket) {
             newPlayer(socket, inputValue);
@@ -39,16 +38,15 @@ export default function Join() {
     return (
         <div className="flex min-h-screen flex-col">
             <div className="flex flex-grow flex-col items-center justify-center ">
-                <h1 className="mb-16 text-5xl font-semibold text-white">PokerGo</h1>
+                <h1 className="mb-16 text-5xl font-semibold text-white">Poker</h1>
                 <div>
                     <input
-                        className="m-4 rounded-sm bg-gray-600 p-1 text-white"
+                        className="m-4 rounded-sm bg-neutral-600 p-1 text-white"
                         id="input"
                         type="text"
                         value={inputValue}
                         placeholder="username"
                         onChange={handleChange}
-                        // onKeyPress={handleKeypress}
                     />
                     <button
                         className="rounded-sm bg-green-800 px-4 py-1 text-white"
