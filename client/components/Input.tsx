@@ -28,7 +28,7 @@ export default function Input() {
 
     if (!appState.game || appState.game.betting == false) return null;
 
-    const action = appState.clientID === appState.game.players[appState.game.action].id;
+    const action = appState.clientID === appState.game.players[appState.game.action].uuid;
 
     const player = appState.game.players[appState.game.action];
     const playerBets = appState.game.players.map((player) => player.bet);

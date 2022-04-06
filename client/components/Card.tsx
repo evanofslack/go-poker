@@ -34,7 +34,7 @@ function color(card: string) {
 }
 
 export default function Card({ card, width, height }: cardProps) {
-    if (card == "2\u0000") {
+    if (card == "2\u0000" || card == "0") {
         return null;
     }
     // if (card === "?") return <div className={`bg-white w-${width} h-${height}`}>?</div>;
@@ -47,6 +47,7 @@ export default function Card({ card, width, height }: cardProps) {
         <div className={color(card)}>
             <div className="flex w-full items-start justify-start text-3xl font-semibold">
                 {card[0]}
+                {card}
             </div>
             <div>{getSuitChar(card[1])}</div>
         </div>

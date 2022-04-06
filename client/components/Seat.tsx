@@ -40,8 +40,8 @@ function chipPosition(id: number) {
 }
 
 function active(player: Player, game: Game) {
-    const action = player.seatID === game.action;
-    const winner = player.seatID == game?.pots[game.pots.length - 1]?.winningPlayerNums[0];
+    const action = player.position === game.action;
+    const winner = player.position == game?.pots[game.pots.length - 1]?.winningPlayerNums[0];
     return classNames(
         {
             // betting and player's turn
@@ -75,7 +75,7 @@ export default function Seat({ player, id }: seatProps) {
     if (player && appState.game) {
         let cards = player.cards;
         if (appState.game.running) {
-            if (appState.clientID !== player?.id) {
+            if (appState.clientID !== player?.uuid) {
                 cards = ["?", "?"];
             }
         }
@@ -110,7 +110,7 @@ export default function Seat({ player, id }: seatProps) {
             </div>
         );
         // player already sat down, and this seat does not belong to them
-    } else if (player?.id != appState.clientID) {
+    } else if (player?.uuid != appState.clientID) {
         return (
             <div className={seatPosition(id)}>
                 <button className="m-4 h-20 w-56 rounded-2xl bg-neutral-700 p-2 text-neutral-400 opacity-20">

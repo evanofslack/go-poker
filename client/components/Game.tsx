@@ -18,7 +18,7 @@ function handleWinner(game: GameType | null, socket: WebSocket | null) {
     }
     if (game && game.stage === 1 && game.pots.length !== 0) {
         const winnerNum = game.pots[game.pots.length - 1].winningPlayerNums[0];
-        const winningPlayer = game.players.filter((player) => player.seatID == winnerNum);
+        const winningPlayer = game.players.filter((player) => player.position == winnerNum);
         const pot = game.pots[game.pots.length - 1].amount;
         console.log(winningPlayer);
         const message = winningPlayer[0].username + " wins " + pot;
@@ -49,7 +49,7 @@ export default function Game() {
             return;
         }
         for (let i = 0; i < game.players.length; i++) {
-            updatedPlayers[game.players[i].position - 1] = game.players[i];
+            updatedPlayers[game.players[i].seatID - 1] = game.players[i];
         }
         setPlayers(updatedPlayers);
     }, [game?.players]);
@@ -70,7 +70,7 @@ export default function Game() {
                     <CommunityCards />
                 </div>
                 <div className="flex w-full items-center justify-center">
-                    {game?.pots.map((p, index) => (
+                    {game?.pots?.map((p, index) => (
                         <div
                             key={index}
                             className="flex h-8 w-12 items-center justify-center rounded-3xl bg-amber-300 text-xl font-semibold text-black"
