@@ -8,8 +8,16 @@ import { startGame, sendMessage, dealGame } from "../actions/actions";
 import { AppContext } from "../providers/AppStore";
 import { Game as GameType, Player } from "../interfaces";
 
-function sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+function rotatePlayers(players: (Player | null)[], targetUUID: string): (Player | null)[] {
+    while (true) {
+        players = [...players.slice(1, players.length), ...players.slice(0, 1)];
+        if (players[0] != null) {
+            if (players[0].uuid == targetUUID) {
+                return players;
+            }
+        }
+    }
+    return players;
 }
 
 function handleWinner(game: GameType | null, socket: WebSocket | null) {
@@ -44,7 +52,7 @@ export default function Game() {
 
     // map game players to their visual seats
     useEffect(() => {
-        const updatedPlayers: (Player | null)[] = [...players];
+        let updatedPlayers: (Player | null)[] = [...players];
         if (game?.players == null) {
             return;
         }
@@ -53,6 +61,14 @@ export default function Game() {
         }
         setPlayers(updatedPlayers);
     }, [game?.players]);
+
+    // rotate player array so client is visually in bottom right corner
+    useEffect(() => {
+        if (game?.running && appState.clientID) {
+            let updatedPlayers = rotatePlayers(players, appState.clientID);
+            setPlayers(updatedPlayers);
+        }
+    }, [game?.running]);
 
     useEffect(() => {
         console.log(game);
