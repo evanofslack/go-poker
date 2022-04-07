@@ -11,16 +11,11 @@ export type AppState = {
     game: Game | null;
 };
 
-export type Event = {
-    action: string;
-    params: any;
-};
-
 export type Card = string;
 
 export type Player = {
     username: string;
-    id: string;
+    uuid: string;
     position: number;
     seatID: number;
     ready: boolean;
