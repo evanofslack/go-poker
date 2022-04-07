@@ -8,8 +8,16 @@ import { startGame, sendMessage, dealGame } from "../actions/actions";
 import { AppContext } from "../providers/AppStore";
 import { Game as GameType, Player } from "../interfaces";
 
-function sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+function rotatePlayers(players: (Player | null)[], targetUUID: string): (Player | null)[] {
+    while (true) {
+        players = [...players.slice(1, players.length), ...players.slice(0, 1)];
+        if (players[0] != null) {
+            if (players[0].uuid == targetUUID) {
+                return players;
+            }
+        }
+    }
+    return players;
 }
 
 function handleWinner(game: GameType | null, socket: WebSocket | null) {
@@ -18,7 +26,7 @@ function handleWinner(game: GameType | null, socket: WebSocket | null) {
     }
     if (game && game.stage === 1 && game.pots.length !== 0) {
         const winnerNum = game.pots[game.pots.length - 1].winningPlayerNums[0];
-        const winningPlayer = game.players.filter((player) => player.seatID == winnerNum);
+        const winningPlayer = game.players.filter((player) => player.position == winnerNum);
         const pot = game.pots[game.pots.length - 1].amount;
         console.log(winningPlayer);
         const message = winningPlayer[0].username + " wins " + pot;
@@ -44,15 +52,23 @@ export default function Game() {
 
     // map game players to their visual seats
     useEffect(() => {
-        const updatedPlayers: (Player | null)[] = [...players];
+        let updatedPlayers: (Player | null)[] = [...players];
         if (game?.players == null) {
             return;
         }
         for (let i = 0; i < game.players.length; i++) {
-            updatedPlayers[game.players[i].position - 1] = game.players[i];
+            updatedPlayers[game.players[i].seatID - 1] = game.players[i];
         }
         setPlayers(updatedPlayers);
     }, [game?.players]);
+
+    // rotate player array so client is visually in bottom right corner
+    useEffect(() => {
+        if (game?.running && appState.clientID) {
+            let updatedPlayers = rotatePlayers(players, appState.clientID);
+            setPlayers(updatedPlayers);
+        }
+    }, [game?.running]);
 
     useEffect(() => {
         console.log(game);
@@ -70,7 +86,7 @@ export default function Game() {
                     <CommunityCards />
                 </div>
                 <div className="flex w-full items-center justify-center">
-                    {game?.pots.map((p, index) => (
+                    {game?.pots?.map((p, index) => (
                         <div
                             key={index}
                             className="flex h-8 w-12 items-center justify-center rounded-3xl bg-amber-300 text-xl font-semibold text-black"

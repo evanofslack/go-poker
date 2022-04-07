@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/alexclewontin/riverboat"
+	"github.com/evanofslack/go-poker/poker"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -23,7 +23,7 @@ func InitServer() {
 type server struct {
 	router *chi.Mux
 	hub    *Hub
-	game   *riverboat.Game
+	game   *poker.Game
 	port   string
 }
 
@@ -31,7 +31,7 @@ func newServer() *server {
 	s := &server{
 		router: chi.NewRouter(),
 		hub:    newHub(),
-		game:   riverboat.NewGame(),
+		game:   poker.NewGame(),
 		port:   getPort(),
 	}
 	go s.hub.run()

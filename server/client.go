@@ -1,12 +1,14 @@
 package server
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/alexclewontin/riverboat"
+	"github.com/evanofslack/go-poker/poker"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
@@ -22,7 +24,7 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 
 	// Maximum message size allowed from peer.
-	maxMessageSize = 512
+	maxMessageSize = 1024
 )
 
 var upgrader = websocket.Upgrader{
@@ -34,11 +36,11 @@ var upgrader = websocket.Upgrader{
 type Client struct {
 	hub      *Hub
 	conn     *websocket.Conn // Websocket connection
-	send     chan event      // Buffered channel of outbound events
-	id       string          // UUID
+	send     chan []byte     // Buffered channel of outbound bytes
+	uuid     string          // UUID
 	username string
-	seatID   uint            // Seat number
-	game     *riverboat.Game // Player specific game
+	seatID   uint        // Seat number
+	game     *poker.Game // Player specific game
 }
 
 // readPump pumps events from the websocket connection to the hub.
@@ -55,16 +57,17 @@ func (c *Client) readPump() {
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
-		var e event
-		err := c.conn.ReadJSON(&e)
-		fmt.Println(e)
+		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
 			}
 			break
 		}
-		processEvents(c, e)
+		err = c.processEvents(message)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 }
 
@@ -81,16 +84,21 @@ func (c *Client) writePump() {
 	}()
 	for {
 		select {
-		case event, ok := <-c.send:
+		case message, ok := <-c.send:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// The hub closed the channel.
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			err := c.conn.WriteJSON(event)
+			w, err := c.conn.NextWriter(websocket.TextMessage)
 			if err != nil {
 				log.Printf("error: %v", err)
+			}
+			w.Write(message)
+
+			if err := w.Close(); err != nil {
+				return
 			}
 
 		case <-ticker.C:
@@ -103,7 +111,7 @@ func (c *Client) writePump() {
 }
 
 // serveWs handles websocket requests from the peer.
-func serveWs(hub *Hub, game *riverboat.Game, w http.ResponseWriter, r *http.Request) {
+func serveWs(hub *Hub, game *poker.Game, w http.ResponseWriter, r *http.Request) {
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -113,8 +121,8 @@ func serveWs(hub *Hub, game *riverboat.Game, w http.ResponseWriter, r *http.Requ
 	client := &Client{
 		hub:  hub,
 		conn: conn,
-		send: make(chan event, 256),
-		id:   uuid.New().String(),
+		send: make(chan []byte, 1024),
+		uuid: uuid.New().String(),
 		game: game,
 	}
 
@@ -124,4 +132,78 @@ func serveWs(hub *Hub, game *riverboat.Game, w http.ResponseWriter, r *http.Requ
 	// new goroutines.
 	go client.writePump()
 	go client.readPump()
+}
+
+func (c *Client) processEvents(rawMessage []byte) error {
+	var baseMessage base
+	err := json.Unmarshal(rawMessage, &baseMessage)
+	if err != nil {
+		return err
+	}
+
+	if baseMessage.Action == "" {
+		return errors.New("error deserializing message")
+	}
+
+	switch baseMessage.Action {
+	case actionSendMessage:
+		var message sendMessage
+		err := json.Unmarshal(rawMessage, &message)
+		if err != nil {
+			return err
+		}
+		handleSendMessage(c, message.Username, message.Message)
+		return nil
+
+	case actionNewPlayer:
+		var player newPlayer
+		err := json.Unmarshal(rawMessage, &player)
+		if err != nil {
+			return err
+		}
+		handleNewPlayer(c, player.Username)
+		return nil
+
+	case actionTakeSeat:
+		var seat takeSeat
+		err := json.Unmarshal(rawMessage, &seat)
+		if err != nil {
+			return err
+		}
+		handleTakeSeat(c, seat.Username, seat.SeatID, seat.BuyIn)
+		return nil
+
+	case actionStartGame:
+		handleStartGame(c)
+		return nil
+
+	case actionDealGame:
+		handleDealGame(c)
+		return nil
+
+	case actionPlayerCall:
+		handleCall(c)
+		return nil
+
+	case actionPlayerCheck:
+		handleCheck(c)
+		return nil
+
+	case actionPlayerRaise:
+		var raise playerRaise
+		err := json.Unmarshal(rawMessage, &raise)
+		if err != nil {
+			return err
+		}
+		handleRaise(c, raise.Amount)
+		return nil
+
+	case actionPlayerFold:
+		handleFold(c)
+		return nil
+
+	default:
+		return errors.New("unexpected message action")
+	}
+
 }

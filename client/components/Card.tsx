@@ -1,14 +1,37 @@
 import Image from "next/image";
 import { getCardSVG } from "../util/cardDrawer";
 import classNames from "classnames";
+import { Card as CardType } from "../interfaces";
 
 type cardProps = {
-    card: string;
+    card: CardType;
     width: number;
     height: number;
 };
 
+function cardToString(card: CardType) {
+    // convert int representation of card from backend to character representation
+
+    // opponents cards represented with "?"
+    if (card === "?") {
+        return "?";
+    }
+    let c = parseInt(card);
+    let rank = (c >> 8) & 0x0f;
+    let suit = c & 0xf000;
+
+    const numToCharRanks = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];
+    const numToCharSuits = new Map();
+    numToCharSuits.set(0x8000, "C");
+    numToCharSuits.set(0x4000, "D");
+    numToCharSuits.set(0x2000, "H");
+    numToCharSuits.set(0x1000, "S");
+
+    return numToCharRanks[rank] + numToCharSuits.get(suit);
+}
+
 function getSuitChar(letter: string) {
+    // convert letter suit to unicode symbol
     switch (letter) {
         case "H":
             return "\u2665";
@@ -21,7 +44,7 @@ function getSuitChar(letter: string) {
     }
 }
 
-function color(card: string) {
+function color(card: CardType) {
     return classNames(
         {
             "text-red-700": card[1] == "H",
@@ -34,21 +57,22 @@ function color(card: string) {
 }
 
 export default function Card({ card, width, height }: cardProps) {
-    if (card == "2\u0000") {
+    const c = cardToString(card);
+    if (c == "2\u0000" || card == "0") {
         return null;
     }
-    // if (card === "?") return <div className={`bg-white w-${width} h-${height}`}>?</div>;
-    if (card === "?")
+    if (c === "?")
         return (
             <div className="flex h-24 w-16 items-center justify-center rounded-md border-4 border border-white bg-red-900"></div>
         );
 
     return (
-        <div className={color(card)}>
+        <div className={color(c)}>
             <div className="flex w-full items-start justify-start text-3xl font-semibold">
-                {card[0]}
+                {c[0]}
+                {/* {cardToString(card)} */}
             </div>
-            <div>{getSuitChar(card[1])}</div>
+            <div>{getSuitChar(c[1])}</div>
         </div>
     );
 

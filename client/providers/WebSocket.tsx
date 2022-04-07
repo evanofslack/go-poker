@@ -41,37 +41,38 @@ export function SocketProvider(props: SocketProviderProps) {
 
     if (socket) {
         socket.onmessage = (e) => {
-            let event: Event = JSON.parse(e.data);
+            let event = JSON.parse(e.data);
+            console.log(event);
             switch (event.action) {
                 case "new-message":
                     let newMessage: Message = {
-                        name: event.params.username,
-                        message: event.params.message,
-                        timestamp: event.params.timestamp,
+                        name: event.username,
+                        message: event.message,
+                        timestamp: event.timestamp,
                     };
                     dispatch({ type: "addMessage", payload: newMessage });
                     return;
                 case "update-game":
                     let newGame: Game = {
-                        running: event.params.running,
-                        dealer: event.params.dealer,
-                        action: event.params.action,
-                        utg: event.params.utg,
-                        sb: event.params.sb,
-                        bb: event.params.bb,
-                        communityCards: event.params.communityCards,
-                        stage: event.params.stage,
-                        betting: event.params.betting,
-                        config: event.params.config,
-                        players: event.params.players,
-                        pots: event.params.pots,
-                        minRaise: event.params.minRaise,
-                        readyCount: event.params.readyCount,
+                        running: event.game.running,
+                        dealer: event.game.dealer,
+                        action: event.game.action,
+                        utg: event.game.utg,
+                        sb: event.game.sb,
+                        bb: event.game.bb,
+                        communityCards: event.game.communityCards,
+                        stage: event.game.stage,
+                        betting: event.game.betting,
+                        config: event.game.config,
+                        players: event.game.players,
+                        pots: event.game.pots,
+                        minRaise: event.game.minRaise,
+                        readyCount: event.game.readyCount,
                     };
                     dispatch({ type: "updateGame", payload: newGame });
                     return;
-                case "update-player-id":
-                    dispatch({ type: "updatePlayerID", payload: event.params.id });
+                case "update-player-uuid":
+                    dispatch({ type: "updatePlayerID", payload: event.uuid });
                     return;
                 default:
                     throw new Error();
