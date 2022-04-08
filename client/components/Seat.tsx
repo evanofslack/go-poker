@@ -86,7 +86,7 @@ export default function Seat({ player, id }: seatProps) {
                     <div className="relative right-2 flex flex-row items-center justify-center">
                         {cards.map((c, i) => (
                             <div key={i} className="mx-0.5">
-                                <Card card={c} width={80} height={110} />
+                                <Card card={c} placeholder={false} />
                             </div>
                         ))}
                     </div>
@@ -110,7 +110,7 @@ export default function Seat({ player, id }: seatProps) {
             </div>
         );
         // player already sat down, and this seat does not belong to them
-    } else if (player?.uuid != appState.clientID) {
+    } else if (player?.uuid != appState.clientID && !appState.game?.running) {
         return (
             <div className={seatPosition(id)}>
                 <button className="m-4 h-20 w-56 rounded-2xl bg-neutral-700 p-2 text-neutral-400 opacity-20">
@@ -119,7 +119,7 @@ export default function Seat({ player, id }: seatProps) {
             </div>
         );
         // player has not yet sat down, all seats are open
-    } else {
+    } else if (!appState.game?.running) {
         return (
             <div className={seatPosition(id)}>
                 <button
@@ -131,5 +131,7 @@ export default function Seat({ player, id }: seatProps) {
                 </button>
             </div>
         );
+    } else {
+        return null;
     }
 }
