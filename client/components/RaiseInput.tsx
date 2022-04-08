@@ -31,6 +31,7 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
         if (socket) {
             playerRaise(socket, amount);
         }
+        setShowRaise(!showRaise);
     };
 
     return (
