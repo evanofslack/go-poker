@@ -1,6 +1,6 @@
 import { createContext, ReactChild, useEffect, useState, useContext } from "react";
 import { AppContext } from "../providers/AppStore";
-import { Event, Message, Game } from "../interfaces";
+import { Message, Game } from "../interfaces";
 
 /*  
 WebSocket context creates a single connection to the server per client. 
