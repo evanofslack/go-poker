@@ -5,8 +5,7 @@ import { Card as CardType } from "../interfaces";
 
 type cardProps = {
     card: CardType;
-    width: number;
-    height: number;
+    placeholder: boolean;
 };
 
 function cardToString(card: CardType) {
@@ -56,7 +55,13 @@ function color(card: CardType) {
     );
 }
 
-export default function Card({ card, width, height }: cardProps) {
+export default function Card({ card, placeholder }: cardProps) {
+    if (placeholder) {
+        return (
+            <div className="flex h-24 w-16 items-center justify-center rounded-md bg-green-900 opacity-20"></div>
+        );
+    }
+
     const c = cardToString(card);
     if (c == "2\u0000" || card == "0") {
         return null;
@@ -75,6 +80,4 @@ export default function Card({ card, width, height }: cardProps) {
             <div>{getSuitChar(c[1])}</div>
         </div>
     );
-
-    return <Image src={getCardSVG(card)} width={width} height={height} />;
 }
