@@ -1,5 +1,6 @@
 import { useContext, useState, useEffect } from "react";
 import Chat from "./Chat";
+import Pot from "./Pot";
 import Seat from "./Seat";
 import CommunityCards from "./CommunityCards";
 import Input from "./Input";
@@ -7,18 +8,6 @@ import { useSocket } from "../hooks/useSocket";
 import { startGame, sendMessage, dealGame } from "../actions/actions";
 import { AppContext } from "../providers/AppStore";
 import { Game as GameType, Player } from "../interfaces";
-
-function rotatePlayers(players: (Player | null)[], targetUUID: string): (Player | null)[] {
-    while (true) {
-        players = [...players.slice(1, players.length), ...players.slice(0, 1)];
-        if (players[0] != null) {
-            if (players[0].uuid == targetUUID) {
-                return players;
-            }
-        }
-    }
-    return players;
-}
 
 function handleWinner(game: GameType | null, socket: WebSocket | null) {
     if (!game || !socket) {
@@ -62,14 +51,6 @@ export default function Game() {
         setPlayers(updatedPlayers);
     }, [game?.players]);
 
-    // rotate player array so client is visually in bottom right corner
-    useEffect(() => {
-        if (game?.running && appState.clientID) {
-            let updatedPlayers = rotatePlayers(players, appState.clientID);
-            setPlayers(updatedPlayers);
-        }
-    }, [game?.running]);
-
     useEffect(() => {
         console.log(game);
     }, [appState.game?.players]);
@@ -82,18 +63,11 @@ export default function Game() {
     return (
         <div className="mx-24 mt-36 flex h-screen justify-center">
             <div className="relative flex h-1/2 w-5/6 max-w-[900px] flex-col items-center justify-center rounded-full bg-green-600">
-                <div className="flex w-full items-center justify-center">
-                    <CommunityCards />
-                </div>
-                <div className="flex w-full items-center justify-center">
-                    {game?.pots?.map((p, index) => (
-                        <div
-                            key={index}
-                            className="flex h-8 w-12 items-center justify-center rounded-3xl bg-amber-300 text-xl font-semibold text-black"
-                        >
-                            {p.amount}
-                        </div>
-                    ))}
+                <div className="flex w-full flex-col items-center justify-center">
+                    <Pot game={appState.game} />
+                    <div className="my-8 flex w-full items-center justify-center">
+                        <CommunityCards />
+                    </div>
                 </div>
                 {players.map((player, index) => (
                     <Seat key={index} player={player} id={index + 1} />
