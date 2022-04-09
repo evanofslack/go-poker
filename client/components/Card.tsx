@@ -1,11 +1,10 @@
-import Image from "next/image";
-import { getCardSVG } from "../util/cardDrawer";
 import classNames from "classnames";
 import { Card as CardType } from "../interfaces";
 
 type cardProps = {
     card: CardType;
     placeholder: boolean;
+    folded: boolean;
 };
 
 function cardToString(card: CardType) {
@@ -55,7 +54,7 @@ function color(card: CardType) {
     );
 }
 
-export default function Card({ card, placeholder }: cardProps) {
+export default function Card({ card, placeholder, folded }: cardProps) {
     if (placeholder) {
         return (
             <div className="flex h-24 w-16 items-center justify-center rounded-md bg-green-900 opacity-20"></div>
@@ -66,16 +65,37 @@ export default function Card({ card, placeholder }: cardProps) {
     if (c == "2\u0000" || card == "0") {
         return null;
     }
-    if (c === "?")
+    if (c === "?") {
+        if (folded) {
+            // return null;
+            return <div className={"flex h-24 w-16  "}></div>;
+        }
         return (
-            <div className="flex h-24 w-16 items-center justify-center rounded-md border-4 border border-white bg-red-900"></div>
+            <div
+                className={
+                    "flex h-24 w-16 items-center justify-center rounded-md border-4 border border-white bg-red-900"
+                }
+            ></div>
         );
-
+    }
+    if (folded) {
+        return (
+            <div className={color(c)}>
+                <div
+                    className={
+                        "flex w-full items-start justify-start text-3xl font-semibold opacity-40"
+                    }
+                >
+                    {c[0]}
+                </div>
+                <div className="opacity-40">{getSuitChar(c[1])}</div>
+            </div>
+        );
+    }
     return (
         <div className={color(c)}>
-            <div className="flex w-full items-start justify-start text-3xl font-semibold">
+            <div className={"flex w-full items-start justify-start text-3xl font-semibold"}>
                 {c[0]}
-                {/* {cardToString(card)} */}
             </div>
             <div>{getSuitChar(c[1])}</div>
         </div>
