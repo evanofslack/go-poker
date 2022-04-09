@@ -382,7 +382,7 @@ func NewGame() *Game {
 	newGame.setStageAndBetting(PreDeal, false)
 	newGame.deck = DefaultDeck
 	newGame.config = GameConfig{
-		BigBlind:   25,
+		BigBlind:   20,
 		SmallBlind: 10,
 		MaxBuy:     0,
 	}
