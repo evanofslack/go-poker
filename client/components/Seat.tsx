@@ -28,10 +28,10 @@ function seatPosition(id: number) {
 function chipPosition(id: number) {
     return classNames(
         {
-            "right-[20%] bottom-[-30%]": id === 1,
-            "left-[20%] bottom-[-30%]": id === 2,
-            "left-[-15%] top-[20%]": id === 3,
-            "left-[20%] top-[-30%]": id === 4,
+            "right-[60%] top-[-45%] flex-row": id === 1,
+            "right-[30%] top-[-40%] flex-row": id === 2,
+            "right-[-20%] top-[20%] flex-col": id === 3,
+            "right-[30%] bottom-[-40%] flex-row": id === 4,
             "right-[60%] bottom-[-40%] flex-row": id === 5,
             "left-[-23%] top-[15%] flex-col": id === 6,
         },
@@ -86,7 +86,7 @@ export default function Seat({ player, id }: seatProps) {
                     <div className="relative right-2 flex flex-row items-center justify-center">
                         {cards.map((c, i) => (
                             <div key={i} className="mx-0.5">
-                                <Card card={c} placeholder={false} />
+                                <Card card={c} placeholder={false} folded={!player.in} />
                             </div>
                         ))}
                     </div>
@@ -96,7 +96,7 @@ export default function Seat({ player, id }: seatProps) {
                     </div>
                 </div>
                 <div className={chipPosition(id)}>
-                    {appState.game.running && appState.game.dealer == player.seatID && (
+                    {appState.game.running && appState.game.dealer == player.position && (
                         <div className="mx-3 my-3 flex h-7 w-8 items-center justify-center rounded-[50%] bg-white text-xl font-bold text-purple-800">
                             D
                         </div>
