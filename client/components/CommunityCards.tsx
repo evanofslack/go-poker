@@ -13,9 +13,13 @@ export default function CommunityCards() {
                 {cards.map((num, i) => (
                     <div key={i} className="m-0.5">
                         {appState.game?.communityCards[num] ? (
-                            <Card card={appState.game.communityCards[num]} placeholder={false} />
+                            <Card
+                                card={appState.game.communityCards[num]}
+                                placeholder={false}
+                                folded={false}
+                            />
                         ) : (
-                            <Card card="placeholder" placeholder={true} />
+                            <Card card="placeholder" placeholder={true} folded={false} />
                         )}
                     </div>
                 ))}

@@ -12,11 +12,11 @@ const getAction = (title: string, disabled: boolean) => {
         {
             // betting over and not winner
             "text-red-600 border-red-600 ": title === "fold" || title === "close",
-            "text-green-500 border-green-500 ": title !== "fold" && title !== "close",
+            "text-green-500 border-green-500  ": title !== "fold" && title !== "close",
             "opacity-20": disabled,
         },
 
-        "mx-1 rounded-lg border border-2 px-4 py-3 text-2xl font-semibold"
+        "mx-1 rounded-md border border-2 px-4 py-3 text-2xl font-medium"
     );
 };
 
