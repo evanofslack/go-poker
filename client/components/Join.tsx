@@ -41,7 +41,8 @@ export default function Join() {
                 <h1 className="mb-16 text-5xl font-semibold text-white">Poker</h1>
                 <div>
                     <input
-                        className="m-4 rounded-sm bg-neutral-600 p-1 text-white"
+                        autoFocus
+                        className="m-4 rounded-sm bg-neutral-600 p-1 text-white focus:outline-none"
                         id="input"
                         type="text"
                         value={inputValue}
