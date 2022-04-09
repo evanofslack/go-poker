@@ -61,11 +61,11 @@ export default function Game() {
     }, [game?.pots]);
 
     return (
-        <div className="mx-24 mt-36 flex h-screen justify-center">
-            <div className="relative flex h-1/2 w-5/6 max-w-[900px] flex-col items-center justify-center rounded-full bg-green-600">
+        <div className="mx-24  flex h-screen justify-center">
+            <div className="relative mt-36 flex h-1/2 w-5/6 max-w-[800px] flex-col items-center justify-center rounded-full bg-green-600">
                 <div className="flex w-full flex-col items-center justify-center">
                     <Pot game={appState.game} />
-                    <div className="my-8 flex w-full items-center justify-center">
+                    <div className="mt-8 mb-20 flex w-full items-center justify-center">
                         <CommunityCards />
                     </div>
                 </div>
@@ -76,12 +76,20 @@ export default function Game() {
             <div className="absolute left-0 bottom-0">
                 <Chat />
             </div>
-            <div className="absolute bottom-0 right-10">
+            <div className="absolute bottom-0 right-0">
                 <Input />
             </div>
-            {!game?.running && (
+            {!game?.running && players.filter((player) => player != null).length < 2 && (
                 <button
-                    className="absolute right-0 bottom-0 m-10 rounded-md bg-green-800 p-2 text-white"
+                    className="absolute right-0 bottom-0 m-10 rounded-lg border border-2 border-neutral-200 p-2 px-4 py-3 text-2xl font-medium text-neutral-200 opacity-20"
+                    title="Must have 2 or more players to start game"
+                >
+                    Start
+                </button>
+            )}
+            {!game?.running && players.filter((player) => player != null).length >= 2 && (
+                <button
+                    className="absolute right-0 bottom-0 m-10 rounded-md border border-2 border-neutral-200 p-2 px-4 py-3 text-2xl font-medium text-neutral-200 hover:underline"
                     onClick={() => handleStartGame(socket)}
                 >
                     Start
