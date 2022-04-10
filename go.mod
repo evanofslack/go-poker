@@ -1,11 +1,11 @@
 module github.com/evanofslack/go-poker
 
+// +heroku goVersion go1.18
 go 1.18
 
-replace github.com/alexclewontin/riverboat => /Users/Evan/Documents/Github/riverboat
+// replace github.com/alexclewontin/riverboat => /Users/Evan/Documents/Github/riverboat
 
 require (
-	github.com/alexclewontin/riverboat v0.6.0
 	github.com/alexclewontin/riverboat/eval v0.2.2
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/cors v1.2.0
