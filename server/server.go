@@ -1,7 +1,9 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -15,6 +17,7 @@ func InitServer() {
 	s := newServer()
 	s.mountMiddleware()
 	s.mountSocket()
+	s.mountStatus()
 
 	fmt.Println("listening...")
 	http.ListenAndServe(s.port, s.router)
@@ -59,6 +62,19 @@ func (s *server) mountMiddleware() {
 		AllowCredentials: true,
 		MaxAge:           500,
 	}))
+}
+
+func (s *server) mountStatus() {
+	s.router.Route("/ping", func(r chi.Router) { r.Get("/", s.ping) })
+}
+
+func (s *server) ping(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	enc := json.NewEncoder(w)
+	if err := enc.Encode("message: pong"); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func (s *server) mountSocket() {
