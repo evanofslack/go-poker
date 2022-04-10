@@ -4,6 +4,7 @@ import { takeSeat } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { Game, Player } from "../interfaces/index";
 import Card from "./Card";
+import BuyIn from "./BuyIn";
 import classNames from "classnames";
 
 type seatProps = {
@@ -66,6 +67,8 @@ function active(player: Player, game: Game) {
 export default function Seat({ player, id }: seatProps) {
     const socket = useSocket();
     const { appState, dispatch } = useContext(AppContext);
+    const [sitDown, setSitDown] = useState(false);
+
     const handleClick = () => {
         if (socket && appState.username) {
             takeSeat(socket, appState.username, id, 1000);
@@ -122,13 +125,20 @@ export default function Seat({ player, id }: seatProps) {
     } else if (!appState.game?.running) {
         return (
             <div className={seatPosition(id)}>
-                <button
-                    className="m-4 h-20 w-56 rounded-2xl bg-neutral-700 p-2 text-neutral-100"
-                    onClick={handleClick}
-                >
-                    <h2 className="text-4xl">{id}</h2>
-                    <p className="opacity-70">Open</p>
-                </button>
+                {sitDown && (
+                    <div className="m-4 h-20 w-56 rounded-2xl bg-neutral-700 text-neutral-100">
+                        <BuyIn seatID={id} sitDown={sitDown} setSitDown={setSitDown} />
+                    </div>
+                )}
+                {!sitDown && (
+                    <button
+                        className="m-4 h-20 w-56 rounded-2xl bg-neutral-700 p-2 text-neutral-100"
+                        onClick={() => setSitDown(!sitDown)}
+                    >
+                        <h2 className="text-4xl">{id}</h2>
+                        <p className="opacity-70">Open</p>
+                    </button>
+                )}
             </div>
         );
     } else {

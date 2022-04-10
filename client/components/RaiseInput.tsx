@@ -5,12 +5,12 @@ import { useSocket } from "../hooks/useSocket";
 import InputButton from "./InputButton";
 import { Slider } from "@mantine/core";
 import classNames from "classnames";
+import { Game } from "../interfaces/index";
 
 type raiseProps = {
     showRaise: boolean;
     setShowRaise: React.Dispatch<React.SetStateAction<boolean>>;
 };
-
 function button() {
     return classNames(
         "mx-0.5 my-2 rounded-sm  border border-2 border-zinc-600  p-2 text-neutral-200 hover:bg-zinc-600 font-normal"
@@ -25,24 +25,43 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
         return null;
     }
 
-    const currentBet = appState.game.players[appState.game.action].bet;
-    const playerBets = appState.game.players.map((player) => player.bet);
     const bigBlind = appState.game.config.bb;
-    const maxBet = Math.max(...playerBets);
+    const smallBlind = appState.game.config.sb;
+    const currentBet = appState.game.players[appState.game.action].bet; // active player's bet
+    const currentStack = appState.game.players[appState.game.action].stack; // active player's stack
+    const playerBets = appState.game.players.map((player) => player.bet); // array of all players' bets
+    const maxBet = Math.max(...playerBets); // largest bet out of all player's bets
     const minRaise = maxBet + appState.game.minRaise;
-    const stack = appState.game.players[appState.game.action].stack;
-    const half =
-        appState.game.pots.length != 0
-            ? Math.ceil((appState.game.pots[0].amount + maxBet) / 2)
-            : minRaise;
-    const threeFourth =
-        appState.game.pots.length != 0
-            ? Math.ceil(((appState.game.pots[0].amount + maxBet) * 3) / 4)
-            : Math.ceil(bigBlind * 2.5);
 
-    const fullPot =
-        appState.game.pots.length != 0 ? appState.game.pots[0].amount + maxBet : bigBlind * 3;
-    const allIn = stack;
+    const currentPot =
+        appState.game.pots.length != 0 ? appState.game.pots[0].amount : bigBlind + smallBlind;
+
+    // a pot sized bet is equal to 3 times the previous largest bet + pot before previous bet
+    const potBet = 3 * maxBet + currentPot - maxBet;
+
+    function potPortion(pot: number, fraction: number) {
+        // returns rounded fraction of the pot
+        return Math.ceil(pot * fraction);
+    }
+
+    function betValidator(bet: number, minRaise: number, stack: number) {
+        // bet can never be smaller than min raise and can never be bigger than player stack + committed chips
+        if (bet < minRaise) {
+            return minRaise;
+        } else if (bet > stack) {
+            return stack;
+        } else {
+            return bet;
+        }
+    }
+
+    const half = appState.game.pots.length != 0 ? potPortion(potBet, 0.5) : minRaise;
+    const threeQuarter =
+        appState.game.pots.length != 0 ? potPortion(potBet, 0.75) : Math.ceil(bigBlind * 2.5);
+
+    const full = appState.game.pots.length != 0 ? potBet : bigBlind * 3;
+    const allIn = currentStack + currentBet;
+
     const [inputValue, setInputValue] = useState(minRaise);
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,30 +88,48 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
             />
             <div className="mx-1 flex flex-col items-center justify-center rounded-md border border-2 border-zinc-600 px-2">
                 <div className="flex flex-row items-center justify-between">
-                    <button className={button()} onClick={() => setInputValue(minRaise)}>
+                    <button
+                        className={button()}
+                        onClick={() =>
+                            setInputValue(
+                                betValidator(minRaise, minRaise, currentStack + currentBet)
+                            )
+                        }
+                    >
                         min{" "}
                     </button>
                     <button
                         className={button()}
-                        onClick={() => setInputValue(half >= minRaise ? half : minRaise)}
+                        onClick={() =>
+                            setInputValue(betValidator(half, minRaise, currentStack + currentBet))
+                        }
                     >
                         1/2 pot
                     </button>
                     <button
                         className={button()}
                         onClick={() =>
-                            setInputValue(threeFourth >= minRaise ? threeFourth : minRaise)
+                            setInputValue(
+                                betValidator(threeQuarter, minRaise, currentStack + currentBet)
+                            )
                         }
                     >
                         3/4 pot
                     </button>
                     <button
                         className={button()}
-                        onClick={() => setInputValue(fullPot >= minRaise ? fullPot : minRaise)}
+                        onClick={() =>
+                            setInputValue(betValidator(full, minRaise, currentStack + currentBet))
+                        }
                     >
                         pot
                     </button>
-                    <button className={button()} onClick={() => setInputValue(allIn)}>
+                    <button
+                        className={button()}
+                        onClick={() =>
+                            setInputValue(betValidator(allIn, minRaise, currentStack + currentBet))
+                        }
+                    >
                         all in
                     </button>
                 </div>
@@ -101,7 +138,7 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
                         value={inputValue}
                         onChange={setInputValue}
                         min={minRaise}
-                        max={stack}
+                        max={currentStack + currentBet}
                         step={1}
                         color="gray"
                         showLabelOnHover={false}
@@ -113,7 +150,7 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
             <InputButton
                 action={() => handleRaise(inputValue - currentBet)}
                 title={"bet"}
-                disabled={inputValue < minRaise || inputValue > stack}
+                disabled={inputValue < minRaise || inputValue > currentStack + currentBet}
             />
             <InputButton action={() => setShowRaise(!showRaise)} title={"close"} disabled={false} />
         </div>

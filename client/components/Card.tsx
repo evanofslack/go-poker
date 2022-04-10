@@ -8,13 +8,25 @@ type cardProps = {
 };
 
 function cardToString(card: CardType) {
-    // convert int representation of card from backend to character representation
+    // convert int32 cards to a unicode string that we can display directly
+
+    // card is the type representing a single laying card. It is 32 bits long, packed according to the following schematic:
+    // 	+--------+--------+--------+--------+
+    // 	|xxxbbbbb|bbbbbbbb|cdhsrrrr|xxpppppp|
+    // 	+--------+--------+--------+--------+
+    //
+    // 	p 	= prime number of rank (deuce=2,trey=3,four=5,...,ace=41)
+    // 	r 	= rank of card (deuce=0,trey=1,four=2,five=3,...,ace=12)
+    // 	cdhs	= suit of card (bit turned on based on suit of card)
+    // 	b 	= bit turned on depending on rank of card
 
     // opponents cards represented with "?"
     if (card === "?") {
         return "?";
     }
+
     let c = parseInt(card);
+    // bitwise operations to map
     let rank = (c >> 8) & 0x0f;
     let suit = c & 0xf000;
 
