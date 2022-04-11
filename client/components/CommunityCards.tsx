@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect } from "react";
+import { useContext } from "react";
 import { AppContext } from "../providers/AppStore";
 import Card from "./Card";
 

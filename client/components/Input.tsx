@@ -1,6 +1,6 @@
-import { useState, useContext, useEffect } from "react";
+import { useState, useContext } from "react";
 import { AppContext } from "../providers/AppStore";
-import { playerCall, playerCheck, playerFold, playerRaise } from "../actions/actions";
+import { playerCall, playerCheck, playerFold } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import InputButton from "./InputButton";
 import RaiseInput from "./RaiseInput";

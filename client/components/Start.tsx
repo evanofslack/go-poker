@@ -1,4 +1,4 @@
-import { useContext, Dispatch } from "react";
+import { useContext } from "react";
 import { startGame } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
@@ -27,7 +27,7 @@ export default function Start({ players }: startProps) {
     if (!game.running && readyPlayers.length < 2) {
         return (
             <div
-                className="absolute right-0 bottom-0 m-10 rounded-lg border border-2 border-neutral-200 p-2 px-4 py-3 text-2xl font-medium text-neutral-200 opacity-20"
+                className=" m-10 rounded-lg border border-2 border-neutral-200 p-2 px-4 py-3 text-2xl font-medium text-neutral-200 opacity-20"
                 title="Must have 2 or more players to start game"
             >
                 Start
@@ -38,7 +38,7 @@ export default function Start({ players }: startProps) {
     if (!game.running && readyPlayers.length >= 2) {
         return (
             <button
-                className="absolute right-0 bottom-0 m-10 rounded-lg border border-2 border-neutral-200 p-2 px-4 py-3 text-2xl font-medium text-neutral-200"
+                className=" m-10 rounded-lg border border-2 border-neutral-200 p-2 px-4 py-3 text-2xl font-medium text-neutral-200"
                 onClick={() => handleStartGame(socket)}
             >
                 Start

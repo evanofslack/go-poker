@@ -35,18 +35,6 @@ export default function Pot({ game }: potProps) {
 
     return (
         <div>
-            {/* {game.pots.map((pot, index) => (
-                <div className="flex flex-col" key={index}>
-                    <div className="flex w-full justify-end">
-                        {pots[index].amount != pot.amount && (
-                            <p className="text-sm font-normal text-white">total: {pot.amount}</p>
-                        )}
-                    </div>
-                    <p className="flex h-10 w-24 flex-col items-center justify-center rounded-3xl bg-green-700 text-2xl font-semibold text-white ">
-                        {pots[index].amount}
-                    </p>
-                </div>
-            ))} */}
             {pots.map((pot, index) => (
                 <div className="flex flex-col" key={index}>
                     <div className="flex w-full justify-end">

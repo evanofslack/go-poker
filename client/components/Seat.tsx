@@ -65,15 +65,8 @@ function active(player: Player, game: Game) {
 }
 
 export default function Seat({ player, id }: seatProps) {
-    const socket = useSocket();
     const { appState, dispatch } = useContext(AppContext);
     const [sitDown, setSitDown] = useState(false);
-
-    const handleClick = () => {
-        if (socket && appState.username) {
-            takeSeat(socket, appState.username, id, 1000);
-        }
-    };
 
     if (player && appState.game) {
         let cards = player.cards;

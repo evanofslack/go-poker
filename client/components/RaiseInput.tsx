@@ -5,7 +5,6 @@ import { useSocket } from "../hooks/useSocket";
 import InputButton from "./InputButton";
 import { Slider } from "@mantine/core";
 import classNames from "classnames";
-import { Game } from "../interfaces/index";
 
 type raiseProps = {
     showRaise: boolean;

@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect, Dispatch } from "react";
+import { useContext, useState, useEffect } from "react";
 import Chat from "./Chat";
 import Pot from "./Pot";
 import Seat from "./Seat";
@@ -7,7 +7,7 @@ import Start from "./Start";
 import CommunityCards from "./CommunityCards";
 import Input from "./Input";
 import { useSocket } from "../hooks/useSocket";
-import { startGame, sendMessage, dealGame, resetGame } from "../actions/actions";
+import { sendMessage, dealGame } from "../actions/actions";
 import { AppContext } from "../providers/AppStore";
 import { Game as GameType, Player } from "../interfaces";
 
@@ -19,7 +19,6 @@ function handleWinner(game: GameType | null, socket: WebSocket | null) {
         const winnerNum = game.pots[game.pots.length - 1].winningPlayerNums[0];
         const winningPlayer = game.players.filter((player) => player.position == winnerNum);
         const pot = game.pots[game.pots.length - 1].amount;
-        console.log(winningPlayer);
         const message = winningPlayer[0].username + " wins " + pot;
         sendMessage(socket, "system", message);
         dealGame(socket);
@@ -74,7 +73,7 @@ export default function Game() {
             <div className="absolute left-0 top-0">
                 <Reset />
             </div>
-            <div>
+            <div className="absolute bottom-0 right-0">
                 <Start players={players} />
             </div>
         </div>

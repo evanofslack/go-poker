@@ -1,7 +1,5 @@
 import React, { ReactNode, Fragment } from "react";
-import MobileNav from "./MobileNav";
 import Head from "next/head";
-import Footer from "./Footer";
 
 type Props = {
     children?: ReactNode;

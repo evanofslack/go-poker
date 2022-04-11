@@ -26,7 +26,7 @@ function cardToString(card: CardType) {
     }
 
     let c = parseInt(card);
-    // bitwise operations to map
+    // bitwise operations to map int32 representation to string representation
     let rank = (c >> 8) & 0x0f;
     let suit = c & 0xf000;
 

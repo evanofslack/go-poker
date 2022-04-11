@@ -1,6 +1,5 @@
 import React, { useCallback, useContext, useEffect, useState, useRef } from "react";
 import { useSocket } from "../hooks/useSocket";
-import { Message } from "../interfaces/index";
 import ChatMessage from "./ChatMessage";
 import { AppContext } from "../providers/AppStore";
 import useChatScroll from "../hooks/useChatScroll";
