@@ -15,7 +15,11 @@ type SocketProviderProps = {
 };
 
 export function SocketProvider(props: SocketProviderProps) {
-    const WS_URL = "ws://127.0.0.1:8080/ws";
+    const WS_URL = process.env.NEXT_PUBLIC_WS_URL;
+    if (!WS_URL) {
+        return;
+    }
+
     const [socket, setSocket] = useState<WebSocket | null>(null);
     const { appState, dispatch } = useContext(AppContext);
 

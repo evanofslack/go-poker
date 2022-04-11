@@ -8,8 +8,7 @@ const nextConfig = {
         return [
             {
                 source: "/api/:path*",
-                destination: "http://localhost:8080/:path*", // Proxy to Backend
-                // destination: "https://go-poker.herokuapp.com/:path*", // Proxy to Backend
+                destination: process.env.NEXT_PUBLIC_API_URL + "/:path*",
             },
         ];
     },
