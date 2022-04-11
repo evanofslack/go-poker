@@ -17,7 +17,7 @@ type SocketProviderProps = {
 export function SocketProvider(props: SocketProviderProps) {
     const WS_URL = process.env.NEXT_PUBLIC_WS_URL;
     if (!WS_URL) {
-        return;
+        return null;
     }
 
     const [socket, setSocket] = useState<WebSocket | null>(null);
