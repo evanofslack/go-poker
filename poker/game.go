@@ -404,7 +404,16 @@ func (g *Game) Start() error {
 		return err
 	}
 	return nil
+}
 
+// Reset resets the game to a blank game
+func (g *Game) Reset() {
+	g.running = false
+	g.players = []player{}
+	g.pots = []Pot{}
+	g.communityCards = make([]Card, 5)
+	g.deck = DefaultDeck
+	g.setStageAndBetting(PreDeal, false)
 }
 
 func (g *Game) AddPlayer() uint {

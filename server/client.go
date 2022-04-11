@@ -177,6 +177,10 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		handleStartGame(c)
 		return nil
 
+	case actionResetGame:
+		handleResetGame(c)
+		return nil
+
 	case actionDealGame:
 		handleDealGame(c)
 		return nil

@@ -28,6 +28,14 @@ export function startGame(socket: WebSocket) {
     );
 }
 
+export function resetGame(socket: WebSocket) {
+    socket.send(
+        JSON.stringify({
+            action: "reset-game",
+        })
+    );
+}
+
 export function dealGame(socket: WebSocket) {
     socket.send(
         JSON.stringify({
