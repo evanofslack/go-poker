@@ -1,11 +1,13 @@
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, Dispatch } from "react";
 import Chat from "./Chat";
 import Pot from "./Pot";
 import Seat from "./Seat";
+import Reset from "./Reset";
+import Start from "./Start";
 import CommunityCards from "./CommunityCards";
 import Input from "./Input";
 import { useSocket } from "../hooks/useSocket";
-import { startGame, sendMessage, dealGame } from "../actions/actions";
+import { startGame, sendMessage, dealGame, resetGame } from "../actions/actions";
 import { AppContext } from "../providers/AppStore";
 import { Game as GameType, Player } from "../interfaces";
 
@@ -21,12 +23,6 @@ function handleWinner(game: GameType | null, socket: WebSocket | null) {
         const message = winningPlayer[0].username + " wins " + pot;
         sendMessage(socket, "system", message);
         dealGame(socket);
-    }
-}
-
-function handleStartGame(socket: WebSocket | null) {
-    if (socket) {
-        startGame(socket);
     }
 }
 
@@ -52,10 +48,6 @@ export default function Game() {
     }, [game?.players]);
 
     useEffect(() => {
-        console.log(game);
-    }, [appState.game?.players]);
-
-    useEffect(() => {
         const timer = setTimeout(() => handleWinner(game, socket), 4000);
         return () => clearTimeout(timer);
     }, [game?.pots]);
@@ -79,22 +71,12 @@ export default function Game() {
             <div className="absolute bottom-0 right-0">
                 <Input />
             </div>
-            {!game?.running && players.filter((player) => player != null).length < 2 && (
-                <button
-                    className="absolute right-0 bottom-0 m-10 rounded-lg border border-2 border-neutral-200 p-2 px-4 py-3 text-2xl font-medium text-neutral-200 opacity-20"
-                    title="Must have 2 or more players to start game"
-                >
-                    Start
-                </button>
-            )}
-            {!game?.running && players.filter((player) => player != null).length >= 2 && (
-                <button
-                    className="absolute right-0 bottom-0 m-10 rounded-md border border-2 border-neutral-200 p-2 px-4 py-3 text-2xl font-medium text-neutral-200 hover:underline"
-                    onClick={() => handleStartGame(socket)}
-                >
-                    Start
-                </button>
-            )}
+            <div className="absolute left-0 top-0">
+                <Reset />
+            </div>
+            <div>
+                <Start players={players} />
+            </div>
         </div>
     );
 }

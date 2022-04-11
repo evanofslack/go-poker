@@ -11,6 +11,7 @@ const (
 	actionTakeSeat    string = "take-seat"
 	actionStartGame   string = "start-game"
 	actionDealGame    string = "deal-game"
+	actionResetGame   string = "reset-game"
 	actionPlayerCall  string = "player-call"
 	actionPlayerCheck string = "player-check"
 	actionPlayerRaise string = "player-raise"
@@ -42,6 +43,10 @@ type takeSeat struct {
 
 type startGame struct {
 	base // actionStartGame
+}
+
+type resetGame struct {
+	base // actionResetGame
 }
 
 type dealGame struct {

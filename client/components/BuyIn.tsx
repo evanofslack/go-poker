@@ -29,19 +29,20 @@ export default function BuyIn({ seatID, sitDown, setSitDown }: buyInProps) {
         }
     };
     return (
-        <div className="relative right-2 m-4 flex h-full w-full flex-row items-center justify-center">
-            <p className="-mb-1 text-lg font-normal">{appState.username}</p>
-            <div className="flex flex-row  pl-8">
+        <div className="relative right-1 m-4 flex h-full w-full flex-col items-start justify-center">
+            <p className="-mb-1 text-lg font-semibold">{appState.username}</p>
+            <div className="flex flex-row items-center">
+                <p>Buy In: </p>
                 <input
                     autoFocus
-                    className="mr-2 w-20 rounded-sm bg-neutral-600 p-1 text-white focus:outline-none"
+                    className="ml-4 mr-2 w-20 rounded-sm bg-neutral-500 p-1 text-white focus:outline-none"
                     id="buyIn"
                     type="number"
                     value={buyIn}
                     onChange={handleBuyIn}
                 />
-                <button onClick={handleClick}>
-                    <FcCheckmark size="1.7rem" />
+                <button onClick={handleClick} className="text-2xl">
+                    <FcCheckmark />
                 </button>
             </div>
         </div>

@@ -61,6 +61,11 @@ func handleStartGame(c *Client) {
 	c.hub.broadcast <- createUpdatedGame(c)
 }
 
+func handleResetGame(c *Client) {
+	c.game.Reset()
+	c.hub.broadcast <- createUpdatedGame(c)
+}
+
 func handleDealGame(c *Client) {
 	view := c.game.GenerateOmniView()
 	err := poker.Deal(c.game, view.DealerNum, 0)

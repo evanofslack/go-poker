@@ -12,6 +12,7 @@ type ACTIONTYPE =
     | { type: "addMessage"; payload: Message }
     | { type: "setUsername"; payload: string }
     | { type: "updateGame"; payload: Game }
+    | { type: "resetGame" }
     | { type: "updatePlayerID"; payload: string };
 
 function reducer(state: AppState, action: ACTIONTYPE) {
@@ -22,6 +23,8 @@ function reducer(state: AppState, action: ACTIONTYPE) {
             return { ...state, username: action.payload };
         case "updateGame":
             return { ...state, game: action.payload };
+        case "resetGame":
+            return { ...state, clientID: null, username: null, game: null };
         case "updatePlayerID":
             return { ...state, clientID: action.payload };
         default:
