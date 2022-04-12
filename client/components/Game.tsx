@@ -11,18 +11,33 @@ import { sendMessage, dealGame } from "../actions/actions";
 import { AppContext } from "../providers/AppStore";
 import { Game as GameType, Player } from "../interfaces";
 
+function getWinner(game: GameType) {
+    const winnerNum = game.pots[game.pots.length - 1].winningPlayerNums[0];
+    const winningPlayer = game.players.filter((player) => player.position == winnerNum)[0];
+    return winningPlayer;
+}
+
 function handleWinner(game: GameType | null, socket: WebSocket | null) {
     if (!game || !socket) {
         return null;
     }
     if (game && game.stage === 1 && game.pots.length !== 0) {
-        const winnerNum = game.pots[game.pots.length - 1].winningPlayerNums[0];
-        const winningPlayer = game.players.filter((player) => player.position == winnerNum);
+        console.log("getting winner");
+        const winningPlayer = getWinner(game);
         const pot = game.pots[game.pots.length - 1].amount;
-        const message = winningPlayer[0].username + " wins " + pot;
+        const message = winningPlayer.username + " wins " + pot;
         sendMessage(socket, "system", message);
-        dealGame(socket);
     }
+}
+
+function getRevealedPlayers(game: GameType) {
+    const revealedNums = game.pots[game.pots.length - 1].eligiblePlayerNums;
+    // if only one player was eligible for the pot (everyone else folded), then they do not have to reveal
+    if (revealedNums.length <= 1) {
+        return [];
+    }
+    const revealedPlayers = game.players.filter((player) => revealedNums.includes(player.position));
+    return revealedPlayers;
 }
 
 export default function Game() {
@@ -33,6 +48,7 @@ export default function Game() {
 
     const initialPlayers: (Player | null)[] = [null, null, null, null, null, null];
     const [players, setPlayers] = useState(initialPlayers);
+    const [revealedPlayers, setRevealedPlayers] = useState<Player[]>([]);
 
     // map game players to their visual seats
     useEffect(() => {
@@ -47,8 +63,19 @@ export default function Game() {
     }, [game?.players]);
 
     useEffect(() => {
-        const timer = setTimeout(() => handleWinner(game, socket), 4000);
-        return () => clearTimeout(timer);
+        if (game && game.stage === 1 && game.pots.length !== 0) {
+            setRevealedPlayers(getRevealedPlayers(game));
+            handleWinner(game, socket);
+            const timer = setTimeout(() => {
+                setRevealedPlayers([]);
+                if (socket) {
+                    dealGame(socket);
+                }
+            }, 5000);
+            return () => {
+                clearTimeout(timer);
+            };
+        }
     }, [game?.pots]);
 
     return (
@@ -61,7 +88,12 @@ export default function Game() {
                     </div>
                 </div>
                 {players.map((player, index) => (
-                    <Seat key={index} player={player} id={index + 1} />
+                    <Seat
+                        key={index}
+                        player={player}
+                        id={index + 1}
+                        reveal={player ? revealedPlayers.includes(player) : false}
+                    />
                 ))}
             </div>
             <div className="absolute left-0 bottom-0">

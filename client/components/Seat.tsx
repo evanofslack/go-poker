@@ -10,6 +10,7 @@ import classNames from "classnames";
 type seatProps = {
     player: Player | null;
     id: number;
+    reveal: boolean;
 };
 
 function seatPosition(id: number) {
@@ -64,15 +65,15 @@ function active(player: Player, game: Game) {
     );
 }
 
-export default function Seat({ player, id }: seatProps) {
+export default function Seat({ player, id, reveal }: seatProps) {
     const { appState, dispatch } = useContext(AppContext);
     const [sitDown, setSitDown] = useState(false);
 
+    let hidden = false;
     if (player && appState.game) {
-        let cards = player.cards;
         if (appState.game.running) {
             if (appState.clientID !== player?.uuid) {
-                cards = ["?", "?"];
+                hidden = true;
             }
         }
         // This is the player's seat
@@ -80,9 +81,14 @@ export default function Seat({ player, id }: seatProps) {
             <div className={seatPosition(id)}>
                 <div className={active(player, appState.game)}>
                     <div className="relative right-2 flex flex-row items-center justify-center">
-                        {cards.map((c, i) => (
+                        {player.cards.map((c, i) => (
                             <div key={i} className="mx-0.5">
-                                <Card card={c} placeholder={false} folded={!player.in} />
+                                <Card
+                                    card={c}
+                                    placeholder={false}
+                                    folded={!player.in}
+                                    hidden={reveal ? false : hidden}
+                                />
                             </div>
                         ))}
                     </div>

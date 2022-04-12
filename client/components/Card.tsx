@@ -5,6 +5,7 @@ type cardProps = {
     card: CardType;
     placeholder: boolean;
     folded: boolean;
+    hidden: boolean;
 };
 
 function cardToString(card: CardType) {
@@ -66,7 +67,7 @@ function color(card: CardType) {
     );
 }
 
-export default function Card({ card, placeholder, folded }: cardProps) {
+export default function Card({ card, placeholder, folded, hidden }: cardProps) {
     if (placeholder) {
         return (
             <div className="flex h-24 w-16 items-center justify-center rounded-md bg-green-900 opacity-20"></div>
@@ -77,9 +78,8 @@ export default function Card({ card, placeholder, folded }: cardProps) {
     if (c == "2\u0000" || card == "0") {
         return null;
     }
-    if (c === "?") {
+    if (hidden) {
         if (folded) {
-            // return null;
             return <div className={"flex h-24 w-16  "}></div>;
         }
         return (
