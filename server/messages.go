@@ -6,6 +6,8 @@ import (
 
 // inbound (client) actions
 const (
+	actionJoinTable   string = "join-table"
+	actionLeaveTable  string = "leave-table"
 	actionSendMessage string = "send-message"
 	actionNewPlayer   string = "new-player"
 	actionTakeSeat    string = "take-seat"
@@ -21,6 +23,16 @@ const (
 type base struct {
 	// allows for correctly identifying messages
 	Action string `json:"action"`
+}
+
+type joinTable struct {
+	base             // actionJoinTable
+	Tablename string `json:"tablename"`
+}
+
+type leaveTable struct {
+	base             // actionLeaveTable
+	Tablename string `json:"tablename"`
 }
 
 type sendMessage struct {
