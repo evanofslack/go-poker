@@ -8,22 +8,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/evanofslack/go-poker/poker"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
 const (
-	// Time allowed to write a message to the peer.
-	writeWait = 10 * time.Second
-
-	// Time allowed to read the next pong message from the peer.
-	pongWait = 60 * time.Second
-
-	// Send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = (pongWait * 9) / 10
-
-	// Maximum message size allowed from peer.
+	writeWait      = 10 * time.Second
+	pongWait       = 60 * time.Second
+	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 1024
 )
 
@@ -39,8 +31,22 @@ type Client struct {
 	send     chan []byte     // Buffered channel of outbound bytes
 	uuid     string          // UUID
 	username string
-	seatID   uint        // Seat number
-	game     *poker.Game // Player specific game
+	seatID   uint   // Seat number
+	table    *table // Player's table
+}
+
+func newClient(conn *websocket.Conn, hub *Hub) *Client {
+	return &Client{
+		hub:  hub,
+		conn: conn,
+		send: make(chan []byte, 1024),
+		uuid: uuid.New().String(),
+	}
+}
+
+func (client *Client) disconnect() {
+	client.hub.unregister <- client
+	client.table.unregister <- client
 }
 
 // readPump pumps events from the websocket connection to the hub.
@@ -111,20 +117,14 @@ func (c *Client) writePump() {
 }
 
 // serveWs handles websocket requests from the peer.
-func serveWs(hub *Hub, game *poker.Game, w http.ResponseWriter, r *http.Request) {
+func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	client := &Client{
-		hub:  hub,
-		conn: conn,
-		send: make(chan []byte, 1024),
-		uuid: uuid.New().String(),
-		game: game,
-	}
+	client := newClient(conn, hub)
 
 	client.hub.register <- client
 
@@ -146,6 +146,25 @@ func (c *Client) processEvents(rawMessage []byte) error {
 	}
 
 	switch baseMessage.Action {
+
+	case actionJoinTable:
+		var table joinTable
+		err := json.Unmarshal(rawMessage, &table)
+		if err != nil {
+			return err
+		}
+		handleJoinTable(c, table.Tablename)
+		return nil
+
+	case actionLeaveTable:
+		var table leaveTable
+		err := json.Unmarshal(rawMessage, &table)
+		if err != nil {
+			return err
+		}
+		handleLeaveTable(c, table.Tablename)
+		return nil
+
 	case actionSendMessage:
 		var message sendMessage
 		err := json.Unmarshal(rawMessage, &message)

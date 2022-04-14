@@ -11,72 +11,84 @@ import (
 
 const gameAdminName string = "system"
 
+func handleJoinTable(c *Client, tablename string) {
+	table := c.hub.findTableByName(tablename)
+	if table == nil {
+		table = c.hub.createTable(tablename)
+	}
+	c.table = table
+	table.register <- c
+}
+
+func handleLeaveTable(c *Client, tablename string) {
+	table := c.hub.findTableByName(tablename)
+	table.unregister <- c
+}
+
 func handleSendMessage(c *Client, username string, message string) {
-	c.hub.broadcast <- createNewMessage(username, message)
+	c.table.broadcast <- createNewMessage(username, message)
 
 }
 
 func handleNewPlayer(c *Client, username string) {
 	c.username = username
 	c.send <- createUpdatedGame(c)
-	c.hub.broadcast <- createNewMessage(gameAdminName, fmt.Sprintf("%s has joined", username))
+	c.table.broadcast <- createNewMessage(gameAdminName, fmt.Sprintf("%s has joined", username))
 }
 
 func handleTakeSeat(c *Client, username string, seatID uint, buyIn uint) {
 
-	position := c.game.AddPlayer()
-	c.uuid = c.game.GenerateOmniView().Players[position].UUID
+	position := c.table.game.AddPlayer()
+	c.uuid = c.table.game.GenerateOmniView().Players[position].UUID
 	c.send <- createUpdatedPlayerUUID(c)
-	err := poker.SetUsername(c.game, position, username)
+	err := poker.SetUsername(c.table.game, position, username)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	err = poker.BuyIn(c.game, position, buyIn)
+	err = poker.BuyIn(c.table.game, position, buyIn)
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	// set player ready
 	// TODO make this a separate action
-	err = poker.ToggleReady(c.game, position, 0)
+	err = poker.ToggleReady(c.table.game, position, 0)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	err = poker.SetSeatID(c.game, position, seatID)
+	err = poker.SetSeatID(c.table.game, position, seatID)
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	event := createUpdatedGame(c) // broadcast updated game
-	c.hub.broadcast <- event
+	c.table.broadcast <- createUpdatedGame(c)
 }
 
 func handleStartGame(c *Client) {
-	err := c.game.Start()
+	err := c.table.game.Start()
 	if err != nil {
 		fmt.Println(err)
 	}
-	c.hub.broadcast <- createUpdatedGame(c)
+	c.table.broadcast <- createUpdatedGame(c)
 }
 
 func handleResetGame(c *Client) {
-	c.game.Reset()
-	c.hub.broadcast <- createUpdatedGame(c)
+	c.table.game.Reset()
+	c.table.broadcast <- createUpdatedGame(c)
 }
 
 func handleDealGame(c *Client) {
-	view := c.game.GenerateOmniView()
-	err := poker.Deal(c.game, view.DealerNum, 0)
+	view := c.table.game.GenerateOmniView()
+	err := poker.Deal(c.table.game, view.DealerNum, 0)
 	if err != nil {
 		fmt.Println(err)
 	}
-	c.hub.broadcast <- createUpdatedGame(c)
+	c.table.broadcast <- createUpdatedGame(c)
 }
 
 func handleCall(c *Client) {
-	view := c.game.GenerateOmniView()
+	view := c.table.game.GenerateOmniView()
 	pn := view.ActionNum
 	current_player := view.Players[pn]
 
@@ -94,43 +106,43 @@ func handleCall(c *Client) {
 		callAmount = current_player.Stack
 	}
 
-	err := poker.Bet(c.game, pn, callAmount)
+	err := poker.Bet(c.table.game, pn, callAmount)
 	if err != nil {
 		fmt.Println(err)
 	}
-	c.hub.broadcast <- createUpdatedGame(c)
+	c.table.broadcast <- createUpdatedGame(c)
 }
 
 func handleRaise(c *Client, raise uint) {
-	view := c.game.GenerateOmniView()
+	view := c.table.game.GenerateOmniView()
 	pn := view.ActionNum
-	err := poker.Bet(c.game, pn, raise)
+	err := poker.Bet(c.table.game, pn, raise)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	c.hub.broadcast <- createUpdatedGame(c)
+	c.table.broadcast <- createUpdatedGame(c)
 }
 
 func handleCheck(c *Client) {
-	view := c.game.GenerateOmniView()
+	view := c.table.game.GenerateOmniView()
 	pn := view.ActionNum
-	err := poker.Bet(c.game, pn, 0)
+	err := poker.Bet(c.table.game, pn, 0)
 	if err != nil {
 		fmt.Println(err)
 	}
-	c.hub.broadcast <- createUpdatedGame(c)
+	c.table.broadcast <- createUpdatedGame(c)
 }
 
 func handleFold(c *Client) {
-	view := c.game.GenerateOmniView()
+	view := c.table.game.GenerateOmniView()
 	pn := view.ActionNum
-	err := poker.Fold(c.game, pn, 0)
+	err := poker.Fold(c.table.game, pn, 0)
 	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Println(c.username, "folds")
-	c.hub.broadcast <- createUpdatedGame(c)
+	c.table.broadcast <- createUpdatedGame(c)
 }
 
 func createNewMessage(username string, message string) []byte {
@@ -152,7 +164,7 @@ func createNewMessage(username string, message string) []byte {
 func createUpdatedGame(c *Client) []byte {
 	game := updateGame{
 		base{actionUpdateGame},
-		c.game.GenerateOmniView(),
+		c.table.game.GenerateOmniView(),
 	}
 
 	resp, err := json.Marshal(game)

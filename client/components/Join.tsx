@@ -2,18 +2,20 @@ import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import Footer from "./Footer";
-import { newPlayer } from "../actions/actions";
+import { newPlayer, joinTable } from "../actions/actions";
 
 export default function Join() {
     const socket = useSocket();
     const { appState, dispatch } = useContext(AppContext);
-    const [inputValue, setInputValue] = useState("");
+    const [username, setUsername] = useState("");
+    const [tablename, setTablename] = useState("");
 
     const handleSubmit = (e: any) => {
         e.preventDefault();
-        dispatch({ type: "setUsername", payload: inputValue });
+        dispatch({ type: "setUsername", payload: username });
         if (socket) {
-            newPlayer(socket, inputValue);
+            joinTable(socket, tablename);
+            newPlayer(socket, username);
         }
         console.log(e.key);
     };
@@ -31,8 +33,12 @@ export default function Join() {
         };
     }, [onKeyDown]);
 
-    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        setInputValue(e.target.value);
+    const handleUsername = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setUsername(e.target.value);
+    }, []);
+
+    const handleTablename = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setTablename(e.target.value);
     }, []);
 
     return (
@@ -43,11 +49,20 @@ export default function Join() {
                     <input
                         autoFocus
                         className="m-4 rounded-sm bg-neutral-600 p-1 text-white focus:outline-none"
-                        id="input"
+                        id="username"
                         type="text"
-                        value={inputValue}
+                        value={username}
                         placeholder="username"
-                        onChange={handleChange}
+                        onChange={handleUsername}
+                    />
+                    <input
+                        autoFocus
+                        className="mr-4 w-24 rounded-sm bg-neutral-600 p-1 text-white focus:outline-none"
+                        id="tablename"
+                        type="text"
+                        value={tablename}
+                        placeholder="tablename"
+                        onChange={handleTablename}
                     />
                     <button
                         className="rounded-sm bg-green-800 px-4 py-1 text-white"

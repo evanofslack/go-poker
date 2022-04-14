@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/evanofslack/go-poker/poker"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -26,7 +25,6 @@ func InitServer() {
 type server struct {
 	router *chi.Mux
 	hub    *Hub
-	game   *poker.Game
 	port   string
 }
 
@@ -34,7 +32,6 @@ func newServer() *server {
 	s := &server{
 		router: chi.NewRouter(),
 		hub:    newHub(),
-		game:   poker.NewGame(),
 		port:   getPort(),
 	}
 	go s.hub.run()
@@ -82,5 +79,5 @@ func (s *server) mountSocket() {
 }
 
 func (s *server) serveWebsocket(w http.ResponseWriter, r *http.Request) {
-	serveWs(s.hub, s.game, w, r)
+	serveWs(s.hub, w, r)
 }
