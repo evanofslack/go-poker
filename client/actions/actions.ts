@@ -1,3 +1,12 @@
+export function joinTable(socket: WebSocket, tablename: string) {
+    socket.send(
+        JSON.stringify({
+            action: "join-table",
+            tablename: tablename,
+        })
+    );
+}
+
 export function sendMessage(socket: WebSocket, username: string, message: string) {
     socket.send(
         JSON.stringify({
