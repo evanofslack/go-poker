@@ -1,7 +1,6 @@
 package poker
 
 import (
-	"fmt"
 	"math"
 	"sort"
 	"sync"
@@ -230,7 +229,6 @@ func (g *Game) updateRoundInfo() {
 
 	tmpPlayers := append([]player{}, g.players...)
 	g.pots = []Pot{}
-	fmt.Println(g.pots)
 	for _, pn := range allInPlayerNums {
 
 		newPot := Pot{}
@@ -252,7 +250,6 @@ func (g *Game) updateRoundInfo() {
 
 		g.pots = append(g.pots, newPot)
 	}
-	fmt.Println(g.pots)
 
 	//The above takes care of all the all-in side pots. One last pot for the non-all-in people
 
@@ -267,7 +264,6 @@ func (g *Game) updateRoundInfo() {
 	}
 
 	g.pots = append(g.pots, finalPot)
-	fmt.Println(g.pots)
 
 	// If less than two players are still in, the hand has been conceded
 	if len(inPlayerNums) < 2 {
@@ -284,7 +280,6 @@ func (g *Game) updateRoundInfo() {
 		for _, p := range g.players {
 			g.players[inPlayerNums[0]].Stack += p.TotalBet
 		}
-		fmt.Println(g.pots)
 
 		g.resetForNextHand()
 

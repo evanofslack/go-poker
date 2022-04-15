@@ -141,7 +141,6 @@ func handleFold(c *Client) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(c.username, "folds")
 	c.table.broadcast <- createUpdatedGame(c)
 }
 
@@ -153,7 +152,6 @@ func createNewMessage(username string, message string) []byte {
 		username,
 		currentTime(),
 	}
-	fmt.Println(new)
 	resp, err := json.Marshal(new)
 	if err != nil {
 		fmt.Println(err)
