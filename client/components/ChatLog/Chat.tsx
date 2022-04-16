@@ -1,31 +1,17 @@
 import React, { useCallback, useContext, useEffect, useState, useRef } from "react";
-import { useSocket } from "../hooks/useSocket";
+import { useSocket } from "../../hooks/useSocket";
 import ChatMessage from "./ChatMessage";
-import { AppContext } from "../providers/AppStore";
-import useChatScroll from "../hooks/useChatScroll";
+import { AppContext } from "../../providers/AppStore";
+import useChatScroll from "../../hooks/useChatScroll";
 import { FiSend } from "react-icons/fi";
-import { MdExpandLess } from "react-icons/md";
-import { MdExpandMore } from "react-icons/md";
-import { sendMessage } from "../actions/actions";
-import classNames from "classnames";
+import { sendMessage } from "../../actions/actions";
 
 export default function Chat() {
     const socket = useSocket();
     const { appState, dispatch } = useContext(AppContext);
     const [inputValue, setInputValue] = useState("");
     const scrollRef = useChatScroll(appState.messages);
-    const [expand, setExpand] = useState(false);
     const messageRef = useRef(null);
-
-    function chatHeight(expand: boolean) {
-        return classNames(
-            {
-                "h-72": expand,
-                "h-36": !expand,
-            },
-            "flex w-96 flex-col items-start justify-between rounded-tr-lg bg-zinc-700 p-3 text-neutral-400"
-        );
-    }
 
     const handleClick = useCallback(
         (e) => {
@@ -58,8 +44,8 @@ export default function Chat() {
     }, []);
 
     return (
-        <div className={chatHeight(expand)}>
-            <div ref={scrollRef} className="mb-2 h-full w-full overflow-auto bg-zinc-800 p-2">
+        <div className="flex h-full w-full grow flex-col overflow-auto">
+            <div ref={scrollRef} className="mb-2 h-full bg-zinc-800 p-2">
                 {appState.messages.map((message, index) => (
                     <ChatMessage
                         key={index}
@@ -82,21 +68,6 @@ export default function Chat() {
                 <button className=" bg-zinc-800 px-4 text-neutral-400" onClick={handleClick}>
                     <FiSend />
                 </button>
-                {expand ? (
-                    <button
-                        className="absolute top-0 right-0 pt-3 pr-7"
-                        onClick={() => setExpand(!expand)}
-                    >
-                        <MdExpandMore size="1.7rem" />
-                    </button>
-                ) : (
-                    <button
-                        className="absolute top-0 right-0 pt-3 pr-7"
-                        onClick={() => setExpand(!expand)}
-                    >
-                        <MdExpandLess size="1.7rem" />
-                    </button>
-                )}
             </div>
         </div>
     );

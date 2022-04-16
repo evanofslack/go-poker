@@ -1,4 +1,4 @@
-import { Message } from "../interfaces/index";
+import { Message } from "../../interfaces";
 
 export default function ChatMessage({ name, message, timestamp }: Message) {
     if (name == "system" && message.includes("has joined")) {

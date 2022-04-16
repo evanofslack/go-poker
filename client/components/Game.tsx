@@ -1,5 +1,5 @@
 import { useContext, useState, useEffect } from "react";
-import Chat from "./Chat";
+import ChatLog from "./ChatLog";
 import Pot from "./Pot";
 import Seat from "./Seat";
 import Reset from "./Reset";
@@ -26,7 +26,8 @@ function handleWinner(game: GameType | null, socket: WebSocket | null) {
         const winningPlayer = getWinner(game);
         const pot = game.pots[game.pots.length - 1].amount;
         const message = winningPlayer.username + " wins " + pot;
-        sendMessage(socket, "system", message);
+        // todo add sendLog action
+        // sendMessage(socket, "system", message);
     }
 }
 
@@ -97,7 +98,7 @@ export default function Game() {
                 ))}
             </div>
             <div className="absolute left-0 bottom-0">
-                <Chat />
+                <ChatLog />
             </div>
             <div className="absolute bottom-0 right-0">
                 <Input />
