@@ -9,6 +9,7 @@ const (
 	actionJoinTable   string = "join-table"
 	actionLeaveTable  string = "leave-table"
 	actionSendMessage string = "send-message"
+	actionSendLog     string = "send-log"
 	actionNewPlayer   string = "new-player"
 	actionTakeSeat    string = "take-seat"
 	actionStartGame   string = "start-game"
@@ -39,6 +40,11 @@ type sendMessage struct {
 	base            // actionSendMessage
 	Username string `json:"username"`
 	Message  string `json:"message"`
+}
+
+type sendLog struct {
+	base           // actionSendLog
+	Message string `json:"message"`
 }
 
 type newPlayer struct {

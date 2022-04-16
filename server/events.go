@@ -27,7 +27,10 @@ func handleLeaveTable(c *Client, tablename string) {
 
 func handleSendMessage(c *Client, username string, message string) {
 	c.table.broadcast <- createNewMessage(username, message)
+}
 
+func handleSendLog(c *Client, message string) {
+	c.table.broadcast <- createNewLog(message)
 }
 
 func handleNewPlayer(c *Client, username string) {
@@ -127,7 +130,7 @@ func handleRaise(c *Client, raise uint) {
 		fmt.Println(err)
 	}
 
-	log := fmt.Sprintf("%s raises %d", view.Players[pn].Username, raise)
+	log := fmt.Sprintf("%s bets %d", view.Players[pn].Username, raise)
 	c.table.broadcast <- createNewLog(log)
 	c.table.broadcast <- createUpdatedGame(c)
 }

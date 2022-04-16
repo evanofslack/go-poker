@@ -7,7 +7,7 @@ import Start from "./Start";
 import CommunityCards from "./CommunityCards";
 import Input from "./Input";
 import { useSocket } from "../hooks/useSocket";
-import { sendMessage, dealGame } from "../actions/actions";
+import { sendLog, dealGame } from "../actions/actions";
 import { AppContext } from "../providers/AppStore";
 import { Game as GameType, Player } from "../interfaces";
 
@@ -26,8 +26,7 @@ function handleWinner(game: GameType | null, socket: WebSocket | null) {
         const winningPlayer = getWinner(game);
         const pot = game.pots[game.pots.length - 1].amount;
         const message = winningPlayer.username + " wins " + pot;
-        // todo add sendLog action
-        // sendMessage(socket, "system", message);
+        sendLog(socket, message);
     }
 }
 

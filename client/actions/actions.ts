@@ -17,6 +17,15 @@ export function sendMessage(socket: WebSocket, username: string, message: string
     );
 }
 
+export function sendLog(socket: WebSocket, message: string) {
+    socket.send(
+        JSON.stringify({
+            action: "send-log",
+            message: message,
+        })
+    );
+}
+
 export function takeSeat(socket: WebSocket, username: string, seatID: number, buyIn: number) {
     console.log(seatID);
     socket.send(
