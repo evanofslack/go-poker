@@ -62,6 +62,8 @@ func handleTakeSeat(c *Client, username string, seatID uint, buyIn uint) {
 	if err != nil {
 		fmt.Println(err)
 	}
+	log := fmt.Sprintf("%s buys in for %d", username, buyIn)
+	c.table.broadcast <- createNewLog(log)
 	c.table.broadcast <- createUpdatedGame(c)
 }
 
@@ -70,6 +72,8 @@ func handleStartGame(c *Client) {
 	if err != nil {
 		fmt.Println(err)
 	}
+	log := fmt.Sprintf("starting game at table %s", c.table.name)
+	c.table.broadcast <- createNewLog(log)
 	c.table.broadcast <- createUpdatedGame(c)
 }
 
@@ -90,7 +94,7 @@ func handleDealGame(c *Client) {
 func handleCall(c *Client) {
 	view := c.table.game.GenerateOmniView()
 	pn := view.ActionNum
-	current_player := view.Players[pn]
+	currentPlayer := view.Players[pn]
 
 	// compute amount needed to call
 	maxBet := view.Players[0].TotalBet
@@ -99,17 +103,19 @@ func handleCall(c *Client) {
 			maxBet = p.TotalBet
 		}
 	}
-	callAmount := maxBet - current_player.TotalBet
+	callAmount := maxBet - currentPlayer.TotalBet
 
-	// player must go all in to call
-	if callAmount >= current_player.Stack {
-		callAmount = current_player.Stack
+	// if player must go all in to call
+	if callAmount >= currentPlayer.Stack {
+		callAmount = currentPlayer.Stack
 	}
 
 	err := poker.Bet(c.table.game, pn, callAmount)
 	if err != nil {
 		fmt.Println(err)
 	}
+	log := fmt.Sprintf("%s calls %d", currentPlayer.Username, callAmount)
+	c.table.broadcast <- createNewLog(log)
 	c.table.broadcast <- createUpdatedGame(c)
 }
 
@@ -121,6 +127,8 @@ func handleRaise(c *Client, raise uint) {
 		fmt.Println(err)
 	}
 
+	log := fmt.Sprintf("%s raises %d", view.Players[pn].Username, raise)
+	c.table.broadcast <- createNewLog(log)
 	c.table.broadcast <- createUpdatedGame(c)
 }
 
@@ -131,6 +139,8 @@ func handleCheck(c *Client) {
 	if err != nil {
 		fmt.Println(err)
 	}
+	log := fmt.Sprintf("%s checks", view.Players[pn].Username)
+	c.table.broadcast <- createNewLog(log)
 	c.table.broadcast <- createUpdatedGame(c)
 }
 
@@ -140,8 +150,12 @@ func handleFold(c *Client) {
 	err := poker.Fold(c.table.game, pn, 0)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
+	log := fmt.Sprintf("%s folds", view.Players[pn].Username)
+	c.table.broadcast <- createNewLog(log)
 	c.table.broadcast <- createUpdatedGame(c)
+
 }
 
 func createNewMessage(username string, message string) []byte {
@@ -153,6 +167,20 @@ func createNewMessage(username string, message string) []byte {
 		currentTime(),
 	}
 	resp, err := json.Marshal(new)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return resp
+}
+
+func createNewLog(message string) []byte {
+	log := newLog{
+		base{actionNewLog},
+		uuid.New().String(),
+		message,
+		currentTime(),
+	}
+	resp, err := json.Marshal(log)
 	if err != nil {
 		fmt.Println(err)
 	}

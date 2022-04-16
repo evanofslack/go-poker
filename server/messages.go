@@ -85,6 +85,7 @@ type playerFold struct {
 // outbound (server) actions
 const (
 	actionNewMessage       string = "new-message"
+	actionNewLog           string = "new-log"
 	actionUpdateGame       string = "update-game"
 	actionUpdatePlayerUUID string = "update-player-uuid"
 )
@@ -94,6 +95,13 @@ type newMessage struct {
 	Id        string `json:"uuid"`
 	Message   string `json:"message"`
 	Username  string `json:"username"`
+	Timestamp string `json:"timestamp"`
+}
+
+type newLog struct {
+	base             // actionNewLog
+	Id        string `json:"uuid"`
+	Message   string `json:"message"`
 	Timestamp string `json:"timestamp"`
 }
 
