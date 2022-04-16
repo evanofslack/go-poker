@@ -1,7 +1,7 @@
 import { Message } from "../interfaces/index";
 
 export default function ChatMessage({ name, message, timestamp }: Message) {
-    if (name == "system") {
+    if (name == "system" && message.includes("has joined")) {
         return (
             <div className="flex flex-row">
                 <p className="text-neutral-500">[{timestamp}] &nbsp;</p>
