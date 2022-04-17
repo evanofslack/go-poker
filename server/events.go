@@ -65,8 +65,6 @@ func handleTakeSeat(c *Client, username string, seatID uint, buyIn uint) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	log := fmt.Sprintf("%s buys in for %d", username, buyIn)
-	c.table.broadcast <- createNewLog(log)
 	c.table.broadcast <- createUpdatedGame(c)
 }
 
@@ -75,8 +73,6 @@ func handleStartGame(c *Client) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	log := fmt.Sprintf("starting game at table %s", c.table.name)
-	c.table.broadcast <- createNewLog(log)
 	c.table.broadcast <- createUpdatedGame(c)
 }
 
@@ -117,8 +113,6 @@ func handleCall(c *Client) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	log := fmt.Sprintf("%s calls %d", currentPlayer.Username, callAmount)
-	c.table.broadcast <- createNewLog(log)
 	c.table.broadcast <- createUpdatedGame(c)
 }
 
@@ -130,8 +124,6 @@ func handleRaise(c *Client, raise uint) {
 		fmt.Println(err)
 	}
 
-	log := fmt.Sprintf("%s bets %d", view.Players[pn].Username, raise)
-	c.table.broadcast <- createNewLog(log)
 	c.table.broadcast <- createUpdatedGame(c)
 }
 
@@ -142,8 +134,6 @@ func handleCheck(c *Client) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	log := fmt.Sprintf("%s checks", view.Players[pn].Username)
-	c.table.broadcast <- createNewLog(log)
 	c.table.broadcast <- createUpdatedGame(c)
 }
 
@@ -155,8 +145,6 @@ func handleFold(c *Client) {
 		fmt.Println(err)
 		return
 	}
-	log := fmt.Sprintf("%s folds", view.Players[pn].Username)
-	c.table.broadcast <- createNewLog(log)
 	c.table.broadcast <- createUpdatedGame(c)
 
 }

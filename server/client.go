@@ -174,6 +174,15 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		handleSendMessage(c, message.Username, message.Message)
 		return nil
 
+	case actionSendLog:
+		var log sendLog
+		err := json.Unmarshal(rawMessage, &log)
+		if err != nil {
+			return err
+		}
+		handleSendLog(c, log.Message)
+		return nil
+
 	case actionNewPlayer:
 		var player newPlayer
 		err := json.Unmarshal(rawMessage, &player)
