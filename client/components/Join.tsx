@@ -44,7 +44,7 @@ export default function Join() {
     return (
         <div className="flex min-h-screen flex-col">
             <div className="flex flex-grow flex-col items-center justify-center ">
-                <h1 className="mb-16 text-5xl font-semibold text-white">Poker</h1>
+                <h1 className="mb-16 text-5xl font-semibold text-white">go poker</h1>
                 <div>
                     <input
                         autoFocus

@@ -1,5 +1,5 @@
 import React, { useState, useContext, useCallback } from "react";
-import { takeSeat } from "../actions/actions";
+import { takeSeat, sendLog } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import { FcCheckmark } from "react-icons/fc";
@@ -25,6 +25,8 @@ export default function BuyIn({ seatID, sitDown, setSitDown }: buyInProps) {
     const handleClick = () => {
         if (socket && appState.username) {
             takeSeat(socket, appState.username, seatID, buyIn);
+            let message = appState.username + "buys in for" + buyIn;
+            sendLog(socket, message);
             setSitDown(!sitDown);
         }
     };
