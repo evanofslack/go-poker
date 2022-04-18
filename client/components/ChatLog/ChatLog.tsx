@@ -12,35 +12,50 @@ export default function ChatLog() {
     function chatHeight(expand: boolean) {
         return classNames(
             {
-                "h-72": expand,
+                "h-96": expand,
                 "h-36": !expand,
             },
-            "flex w-96 flex-col items-start justify-between rounded-tr-lg bg-zinc-700 p-3 text-neutral-400"
+            "relative flex w-96 flex-col items-start justify-between rounded-tr-lg bg-zinc-700 p-3 text-neutral-400"
+        );
+    }
+
+    function tabStyle(active: boolean) {
+        return classNames(
+            {
+                "opacity-100": active,
+                "opacity-50": !active,
+            },
+            " text-neutral-500 border border-zinc-700 border-2 px-4 py-1 bg-zinc-700"
         );
     }
 
     return (
-        <div className={chatHeight(expand)}>
-            {showChat && <Chat />}
-            {!showChat && <Log />}
-            <button className="absolute top-0 left-0" onClick={() => setShowChat(!showChat)}>
-                Show {showChat ? "logs" : "chat"}
+        <div>
+            <button className={tabStyle(showChat)} onClick={() => setShowChat(true)}>
+                chat
             </button>
-            {expand ? (
-                <button
-                    className="absolute top-0 right-0 pt-3 pr-7"
-                    onClick={() => setExpand(!expand)}
-                >
-                    <MdExpandMore size="1.7rem" />
-                </button>
-            ) : (
-                <button
-                    className="absolute top-0 right-0 pt-3 pr-7"
-                    onClick={() => setExpand(!expand)}
-                >
-                    <MdExpandLess size="1.7rem" />
-                </button>
-            )}
+            <button className={tabStyle(!showChat)} onClick={() => setShowChat(false)}>
+                log
+            </button>
+            <div className={chatHeight(expand)}>
+                {showChat && <Chat />}
+                {!showChat && <Log />}
+                {expand ? (
+                    <button
+                        className="absolute top-0 right-0 pt-3 pr-7"
+                        onClick={() => setExpand(!expand)}
+                    >
+                        <MdExpandMore size="1.7rem" />
+                    </button>
+                ) : (
+                    <button
+                        className="absolute top-0 right-0 pt-3 pr-7"
+                        onClick={() => setExpand(!expand)}
+                    >
+                        <MdExpandLess size="1.7rem" />
+                    </button>
+                )}
+            </div>
         </div>
     );
 }
