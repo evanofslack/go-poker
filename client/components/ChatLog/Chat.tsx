@@ -45,7 +45,7 @@ export default function Chat() {
 
     return (
         <div className="flex h-full w-full grow flex-col overflow-auto">
-            <div ref={scrollRef} className="mb-2 h-full bg-zinc-800 p-2">
+            <div ref={scrollRef} className="mb-2 h-full overflow-auto bg-zinc-800 p-2">
                 {appState.messages.map((message, index) => (
                     <ChatMessage
                         key={index}

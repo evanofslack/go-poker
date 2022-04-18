@@ -12,7 +12,7 @@ type raiseProps = {
 };
 function button() {
     return classNames(
-        "mx-0.5 my-2 rounded-sm  border border-2 border-zinc-600  p-2 text-neutral-200 hover:bg-zinc-600 font-normal"
+        "mx-0.5 my-1.5 rounded-sm  border border-2 border-zinc-600  p-2 text-neutral-200 hover:bg-zinc-600 font-light"
     );
 }
 
@@ -79,13 +79,13 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
         <div className="flex flex-row items-end p-6">
             <input
                 autoFocus
-                className="mx-1 w-24 rounded-md border border-2 border-zinc-600 bg-zinc-800 p-2 text-2xl font-medium text-neutral-200 focus:outline-none"
+                className="mx-1 w-24 rounded-sm border border-2 border-zinc-600 bg-zinc-800 p-2 text-2xl font-normal text-neutral-200 focus:outline-none"
                 id="input"
                 type="text"
                 value={inputValue ? inputValue : ""}
                 onChange={handleChange}
             />
-            <div className="mx-1 flex flex-col items-center justify-center rounded-md border border-2 border-zinc-600 px-2">
+            <div className="mx-1 flex flex-col items-center justify-center rounded-sm border border-2 border-zinc-600 px-2">
                 <div className="flex flex-row items-center justify-between">
                     <button
                         className={button()}
