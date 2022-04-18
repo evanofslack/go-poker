@@ -54,7 +54,6 @@ func (t *table) registerClient(client *Client) {
 func (t *table) unregisterClient(client *Client) {
 	if _, ok := t.clients[client]; ok {
 		delete(t.clients, client)
-		close(client.send)
 	}
 }
 

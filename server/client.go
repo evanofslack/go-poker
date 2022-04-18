@@ -44,9 +44,10 @@ func newClient(conn *websocket.Conn, hub *Hub) *Client {
 	}
 }
 
-func (client *Client) disconnect() {
-	client.hub.unregister <- client
-	client.table.unregister <- client
+func (c *Client) disconnect() {
+	c.hub.unregister <- c
+	c.table.unregister <- c
+	c.conn.Close()
 }
 
 // readPump pumps events from the websocket connection to the hub.
@@ -56,8 +57,7 @@ func (client *Client) disconnect() {
 // reads from this goroutine.
 func (c *Client) readPump() {
 	defer func() {
-		c.hub.unregister <- c
-		c.conn.Close()
+		c.disconnect()
 	}()
 	c.conn.SetReadLimit(maxMessageSize)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
