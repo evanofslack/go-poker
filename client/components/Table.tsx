@@ -104,7 +104,7 @@ export default function Table({ players, setPlayers }: tableProps) {
 
     return (
         <div className="mx-24  flex h-screen justify-center">
-            <div className="relative mt-36 flex h-1/2 w-5/6 max-w-[800px] flex-col items-center justify-center rounded-full bg-green-600">
+            <div className="relative mt-36 flex h-1/2 w-5/6 max-w-[800px] flex-col items-center justify-center rounded-full border-8 border border-teal-900 bg-emerald-700">
                 <div className="flex w-full flex-col items-center justify-center">
                     <Pot game={appState.game} />
                     <div className="mt-8 mb-20 flex w-full items-center justify-center">

@@ -46,7 +46,7 @@ export default function Pot({ game }: potProps) {
                             <p className="text-sm font-normal text-white">&nbsp;</p>
                         )}
                     </div>
-                    <p className="flex h-10 w-24 flex-col items-center justify-center rounded-3xl bg-green-700 text-2xl font-semibold text-white ">
+                    <p className="flex h-10 w-24 flex-col items-center justify-center rounded-3xl bg-green-900 text-2xl font-semibold text-white ">
                         {pot.amount}
                     </p>
                 </div>
