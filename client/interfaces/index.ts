@@ -4,8 +4,14 @@ export type Message = {
     timestamp: string;
 };
 
+export type Log = {
+    message: string;
+    timestamp: string;
+};
+
 export type AppState = {
     messages: Message[];
+    logs: Log[];
     username: string | null;
     clientID: string | null;
     game: Game | null;

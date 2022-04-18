@@ -1,6 +1,6 @@
 import { useState, useContext } from "react";
 import { AppContext } from "../providers/AppStore";
-import { playerCall, playerCheck, playerFold } from "../actions/actions";
+import { playerCall, playerCheck, playerFold, sendLog } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import InputButton from "./InputButton";
 import RaiseInput from "./RaiseInput";
@@ -10,18 +10,24 @@ export default function Input() {
     const { appState, dispatch } = useContext(AppContext);
     const [showRaise, setShowRaise] = useState(false);
 
-    const handleCall = () => {
+    const handleCall = (user: string | null, amount: number) => {
         if (socket) {
+            let callMessage = user + " calls " + amount;
+            sendLog(socket, callMessage);
             playerCall(socket);
         }
     };
-    const handleCheck = () => {
+    const handleCheck = (user: string | null) => {
         if (socket) {
+            let checkMessage = user + " checks";
+            sendLog(socket, checkMessage);
             playerCheck(socket);
         }
     };
-    const handleFold = () => {
+    const handleFold = (user: string | null) => {
         if (socket) {
+            let foldMessage = user + " folds";
+            sendLog(socket, foldMessage);
             playerFold(socket);
         }
     };
@@ -45,7 +51,7 @@ export default function Input() {
         return (
             <div className="flex flex-row p-6">
                 <InputButton
-                    action={handleCall}
+                    action={() => handleCall(appState.username, callAmount)}
                     title={canCall ? "call" : "call (" + callAmount + ")"}
                     disabled={canCall}
                 />
@@ -54,8 +60,16 @@ export default function Input() {
                     title={"bet"}
                     disabled={false}
                 />
-                <InputButton action={handleCheck} title={"check"} disabled={!canCheck} />
-                <InputButton action={handleFold} title={"fold"} disabled={false} />
+                <InputButton
+                    action={() => handleCheck(appState.username)}
+                    title={"check"}
+                    disabled={!canCheck}
+                />
+                <InputButton
+                    action={() => handleFold(appState.username)}
+                    title={"fold"}
+                    disabled={false}
+                />
             </div>
         );
     }
@@ -63,13 +77,21 @@ export default function Input() {
     return (
         <div className="flex flex-row p-6">
             <InputButton
-                action={handleCall}
+                action={() => handleCall(appState.username, callAmount)}
                 title={canCall ? "call" : "call (" + callAmount + ")"}
                 disabled={true}
             />
             <InputButton action={() => setShowRaise(!showRaise)} title={"bet"} disabled={true} />
-            <InputButton action={handleCheck} title={"check"} disabled={true} />
-            <InputButton action={handleFold} title={"fold"} disabled={true} />
+            <InputButton
+                action={() => handleCheck(appState.username)}
+                title={"check"}
+                disabled={true}
+            />
+            <InputButton
+                action={() => handleFold(appState.username)}
+                title={"fold"}
+                disabled={true}
+            />
         </div>
     );
 }

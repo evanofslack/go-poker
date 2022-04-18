@@ -1,6 +1,6 @@
 import { createContext, ReactChild, useEffect, useState, useContext } from "react";
 import { AppContext } from "../providers/AppStore";
-import { Message, Game } from "../interfaces";
+import { Message, Game, Log } from "../interfaces";
 
 /*  
 WebSocket context creates a single connection to the server per client. 
@@ -55,6 +55,13 @@ export function SocketProvider(props: SocketProviderProps) {
                         timestamp: event.timestamp,
                     };
                     dispatch({ type: "addMessage", payload: newMessage });
+                    return;
+                case "new-log":
+                    let newLog: Log = {
+                        message: event.message,
+                        timestamp: event.timestamp,
+                    };
+                    dispatch({ type: "addLog", payload: newLog });
                     return;
                 case "update-game":
                     let newGame: Game = {

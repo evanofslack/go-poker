@@ -1,4 +1,4 @@
-import { Message } from "../interfaces/index";
+import { Message } from "../../interfaces";
 
 export default function ChatMessage({ name, message, timestamp }: Message) {
     if (name == "system" && message.includes("has joined")) {
@@ -11,8 +11,8 @@ export default function ChatMessage({ name, message, timestamp }: Message) {
     }
 
     return (
-        <div className="flex flex-row">
-            <p className="text-neutral-400">[{timestamp}] &nbsp;</p>
+        <div className="flex flex-row text-neutral-400">
+            <p className="text-neutral-500">[{timestamp}] &nbsp;</p>
             <p className="font-semibold">{name}: &nbsp; </p>
             <p>{message}</p>
         </div>
