@@ -1,7 +1,5 @@
 import { useState, useContext, useEffect } from "react";
 import { AppContext } from "../providers/AppStore";
-import { takeSeat } from "../actions/actions";
-import { useSocket } from "../hooks/useSocket";
 import { Game, Player } from "../interfaces/index";
 import Card from "./Card";
 import BuyIn from "./BuyIn";

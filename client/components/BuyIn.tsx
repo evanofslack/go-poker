@@ -22,10 +22,10 @@ export default function BuyIn({ seatID, sitDown, setSitDown }: buyInProps) {
         setBuyIn(amount);
     }, []);
 
-    const handleClick = () => {
+    const handleSitDown = () => {
         if (socket && appState.username) {
             takeSeat(socket, appState.username, seatID, buyIn);
-            let message = appState.username + "buys in for" + buyIn;
+            let message = appState.username + " buys in for " + buyIn;
             sendLog(socket, message);
             setSitDown(!sitDown);
         }
@@ -43,7 +43,7 @@ export default function BuyIn({ seatID, sitDown, setSitDown }: buyInProps) {
                     value={buyIn}
                     onChange={handleBuyIn}
                 />
-                <button onClick={handleClick} className="text-2xl">
+                <button onClick={handleSitDown} className="text-2xl">
                     <FcCheckmark />
                 </button>
             </div>
