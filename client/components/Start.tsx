@@ -27,7 +27,7 @@ export default function Start({ players }: startProps) {
     if (!game.running && readyPlayers.length < 2) {
         return (
             <div
-                className=" m-10 rounded-lg border border-2 border-neutral-200 p-2 px-4 py-3 text-2xl font-medium text-neutral-200 opacity-20"
+                className=" m-10 rounded-sm border border-2 border-neutral-200 p-2 px-4 py-2 text-2xl font-normal text-neutral-200 opacity-20"
                 title="Must have 2 or more players to start game"
             >
                 Start
@@ -38,7 +38,7 @@ export default function Start({ players }: startProps) {
     if (!game.running && readyPlayers.length >= 2) {
         return (
             <button
-                className=" m-10 rounded-lg border border-2 border-neutral-200 p-2 px-4 py-3 text-2xl font-medium text-neutral-200"
+                className=" m-10 rounded-sm border border-2 border-neutral-200 p-2 px-4 py-2 text-2xl font-normal text-neutral-200"
                 onClick={() => handleStartGame(socket)}
             >
                 Start
