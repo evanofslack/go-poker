@@ -15,7 +15,7 @@ export default function Reset() {
 
     return (
         <button
-            className="p-4 text-zinc-700 hover:underline"
+            className="m-2 p-2 text-zinc-800 hover:text-zinc-700"
             onClick={() => handleResetGame(socket, dispatch)}
         >
             reset
