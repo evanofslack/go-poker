@@ -27,7 +27,7 @@ export default function Start({ players }: startProps) {
     if (!game.running && readyPlayers.length < 2) {
         return (
             <div
-                className=" m-10 rounded-sm border border-2 border-neutral-400 p-2 px-4 py-2 text-2xl font-normal text-neutral-300 opacity-10"
+                className=" m-10 rounded-sm border border-2 border-neutral-400 p-2 px-4 py-2 text-2xl font-light text-neutral-300 opacity-10"
                 title="Must have 2 or more players to start game"
             >
                 Start

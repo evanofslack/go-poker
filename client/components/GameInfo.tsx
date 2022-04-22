@@ -11,7 +11,7 @@ export default function GameInfo() {
                     {appState.game.config.sb}/{appState.game.config.bb} nl texas holdem
                 </p>
             )}
-            <p>table:</p>
+            <p>table: {appState.table}</p>
         </div>
     );
 }

@@ -104,7 +104,6 @@ export default function Table({ players, setPlayers }: tableProps) {
     return (
         <div className="mt-2 grid h-3/4 w-full max-w-screen-xl grid-cols-5 grid-rows-5 sm:mt-28 sm:h-3/5">
             <div></div>
-            {/* <div className=" border-2 border border-emerald-800"></div> */}
             <Seat
                 key={3}
                 player={players[3]}
@@ -125,16 +124,16 @@ export default function Table({ players, setPlayers }: tableProps) {
             </div>
             <div></div>
             <Seat
+                key={2}
+                player={players[2]}
+                id={3}
+                reveal={players[2] ? revealedPlayers.includes(players[2]) : false}
+            />
+            <Seat
                 key={5}
                 player={players[5]}
                 id={6}
                 reveal={players[5] ? revealedPlayers.includes(players[5]) : false}
-            />
-            <Seat
-                key={0}
-                player={players[0]}
-                id={1}
-                reveal={players[0] ? revealedPlayers.includes(players[0]) : false}
             />
             <div></div>
             <div></div>
@@ -147,10 +146,10 @@ export default function Table({ players, setPlayers }: tableProps) {
             />
             <div></div>
             <Seat
-                key={2}
-                player={players[2]}
-                id={3}
-                reveal={players[2] ? revealedPlayers.includes(players[2]) : false}
+                key={0}
+                player={players[0]}
+                id={1}
+                reveal={players[0] ? revealedPlayers.includes(players[0]) : false}
             />
             <div></div>
         </div>
