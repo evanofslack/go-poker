@@ -14,6 +14,7 @@ export type AppState = {
     logs: Log[];
     username: string | null;
     clientID: string | null;
+    table: string | null;
     game: Game | null;
 };
 

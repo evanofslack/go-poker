@@ -1,9 +1,6 @@
 import { Game, Pot as PotType } from "../interfaces/index";
-import { useEffect, useRef, useState } from "react";
-
-type potProps = {
-    game: Game | null;
-};
+import { useEffect, useRef, useState, useContext } from "react";
+import { AppContext } from "../providers/AppStore";
 
 const initialPot: PotType[] = [
     {
@@ -16,7 +13,9 @@ const initialPot: PotType[] = [
     },
 ];
 
-export default function Pot({ game }: potProps) {
+export default function Pot() {
+    const { appState, dispatch } = useContext(AppContext);
+    const game = appState.game;
     if (!game || !game.pots) {
         return null;
     }

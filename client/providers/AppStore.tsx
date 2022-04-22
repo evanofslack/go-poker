@@ -6,6 +6,7 @@ const initialState: AppState = {
     logs: [],
     username: null,
     clientID: null,
+    table: null,
     game: null,
 };
 
@@ -15,7 +16,8 @@ type ACTIONTYPE =
     | { type: "setUsername"; payload: string }
     | { type: "updateGame"; payload: Game }
     | { type: "resetGame" }
-    | { type: "updatePlayerID"; payload: string };
+    | { type: "updatePlayerID"; payload: string }
+    | { type: "setTablename"; payload: string };
 
 function reducer(state: AppState, action: ACTIONTYPE) {
     switch (action.type) {
@@ -31,6 +33,8 @@ function reducer(state: AppState, action: ACTIONTYPE) {
             return { ...state, clientID: null, username: null, game: null };
         case "updatePlayerID":
             return { ...state, clientID: action.payload };
+        case "setTablename":
+            return { ...state, table: action.payload };
         default:
             throw new Error();
     }

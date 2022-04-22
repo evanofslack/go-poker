@@ -13,7 +13,9 @@ export default function Game() {
 
     return (
         <div>
-            <Table players={players} setPlayers={setPlayers} />
+            <div className="flex h-screen w-screen items-start justify-center">
+                <Table players={players} setPlayers={setPlayers} />
+            </div>
             <div className="absolute left-0 bottom-0">
                 <ChatLog />
             </div>
@@ -23,7 +25,7 @@ export default function Game() {
             <div className="absolute left-0 top-0">
                 <Reset />
             </div>
-            <div className="absolute top-0 right-0">
+            <div className=" absolute top-0 right-0 ">
                 <GameInfo />
             </div>
             <div className="absolute bottom-0 right-0">
