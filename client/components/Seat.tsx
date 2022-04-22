@@ -11,20 +11,6 @@ type seatProps = {
     reveal: boolean;
 };
 
-// function seatPosition(id: number) {
-//     return classNames(
-//         {
-//             "right-[5%] bottom-[-23%]": id === 1,
-//             "left-[5%] bottom-[-23%]": id === 2,
-//             "left-[-23%] top-[35%]": id === 3,
-//             "left-[5%] top-[-23%]": id === 4,
-//             "right-[5%] top-[-23%]": id === 5,
-//             "right-[-23%] top-[35%]": id === 6,
-//         },
-//         "absolute"
-//     );
-// }
-
 function chipPosition(id: number) {
     return classNames(
         {
@@ -35,7 +21,7 @@ function chipPosition(id: number) {
             "right-[60%] bottom-[-40%] flex-row": id === 5,
             "left-[-23%] top-[15%] flex-col": id === 6,
         },
-        "absolute flex items-center justify-start"
+        "absolute flex items-center justify-start z-10"
     );
 }
 
@@ -59,7 +45,7 @@ function active(player: Player, game: Game) {
             "bg-zinc-900 text-neutral-100 ": !winner && !game.betting,
         },
 
-        "rounded-xl m-4 h-20 w-56 flex flex-row justify-start items-center"
+        "rounded-xl m-4 h-20 w-56 flex flex-row justify-start items-center z-2"
     );
 }
 
@@ -76,8 +62,7 @@ export default function Seat({ player, id, reveal }: seatProps) {
         }
         // This is the player's seat
         return (
-            // <div className={seatPosition(id)}>
-            <div>
+            <div className="relative">
                 <div className={active(player, appState.game)}>
                     <div className="relative right-2 flex flex-row items-center justify-center">
                         {player.cards.map((c, i) => (
@@ -140,6 +125,6 @@ export default function Seat({ player, id, reveal }: seatProps) {
             </div>
         );
     } else {
-        return null;
+        return <div></div>;
     }
 }
