@@ -73,6 +73,7 @@ func handleStartGame(c *Client) {
 	if err != nil {
 		fmt.Println(err)
 	}
+	broadcastDeal(c.table)
 	c.table.broadcast <- createUpdatedGame(c)
 }
 
@@ -82,6 +83,8 @@ func handleResetGame(c *Client) {
 }
 
 func handleDealGame(c *Client) {
+	broadcastDeal(c.table)
+
 	view := c.table.game.GenerateOmniView()
 	err := poker.Deal(c.table.game, view.DealerNum, 0)
 	if err != nil {
@@ -201,6 +204,24 @@ func createUpdatedPlayerUUID(c *Client) []byte {
 		fmt.Println(err)
 	}
 	return resp
+}
+
+func broadcastDeal(table *table) {
+	view := table.game.GenerateOmniView()
+
+	startMsg := "starting new hand"
+	table.broadcast <- createNewLog(startMsg)
+
+	sbUser := view.Players[view.SBNum].Username
+	sb := view.Config.SmallBlind
+	sbMsg := fmt.Sprintf("%s is small blind (%d)", sbUser, sb)
+	table.broadcast <- createNewLog(sbMsg)
+
+	bbUser := view.Players[view.BBNum].Username
+	bb := view.Config.BigBlind
+	bbMsg := fmt.Sprintf("%s is big blind (%d)", bbUser, bb)
+	table.broadcast <- createNewLog(bbMsg)
+
 }
 
 func currentTime() string {
