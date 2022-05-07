@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect, useCallback } from "react";
 import { AppContext } from "../providers/AppStore";
-import { playerRaise } from "../actions/actions";
+import { playerRaise, sendLog } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import InputButton from "./InputButton";
 import { Slider } from "@mantine/core";
@@ -68,8 +68,10 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
         setInputValue(bet);
     }, []);
 
-    const handleRaise = (amount: number) => {
+    const handleRaise = (user: string | null, amount: number) => {
         if (socket) {
+            let raiseMessage = user + " bets " + amount;
+            sendLog(socket, raiseMessage);
             playerRaise(socket, amount);
         }
         setShowRaise(!showRaise);
@@ -147,7 +149,7 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
                 </div>
             </div>
             <InputButton
-                action={() => handleRaise(inputValue - currentBet)}
+                action={() => handleRaise(appState.username, inputValue - currentBet)}
                 title={"bet"}
                 disabled={inputValue < minRaise || inputValue > currentStack + currentBet}
             />

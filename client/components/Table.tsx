@@ -11,23 +11,6 @@ type tableProps = {
     setPlayers: React.Dispatch<React.SetStateAction<(Player | null)[]>>;
 };
 
-function dealerLog(game: GameType) {
-    let user = game.players[game.dealer].username;
-    return user + " is dealer";
-}
-
-function bigBlindLog(game: GameType) {
-    let user = game.players[game.bb].username;
-    let bb = game.config.bb;
-    return user + " is big blind (" + bb + ")";
-}
-
-function smallBlindLog(game: GameType) {
-    let user = game.players[game.sb].username;
-    let sb = game.config.sb;
-    return user + " is small blind (" + sb + ")";
-}
-
 function getWinner(game: GameType) {
     const winnerNum = game.pots[game.pots.length - 1].winningPlayerNums[0];
     const winningPlayer = game.players.filter((player) => player.position == winnerNum)[0];
@@ -74,15 +57,6 @@ export default function Table({ players, setPlayers }: tableProps) {
         }
         setPlayers(updatedPlayers);
     }, [game?.players]);
-
-    useEffect(() => {
-        // this effect triggers at start of every new hand
-        if (game && game.running && game.stage === 2 && socket) {
-            sendLog(socket, dealerLog(game));
-            sendLog(socket, bigBlindLog(game));
-            sendLog(socket, smallBlindLog(game));
-        }
-    }, [game?.stage]);
 
     useEffect(() => {
         // this effect triggers when betting is over
