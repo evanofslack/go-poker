@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/joho/godotenv"
 )
 
 func newRedisClient() *redis.Client {
@@ -22,7 +23,14 @@ func newRedisClient() *redis.Client {
 }
 
 func getRedisURL() string {
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Error loading .env file")
+	}
+
 	var redisURL = os.Getenv("REDIS_URL")
+	log.Println(redisURL)
 	if redisURL == "" {
 		log.Panic("$REDIS_URL must be set")
 	}
