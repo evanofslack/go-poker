@@ -1,0 +1,42 @@
+version: "3.7"
+services:
+  go-poker:
+    container_name: go-poker
+    build: ./
+    ports:
+      - 8080:8080
+    restart: unless-stopped
+    environment:
+      REDIS_URL: ${REDIS_URL}
+      PORT: ${PORT}
+    depends_on:
+      - redis
+
+  go-poker-client:
+    build:
+      context: ./client
+      target: runner
+    container_name: go-poker-client
+    ports:
+      - 3000:3000
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    depends_on:
+      - go-poker
+
+  redis:
+    container_name: go-poker-redis
+    image: redis:latest
+    restart: unless-stopped
+    entrypoint: redis-server --appendonly yes
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redis:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+
+volumes:
+  redis:
