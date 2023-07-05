@@ -2,7 +2,7 @@ version: "3.7"
 services:
   go-poker:
     container_name: go-poker
-    build: ./
+    build: ./backend
     ports:
       - 8080:8080
     restart: unless-stopped
@@ -14,9 +14,9 @@ services:
 
   go-poker-client:
     build:
-      context: ./client
+      context: ./web
       target: runner
-    container_name: go-poker-client
+    container_name: go-poker-web
     ports:
       - 3000:3000
     environment:
