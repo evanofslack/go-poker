@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  client:
+    build:
+      context: ./
+      target: runner
+    container_name: go-poker-web
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
