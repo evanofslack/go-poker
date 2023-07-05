@@ -27,7 +27,6 @@ export function sendLog(socket: WebSocket, message: string) {
 }
 
 export function takeSeat(socket: WebSocket, username: string, seatID: number, buyIn: number) {
-    console.log(seatID);
     socket.send(
         JSON.stringify({
             action: "take-seat",

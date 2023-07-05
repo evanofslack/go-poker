@@ -40,7 +40,6 @@ function handleWinner(game: GameType | null, socket: WebSocket | null) {
         return null;
     }
     if (game && game.stage === 1 && game.pots.length !== 0) {
-        console.log("getting winner");
         const winningPlayer = getWinner(game);
         const pot = game.pots[game.pots.length - 1].amount;
         const message = winningPlayer.username + " wins " + pot;

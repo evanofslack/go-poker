@@ -46,7 +46,6 @@ export function SocketProvider(props: SocketProviderProps) {
     if (socket) {
         socket.onmessage = (e) => {
             let event = JSON.parse(e.data);
-            console.log(event);
             switch (event.action) {
                 case "new-message":
                     let newMessage: Message = {

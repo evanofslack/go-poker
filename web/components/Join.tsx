@@ -28,7 +28,6 @@ export default function Join() {
             joinTable(socket, tablename);
             newPlayer(socket, username);
         }
-        console.log(e.key);
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
