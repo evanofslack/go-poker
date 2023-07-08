@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 
@@ -12,31 +13,48 @@ import (
 	"github.com/go-chi/cors"
 )
 
-func InitServer() {
-	s := newServer()
+
+type Server struct {
+	listener net.Listener
+	server  *http.Server
+	router *chi.Mux
+	hub    *Hub
+}
+
+func New() *Server {
+
+	port := getPort()
+	addr := ":" + port
+
+	ln, err := net.Listen("tcp4", addr)
+	if err != nil {
+		fmt.Println("Failed to create listener")
+	}
+
+	s := &Server{
+		listener: ln,
+		server: &http.Server{Addr: addr},
+		router: chi.NewRouter(),
+		hub:    newHub(),
+	}
+
+	s.server.Handler = s.router
 	s.mountMiddleware()
 	s.mountSocket()
 	s.mountStatus()
 
-	fmt.Println("listening...")
-	http.ListenAndServe(s.port, s.router)
-}
-
-type server struct {
-	router *chi.Mux
-	hub    *Hub
-	port   string
-}
-
-func newServer() *server {
-	s := &server{
-		router: chi.NewRouter(),
-		hub:    newHub(),
-		port:   getPort(),
-	}
-	go s.hub.run()
 	return s
 }
+
+func (s *Server) Run() error {
+	go s.hub.run()
+	fmt.Println("running websockets hub")
+	go s.server.Serve(s.listener)
+	fmt.Println("http server listening...")
+	return nil
+}
+
+
 
 func getPort() string {
 	var port = os.Getenv("PORT")
@@ -44,15 +62,15 @@ func getPort() string {
 		port = "8080"
 		fmt.Println("No PORT env variable found, defaulting to: " + port)
 	}
-	return ":" + port
+	return port
 }
 
-func (s *server) mountMiddleware() {
+func (s *Server) mountMiddleware() {
 
 	s.router.Use(middleware.Logger)
 	s.router.Use(middleware.Recoverer)
 	s.router.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://*", "http://*", "http://localhost"},
+		AllowedOrigins:   []string{"https://*", "http://*", "http://localhost", "ws://*"},
 		AllowedMethods:   []string{"PUT, GET, POST, DELETE, OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Requested-With"},
 		ExposedHeaders:   []string{"Link"},
@@ -61,11 +79,11 @@ func (s *server) mountMiddleware() {
 	}))
 }
 
-func (s *server) mountStatus() {
+func (s *Server) mountStatus() {
 	s.router.Route("/ping", func(r chi.Router) { r.Get("/", s.ping) })
 }
 
-func (s *server) ping(w http.ResponseWriter, r *http.Request) {
+func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	enc := json.NewEncoder(w)
@@ -74,10 +92,10 @@ func (s *server) ping(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *server) mountSocket() {
+func (s *Server) mountSocket() {
 	s.router.Route("/ws", func(r chi.Router) { r.Get("/", s.serveWebsocket) })
 }
 
-func (s *server) serveWebsocket(w http.ResponseWriter, r *http.Request) {
+func (s *Server) serveWebsocket(w http.ResponseWriter, r *http.Request) {
 	serveWs(s.hub, w, r)
 }
