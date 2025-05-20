@@ -1,6 +1,6 @@
 module github.com/evanofslack/go-poker
 
-go 1.18
+go 1.24
 
 require (
 	github.com/alexclewontin/riverboat/eval v0.2.2
