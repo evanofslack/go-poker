@@ -13,15 +13,20 @@ type Hub struct {
 	tables     map[*table]bool
 }
 
-func newHub() *Hub {
-	return &Hub{
-		rdb:        newRedisClient(),
+func newHub() (*Hub, error) {
+	redis, err := newRedisClient()
+	if err != nil {
+	    return nil, err
+	}
+    hub := &Hub{
+		rdb:        redis,
 		clients:    make(map[*Client]bool),
 		broadcast:  make(chan []byte),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		tables:     make(map[*table]bool),
 	}
+    return hub, nil
 }
 
 func (h *Hub) run() {

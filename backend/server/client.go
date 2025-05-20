@@ -3,8 +3,8 @@ package server
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -31,7 +31,6 @@ type Client struct {
 	send     chan []byte     // Buffered channel of outbound bytes
 	uuid     string          // UUID
 	username string
-	seatID   uint   // Seat number
 	table    *table // Player's table
 }
 
@@ -60,20 +59,21 @@ func (c *Client) readPump() {
 		c.disconnect()
 	}()
 	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+    if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+		slog.Default().Warn("set read deadline", "error", err)
+    }
 	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
+				slog.Default().Warn("Websocket unexpected close", "error", err)
 			}
-			log.Printf("error: %v", err)
+			slog.Default().Warn("Read from websocket", "error", err)
 			break
 		}
-		err = c.processEvents(message)
-		if err != nil {
-			fmt.Println(err)
+		if err = c.processEvents(message); err != nil {
+			slog.Default().Warn("Process websocket message", "error", err)
 		}
 	}
 }
@@ -100,7 +100,7 @@ func (c *Client) writePump() {
 			}
 			w, err := c.conn.NextWriter(websocket.TextMessage)
 			if err != nil {
-				log.Printf("error: %v", err)
+				slog.Default().Warn("Write websocket message", "error", err)
 			}
 			w.Write(message)
 
@@ -111,6 +111,7 @@ func (c *Client) writePump() {
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				slog.Default().Warn("Write websocket ping", "error", err)
 				return
 			}
 		}
@@ -143,7 +144,7 @@ func (c *Client) processEvents(rawMessage []byte) error {
 	}
 
 	if baseMessage.Action == "" {
-		return errors.New("error deserializing message")
+		return errors.New("deserialize message")
 	}
 
 	switch baseMessage.Action {
@@ -238,5 +239,4 @@ func (c *Client) processEvents(rawMessage []byte) error {
 	default:
 		return errors.New("unexpected message action")
 	}
-
 }
