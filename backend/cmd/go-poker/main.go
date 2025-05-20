@@ -2,8 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 
@@ -12,7 +11,6 @@ import (
 )
 
 func main() {
-
 	ctx, cancel := context.WithCancel(context.Background())
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -20,16 +18,19 @@ func main() {
 
 	err := godotenv.Load()
 	if err != nil {
-		log.Println("Error loading .env file")
+		slog.Default().Error("load env", "error", err)
 	}
 
-	s := server.New()
+	s, err := server.New()
+	if err != nil {
+		slog.Default().Error("create http server", "error", err)
+		os.Exit(1)
+	}
 	if err := s.Run(); err != nil {
-		err = fmt.Errorf("Failed to start http server: %w", err)
-		log.Println(err)
+		slog.Default().Error("start http server", "error", err)
 		os.Exit(1)
 	}
 
 	<-ctx.Done()
-	log.Println("Got shutdown signal, starting graceful shutdown")
+	slog.Default().Info("Shutting down...")
 }

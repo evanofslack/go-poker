@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/evanofslack/go-poker/poker"
@@ -40,30 +41,29 @@ func handleNewPlayer(c *Client, username string) {
 }
 
 func handleTakeSeat(c *Client, username string, seatID uint, buyIn uint) {
-
 	position := c.table.game.AddPlayer()
 	c.uuid = c.table.game.GenerateOmniView().Players[position].UUID
 	c.send <- createUpdatedPlayerUUID(c)
 	err := poker.SetUsername(c.table.game, position, username)
 	if err != nil {
-		fmt.Println(err)
+		slog.Default().Warn("Set username", "error", err)
 	}
 
 	err = poker.BuyIn(c.table.game, position, buyIn)
 	if err != nil {
-		fmt.Println(err)
+		slog.Default().Warn("Buy in", "error", err)
 	}
 
 	// set player ready
 	// TODO make this a separate action
 	err = poker.ToggleReady(c.table.game, position, 0)
 	if err != nil {
-		fmt.Println(err)
+		slog.Default().Warn("Toggle ready", "error", err)
 	}
 
 	err = poker.SetSeatID(c.table.game, position, seatID)
 	if err != nil {
-		fmt.Println(err)
+		slog.Default().Warn("Set seat id", "error", err)
 	}
 	c.table.broadcast <- createUpdatedGame(c)
 }
@@ -88,7 +88,7 @@ func handleDealGame(c *Client) {
 	view := c.table.game.GenerateOmniView()
 	err := poker.Deal(c.table.game, view.DealerNum, 0)
 	if err != nil {
-		fmt.Println(err)
+		slog.Default().Warn("Deal table", "error", err)
 	}
 	c.table.broadcast <- createUpdatedGame(c)
 }
@@ -114,7 +114,7 @@ func handleCall(c *Client) {
 
 	err := poker.Bet(c.table.game, pn, callAmount)
 	if err != nil {
-		fmt.Println(err)
+		slog.Default().Warn("Handle call", "error", err)
 	}
 	c.table.broadcast <- createUpdatedGame(c)
 }
@@ -124,7 +124,7 @@ func handleRaise(c *Client, raise uint) {
 	pn := view.ActionNum
 	err := poker.Bet(c.table.game, pn, raise)
 	if err != nil {
-		fmt.Println(err)
+		slog.Default().Warn("Handle raise", "error", err)
 	}
 
 	c.table.broadcast <- createUpdatedGame(c)
@@ -135,7 +135,7 @@ func handleCheck(c *Client) {
 	pn := view.ActionNum
 	err := poker.Bet(c.table.game, pn, 0)
 	if err != nil {
-		fmt.Println(err)
+		slog.Default().Warn("Handle check", "error", err)
 	}
 	c.table.broadcast <- createUpdatedGame(c)
 }
@@ -145,11 +145,10 @@ func handleFold(c *Client) {
 	pn := view.ActionNum
 	err := poker.Fold(c.table.game, pn, 0)
 	if err != nil {
-		fmt.Println(err)
+		slog.Default().Warn("Handle fold", "error", err)
 		return
 	}
 	c.table.broadcast <- createUpdatedGame(c)
-
 }
 
 func createNewMessage(username string, message string) []byte {
@@ -162,7 +161,7 @@ func createNewMessage(username string, message string) []byte {
 	}
 	resp, err := json.Marshal(new)
 	if err != nil {
-		fmt.Println(err)
+		slog.Default().Warn("Marshal new message", "error", err)
 	}
 	return resp
 }
@@ -176,7 +175,7 @@ func createNewLog(message string) []byte {
 	}
 	resp, err := json.Marshal(log)
 	if err != nil {
-		fmt.Println(err)
+		slog.Default().Warn("Marshal new log", "error", err)
 	}
 	return resp
 }
@@ -189,7 +188,7 @@ func createUpdatedGame(c *Client) []byte {
 
 	resp, err := json.Marshal(game)
 	if err != nil {
-		fmt.Println(err)
+		slog.Default().Warn("Marshal update game", "error", err)
 	}
 	return resp
 }
@@ -201,7 +200,7 @@ func createUpdatedPlayerUUID(c *Client) []byte {
 	}
 	resp, err := json.Marshal(uuid)
 	if err != nil {
-		fmt.Println(err)
+		slog.Default().Warn("Marshal player uuid", "error", err)
 	}
 	return resp
 }
@@ -221,7 +220,6 @@ func broadcastDeal(table *table) {
 	bb := view.Config.BigBlind
 	bbMsg := fmt.Sprintf("%s is big blind (%d)", bbUser, bb)
 	table.broadcast <- createNewLog(bbMsg)
-
 }
 
 func currentTime() string {
