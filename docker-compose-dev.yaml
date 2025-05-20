@@ -2,30 +2,14 @@ version: "3.7"
 services:
   go-poker:
     container_name: go-poker
-    build: ./backend
+    build: .
     restart: unless-stopped
     ports:
       - 8080:8080
     environment:
       REDIS_URL: ${REDIS_URL}
-      PORT: ${PORT}
     depends_on:
       - redis
-
-  go-poker-web:
-    build:
-      context: ./web
-      target: runner
-    container_name: go-poker-web
-    restart: unless-stopped
-    ports:
-      - 3000:3000
-    environment:
-      NODE_ENV: ${NODE_ENV}
-      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-    depends_on:
-      - go-poker
 
   redis:
     container_name: go-poker-redis
