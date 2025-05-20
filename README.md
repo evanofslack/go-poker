@@ -8,7 +8,7 @@ Real time multiplayer poker application powered by websockets and redis pubsub
 
 ## getting started
 
-Can run from a prebuilt container: evanofslack/go-poker:latest
+Can run from a prebuilt container: `evanofslack/go-poker:latest`
 
 ```yaml
 services:
