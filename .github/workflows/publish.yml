@@ -1,17 +1,14 @@
-name: publish-web
+name: publish
 on:
   workflow_dispatch:
   push:
     branches:
-      - "main"
+      - 'main'
     tags:
-      - "v*"
-    paths:
-      - "web/**"
-
+      - 'v*'
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: ${{ github.repository }}-web
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build:
@@ -45,8 +42,8 @@ jobs:
       - name: build and push
         uses: docker/build-push-action@v4
         with:
-          context: "{{defaultContext}}:web"
           file: ./Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
