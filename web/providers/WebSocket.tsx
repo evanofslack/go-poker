@@ -15,18 +15,20 @@ type SocketProviderProps = {
 };
 
 export function SocketProvider(props: SocketProviderProps) {
-    const WS_URL = process.env.NEXT_PUBLIC_WS_URL;
-    if (!WS_URL) {
-        return null;
-    }
-
     const [socket, setSocket] = useState<WebSocket | null>(null);
     const { appState, dispatch } = useContext(AppContext);
 
     useEffect(() => {
         // WebSocket api is browser side only.
         const isBrowser = typeof window !== "undefined";
-        const _socket = isBrowser ? new WebSocket(WS_URL) : null;
+
+        let wsUrl = '';
+        if (isBrowser) {
+            wsUrl = `${window.location.origin.replace('http', 'ws')}/ws`;
+            console.log("websocket url: ", wsUrl);
+        }
+
+        const _socket = isBrowser ? new WebSocket(wsUrl) : null;
 
         if (_socket) {
             _socket.onopen = () => {
@@ -34,6 +36,9 @@ export function SocketProvider(props: SocketProviderProps) {
             };
             _socket.onclose = () => {
                 console.log("websocket disconnected");
+            };
+            _socket.onerror = (error) => {
+                console.error("websocket error: ", error);
             };
         }
         setSocket(_socket);
