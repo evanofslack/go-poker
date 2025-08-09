@@ -45,7 +45,9 @@ func newClient(conn *websocket.Conn, hub *Hub) *Client {
 
 func (c *Client) disconnect() {
 	c.hub.unregister <- c
-	c.table.unregister <- c
+	if c.table != nil {
+		c.table.unregister <- c
+	}
 	c.conn.Close()
 }
 
@@ -59,9 +61,9 @@ func (c *Client) readPump() {
 		c.disconnect()
 	}()
 	c.conn.SetReadLimit(maxMessageSize)
-    if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
 		slog.Default().Warn("set read deadline", "error", err)
-    }
+	}
 	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
 		_, message, err := c.conn.ReadMessage()
