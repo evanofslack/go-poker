@@ -2,6 +2,10 @@
 
 Real time multiplayer poker application powered by websockets and redis pubsub
 
+## demo
+
+https://poker.evanslack.dev
+
 ## ui
 
 <img width="800" alt="gopoker-screenshot" src="https://github.com/evanofslack/go-poker/assets/51209817/08c93fd3-0814-40e8-ab10-74d613ad996a">
