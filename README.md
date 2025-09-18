@@ -1,6 +1,6 @@
-# [go-poker](https://go-poker.vercel.app)
+# go-poker
 
-Real time multiplayer poker application powered by websockets and redis pubsub
+Real time multiplayer poker application powered by go, react, websockets ans redis pubsub
 
 ## demo
 
