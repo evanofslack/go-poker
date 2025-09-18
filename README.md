@@ -1,6 +1,6 @@
 # go-poker
 
-Real time multiplayer poker application powered by go, react, websockets ans redis pubsub
+Real time multiplayer poker application powered by go, react, websockets and redis pubsub
 
 ## demo
 
