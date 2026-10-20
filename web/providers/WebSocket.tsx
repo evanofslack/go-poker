@@ -24,7 +24,8 @@ export function SocketProvider(props: SocketProviderProps) {
 
         let wsUrl = '';
         if (isBrowser) {
-            wsUrl = `${window.location.origin.replace('http', 'ws')}/ws`;
+            // NEXT_PUBLIC_WS_URL points next dev at the go server, otherwise same origin
+            wsUrl = process.env.NEXT_PUBLIC_WS_URL || `${window.location.origin.replace('http', 'ws')}/ws`;
             console.log("websocket url: ", wsUrl);
         }
 

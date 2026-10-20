@@ -17,15 +17,15 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-const (
-	staticDir = "/app/out"
-)
+// default location of the built frontend in the docker image
+const defaultStaticDir = "/app/out"
 
 type Server struct {
-	listener net.Listener
-	server   *http.Server
-	router   *chi.Mux
-	hub      *Hub
+	listener  net.Listener
+	server    *http.Server
+	router    *chi.Mux
+	hub       *Hub
+	staticDir string
 }
 
 func New() (*Server, error) {
@@ -48,8 +48,9 @@ func New() (*Server, error) {
 			ReadHeaderTimeout: 10 * time.Second,
 			IdleTimeout:       120 * time.Second,
 		},
-		router: chi.NewRouter(),
-		hub:    hub,
+		router:    chi.NewRouter(),
+		hub:       hub,
+		staticDir: getStaticDir(),
 	}
 
 	s.server.Handler = s.router
@@ -80,6 +81,13 @@ func (s *Server) Run() <-chan error {
 // Shutdown stops accepting connections and waits for in-flight requests.
 func (s *Server) Shutdown(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
+}
+
+func getStaticDir() string {
+	if dir := os.Getenv("STATIC_DIR"); dir != "" {
+		return dir
+	}
+	return defaultStaticDir
 }
 
 func getPort() string {
@@ -125,7 +133,7 @@ func (s *Server) mountStatic() {
 			return
 		}
 
-		path := filepath.Join(staticDir, r.URL.Path)
+		path := filepath.Join(s.staticDir, r.URL.Path)
 		_, err := os.Stat(path)
 		if err == nil {
 			ext := filepath.Ext(path)
@@ -137,7 +145,7 @@ func (s *Server) mountStatic() {
 		}
 
 		// If file not found, serve index.html for client-side routing
-		indexPath := filepath.Join(staticDir, "index.html")
+		indexPath := filepath.Join(s.staticDir, "index.html")
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		http.ServeFile(w, r, indexPath)
 	}))
