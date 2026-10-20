@@ -3,6 +3,7 @@ package server
 import (
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/evanofslack/go-poker/poker"
 )
@@ -29,6 +30,8 @@ type table struct {
 	mu    sync.Mutex       // serializes game actions from client goroutines
 	users map[*Client]bool // clients at this table, guarded by mu
 	host  *Client          // guarded by mu
+
+	dealTimer *time.Timer // deals the next hand, guarded by mu
 }
 
 // newTable creates a new table
@@ -108,6 +111,14 @@ func (t *table) hostID() string {
 		return ""
 	}
 	return t.host.id()
+}
+
+// send queues message for every client, unless the table has been deleted.
+func (t *table) send(message []byte) {
+	select {
+	case t.broadcast <- message:
+	case <-t.done:
+	}
 }
 
 func (t *table) registerClient(client *Client) {

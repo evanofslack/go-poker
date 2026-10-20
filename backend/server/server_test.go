@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -14,6 +15,11 @@ import (
 	"github.com/evanofslack/go-poker/poker"
 	"github.com/gorilla/websocket"
 )
+
+func TestMain(m *testing.M) {
+	nextHandDelay = 50 * time.Millisecond
+	os.Exit(m.Run())
+}
 
 func newTestServer(t *testing.T) *httptest.Server {
 	srv, _ := newTestServerHub(t)
@@ -114,7 +120,6 @@ func TestMalformedMessagesDoNotCrash(t *testing.T) {
 		// actions at an empty table
 		createMsg("t", "a"),
 		`{"action":"start-game"}`,
-		`{"action":"deal-game"}`,
 		`{"action":"player-fold"}`,
 		`{"action":"player-call"}`,
 		`{"action":"reset-game"}`,
@@ -150,7 +155,6 @@ func TestConcurrentPlayers(t *testing.T) {
 					`{"action":"player-check"}`,
 					`{"action":"player-raise","amount":40}`,
 					`{"action":"player-fold"}`,
-					`{"action":"deal-game"}`,
 					`{"action":"send-message","username":"p","message":"hi"}`,
 				)
 			}
@@ -310,6 +314,7 @@ type received struct {
 	games  chan poker.GameView
 	hosts  chan string // host of each game update
 	errors chan string
+	logs   chan string
 }
 
 // dialRecv is dial, but also collects the game views and errors the client receives.
@@ -320,7 +325,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { conn.Close() })
-	r := received{make(chan poker.GameView, 256), make(chan string, 256), make(chan string, 256)}
+	r := received{make(chan poker.GameView, 256), make(chan string, 256), make(chan string, 256), make(chan string, 256)}
 	go func() {
 		for {
 			_, msg, err := conn.ReadMessage()
@@ -349,6 +354,11 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 			case actionError:
 				select {
 				case r.errors <- u.Message:
+				default:
+				}
+			case actionNewLog:
+				select {
+				case r.logs <- u.Message:
 				default:
 				}
 			}
@@ -521,4 +531,51 @@ func TestOnlyHostResets(t *testing.T) {
 	}
 	send(t, b, `{"action":"reset-game"}`)
 	eventually(t, func() bool { return !isRunning(t, hub, "t") }, "new host could not reset")
+}
+
+func TestServerDealsNextHand(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	b := dial(t, srv)
+	send(t, a, seatMsg(1))
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
+	send(t, a, `{"action":"start-game"}`)
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Betting })
+
+	// heads up, a acts first; folding ends the hand
+	send(t, a, `{"action":"player-fold"}`)
+	time.Sleep(5 * nextHandDelay)
+
+	var logs []string
+	for len(aRecv.logs) > 0 {
+		logs = append(logs, <-aRecv.logs)
+	}
+	count := func(prefix string) int {
+		n := 0
+		for _, l := range logs {
+			if strings.HasPrefix(l, prefix) {
+				n++
+			}
+		}
+		return n
+	}
+	if n := count("a folds"); n != 1 {
+		t.Errorf("fold logged %d times, logs: %q", n, logs)
+	}
+	if n := count("b wins 30"); n != 1 {
+		t.Errorf("win logged %d times, logs: %q", n, logs)
+	}
+	if n := count("starting new hand"); n != 2 {
+		t.Errorf("%d hands dealt, want 2 (start and next), logs: %q", n, logs)
+	}
+}
+
+func TestHandName(t *testing.T) {
+	tests := map[int]string{1: "a straight flush", 166: "four of a kind", 3000: "two pair", 7462: "high card", 8000: ""}
+	for score, want := range tests {
+		if got := handName(score); got != want {
+			t.Errorf("handName(%d) = %q, want %q", score, got, want)
+		}
+	}
 }

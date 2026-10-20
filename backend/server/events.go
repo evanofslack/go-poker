@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/evanofslack/go-poker/poker"
@@ -15,6 +16,10 @@ const (
 	maxSeats      uint   = 6 // seats rendered by the frontend
 )
 
+// nextHandDelay is the pause after a hand ends before the next one is dealt.
+// A var so tests can shorten it.
+var nextHandDelay = 5 * time.Second
+
 func handleJoinTable(c *Client, tablename string, username string, create bool) {
 	if err := c.hub.joinTable(c, tablename, username, create); err != nil {
 		sendError(c, err.Error())
@@ -25,7 +30,7 @@ func handleJoinTable(c *Client, tablename string, username string, create bool) 
 
 	c.send <- createJoinedTable(c)
 	c.send <- createGameView(c)
-	c.table.broadcast <- createNewMessage(gameAdminName, fmt.Sprintf("%s has joined", username))
+	c.table.send(createNewMessage(gameAdminName, fmt.Sprintf("%s has joined", username)))
 }
 
 func handleLeaveTable(c *Client, tablename string) {
@@ -39,11 +44,7 @@ func handleSendMessage(c *Client, message string) {
 	if c.username == "" {
 		return
 	}
-	c.table.broadcast <- createNewMessage(c.username, message)
-}
-
-func handleSendLog(c *Client, message string) {
-	c.table.broadcast <- createNewLog(message)
+	c.table.send(createNewMessage(c.username, message))
 }
 
 func handleTakeSeat(c *Client, seatID uint, buyIn uint) {
@@ -94,6 +95,7 @@ func handleTakeSeat(c *Client, seatID uint, buyIn uint) {
 	if err != nil {
 		slog.Default().Warn("Set seat id", "error", err)
 	}
+	c.table.send(createNewLog(fmt.Sprintf("%s sits down with %d", c.username, buyIn)))
 	broadcastGame(c.table)
 }
 
@@ -110,7 +112,7 @@ func handleStartGame(c *Client) {
 		sendError(c, "need at least two ready players")
 		return
 	}
-	broadcastDeal(c.table)
+	logDeal(c.table)
 	broadcastGame(c.table)
 }
 
@@ -122,25 +124,11 @@ func handleResetGame(c *Client) {
 		return
 	}
 
+	if c.table.dealTimer != nil {
+		c.table.dealTimer.Stop()
+	}
 	c.table.game.Reset()
-	broadcastGame(c.table)
-}
-
-func handleDealGame(c *Client) {
-	c.table.mu.Lock()
-	defer c.table.mu.Unlock()
-	if !isSeated(c) {
-		sendError(c, "take a seat first")
-		return
-	}
-
-	broadcastDeal(c.table)
-
-	view := c.table.game.GenerateOmniView()
-	err := poker.Deal(c.table.game, view.DealerNum, 0)
-	if err != nil {
-		slog.Default().Warn("Deal table", "error", err)
-	}
+	c.table.send(createNewLog(fmt.Sprintf("%s reset the table", c.username)))
 	broadcastGame(c.table)
 }
 
@@ -153,27 +141,20 @@ func handleCall(c *Client) {
 		return
 	}
 	view := c.table.game.GenerateOmniView()
-	currentPlayer := view.Players[pn]
+	p := view.Players[pn]
 
-	// compute amount needed to call
-	maxBet := view.Players[0].TotalBet
-	for _, p := range view.Players {
-		if p.TotalBet > maxBet {
-			maxBet = p.TotalBet
-		}
+	// call this street's top bet, or go all in if that's more than the stack
+	var maxBet uint
+	for _, q := range view.Players {
+		maxBet = max(maxBet, q.Bet)
 	}
-	callAmount := maxBet - currentPlayer.TotalBet
-
-	// if player must go all in to call
-	if callAmount >= currentPlayer.Stack {
-		callAmount = currentPlayer.Stack
-	}
+	callAmount := min(maxBet-p.Bet, p.Stack)
 
 	if err := poker.Bet(c.table.game, pn, callAmount); err != nil {
 		sendError(c, "can't call")
 		return
 	}
-	broadcastGame(c.table)
+	finishAction(c.table, fmt.Sprintf("%s calls %d", p.Username, callAmount))
 }
 
 func handleRaise(c *Client, raise uint) {
@@ -184,11 +165,22 @@ func handleRaise(c *Client, raise uint) {
 	if !ok {
 		return
 	}
+	view := c.table.game.GenerateOmniView()
+	p := view.Players[pn]
+	var maxBet uint
+	for _, q := range view.Players {
+		maxBet = max(maxBet, q.Bet)
+	}
+
 	if err := poker.Bet(c.table.game, pn, raise); err != nil {
 		sendError(c, "invalid bet")
 		return
 	}
-	broadcastGame(c.table)
+	msg := fmt.Sprintf("%s bets %d", p.Username, raise)
+	if maxBet > 0 {
+		msg = fmt.Sprintf("%s raises to %d", p.Username, p.Bet+raise)
+	}
+	finishAction(c.table, msg)
 }
 
 func handleCheck(c *Client) {
@@ -203,7 +195,7 @@ func handleCheck(c *Client) {
 		sendError(c, "can't check")
 		return
 	}
-	broadcastGame(c.table)
+	finishAction(c.table, fmt.Sprintf("%s checks", c.username))
 }
 
 func handleFold(c *Client) {
@@ -218,7 +210,88 @@ func handleFold(c *Client) {
 		sendError(c, "can't fold")
 		return
 	}
-	broadcastGame(c.table)
+	finishAction(c.table, fmt.Sprintf("%s folds", c.username))
+}
+
+// finishAction logs a successful action and sends the new game state. If the
+// action ended the hand it also logs the winners and deals the next hand
+// after a pause. Caller holds t.mu.
+func finishAction(t *table, msg string) {
+	t.send(createNewLog(msg))
+	view := t.game.GenerateOmniView()
+	if view.Stage == poker.PreDeal {
+		logWinners(t, view)
+		t.dealTimer = time.AfterFunc(nextHandDelay, func() { dealNextHand(t) })
+	}
+	broadcastGame(t)
+}
+
+// dealNextHand deals a new hand, unless the table was reset or deleted.
+func dealNextHand(t *table) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	select {
+	case <-t.done:
+		return
+	default:
+	}
+	view := t.game.GenerateOmniView()
+	if !view.Running || view.Stage != poker.PreDeal {
+		return
+	}
+	if err := poker.Deal(t.game, view.DealerNum, 0); err != nil {
+		t.send(createNewLog("waiting for players"))
+		return
+	}
+	logDeal(t)
+	broadcastGame(t)
+}
+
+func logWinners(t *table, view *poker.GameView) {
+	for _, pot := range view.Pots {
+		if pot.Amt == 0 || len(pot.WinningPlayerNums) == 0 {
+			continue
+		}
+		var names []string
+		for _, pn := range pot.WinningPlayerNums {
+			names = append(names, view.Players[pn].Username)
+		}
+		msg := fmt.Sprintf("%s wins %d", strings.Join(names, " and "), pot.Amt)
+		if len(names) > 1 {
+			msg = fmt.Sprintf("%s split %d", strings.Join(names, " and "), pot.Amt)
+		}
+		if hand := handName(pot.WinningScore); hand != "" {
+			msg += " with " + hand
+		}
+		t.send(createNewLog(msg))
+	}
+}
+
+// handName names a hand from its score, where lower is better (Cactus Kev's
+// ranks). A hand won without a showdown scores 8000 and has no name.
+func handName(score int) string {
+	switch {
+	case score <= 0 || score > 7462:
+		return ""
+	case score <= 10:
+		return "a straight flush"
+	case score <= 166:
+		return "four of a kind"
+	case score <= 322:
+		return "a full house"
+	case score <= 1599:
+		return "a flush"
+	case score <= 1609:
+		return "a straight"
+	case score <= 2467:
+		return "three of a kind"
+	case score <= 3325:
+		return "two pair"
+	case score <= 6185:
+		return "a pair"
+	default:
+		return "high card"
+	}
 }
 
 // actingPlayer returns c's player index if it is c's turn, and otherwise
@@ -306,7 +379,10 @@ func broadcastGame(t *table) {
 		u.byUUID[p.UUID] = createUpdatedGame(t.game.GeneratePlayerView(uint(i)), host)
 	}
 	u.spectator = createUpdatedGame(t.game.GeneratePlayerView(uint(len(players))), host)
-	t.updates <- u
+	select {
+	case t.updates <- u:
+	case <-t.done:
+	}
 }
 
 // createGameView is c's own view of the game. Caller holds c.table.mu.
@@ -358,24 +434,15 @@ func createUpdatedPlayerUUID(c *Client) []byte {
 	return resp
 }
 
-func broadcastDeal(table *table) {
-	view := table.game.GenerateOmniView()
+// logDeal logs a new hand and its blinds. Caller holds t.mu.
+func logDeal(t *table) {
+	view := t.game.GenerateOmniView()
 	if view.SBNum >= uint(len(view.Players)) || view.BBNum >= uint(len(view.Players)) {
 		return
 	}
-
-	startMsg := "starting new hand"
-	table.broadcast <- createNewLog(startMsg)
-
-	sbUser := view.Players[view.SBNum].Username
-	sb := view.Config.SmallBlind
-	sbMsg := fmt.Sprintf("%s is small blind (%d)", sbUser, sb)
-	table.broadcast <- createNewLog(sbMsg)
-
-	bbUser := view.Players[view.BBNum].Username
-	bb := view.Config.BigBlind
-	bbMsg := fmt.Sprintf("%s is big blind (%d)", bbUser, bb)
-	table.broadcast <- createNewLog(bbMsg)
+	t.send(createNewLog("starting new hand"))
+	t.send(createNewLog(fmt.Sprintf("%s is small blind (%d)", view.Players[view.SBNum].Username, view.Config.SmallBlind)))
+	t.send(createNewLog(fmt.Sprintf("%s is big blind (%d)", view.Players[view.BBNum].Username, view.Config.BigBlind)))
 }
 
 func currentTime() string {

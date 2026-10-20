@@ -10,10 +10,8 @@ const (
 	actionJoinTable   string = "join-table"
 	actionLeaveTable  string = "leave-table"
 	actionSendMessage string = "send-message"
-	actionSendLog     string = "send-log"
 	actionTakeSeat    string = "take-seat"
 	actionStartGame   string = "start-game"
-	actionDealGame    string = "deal-game"
 	actionResetGame   string = "reset-game"
 	actionPlayerCall  string = "player-call"
 	actionPlayerCheck string = "player-check"
@@ -44,11 +42,6 @@ type sendMessage struct {
 	Message  string `json:"message"`
 }
 
-type sendLog struct {
-	base           // actionSendLog
-	Message string `json:"message"`
-}
-
 type takeSeat struct {
 	base            // actionTakeSeat
 	Username string `json:"username"` // ignored, the server uses the client's username
@@ -62,10 +55,6 @@ type startGame struct {
 
 type resetGame struct {
 	base // actionResetGame
-}
-
-type dealGame struct {
-	base // actionDealGame
 }
 
 type playerCall struct {

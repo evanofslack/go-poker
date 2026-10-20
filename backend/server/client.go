@@ -228,18 +228,6 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		handleSendMessage(c, message.Message)
 		return nil
 
-	case actionSendLog:
-		var log sendLog
-		err := json.Unmarshal(rawMessage, &log)
-		if err != nil {
-			return err
-		}
-		if !validLength(log.Message, maxMessageLen) {
-			return errors.New("invalid log message")
-		}
-		handleSendLog(c, log.Message)
-		return nil
-
 	case actionTakeSeat:
 		var seat takeSeat
 		err := json.Unmarshal(rawMessage, &seat)
@@ -255,10 +243,6 @@ func (c *Client) processEvents(rawMessage []byte) error {
 
 	case actionResetGame:
 		handleResetGame(c)
-		return nil
-
-	case actionDealGame:
-		handleDealGame(c)
 		return nil
 
 	case actionPlayerCall:
