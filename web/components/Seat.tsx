@@ -52,6 +52,7 @@ export default function Seat({ player, id }: seatProps) {
     const { appState, dispatch } = useContext(AppContext);
     const [sitDown, setSitDown] = useState(false);
 
+    const seated = appState.game?.players.some((p) => p.uuid === appState.clientID);
     if (player && appState.game) {
         // This is the player's seat. The server only sends cards this client may see.
         return (
@@ -89,7 +90,7 @@ export default function Seat({ player, id }: seatProps) {
             </div>
         );
         // player already sat down, and this seat does not belong to them
-    } else if (player?.uuid != appState.clientID && !appState.game?.running) {
+    } else if (seated && !appState.game?.running) {
         return (
             <div>
                 <button className="m-4 h-20 w-56 rounded-2xl bg-neutral-700 p-2 text-neutral-400 opacity-20">
