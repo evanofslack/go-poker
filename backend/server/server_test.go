@@ -410,19 +410,20 @@ func TestOnlyActOnYourTurn(t *testing.T) {
 	a, aRecv := dialRecv(t, srv)
 	b, bRecv := dialRecv(t, srv)
 	spectator, sRecv := dialRecv(t, srv)
+	// a sits first so is dealer
 	for i, c := range []*websocket.Conn{a, b} {
 		send(t, c,
 			`{"action":"join-table","tablename":"t"}`,
 			`{"action":"new-player","username":"p"}`,
 			`{"action":"take-seat","username":"p","seatID":`+strconv.Itoa(i+1)+`,"buyIn":100}`,
 		)
+		waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == i+1 })
 	}
 	send(t, spectator, `{"action":"join-table","tablename":"t"}`)
-	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
 	send(t, a, `{"action":"start-game"}`)
 	g := waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Betting })
 
-	// heads up, the dealer (seat 1, a) acts first preflop
+	// heads up, the dealer (a) acts first preflop
 	if g.ActionNum != 0 {
 		t.Fatalf("action on player %d, want 0", g.ActionNum)
 	}
