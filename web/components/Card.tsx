@@ -75,7 +75,9 @@ export default function Card({ card, placeholder, folded, hidden }: cardProps) {
     }
 
     const c = cardToString(card);
-    if (c == "2\u0000" || card == "0") {
+    // the server sends 0 for cards this client can't see, which still show face down
+    const faceDown = hidden && !folded;
+    if (!faceDown && (c == "2\u0000" || card == "0")) {
         return null;
     }
     if (hidden) {
