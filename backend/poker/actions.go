@@ -301,7 +301,7 @@ func fold(g *Game, pn uint, data uint) error {
 
 	p := g.getPlayer(pn)
 
-	if g.actionNum != pn {
+	if !g.getBetting() || g.actionNum != pn {
 		return ErrIllegalAction
 	}
 
@@ -366,9 +366,9 @@ func toggleReady(g *Game, pn uint, data uint) error {
 		p.Ready = true
 	}
 
-	if pn == g.dealerNum {
+	if pn == g.dealerNum && g.readyCount() > 0 {
 		for !(g.players[g.dealerNum].Ready) {
-			g.dealerNum = g.dealerNum + 1
+			g.dealerNum = (g.dealerNum + 1) % uint(len(g.players))
 		}
 	}
 
