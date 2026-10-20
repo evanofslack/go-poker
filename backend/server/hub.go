@@ -16,9 +16,9 @@ type Hub struct {
 func newHub() (*Hub, error) {
 	redis, err := newRedisClient()
 	if err != nil {
-	    return nil, err
+		return nil, err
 	}
-    hub := &Hub{
+	hub := &Hub{
 		rdb:        redis,
 		clients:    make(map[*Client]bool),
 		broadcast:  make(chan []byte),
@@ -26,7 +26,7 @@ func newHub() (*Hub, error) {
 		unregister: make(chan *Client),
 		tables:     make(map[*table]bool),
 	}
-    return hub, nil
+	return hub, nil
 }
 
 func (h *Hub) run() {

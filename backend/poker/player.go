@@ -35,7 +35,7 @@ func (p *player) initialize() {
 
 }
 
-//putInChips is simply a helper function that transfers the amounts between fields
+// putInChips is simply a helper function that transfers the amounts between fields
 func (p *player) putInChips(amt uint) {
 	if p.Stack > amt {
 		p.Bet += amt

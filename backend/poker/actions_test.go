@@ -4,10 +4,17 @@ import (
 	"testing"
 )
 
+// newTestGame returns a game with the blinds these scenarios were written against
+func newTestGame() *Game {
+	g := NewGame()
+	g.config.BigBlind = 25
+	return g
+}
+
 func TestIntegration_Scenarios(t *testing.T) {
 
 	t.Run("Scenario 1", func(t *testing.T) {
-		g := NewGame()
+		g := newTestGame()
 
 		pn_a := g.AddPlayer()
 		g.AddPlayer()
@@ -21,7 +28,7 @@ func TestIntegration_Scenarios(t *testing.T) {
 	})
 
 	t.Run("Scenario 2", func(t *testing.T) {
-		g := NewGame()
+		g := newTestGame()
 
 		pn_a := g.AddPlayer()
 		g.AddPlayer()
@@ -36,7 +43,7 @@ func TestIntegration_Scenarios(t *testing.T) {
 
 	t.Run("Scenario 3", func(t *testing.T) {
 		var err error
-		g := NewGame()
+		g := newTestGame()
 
 		pn_a := g.AddPlayer()
 		pn_b := g.AddPlayer()
@@ -87,7 +94,7 @@ func TestIntegration_Scenarios(t *testing.T) {
 
 	t.Run("Scenario 4", func(t *testing.T) {
 		var err error
-		g := NewGame()
+		g := newTestGame()
 
 		pn_a := g.AddPlayer()
 		pn_b := g.AddPlayer()
@@ -138,7 +145,7 @@ func TestIntegration_Scenarios(t *testing.T) {
 
 	t.Run("Scenario 5", func(t *testing.T) {
 		var err error
-		g := NewGame()
+		g := newTestGame()
 
 		pn_a := g.AddPlayer()
 		pn_b := g.AddPlayer()
@@ -200,7 +207,7 @@ func TestIntegration_Scenarios(t *testing.T) {
 
 	t.Run("Scenario 6 simple", func(t *testing.T) {
 		var err error
-		g := NewGame()
+		g := newTestGame()
 
 		pn_a := g.AddPlayer()
 		pn_b := g.AddPlayer()
@@ -331,7 +338,7 @@ func TestIntegration_Scenarios(t *testing.T) {
 
 	t.Run("Scenario 7 fold", func(t *testing.T) {
 		var err error
-		g := NewGame()
+		g := newTestGame()
 
 		pn_a := g.AddPlayer()
 		pn_b := g.AddPlayer()
@@ -450,7 +457,7 @@ func TestIntegration_Scenarios(t *testing.T) {
 
 	t.Run("Scenario 8 reraise", func(t *testing.T) {
 		var err error
-		g := NewGame()
+		g := newTestGame()
 
 		pn_a := g.AddPlayer()
 		pn_b := g.AddPlayer()
@@ -574,7 +581,7 @@ func TestIntegration_Scenarios(t *testing.T) {
 
 	})
 	t.Run("Scenario 9 set username", func(t *testing.T) {
-		g := NewGame()
+		g := newTestGame()
 
 		pn_a := g.AddPlayer()
 		g.AddPlayer()
@@ -595,7 +602,7 @@ func TestIntegration_Scenarios(t *testing.T) {
 	})
 
 	t.Run("Scenario 10 set player seatIDs", func(t *testing.T) {
-		g := NewGame()
+		g := newTestGame()
 
 		pn_a := g.AddPlayer()
 		setUsername(g, pn_a, "pn_a")

@@ -18,7 +18,6 @@ func TestGame_GenerateOmniView_Driver(t *testing.T) {
 
 func TestGame_GenerateOmniView(t *testing.T) {
 	type fields struct {
-		mtx            *sync.Mutex
 		DealerNum      uint
 		ActionNum      uint
 		UTGNum         uint
@@ -40,7 +39,6 @@ func TestGame_GenerateOmniView(t *testing.T) {
 		{
 			name: "Basic (empty structs and slices)",
 			fields: fields{
-				mtx:       &sync.Mutex{},
 				DealerNum: 3,
 				ActionNum: 4,
 				UTGNum:    5,
@@ -86,8 +84,6 @@ func TestGame_GenerateOmniView(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			g := &Game{
-				//ignore warning here (the only important functionality is that the mutex is ignored during the deep copy)
-				mtx:            *tt.fields.mtx,
 				dealerNum:      tt.fields.DealerNum,
 				actionNum:      tt.fields.ActionNum,
 				utgNum:         tt.fields.UTGNum,
