@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import Footer from "./Footer";
-import { newPlayer, joinTable } from "../actions/actions";
+import { createTable, joinTable } from "../actions/actions";
 
 function randomTableGen(length: number): string {
     let chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -20,13 +20,11 @@ export default function Join() {
     const [tablename, setTablename] = useState("");
     let invalid = username == "" || tablename == "";
 
-    const handleSubmit = (e: any) => {
+    // the table shows once the server confirms with joined-table
+    const handleSubmit = (e: any, create = false) => {
         e.preventDefault();
-        dispatch({ type: "setUsername", payload: username });
-        dispatch({ type: "setTablename", payload: tablename });
-        if (socket) {
-            joinTable(socket, tablename);
-            newPlayer(socket, username);
+        if (socket && !invalid) {
+            (create ? createTable : joinTable)(socket, tablename, username);
         }
     };
 
@@ -84,20 +82,22 @@ export default function Join() {
                             random
                         </button>
                     </div>
-                    {!invalid && (
-                        <button
-                            className="my-2 rounded-xs bg-cyan-900 px-4 py-2 text-white hover:bg-cyan-800"
-                            onClick={handleSubmit}
-                        >
-                            join
-                        </button>
-                    )}
-                    {invalid && (
-                        <div className="my-2 rounded-xs bg-cyan-800 px-4 py-2 text-gray-200 opacity-40">
-                            join
-                        </div>
-                    )}
+                    <button
+                        className="my-2 mr-2 rounded-xs bg-cyan-900 px-4 py-2 text-white hover:bg-cyan-800 disabled:opacity-40"
+                        disabled={invalid}
+                        onClick={(e) => handleSubmit(e, true)}
+                    >
+                        create
+                    </button>
+                    <button
+                        className="my-2 rounded-xs bg-cyan-900 px-4 py-2 text-white hover:bg-cyan-800 disabled:opacity-40"
+                        disabled={invalid}
+                        onClick={handleSubmit}
+                    >
+                        join
+                    </button>
                 </div>
+                {appState.error && <p className="mt-2 text-red-400">{appState.error}</p>}
             </div>
             <Footer />
         </div>

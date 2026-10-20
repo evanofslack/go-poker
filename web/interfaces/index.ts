@@ -16,6 +16,7 @@ export type AppState = {
     clientID: string | null;
     table: string | null;
     game: Game | null;
+    error: string | null;
 };
 
 export type Card = string;
@@ -51,6 +52,7 @@ export type Game = {
     pots: Pot[];
     minRaise: number;
     readyCount: number;
+    host: string;
 };
 
 export type Config = {

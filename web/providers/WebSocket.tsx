@@ -84,6 +84,7 @@ export function SocketProvider(props: SocketProviderProps) {
                         pots: event.game.pots,
                         minRaise: event.game.minRaise,
                         readyCount: event.game.readyCount,
+                        host: event.host,
                     };
                     dispatch({ type: "updateGame", payload: newGame });
                     return;
@@ -94,6 +95,13 @@ export function SocketProvider(props: SocketProviderProps) {
                         timestamp: event.timestamp,
                     };
                     dispatch({ type: "addLog", payload: errorLog });
+                    dispatch({ type: "setError", payload: event.message });
+                    return;
+                case "joined-table":
+                    dispatch({ type: "setError", payload: null });
+                    dispatch({ type: "setTablename", payload: event.tablename });
+                    dispatch({ type: "updatePlayerID", payload: event.uuid });
+                    dispatch({ type: "setUsername", payload: event.username });
                     return;
                 case "update-player-uuid":
                     dispatch({ type: "updatePlayerID", payload: event.uuid });
