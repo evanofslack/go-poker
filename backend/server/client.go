@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -76,7 +77,7 @@ func (c *Client) readPump() {
 			slog.Default().Warn("Read from websocket", "error", err)
 			break
 		}
-		if err = c.processEvents(message); err != nil {
+		if err = c.safeProcessEvents(message); err != nil {
 			slog.Default().Warn("Process websocket message", "error", err)
 		}
 	}
@@ -139,6 +140,17 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	// new goroutines.
 	go client.writePump()
 	go client.readPump()
+}
+
+// safeProcessEvents recovers from a panic while handling a message, so one bad
+// message cannot take down the server.
+func (c *Client) safeProcessEvents(rawMessage []byte) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic processing message: %v", r)
+		}
+	}()
+	return c.processEvents(rawMessage)
 }
 
 func (c *Client) processEvents(rawMessage []byte) error {
