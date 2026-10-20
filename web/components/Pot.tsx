@@ -1,56 +1,31 @@
-import { Game, Pot as PotType } from "../interfaces/index";
-import { useEffect, useRef, useState, useContext } from "react";
+import { useContext } from "react";
 import { AppContext } from "../providers/AppStore";
+import { potLabel, settledPots } from "../lib/hands";
 
-const initialPot: PotType[] = [
-    {
-        topShare: 0,
-        amount: 0,
-        eligiblePlayerNums: [],
-        winningPlayerNums: [],
-        winningHand: [],
-        winningScore: 0,
-    },
-];
+const chip = "flex h-10 items-center justify-center rounded-full bg-green-900 px-5 text-white";
 
 export default function Pot() {
-    const { appState, dispatch } = useContext(AppContext);
+    const { appState } = useContext(AppContext);
     const game = appState.game;
-    const [stage, setStage] = useState(game?.stage);
-    const [pots, setPots] = useState(initialPot);
-
-    if (!game || !game.pots) {
+    if (!game || !game.running) {
         return null;
     }
 
-    if (game.stage != stage) {
-        setStage(game.stage);
-
-        if (game.stage == 2) {
-            setPots(initialPot);
-        } else {
-            setPots(game.pots);
-        }
+    // between hands, say who won what
+    const settled = settledPots(game);
+    if (settled.length) {
+        return (
+            <div className="flex flex-col items-center gap-1">
+                {settled.map((pot, i) => (
+                    <p key={i} className={chip + " text-lg"}>
+                        {potLabel(game, pot, game.pots.indexOf(pot))}
+                    </p>
+                ))}
+            </div>
+        );
     }
 
-    return (
-        <div>
-            {pots.map((pot, index) => (
-                <div className="flex flex-col" key={index}>
-                    <div className="flex w-full justify-end">
-                        {game.pots[index] && game.pots[index].amount != pot.amount ? (
-                            <p className="text-sm font-normal text-white">
-                                total: {game.pots[index].amount}
-                            </p>
-                        ) : (
-                            <p className="text-sm font-normal text-white">&nbsp;</p>
-                        )}
-                    </div>
-                    <p className="flex h-10 w-24 flex-col items-center justify-center rounded-3xl bg-green-900 text-2xl font-semibold text-white ">
-                        {pot.amount}
-                    </p>
-                </div>
-            ))}
-        </div>
-    );
+    // every chip committed this hand, including the current street
+    const total = game.players.reduce((sum, p) => sum + p.totalBet, 0);
+    return <p className={chip + " min-w-24 text-2xl font-semibold"}>{total}</p>;
 }

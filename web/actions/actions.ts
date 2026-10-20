@@ -88,3 +88,30 @@ export function playerFold(socket: WebSocket) {
         })
     );
 }
+
+// leaveSeat gives up the seat but stays at the table as a spectator
+export function leaveSeat(socket: WebSocket) {
+    socket?.send(
+        JSON.stringify({
+            action: "leave-seat",
+        })
+    );
+}
+
+// sitOut toggles sitting out: right away between hands, or once the current hand ends
+export function sitOut(socket: WebSocket) {
+    socket?.send(
+        JSON.stringify({
+            action: "sit-out",
+        })
+    );
+}
+
+export function rebuy(socket: WebSocket, amount: number) {
+    socket?.send(
+        JSON.stringify({
+            action: "rebuy",
+            amount: amount,
+        })
+    );
+}

@@ -1,8 +1,9 @@
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useState } from "react";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import Footer from "./Footer";
 import { createTable, joinTable } from "../actions/actions";
+import Button from "./Button";
 
 function randomTableGen(length: number): string {
     let chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -21,25 +22,13 @@ export default function Join() {
     let invalid = username == "" || tablename == "";
 
     // the table shows once the server confirms with joined-table
-    const handleSubmit = (e: any, create = false) => {
+    const handleSubmit = (e: React.FormEvent, create = false) => {
         e.preventDefault();
         if (socket && !invalid) {
             (create ? createTable : joinTable)(socket, tablename, username);
         }
     };
 
-    const onKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Enter") {
-            handleSubmit(e);
-        }
-    };
-
-    useEffect(() => {
-        document.addEventListener("keydown", onKeyDown);
-        return () => {
-            document.removeEventListener("keydown", onKeyDown);
-        };
-    }, [onKeyDown]);
 
     const handleUsername = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setUsername(e.target.value);
@@ -53,10 +42,10 @@ export default function Join() {
         <div className="flex min-h-screen flex-col">
             <div className="flex grow flex-col items-center justify-center ">
                 <h1 className="mb-16 text-5xl font-semibold text-white">GoPoker</h1>
-                <div className="flex flex-row">
+                <form className="flex flex-row" onSubmit={handleSubmit}>
                     <input
                         autoFocus
-                        className="m-2 rounded-xs bg-neutral-700 py-2 pl-4 text-white focus:outline-hidden"
+                        className="m-2 rounded-md bg-raised py-2 pl-4 text-white focus:outline-hidden"
                         id="username"
                         type="text"
                         maxLength={20}
@@ -64,10 +53,9 @@ export default function Join() {
                         placeholder="name"
                         onChange={handleUsername}
                     />
-                    <div className=" my-2 mr-2 flex flex-row rounded-xs bg-neutral-700 text-white">
+                    <div className=" my-2 mr-2 flex flex-row rounded-md bg-raised text-white">
                         <input
-                            autoFocus
-                            className="w-28 rounded-xs bg-neutral-700 py-2 pl-4 text-white focus:outline-hidden"
+                            className="w-28 rounded-md bg-raised py-2 pl-4 text-white focus:outline-hidden"
                             id="tablename"
                             type="text"
                             maxLength={32}
@@ -75,29 +63,29 @@ export default function Join() {
                             placeholder="table"
                             onChange={handleTablename}
                         />
-                        <button
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            className="mx-2 my-2 bg-surface px-1 py-1 text-xs"
                             onClick={() => setTablename(randomTableGen(5))}
-                            className="mx-2 my-2 rounded-xs bg-neutral-800 p-1 text-xs text-neutral-500 opacity-80 hover:text-neutral-400"
                         >
                             random
-                        </button>
+                        </Button>
                     </div>
-                    <button
-                        className="my-2 mr-2 rounded-xs bg-cyan-900 px-4 py-2 text-white hover:bg-cyan-800 disabled:opacity-40"
+                    <Button
+                        type="button"
+                        variant="primary"
+                        className="my-2 mr-2"
                         disabled={invalid}
                         onClick={(e) => handleSubmit(e, true)}
                     >
                         create
-                    </button>
-                    <button
-                        className="my-2 rounded-xs bg-cyan-900 px-4 py-2 text-white hover:bg-cyan-800 disabled:opacity-40"
-                        disabled={invalid}
-                        onClick={handleSubmit}
-                    >
+                    </Button>
+                    <Button type="submit" variant="primary" className="my-2" disabled={invalid}>
                         join
-                    </button>
-                </div>
-                {appState.error && <p className="mt-2 text-red-400">{appState.error}</p>}
+                    </Button>
+                </form>
+                {appState.error && <p className="mt-2 text-rose-400">{appState.error}</p>}
             </div>
             <Footer />
         </div>

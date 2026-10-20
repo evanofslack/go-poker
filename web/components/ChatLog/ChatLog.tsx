@@ -15,7 +15,7 @@ export default function ChatLog() {
                 "h-96": expand,
                 "h-36": !expand,
             },
-            "relative flex w-96 flex-col items-start justify-between rounded-tr-lg bg-zinc-700 p-3 text-neutral-400"
+            "relative flex w-96 flex-col items-start justify-between rounded-tr-lg bg-raised p-3 text-muted"
         );
     }
 
@@ -25,7 +25,7 @@ export default function ChatLog() {
                 "opacity-100": active,
                 "opacity-50": !active,
             },
-            " text-neutral-500 border border-zinc-700 border-2 px-4 py-1 bg-zinc-700"
+            " text-subtle border border-raised border-2 px-4 py-1 bg-raised"
         );
     }
 

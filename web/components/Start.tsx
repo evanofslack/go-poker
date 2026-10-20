@@ -3,6 +3,7 @@ import { startGame } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import { Player } from "../interfaces/index";
+import Button from "./Button";
 
 type startProps = {
     players: (Player | null)[];
@@ -26,23 +27,17 @@ export default function Start({ players }: startProps) {
 
     if (!game.running && readyPlayers.length < 2) {
         return (
-            <div
-                className=" m-10 rounded-xs border border-2 border-neutral-400 p-2 px-4 py-2 text-2xl font-light text-neutral-300 opacity-10"
-                title="Must have 2 or more players to start game"
-            >
-                Start
-            </div>
+            <Button className="m-10 text-2xl" title="need 2 or more players to start" disabled>
+                start
+            </Button>
         );
     }
 
     if (!game.running && readyPlayers.length >= 2) {
         return (
-            <button
-                className=" m-10 rounded-xs border border-2 border-neutral-400 p-2 px-4 py-2 text-2xl font-normal text-neutral-300 hover:underline"
-                onClick={() => handleStartGame(socket)}
-            >
-                Start
-            </button>
+            <Button className="m-10 text-2xl" onClick={() => handleStartGame(socket)}>
+                start
+            </Button>
         );
     }
 

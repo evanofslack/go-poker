@@ -128,6 +128,7 @@ export function SocketProvider(props: SocketProviderProps) {
                         minRaise: event.game.minRaise,
                         readyCount: event.game.readyCount,
                         host: event.host,
+                        turnEndsIn: event.turnEndsIn,
                     };
                     dispatch({ type: "updateGame", payload: newGame });
                     return;
@@ -162,9 +163,10 @@ export function SocketProvider(props: SocketProviderProps) {
                     return;
                 }
                 case "update-player-uuid": {
+                    // an empty token means the seat was given up
                     const session = loadSession();
-                    if (session && event.token) {
-                        saveSession({ ...session, token: event.token });
+                    if (session) {
+                        saveSession({ ...session, token: event.token || undefined });
                     }
                     dispatch({ type: "updatePlayerID", payload: event.uuid });
                     return;

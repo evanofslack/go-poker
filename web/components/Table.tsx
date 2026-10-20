@@ -15,7 +15,8 @@ export default function Table({ players, setPlayers }: tableProps) {
 
     // map game players to their visual seats
     useEffect(() => {
-        let updatedPlayers: (Player | null)[] = [...players];
+        // start empty so seats of players who left are cleared
+        let updatedPlayers: (Player | null)[] = players.map(() => null);
         if (game?.players == null) {
             return;
         }

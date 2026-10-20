@@ -141,6 +141,7 @@ func handleResetGame(c *Client) {
 	}
 	c.table.turnSeq++ // cancel the turn timer
 	c.table.game.Reset()
+	clear(c.table.sitOutNext)
 	c.table.send(createNewLog(fmt.Sprintf("%s reset the table", c.username)))
 	broadcastGame(c.table)
 }
@@ -226,6 +227,123 @@ func handleFold(c *Client) {
 	finishAction(c.table, fmt.Sprintf("%s folds", c.username))
 }
 
+// handleLeaveSeat gives up c's seat but keeps c at the table as a spectator.
+// Mid-hand the player is folded on their turn and removed after the hand.
+func handleLeaveSeat(c *Client) {
+	t := c.table
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if !isSeated(c) {
+		sendError(c, "you don't have a seat")
+		return
+	}
+	old := c.id()
+	leaveSeat(t, old)
+	for token, u := range t.tokens {
+		if u == old {
+			delete(t.tokens, token)
+		}
+	}
+	// a fresh uuid makes c a spectator, even while its old player finishes the hand
+	c.uuid.Store(newUUID())
+	c.send <- createUpdatedPlayerUUID(c, "")
+	broadcastGame(t)
+}
+
+// handleSitOut toggles c sitting out. Between hands it takes effect right
+// away, mid-hand once the hand ends.
+func handleSitOut(c *Client) {
+	t := c.table
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	pn, ok := playerNum(c)
+	if !ok {
+		sendError(c, "take a seat first")
+		return
+	}
+	view := t.game.GenerateOmniView()
+	p := view.Players[pn]
+	switch {
+	case t.sitOutNext[p.UUID]:
+		delete(t.sitOutNext, p.UUID)
+		t.send(createNewLog(fmt.Sprintf("%s will play the next hand", p.Username)))
+	case p.Ready && view.Betting:
+		// toggling mid-hand could move the dealer, so wait for the hand to end
+		t.sitOutNext[p.UUID] = true
+		t.send(createNewLog(fmt.Sprintf("%s will sit out the next hand", p.Username)))
+	case p.Ready:
+		if err := poker.ToggleReady(t.game, pn, 0); err != nil {
+			sendError(c, "can't sit out right now")
+			return
+		}
+		t.send(createNewLog(fmt.Sprintf("%s sits out", p.Username)))
+	case p.Stack == 0:
+		sendError(c, "you're out of chips, rebuy first")
+		return
+	default:
+		if err := poker.ToggleReady(t.game, pn, 0); err != nil {
+			sendError(c, "can't sit back in right now")
+			return
+		}
+		t.send(createNewLog(fmt.Sprintf("%s is back", p.Username)))
+		if view.Running && view.Stage == poker.PreDeal {
+			t.scheduleDeal()
+		}
+	}
+	broadcastGame(t)
+}
+
+// applySitOuts sits out players who asked to during the last hand. Only
+// works between hands. Caller holds t.mu.
+func applySitOuts(t *table) {
+	for uuid := range t.sitOutNext {
+		delete(t.sitOutNext, uuid)
+		for pn, p := range t.game.GenerateOmniView().Players {
+			if p.UUID != uuid || !p.Ready {
+				continue // busted players are already out
+			}
+			if err := poker.ToggleReady(t.game, uint(pn), 0); err != nil {
+				slog.Default().Warn("Sit out", "error", err)
+				continue
+			}
+			t.send(createNewLog(fmt.Sprintf("%s sits out", p.Username)))
+		}
+	}
+}
+
+// handleRebuy adds amount to c's stack while c isn't in a hand, and deals a
+// busted player back in.
+func handleRebuy(c *Client, amount uint) {
+	t := c.table
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	pn, ok := playerNum(c)
+	if !ok {
+		sendError(c, "take a seat first")
+		return
+	}
+	view := t.game.GenerateOmniView()
+	p := view.Players[pn]
+	if p.In {
+		sendError(c, "can't rebuy during a hand")
+		return
+	}
+	if err := poker.BuyIn(t.game, pn, amount); err != nil {
+		sendError(c, fmt.Sprintf("rebuy can't take your stack above %d", view.Config.MaxBuy))
+		return
+	}
+	if !p.Ready && p.Stack == 0 {
+		if err := poker.ToggleReady(t.game, pn, 0); err != nil {
+			slog.Default().Warn("Toggle ready after rebuy", "error", err)
+		}
+	}
+	t.send(createNewLog(fmt.Sprintf("%s rebuys for %d", p.Username, amount)))
+	if view.Running && view.Stage == poker.PreDeal {
+		t.scheduleDeal()
+	}
+	broadcastGame(t)
+}
+
 // finishAction logs a successful action and sends the new game state. If the
 // action ended the hand it also logs the winners and deals the next hand
 // after a pause. Caller holds t.mu.
@@ -238,6 +356,7 @@ func finishAction(t *table, msg string) {
 	if view.Stage == poker.PreDeal {
 		logWinners(t, view)
 		removeLeavers(t)
+		applySitOuts(t)
 		t.scheduleDeal()
 	} else {
 		t.startTurnTimer()
@@ -260,7 +379,17 @@ func (t *table) startTurnTimer() {
 	if t.turnTimer != nil {
 		t.turnTimer.Stop()
 	}
+	t.turnDeadline = time.Now().Add(turnTimeout)
 	t.turnTimer = time.AfterFunc(turnTimeout, func() { turnTimedOut(t, seq) })
+}
+
+// turnEndsIn is how many milliseconds the player to act has left, or 0 when
+// nobody is betting. Caller holds t.mu.
+func (t *table) turnEndsIn(view *poker.GameView) int64 {
+	if !view.Betting {
+		return 0
+	}
+	return max(time.Until(t.turnDeadline).Milliseconds(), 0)
 }
 
 // turnTimedOut checks for the player to act if they can, and folds otherwise.
@@ -343,6 +472,7 @@ func removeLeavers(t *table) {
 			t.send(createNewLog(fmt.Sprintf("%s left the table", p.Username)))
 		}
 		delete(t.leaving, uuid)
+		delete(t.sitOutNext, uuid)
 		for token, u := range t.tokens {
 			if u == uuid {
 				delete(t.tokens, token)
@@ -508,12 +638,13 @@ func createNewLog(message string) []byte {
 // broadcastGame sends every client its own view of the game. Caller holds t.mu.
 func broadcastGame(t *table) {
 	u := stateUpdate{byUUID: map[string][]byte{}}
-	players := t.game.GenerateOmniView().Players
+	view := t.game.GenerateOmniView()
 	host := t.hostID()
-	for i, p := range players {
-		u.byUUID[p.UUID] = createUpdatedGame(t.game.GeneratePlayerView(uint(i)), host)
+	endsIn := t.turnEndsIn(view)
+	for i, p := range view.Players {
+		u.byUUID[p.UUID] = createUpdatedGame(t.game.GeneratePlayerView(uint(i)), host, endsIn)
 	}
-	u.spectator = createUpdatedGame(t.game.GeneratePlayerView(uint(len(players))), host)
+	u.spectator = createUpdatedGame(t.game.GeneratePlayerView(uint(len(view.Players))), host, endsIn)
 	select {
 	case t.updates <- u:
 	case <-t.done:
@@ -526,14 +657,16 @@ func createGameView(c *Client) []byte {
 	if !ok {
 		pn = uint(len(c.table.game.GenerateOmniView().Players))
 	}
-	return createUpdatedGame(c.table.game.GeneratePlayerView(pn), c.table.hostID())
+	view := c.table.game.GeneratePlayerView(pn)
+	return createUpdatedGame(view, c.table.hostID(), c.table.turnEndsIn(view))
 }
 
-func createUpdatedGame(view *poker.GameView, host string) []byte {
+func createUpdatedGame(view *poker.GameView, host string, turnEndsIn int64) []byte {
 	game := updateGame{
 		base{actionUpdateGame},
 		view,
 		host,
+		turnEndsIn,
 	}
 
 	resp, err := json.Marshal(game)

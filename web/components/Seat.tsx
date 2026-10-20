@@ -1,8 +1,13 @@
 import { useState, useContext, useEffect } from "react";
 import { AppContext } from "../providers/AppStore";
+import { takeSeat } from "../actions/actions";
+import { useSocket } from "../hooks/useSocket";
 import { Game, Player } from "../interfaces/index";
 import Card from "./Card";
 import BuyIn from "./BuyIn";
+import Countdown from "./Countdown";
+import SeatMenu from "./SeatMenu";
+import { isWinner, winningCards } from "../lib/hands";
 import classNames from "classnames";
 
 type seatProps = {
@@ -26,30 +31,43 @@ function chipPosition(id: number) {
 
 function active(player: Player, game: Game) {
     const action = player.position === game.action;
-    const winner = player.position == game?.pots[game.pots.length - 1]?.winningPlayerNums[0];
+    const out = !player.ready;
+    const winner = isWinner(game, player.position);
     return classNames(
         {
             // betting and player's turn
-            "shadow-[0px_0px_40px_2px_rgba(255,255,255,255.3)] bg-neutral-100 text-zinc-900":
+            "shadow-[0px_0px_40px_2px_rgba(255,255,255,255.3)] bg-zinc-100 text-zinc-900":
                 action && game.betting,
 
             // betting and not player's turn
-            "bg-zinc-900 text-neutral-100": !action && game.betting,
+            "bg-panel text-fg": !action && game.betting,
 
             // betting over and winner
             "shadow-[0px_0px_60px_20px_rgba(100,98,92,255.3)] bg-amber-200 text-zinc-900":
                 winner && !game.betting,
 
             // betting over and not winner
-            "bg-zinc-900 text-neutral-100 ": !winner && !game.betting,
+            "bg-panel text-fg ": !winner && !game.betting,
+
+            // sitting out or out of chips
+            "opacity-50": out && !action && !winner,
         },
 
-        "rounded-xl m-4 h-20 w-56 flex flex-row justify-start items-center z-2"
+        "relative rounded-xl m-4 h-20 w-56 flex flex-row justify-start items-center z-2"
     );
 }
 
+// blind labels the small and big blind seats for the current hand
+function blind(game: Game, position: number) {
+    if (game.stage === 1) return "";
+    if (game.sb === position) return "SB";
+    if (game.bb === position) return "BB";
+    return "";
+}
+
 export default function Seat({ player, id }: seatProps) {
-    const { appState, dispatch } = useContext(AppContext);
+    const socket = useSocket();
+    const { appState } = useContext(AppContext);
     const [sitDown, setSitDown] = useState(false);
 
     const seated = appState.game?.players.some((p) => p.uuid === appState.clientID);
@@ -64,8 +82,10 @@ export default function Seat({ player, id }: seatProps) {
                                 <Card
                                     card={c}
                                     placeholder={false}
-                                    folded={!player.in}
+                                    // everyone is out between hands; cards shown then reached showdown
+                                    folded={!player.in && !(appState.game!.stage === 1 && c)}
                                     hidden={!c}
+                                    highlight={winningCards(appState.game!).has(String(c))}
                                 />
                             </div>
                         ))}
@@ -74,15 +94,33 @@ export default function Seat({ player, id }: seatProps) {
                         <p className="-mb-1 text-lg font-normal">{player.username}</p>
                         <p className="text-lg font-semibold">{player.stack}</p>
                     </div>
+                    {!player.ready && (
+                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-zinc-600 px-2 text-xs whitespace-nowrap text-fg">
+                            {player.stack > 0 ? "sitting out" : "out of chips"}
+                        </span>
+                    )}
+                    {player.uuid === appState.clientID && (
+                        <SeatMenu player={player} game={appState.game} />
+                    )}
+                    {appState.game.betting &&
+                        appState.game.action === player.position &&
+                        appState.game.turnEndsIn > 0 && (
+                            <Countdown endsIn={appState.game.turnEndsIn} />
+                        )}
                 </div>
                 <div className={chipPosition(id)}>
                     {appState.game.running && appState.game.dealer == player.position && (
-                        <div className="mx-3 my-3 flex h-7 w-8 items-center justify-center rounded-[50%] bg-white text-xl font-bold text-purple-800">
+                        <div className="mx-3 my-3 flex h-7 w-8 items-center justify-center rounded-full bg-white text-xl font-bold text-purple-800">
                             D
                         </div>
                     )}
+                    {appState.game.running && blind(appState.game, player.position) && (
+                        <div className="mr-3 flex h-7 items-center justify-center rounded-full bg-zinc-300 px-2 text-sm font-bold text-zinc-800">
+                            {blind(appState.game, player.position)}
+                        </div>
+                    )}
                     {player.bet !== 0 && (
-                        <p className=" flex h-8 w-12 items-center justify-center rounded-3xl bg-amber-300 text-xl font-semibold text-zinc-900">
+                        <p className=" flex h-8 w-12 items-center justify-center rounded-full bg-amber-300 text-xl font-semibold text-zinc-900">
                             {player.bet}
                         </p>
                     )}
@@ -90,26 +128,39 @@ export default function Seat({ player, id }: seatProps) {
             </div>
         );
         // player already sat down, and this seat does not belong to them
-    } else if (seated && !appState.game?.running) {
+    } else if (seated && appState.game?.running) {
+        return <div></div>;
+    } else if (seated) {
         return (
             <div>
-                <button className="m-4 h-20 w-56 rounded-2xl bg-neutral-700 p-2 text-neutral-400 opacity-20">
+                <button className="m-4 h-20 w-56 rounded-xl bg-raised p-2 text-muted opacity-20">
                     <h2 className="text-4xl">{id}</h2>
                 </button>
             </div>
         );
-        // player has not yet sat down, all seats are open
-    } else if (!appState.game?.running) {
+        // player has not yet sat down, all seats are open, even mid-hand
+    } else {
         return (
             <div>
-                {sitDown && (
-                    <div className="m-4 h-20 w-56 rounded-2xl bg-neutral-700 text-neutral-100">
-                        <BuyIn seatID={id} sitDown={sitDown} setSitDown={setSitDown} />
+                {sitDown && appState.game && (
+                    <div className="m-4 h-20 w-56 rounded-xl bg-raised text-fg">
+                        <BuyIn
+                            max={appState.game.config.maxBuy}
+                            initial={100 * appState.game.config.bb}
+                            label="sit down"
+                            onSubmit={(amount) => {
+                                if (socket && appState.username) {
+                                    takeSeat(socket, appState.username, id, amount);
+                                }
+                                setSitDown(false);
+                            }}
+                            onCancel={() => setSitDown(false)}
+                        />
                     </div>
                 )}
                 {!sitDown && (
                     <button
-                        className="m-4 h-20 w-56 rounded-2xl bg-neutral-700 p-2 text-neutral-100"
+                        className="m-4 h-20 w-56 rounded-xl bg-raised p-2 text-fg"
                         onClick={() => setSitDown(!sitDown)}
                     >
                         <h2 className="text-4xl">{id}</h2>
@@ -118,7 +169,5 @@ export default function Seat({ player, id }: seatProps) {
                 )}
             </div>
         );
-    } else {
-        return <div></div>;
     }
 }
