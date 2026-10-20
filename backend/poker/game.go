@@ -125,7 +125,8 @@ func (g *Game) readyCount() uint {
 }
 
 func (g *Game) isCalled(pn uint) bool {
-	return g.players[pn].allIn() || (g.players[pn].Called)
+	// Called players still owe chips if a short all-in raised the bet after they acted
+	return g.players[pn].allIn() || (g.players[pn].Called && g.players[pn].Bet == g.toCall())
 }
 
 // Returns nil if there are more than 2 players ready, ErrIllegalAction otherwise

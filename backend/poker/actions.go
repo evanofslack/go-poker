@@ -59,14 +59,22 @@ func bet(g *Game, pn uint, data uint) error {
 		//You can always go all-in
 		betLegalError = nil
 	} else if betVal < (minBet - p.Bet) {
-		//Not calling the minimum needed
-		betLegalError = ErrIllegalAction
+		//Not calling the minimum needed, which is only legal all-in
+		if betVal != p.Stack {
+			betLegalError = ErrIllegalAction
+		}
 	} else if betVal == (minBet - p.Bet) {
 		//Calling exactly
 		betLegalError = nil
-	} else if betVal < (minBet + g.minRaise - p.Bet) {
-		// More than calling, but less than minimum raise
+	} else if p.Called {
+		// Already acted, and a short all-in doesn't reopen betting, so can only call
 		betLegalError = ErrIllegalAction
+	} else if betVal < (minBet + g.minRaise - p.Bet) {
+		// More than calling, but less than minimum raise, which is only legal all-in.
+		// It is not a full raise, so it does not reopen betting.
+		if betVal != p.Stack {
+			betLegalError = ErrIllegalAction
+		}
 	} else {
 		// More than calling, and at least the minimum raise
 		betLegalError = nil
