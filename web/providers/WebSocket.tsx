@@ -1,4 +1,4 @@
-import { createContext, ReactChild, useEffect, useState, useContext } from "react";
+import { createContext, ReactNode, useEffect, useState, useContext } from "react";
 import { AppContext } from "../providers/AppStore";
 import { Message, Game, Log } from "../interfaces";
 
@@ -11,7 +11,7 @@ dispatches websocket messages to update the central state store.
 export const SocketContext = createContext<WebSocket | null>(null);
 
 type SocketProviderProps = {
-    children: ReactChild;
+    children: ReactNode;
 };
 
 export function SocketProvider(props: SocketProviderProps) {

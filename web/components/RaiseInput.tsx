@@ -3,7 +3,6 @@ import { AppContext } from "../providers/AppStore";
 import { playerRaise, sendLog } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import InputButton from "./InputButton";
-import { Slider } from "@mantine/core";
 import classNames from "classnames";
 
 type raiseProps = {
@@ -12,7 +11,7 @@ type raiseProps = {
 };
 function button() {
     return classNames(
-        "mx-0.5 my-1.5 rounded-sm  border border-2 border-zinc-600  p-2 text-neutral-200 hover:bg-zinc-600 font-light"
+        "mx-0.5 my-1.5 rounded-xs  border border-2 border-zinc-600  p-2 text-neutral-200 hover:bg-zinc-600 font-light"
     );
 }
 
@@ -81,13 +80,13 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
         <div className="flex flex-row items-end p-6">
             <input
                 autoFocus
-                className="mx-1 w-24 rounded-sm border border-2 border-zinc-600 bg-zinc-800 p-2 text-2xl font-normal text-neutral-200 focus:outline-none"
+                className="mx-1 w-24 rounded-xs border border-2 border-zinc-600 bg-zinc-800 p-2 text-2xl font-normal text-neutral-200 focus:outline-hidden"
                 id="input"
                 type="text"
                 value={inputValue ? inputValue : ""}
                 onChange={handleChange}
             />
-            <div className="mx-1 flex flex-col items-center justify-center rounded-sm border border-2 border-zinc-600 px-2">
+            <div className="mx-1 flex flex-col items-center justify-center rounded-xs border border-2 border-zinc-600 px-2">
                 <div className="flex flex-row items-center justify-between">
                     <button
                         className={button()}
@@ -135,16 +134,14 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
                     </button>
                 </div>
                 <div className="w-64 pb-2">
-                    <Slider
+                    <input
+                        type="range"
+                        className="w-full cursor-pointer accent-neutral-400"
                         value={inputValue}
-                        onChange={setInputValue}
+                        onChange={handleChange}
                         min={minRaise}
                         max={currentStack + currentBet}
                         step={1}
-                        color="gray"
-                        showLabelOnHover={false}
-                        size="md"
-                        radius="xs"
                     />
                 </div>
             </div>

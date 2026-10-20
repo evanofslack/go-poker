@@ -2,8 +2,10 @@
 module.exports = {
     output: 'export',
     reactStrictMode: true,
+    turbopack: {
+        root: __dirname,
+    },
     images: {
-        domains: [],
         unoptimized: true,
     },
 };
