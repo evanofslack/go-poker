@@ -53,6 +53,7 @@ export type Game = {
     minRaise: number;
     readyCount: number;
     host: string;
+    turnEndsIn: number; // ms until the player to act times out, 0 when not betting
 };
 
 export type Config = {
