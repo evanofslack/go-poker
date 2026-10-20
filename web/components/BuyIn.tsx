@@ -35,7 +35,7 @@ export default function BuyIn({ seatID, sitDown, setSitDown }: buyInProps) {
                 <p>Buy In: </p>
                 <input
                     autoFocus
-                    className="ml-4 mr-2 w-20 rounded-xs bg-neutral-500 p-1 text-white focus:outline-hidden"
+                    className="ml-4 mr-2 w-20 rounded-md bg-zinc-600 p-1 text-white focus:outline-hidden"
                     id="buyIn"
                     type="number"
                     value={buyIn}

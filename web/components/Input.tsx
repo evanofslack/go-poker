@@ -2,7 +2,7 @@ import { useState, useContext } from "react";
 import { AppContext } from "../providers/AppStore";
 import { playerCall, playerCheck, playerFold } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
-import InputButton from "./InputButton";
+import Button from "./Button";
 import RaiseInput from "./RaiseInput";
 
 export default function Input() {
@@ -44,48 +44,76 @@ export default function Input() {
         }
         return (
             <div className="flex flex-row p-6">
-                <InputButton
-                    action={() => handleCall(appState.username, callAmount)}
-                    title={canCall ? "call" : "call (" + callAmount + ")"}
+                <Button
+                    variant="primary"
+                    className="mx-1 text-xl"
+                    onClick={() => handleCall(appState.username, callAmount)}
                     disabled={canCall}
-                />
-                <InputButton
-                    action={() => setShowRaise(!showRaise)}
-                    title={"bet"}
+                >
+                    {canCall ? "call" : "call (" + callAmount + ")"}
+                </Button>
+                <Button
+                    variant="primary"
+                    className="mx-1 text-xl"
+                    onClick={() => setShowRaise(!showRaise)}
                     disabled={false}
-                />
-                <InputButton
-                    action={() => handleCheck(appState.username)}
-                    title={"check"}
+                >
+                    bet
+                </Button>
+                <Button
+                    variant="primary"
+                    className="mx-1 text-xl"
+                    onClick={() => handleCheck(appState.username)}
                     disabled={!canCheck}
-                />
-                <InputButton
-                    action={() => handleFold(appState.username)}
-                    title={"fold"}
+                >
+                    check
+                </Button>
+                <Button
+                    variant="danger"
+                    className="mx-1 text-xl"
+                    onClick={() => handleFold(appState.username)}
                     disabled={false}
-                />
+                >
+                    fold
+                </Button>
             </div>
         );
     }
 
     return (
         <div className="flex flex-row p-6">
-            <InputButton
-                action={() => handleCall(appState.username, callAmount)}
-                title={canCall ? "call" : "call (" + callAmount + ")"}
+            <Button
+                variant="primary"
+                className="mx-1 text-xl"
+                onClick={() => handleCall(appState.username, callAmount)}
                 disabled={true}
-            />
-            <InputButton action={() => setShowRaise(!showRaise)} title={"bet"} disabled={true} />
-            <InputButton
-                action={() => handleCheck(appState.username)}
-                title={"check"}
+            >
+                {canCall ? "call" : "call (" + callAmount + ")"}
+            </Button>
+            <Button
+                variant="primary"
+                className="mx-1 text-xl"
+                onClick={() => setShowRaise(!showRaise)}
                 disabled={true}
-            />
-            <InputButton
-                action={() => handleFold(appState.username)}
-                title={"fold"}
+            >
+                bet
+            </Button>
+            <Button
+                variant="primary"
+                className="mx-1 text-xl"
+                onClick={() => handleCheck(appState.username)}
                 disabled={true}
-            />
+            >
+                check
+            </Button>
+            <Button
+                variant="danger"
+                className="mx-1 text-xl"
+                onClick={() => handleFold(appState.username)}
+                disabled={true}
+            >
+                fold
+            </Button>
         </div>
     );
 }

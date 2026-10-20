@@ -8,7 +8,7 @@ export default function Log() {
     const scrollRef = useChatScroll(appState.logs);
 
     return (
-        <div ref={scrollRef} className=" h-full w-full overflow-auto bg-zinc-800 p-2">
+        <div ref={scrollRef} className=" h-full w-full overflow-auto bg-surface p-2">
             {appState.logs.map((log, index) => (
                 <LogMessage key={index} message={log.message} timestamp={log.timestamp} />
             ))}

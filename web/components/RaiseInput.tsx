@@ -2,7 +2,7 @@ import { useState, useContext, useEffect, useCallback } from "react";
 import { AppContext } from "../providers/AppStore";
 import { playerRaise } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
-import InputButton from "./InputButton";
+import Button from "./Button";
 import classNames from "classnames";
 
 type raiseProps = {
@@ -11,7 +11,7 @@ type raiseProps = {
 };
 function button() {
     return classNames(
-        "mx-0.5 my-1.5 rounded-xs  border border-2 border-zinc-600  p-2 text-neutral-200 hover:bg-zinc-600 font-light"
+        "mx-0.5 my-1.5 rounded-md  border-2 border-zinc-600  p-2 text-fg hover:bg-zinc-600 font-light"
     );
 }
 
@@ -82,13 +82,13 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
         <div className="flex flex-row items-end p-6">
             <input
                 autoFocus
-                className="mx-1 w-24 rounded-xs border border-2 border-zinc-600 bg-zinc-800 p-2 text-2xl font-normal text-neutral-200 focus:outline-hidden"
+                className="mx-1 w-24 rounded-md border-2 border-zinc-600 bg-surface p-2 text-2xl font-normal text-fg focus:outline-hidden"
                 id="input"
                 type="text"
                 value={inputValue ? inputValue : ""}
                 onChange={handleChange}
             />
-            <div className="mx-1 flex flex-col items-center justify-center rounded-xs border border-2 border-zinc-600 px-2">
+            <div className="mx-1 flex flex-col items-center justify-center rounded-md border-2 border-zinc-600 px-2">
                 <div className="flex flex-row items-center justify-between">
                     <button
                         className={button()}
@@ -138,7 +138,7 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
                 <div className="w-64 pb-2">
                     <input
                         type="range"
-                        className="w-full cursor-pointer accent-neutral-400"
+                        className="w-full cursor-pointer accent-zinc-400"
                         value={inputValue}
                         onChange={handleChange}
                         min={minRaise}
@@ -147,12 +147,22 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
                     />
                 </div>
             </div>
-            <InputButton
-                action={() => handleRaise(appState.username, inputValue - currentBet)}
-                title={"bet"}
+            <Button
+                variant="primary"
+                className="mx-1 text-xl"
+                onClick={() => handleRaise(appState.username, inputValue - currentBet)}
                 disabled={inputValue < minRaise || inputValue > currentStack + currentBet}
-            />
-            <InputButton action={() => setShowRaise(!showRaise)} title={"close"} disabled={false} />
+            >
+                bet
+            </Button>
+            <Button
+                variant="secondary"
+                className="mx-1 text-xl"
+                onClick={() => setShowRaise(!showRaise)}
+                disabled={false}
+            >
+                close
+            </Button>
         </div>
     );
 }

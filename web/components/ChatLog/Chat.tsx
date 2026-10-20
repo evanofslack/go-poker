@@ -5,6 +5,7 @@ import { AppContext } from "../../providers/AppStore";
 import useChatScroll from "../../hooks/useChatScroll";
 import { FiSend } from "react-icons/fi";
 import { sendMessage } from "../../actions/actions";
+import Button from "../Button";
 
 export default function Chat() {
     const socket = useSocket();
@@ -45,7 +46,7 @@ export default function Chat() {
 
     return (
         <div className="flex h-full w-full grow flex-col overflow-auto">
-            <div ref={scrollRef} className="mb-2 h-full overflow-auto bg-zinc-800 p-2">
+            <div ref={scrollRef} className="mb-2 h-full overflow-auto bg-surface p-2">
                 {appState.messages.map((message, index) => (
                     <ChatMessage
                         key={index}
@@ -55,9 +56,9 @@ export default function Chat() {
                     />
                 ))}
             </div>
-            <div className="flex w-full flex-row justify-between text-neutral-400">
+            <div className="flex w-full flex-row justify-between text-muted">
                 <input
-                    className="w-full bg-zinc-800 p-2 text-neutral-400 placeholder-neutral-600"
+                    className="w-full bg-surface p-2 text-muted placeholder-zinc-600"
                     id="input"
                     type="text"
                     maxLength={200}
@@ -66,9 +67,9 @@ export default function Chat() {
                     onChange={handleChange}
                     ref={messageRef}
                 ></input>
-                <button className=" bg-zinc-800 px-4 text-neutral-400" onClick={handleClick}>
+                <Button variant="ghost" className="bg-surface" onClick={handleClick}>
                     <FiSend />
-                </button>
+                </Button>
             </div>
         </div>
     );

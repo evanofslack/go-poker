@@ -2,6 +2,7 @@ import { useContext } from "react";
 import { resetGame } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
+import Button from "./Button";
 
 export default function Reset() {
     const socket = useSocket();
@@ -12,11 +13,8 @@ export default function Reset() {
         return null;
     }
     return (
-        <button
-            className="m-2 p-2 text-zinc-800 hover:text-zinc-700"
-            onClick={() => resetGame(socket)}
-        >
+        <Button variant="ghost" className="m-2" onClick={() => resetGame(socket)}>
             reset
-        </button>
+        </Button>
     );
 }

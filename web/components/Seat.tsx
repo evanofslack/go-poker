@@ -30,18 +30,18 @@ function active(player: Player, game: Game) {
     return classNames(
         {
             // betting and player's turn
-            "shadow-[0px_0px_40px_2px_rgba(255,255,255,255.3)] bg-neutral-100 text-zinc-900":
+            "shadow-[0px_0px_40px_2px_rgba(255,255,255,255.3)] bg-zinc-100 text-zinc-900":
                 action && game.betting,
 
             // betting and not player's turn
-            "bg-zinc-900 text-neutral-100": !action && game.betting,
+            "bg-panel text-fg": !action && game.betting,
 
             // betting over and winner
             "shadow-[0px_0px_60px_20px_rgba(100,98,92,255.3)] bg-amber-200 text-zinc-900":
                 winner && !game.betting,
 
             // betting over and not winner
-            "bg-zinc-900 text-neutral-100 ": !winner && !game.betting,
+            "bg-panel text-fg ": !winner && !game.betting,
         },
 
         "rounded-xl m-4 h-20 w-56 flex flex-row justify-start items-center z-2"
@@ -77,12 +77,12 @@ export default function Seat({ player, id }: seatProps) {
                 </div>
                 <div className={chipPosition(id)}>
                     {appState.game.running && appState.game.dealer == player.position && (
-                        <div className="mx-3 my-3 flex h-7 w-8 items-center justify-center rounded-[50%] bg-white text-xl font-bold text-purple-800">
+                        <div className="mx-3 my-3 flex h-7 w-8 items-center justify-center rounded-full bg-white text-xl font-bold text-purple-800">
                             D
                         </div>
                     )}
                     {player.bet !== 0 && (
-                        <p className=" flex h-8 w-12 items-center justify-center rounded-3xl bg-amber-300 text-xl font-semibold text-zinc-900">
+                        <p className=" flex h-8 w-12 items-center justify-center rounded-full bg-amber-300 text-xl font-semibold text-zinc-900">
                             {player.bet}
                         </p>
                     )}
@@ -93,7 +93,7 @@ export default function Seat({ player, id }: seatProps) {
     } else if (seated && !appState.game?.running) {
         return (
             <div>
-                <button className="m-4 h-20 w-56 rounded-2xl bg-neutral-700 p-2 text-neutral-400 opacity-20">
+                <button className="m-4 h-20 w-56 rounded-xl bg-raised p-2 text-muted opacity-20">
                     <h2 className="text-4xl">{id}</h2>
                 </button>
             </div>
@@ -103,13 +103,13 @@ export default function Seat({ player, id }: seatProps) {
         return (
             <div>
                 {sitDown && (
-                    <div className="m-4 h-20 w-56 rounded-2xl bg-neutral-700 text-neutral-100">
+                    <div className="m-4 h-20 w-56 rounded-xl bg-raised text-fg">
                         <BuyIn seatID={id} sitDown={sitDown} setSitDown={setSitDown} />
                     </div>
                 )}
                 {!sitDown && (
                     <button
-                        className="m-4 h-20 w-56 rounded-2xl bg-neutral-700 p-2 text-neutral-100"
+                        className="m-4 h-20 w-56 rounded-xl bg-raised p-2 text-fg"
                         onClick={() => setSitDown(!sitDown)}
                     >
                         <h2 className="text-4xl">{id}</h2>

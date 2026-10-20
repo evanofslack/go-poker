@@ -87,7 +87,7 @@ export default function Card({ card, placeholder, folded, hidden }: cardProps) {
         return (
             <div
                 className={
-                    "flex h-24 w-16 items-center justify-center rounded-md border-4 border border-white bg-red-900"
+                    "flex h-24 w-16 items-center justify-center rounded-md border-4 border-white bg-red-900"
                 }
             ></div>
         );
