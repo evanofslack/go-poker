@@ -3,7 +3,7 @@
 | Stage | Theme | Status |
 |---|---|---|
 | 1 | Security | done |
-| 2 | Game correctness and cheating | in progress |
+| 2 | Game correctness and cheating | done |
 | 3 | Upgrades | done |
 | 4 | Core play experience | planned |
 | 5 | Host and table features | planned |
@@ -31,7 +31,7 @@ Roughly in priority order. Split into small PRs: one per section is a reasonable
 
 ## 2.1 Hidden information (cheating)
 
-- [ ] **Stop sending every player's hole cards to every client.**
+- [x] **Stop sending every player's hole cards to every client.**
   `createUpdatedGame` (`backend/server/events.go`) broadcasts `GenerateOmniView()`, which hides nothing.
   The frontend only hides other players' cards visually (`web/components/Seat.tsx`), so DevTools shows every hand.
   - Send each client its own view via `GeneratePlayerView(pn)` (`backend/poker/views.go`), which already exists.
@@ -43,32 +43,32 @@ Roughly in priority order. Split into small PRs: one per section is a reasonable
 
 ## 2.2 Identity: act only as your own seat (cheating)
 
-- [ ] **Link each connection to its player and reject actions out of turn.**
+- [x] **Link each connection to its player and reject actions out of turn.**
   `handleCall`/`handleRaise`/`handleCheck`/`handleFold` act for `view.ActionNum`, i.e. whoever's turn it is,
   so any client (even a spectator) can bet or fold for someone else.
   - `c.uuid` is already set to the player's UUID on take-seat. Look up the player index by UUID
     (indexes change when `setSeatID` re-sorts players) and require it to equal `ActionNum`.
   - Spectators (connected but not seated) can't send any game action. Cover this explicitly in server tests.
-- [ ] **Host role** for start/deal/reset (currently any seated player can reset the table).
+- [x] **Host role** for start/deal/reset (currently any seated player can reset the table).
   Decided: the player who creates the table is host. Split create-table from join-table.
   Start and deal don't need the host; reset does.
-- [ ] **Reserved names:** reject `system` (`gameAdminName`) and names already used at the table, so nobody
+- [x] **Reserved names:** reject `system` (`gameAdminName`) and names already used at the table, so nobody
   can impersonate the server or another player in chat. Decided: case-insensitive, spectators included.
 - [x] **Chat limits:** cap message length and rate per client server-side. (#19)
 - [x] Chat uses the server-side username, not one from the message. (#19)
-- [ ] Optional: let a player choose a username once per connection (`new-player` can be re-sent today).
+- [x] Optional: let a player choose a username once per connection (`new-player` can be re-sent today).
 
 ## 2.3 Server-owned log and hand lifecycle (cheating)
 
-- [ ] **Remove client `send-log`.** The browser writes the game log ("alice bets 50") and the server relays it,
+- [x] **Remove client `send-log`.** The browser writes the game log ("alice bets 50") and the server relays it,
   so the log can be faked. Generate log lines in the server handlers after an action succeeds instead.
   - Client call sites to remove: `RaiseInput.tsx`, `Table.tsx`, `BuyIn.tsx`, `Input.tsx` (call/check/fold).
   - Drop `actionSendLog` from `backend/server/client.go` and `messages.go`.
-- [ ] **Server drives the next hand.** Every browser runs its own 5s timer after showdown and sends
+- [x] **Server drives the next hand.** Every browser runs its own 5s timer after showdown and sends
   `deal-game`, and every browser sends the "X wins N" log (`web/components/Table.tsx`), so a 6-player table
   gets 6 deals and 6 win logs. Move the showdown pause and auto-deal to a timer on the table goroutine;
   the client just renders. The turn timer in 2.4 uses the same mechanism.
-- [ ] **Report action errors back to the client** as a typed event (seat taken, bad buy-in, not your turn,
+- [x] **Report action errors back to the client** as a typed event (seat taken, bad buy-in, not your turn,
   invalid bet). Today a rejected action is only logged on the server.
 
 ## 2.4 Disconnects, leaving, and reconnecting
@@ -76,53 +76,53 @@ Roughly in priority order. Split into small PRs: one per section is a reasonable
 Moved up from last place: a closed tab breaks almost every casual session. Depends on 2.2 (identity) and
 2.3 (server timers).
 
-- [ ] **A closed tab blocks the table forever.** Disconnect removes the client but the player stays in the game,
+- [x] **A closed tab blocks the table forever.** Disconnect removes the client but the player stays in the game,
   and the hand waits on them. Nothing calls `poker.Leave`.
   - On disconnect/leave-table: fold if it's their turn or they're in the hand, then mark them left/not-ready.
   - Remove left players' seats between hands.
-- [ ] **Turn timer** so an idle player can't stall the table. Decided: 30s, auto-check if possible, else fold.
-- [ ] **Reconnect.** Issue a session token on take-seat; the client stores it and re-presents it on reconnect
+- [x] **Turn timer** so an idle player can't stall the table. Decided: 30s, auto-check if possible, else fold.
+- [x] **Reconnect.** Issue a session token on take-seat; the client stores it and re-presents it on reconnect
   to reclaim the seat within a grace period. Design together with 2.2's connection-to-player link.
   Decided: 60s grace period, token in sessionStorage.
-- [ ] Client auto-reconnects with backoff (`web/providers/WebSocket.tsx`) and rejoins its table.
+- [x] Client auto-reconnects with backoff (`web/providers/WebSocket.tsx`) and rejoins its table.
 
 ## 2.5 Engine bugs (confirmed with tests, not yet fixed)
 
-- [ ] **A short stack can't call an all-in for less.** `bet()` (`backend/poker/actions.go`) rejects
+- [x] **A short stack can't call an all-in for less.** `bet()` (`backend/poker/actions.go`) rejects
   `betVal < minBet - p.Bet` even when `betVal` is the player's whole stack. The frontend caps the call at
   the stack, so the player is stuck and can only fold. Allow a bet equal to the remaining stack (all-in) for
   less than the call, and for less than a min-raise.
-- [ ] **Busted players stay `In`.** `resetForNextHand` (`backend/poker/game.go`) marks players with no chips
+- [x] **Busted players stay `In`.** `resetForNextHand` (`backend/poker/game.go`) marks players with no chips
   as not ready but leaves `In = true`, and `deal` only sets `In` for ready players. Busted players then count
   toward `inPlayerNums`, which affects when a hand ends. Reset `In` (and `Called`) for everyone at the end of a hand.
-- [ ] **Sitting down mid-hand reorders players.** `setSeatID` sorts `g.players` by seat, so `actionNum`,
+- [x] **Sitting down mid-hand reorders players.** `setSeatID` sorts `g.players` by seat, so `actionNum`,
   `dealerNum`, `sbNum`, `bbNum` now point at different people. Only allow seating between hands
   (or seat new players as not-ready and re-sort only at `PreDeal`). Decided: sit out until the next hand.
-- [ ] **Split pots lose odd chips** (`updateRoundInfo`: "fractional money will disappear"). Give the
+- [x] **Split pots lose odd chips** (`updateRoundInfo`: "fractional money will disappear"). Give the
   remainder to the first winner left of the dealer.
-- [ ] **Infinite loop guard** (from 2.6, cheap enough to do here): `resetForNextHand` and `updateBlindNums`
+- [x] **Infinite loop guard** (from 2.6, cheap enough to do here): `resetForNextHand` and `updateBlindNums`
   loop `for !players[i].Ready` with no exit, so they hang forever if nobody is ready (holding the table lock).
   Guard like `toggleReady` now does.
 
 ## 2.6 Engine robustness (from reading the code, not yet proven)
 
-- [ ] Everyone all-in but one: betting still opens each street (TODO in `deal`). Run the board out instead.
-- [ ] `handleCall` (`events.go`) computes the call from `TotalBet` (whole hand) while `bet()` uses `Bet`
+- [x] Everyone all-in but one: betting still opens each street (TODO in `deal`). Run the board out instead.
+- [x] `handleCall` (`events.go`) computes the call from `TotalBet` (whole hand) while `bet()` uses `Bet`
   (this street). Equivalent in practice today, but use the same source of truth.
-- [ ] `Start()` refuses if any seated player isn't ready. A not-ready player should just sit the hand out.
+- [x] `Start()` refuses if any seated player isn't ready. A not-ready player should just sit the hand out.
 
 ## 2.7 Frontend fixes noted along the way
 
-- [ ] **Buy-in config name mismatch:** frontend reads `config.maxBuyIn` (`web/components/BuyIn.tsx`,
+- [x] **Buy-in config name mismatch:** frontend reads `config.maxBuyIn` (`web/components/BuyIn.tsx`,
   `web/interfaces/index.ts`), server sends `maxBuy`. Fixing it changes the default buy-in from 2000 to the
   10000 cap, so pick a sensible default at the same time. Decided: 100 big blinds.
-- [ ] **Hooks after an early return** in `RaiseInput.tsx` (`useState`/`useCallback` after
+- [x] **Hooks after an early return** in `RaiseInput.tsx` (`useState`/`useCallback` after
   `if (!appState.game) return null`). Breaks React's rules of hooks; move the hooks above the return.
   Also in `Pot.tsx`.
-- [ ] **Websocket cleanup is a no-op** in `web/providers/WebSocket.tsx`: the effect cleanup closes a stale
+- [x] **Websocket cleanup is a no-op** in `web/providers/WebSocket.tsx`: the effect cleanup closes a stale
   `socket` (always null), so strict mode in dev opens two sockets. Close `_socket` instead.
-- [ ] Show server-side errors from 2.3 to the user (seat taken, bad buy-in, not your turn).
-- [ ] `npm run start` (`next start`) doesn't work with `output: 'export'`; remove the script.
+- [x] Show server-side errors from 2.3 to the user (seat taken, bad buy-in, not your turn).
+- [x] `npm run start` (`next start`) doesn't work with `output: 'export'`; remove the script.
 
 ## Stage 2 testing
 
@@ -150,12 +150,12 @@ Consider the light token pass from 6.1 first so new components aren't restyled t
   `getWinner` only reads `winningPlayerNums[0]` of the last pot.
 - [ ] **Table markers:** SB/BB chips next to the dealer button.
 - [ ] **Turn notification:** sound and/or tab title flash when it's your turn; show the 2.4 turn timer
-  as a countdown on the active seat.
+  as a countdown on the active seat. The server doesn't send the turn deadline yet; add it to `update-game`.
 - [ ] **Buy-in UX** (`web/components/BuyIn.tsx`): show min/max, validate, a labeled confirm button instead of
   a lone checkmark.
 - [ ] **Leave seat / sit out / rebuy** buttons (uses 2.4 engine work).
-- [ ] **Join form** (`web/components/Join.tsx`): disable the join button instead of swapping elements, one
-  `autoFocus`, use a real `<form onSubmit>` instead of a document-wide `keydown` listener.
+- [ ] **Join form** (`web/components/Join.tsx`): one `autoFocus`, use a real `<form onSubmit>` instead of a
+  document-wide `keydown` listener. (Create/join buttons and disabling are done.)
 
 # Stage 5: host and table features
 
@@ -167,7 +167,7 @@ Needs the host role from 2.2.
   private/password tables. `GameConfig` is currently fixed at creation.
 - [ ] **Seat management:** kick a player, sit a player out, optionally approve buy-ins/rebuys.
 - [ ] **Pause/resume** the game.
-- [ ] **Confirm before reset**, and make reset host-only (today it's a faint top-left link that wipes the table).
+- [ ] **Confirm before reset** (reset is already host-only; it's still a faint top-left link that wipes the table).
 - [ ] **End session with a ledger:** net result per player (buy-ins vs final stack), copyable.
 - [ ] **Spectator mode** made explicit in the UI ("watching", count of spectators).
 
