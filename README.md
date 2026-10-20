@@ -50,8 +50,15 @@ Set `ALLOWED_ORIGINS` (comma separated) to allow websockets from other origins, 
 
 ## development
 
-Can run application built from local code
+Run the go server and next dev server with hot reload (needs go and node):
 
 ```bash
-docker-compose -f dev/docker-compose.yaml up --build
+cd web && npm install && cd ..
+make start
+```
+
+Then open http://localhost:3000. Or build and run the production image from local code:
+
+```bash
+docker compose -f docker-compose-dev.yaml up --build
 ```
