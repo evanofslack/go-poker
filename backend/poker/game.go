@@ -455,5 +455,6 @@ func (g *Game) Reset() {
 func (g *Game) AddPlayer() uint {
 	g.players = append(g.players, player{})
 	g.players[len(g.players)-1].initialize()
+	g.players[len(g.players)-1].Position = uint(len(g.players) - 1)
 	return uint(len(g.players) - 1)
 }

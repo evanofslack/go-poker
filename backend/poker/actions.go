@@ -172,15 +172,7 @@ func setSeatID(g *Game, pn uint, data uint) error {
 	p := g.getPlayer(pn)
 	p.SeatID = data
 
-	// rearrange player order to match positions
-	sort.Slice(g.players, func(i, j int) bool {
-		return g.players[i].SeatID < g.players[j].SeatID
-	})
-
-	// update player position
-	for i := range g.players {
-		g.players[i].Position = uint(i)
-	}
+	// players are sorted by seat at the start of the next hand, see deal
 
 	return nil
 }
@@ -230,6 +222,21 @@ func deal(g *Game, pn uint, data uint) error {
 		}
 
 		g.pots = []Pot{}
+
+		// rearrange player order to match seats, keeping the same dealer
+		dealerUUID := g.players[g.dealerNum].UUID
+		sort.SliceStable(g.players, func(i, j int) bool {
+			return g.players[i].SeatID < g.players[j].SeatID
+		})
+		for i := range g.players {
+			g.players[i].Position = uint(i)
+			if g.players[i].UUID == dealerUUID {
+				g.dealerNum = uint(i)
+			}
+		}
+		for !g.players[g.dealerNum].Ready {
+			g.dealerNum = (g.dealerNum + 1) % uint(len(g.players))
+		}
 
 		g.updateBlindNums()
 
