@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useState } from "react";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import Footer from "./Footer";
@@ -22,25 +22,13 @@ export default function Join() {
     let invalid = username == "" || tablename == "";
 
     // the table shows once the server confirms with joined-table
-    const handleSubmit = (e: any, create = false) => {
+    const handleSubmit = (e: React.FormEvent, create = false) => {
         e.preventDefault();
         if (socket && !invalid) {
             (create ? createTable : joinTable)(socket, tablename, username);
         }
     };
 
-    const onKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Enter") {
-            handleSubmit(e);
-        }
-    };
-
-    useEffect(() => {
-        document.addEventListener("keydown", onKeyDown);
-        return () => {
-            document.removeEventListener("keydown", onKeyDown);
-        };
-    }, [onKeyDown]);
 
     const handleUsername = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setUsername(e.target.value);
@@ -54,7 +42,7 @@ export default function Join() {
         <div className="flex min-h-screen flex-col">
             <div className="flex grow flex-col items-center justify-center ">
                 <h1 className="mb-16 text-5xl font-semibold text-white">GoPoker</h1>
-                <div className="flex flex-row">
+                <form className="flex flex-row" onSubmit={handleSubmit}>
                     <input
                         autoFocus
                         className="m-2 rounded-md bg-raised py-2 pl-4 text-white focus:outline-hidden"
@@ -67,7 +55,6 @@ export default function Join() {
                     />
                     <div className=" my-2 mr-2 flex flex-row rounded-md bg-raised text-white">
                         <input
-                            autoFocus
                             className="w-28 rounded-md bg-raised py-2 pl-4 text-white focus:outline-hidden"
                             id="tablename"
                             type="text"
@@ -77,6 +64,7 @@ export default function Join() {
                             onChange={handleTablename}
                         />
                         <Button
+                            type="button"
                             variant="ghost"
                             className="mx-2 my-2 bg-surface px-1 py-1 text-xs"
                             onClick={() => setTablename(randomTableGen(5))}
@@ -85,6 +73,7 @@ export default function Join() {
                         </Button>
                     </div>
                     <Button
+                        type="button"
                         variant="primary"
                         className="my-2 mr-2"
                         disabled={invalid}
@@ -92,10 +81,10 @@ export default function Join() {
                     >
                         create
                     </Button>
-                    <Button variant="primary" className="my-2" disabled={invalid} onClick={handleSubmit}>
+                    <Button type="submit" variant="primary" className="my-2" disabled={invalid}>
                         join
                     </Button>
-                </div>
+                </form>
                 {appState.error && <p className="mt-2 text-rose-400">{appState.error}</p>}
             </div>
             <Footer />

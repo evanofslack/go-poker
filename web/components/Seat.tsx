@@ -1,5 +1,7 @@
 import { useState, useContext, useEffect } from "react";
 import { AppContext } from "../providers/AppStore";
+import { takeSeat } from "../actions/actions";
+import { useSocket } from "../hooks/useSocket";
 import { Game, Player } from "../interfaces/index";
 import Card from "./Card";
 import BuyIn from "./BuyIn";
@@ -59,7 +61,8 @@ function blind(game: Game, position: number) {
 }
 
 export default function Seat({ player, id }: seatProps) {
-    const { appState, dispatch } = useContext(AppContext);
+    const socket = useSocket();
+    const { appState } = useContext(AppContext);
     const [sitDown, setSitDown] = useState(false);
 
     const seated = appState.game?.players.some((p) => p.uuid === appState.clientID);
@@ -124,9 +127,20 @@ export default function Seat({ player, id }: seatProps) {
     } else if (!appState.game?.running) {
         return (
             <div>
-                {sitDown && (
+                {sitDown && appState.game && (
                     <div className="m-4 h-20 w-56 rounded-xl bg-raised text-fg">
-                        <BuyIn seatID={id} sitDown={sitDown} setSitDown={setSitDown} />
+                        <BuyIn
+                            max={appState.game.config.maxBuy}
+                            initial={100 * appState.game.config.bb}
+                            label="sit down"
+                            onSubmit={(amount) => {
+                                if (socket && appState.username) {
+                                    takeSeat(socket, appState.username, id, amount);
+                                }
+                                setSitDown(false);
+                            }}
+                            onCancel={() => setSitDown(false)}
+                        />
                     </div>
                 )}
                 {!sitDown && (

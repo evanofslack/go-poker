@@ -1,50 +1,48 @@
-import React, { useState, useContext, useCallback } from "react";
-import { takeSeat } from "../actions/actions";
-import { useSocket } from "../hooks/useSocket";
-import { AppContext } from "../providers/AppStore";
-import { FcCheckmark } from "react-icons/fc";
+import { useState } from "react";
+import Button from "./Button";
 
 type buyInProps = {
-    seatID: number;
-    sitDown: boolean;
-    setSitDown: React.Dispatch<React.SetStateAction<boolean>>;
+    max: number;
+    initial: number;
+    label: string;
+    onSubmit: (amount: number) => void;
+    onCancel: () => void;
 };
 
-export default function BuyIn({ seatID, sitDown, setSitDown }: buyInProps) {
-    const socket = useSocket();
-    const { appState, dispatch } = useContext(AppContext);
-    const [buyIn, setBuyIn] = useState(
-        appState.game ? Math.min(100 * appState.game.config.bb, appState.game.config.maxBuy) : 2000
-    );
+// BuyIn asks for an amount of chips, for taking a seat or rebuying
+export default function BuyIn({ max, initial, label, onSubmit, onCancel }: buyInProps) {
+    const [text, setText] = useState(String(Math.min(initial, max)));
+    const amount = parseInt(text);
+    const valid = amount >= 1 && amount <= max;
 
-    const handleBuyIn = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        const amount = parseInt(e.target.value);
-        setBuyIn(amount);
-    }, []);
-
-    const handleSitDown = () => {
-        if (socket && appState.username) {
-            takeSeat(socket, appState.username, seatID, buyIn);
-            setSitDown(!sitDown);
-        }
-    };
     return (
-        <div className="relative right-1 m-4 flex h-full w-full flex-col items-start justify-center">
-            <p className="-mb-1 text-lg font-semibold">{appState.username}</p>
-            <div className="flex flex-row items-center">
-                <p>Buy In: </p>
+        <form
+            className="flex h-full flex-col justify-center px-3"
+            onSubmit={(e) => {
+                e.preventDefault();
+                if (valid) onSubmit(amount);
+            }}
+            onKeyDown={(e) => e.key === "Escape" && onCancel()}
+        >
+            <div className="flex flex-row items-center gap-1">
                 <input
                     autoFocus
-                    className="ml-4 mr-2 w-20 rounded-md bg-zinc-600 p-1 text-white focus:outline-hidden"
+                    className="w-20 rounded-md bg-zinc-600 p-1 text-fg focus:outline-hidden"
                     id="buyIn"
-                    type="number"
-                    value={buyIn}
-                    onChange={handleBuyIn}
+                    inputMode="numeric"
+                    value={text}
+                    onChange={(e) => setText(e.target.value.replace(/\D/g, ""))}
                 />
-                <button onClick={handleSitDown} className="text-2xl">
-                    <FcCheckmark />
-                </button>
+                <Button type="submit" variant="primary" className="px-2 py-1 text-sm" disabled={!valid}>
+                    {label}
+                </Button>
+                <Button type="button" variant="ghost" className="px-1 py-1 text-sm" onClick={onCancel}>
+                    cancel
+                </Button>
             </div>
-        </div>
+            <span className={"mt-1 text-xs " + (valid ? "text-subtle" : "text-rose-400")}>
+                max {max}
+            </span>
+        </form>
     );
 }
