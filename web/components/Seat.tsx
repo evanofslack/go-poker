@@ -6,6 +6,7 @@ import { Game, Player } from "../interfaces/index";
 import Card from "./Card";
 import BuyIn from "./BuyIn";
 import Countdown from "./Countdown";
+import SeatMenu from "./SeatMenu";
 import { isWinner, winningCards } from "../lib/hands";
 import classNames from "classnames";
 
@@ -30,6 +31,7 @@ function chipPosition(id: number) {
 
 function active(player: Player, game: Game) {
     const action = player.position === game.action;
+    const out = !player.ready;
     const winner = isWinner(game, player.position);
     return classNames(
         {
@@ -46,6 +48,9 @@ function active(player: Player, game: Game) {
 
             // betting over and not winner
             "bg-panel text-fg ": !winner && !game.betting,
+
+            // sitting out or out of chips
+            "opacity-50": out && !action && !winner,
         },
 
         "relative rounded-xl m-4 h-20 w-56 flex flex-row justify-start items-center z-2"
@@ -89,6 +94,14 @@ export default function Seat({ player, id }: seatProps) {
                         <p className="-mb-1 text-lg font-normal">{player.username}</p>
                         <p className="text-lg font-semibold">{player.stack}</p>
                     </div>
+                    {!player.ready && (
+                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-zinc-600 px-2 text-xs whitespace-nowrap text-fg">
+                            {player.stack > 0 ? "sitting out" : "out of chips"}
+                        </span>
+                    )}
+                    {player.uuid === appState.clientID && (
+                        <SeatMenu player={player} game={appState.game} />
+                    )}
                     {appState.game.betting &&
                         appState.game.action === player.position &&
                         appState.game.turnEndsIn > 0 && (
@@ -115,7 +128,9 @@ export default function Seat({ player, id }: seatProps) {
             </div>
         );
         // player already sat down, and this seat does not belong to them
-    } else if (seated && !appState.game?.running) {
+    } else if (seated && appState.game?.running) {
+        return <div></div>;
+    } else if (seated) {
         return (
             <div>
                 <button className="m-4 h-20 w-56 rounded-xl bg-raised p-2 text-muted opacity-20">
@@ -123,8 +138,8 @@ export default function Seat({ player, id }: seatProps) {
                 </button>
             </div>
         );
-        // player has not yet sat down, all seats are open
-    } else if (!appState.game?.running) {
+        // player has not yet sat down, all seats are open, even mid-hand
+    } else {
         return (
             <div>
                 {sitDown && appState.game && (
@@ -154,7 +169,5 @@ export default function Seat({ player, id }: seatProps) {
                 )}
             </div>
         );
-    } else {
-        return <div></div>;
     }
 }
