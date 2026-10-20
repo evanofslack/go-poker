@@ -5,7 +5,7 @@
 | 1 | Security | done |
 | 2 | Game correctness and cheating | done |
 | 3 | Upgrades | done |
-| 4 | Core play experience | planned |
+| 4 | Core play experience | done |
 | 5 | Host and table features | planned |
 | 6 | UI consistency and mobile | planned |
 | 7 | Operator tooling | planned |
@@ -139,22 +139,25 @@ Moved up from last place: a closed tab breaks almost every casual session. Depen
 Makes a session pleasant. Do after 2.3 (error events) and 2.5 (all-in fix), or the action bar gets redone.
 Consider the light token pass from 6.1 first so new components aren't restyled twice.
 
-- [ ] **Action bar redesign** (`web/components/Input.tsx`).
+- [x] **Action bar redesign** (`web/components/Input.tsx`).
   - One context-sensitive check/call button; `canCall` is currently inverted from its name.
   - Label "bet" vs "raise" correctly depending on whether there's a bet to face.
   - Show the to-call amount clearly.
-- [ ] **Raise input** (`web/components/RaiseInput.tsx`): numeric input plus slider, min / ½ pot / pot / all-in
+- [x] **Raise input** (`web/components/RaiseInput.tsx`): numeric input plus slider, min / ½ pot / pot / all-in
   presets, visible clamp feedback. Pot math should use all pots, not just `pots[0]`.
-- [ ] **Showdown display:** winning hand name ("two pair, kings and sevens"), highlight the winning cards,
+- [x] **Showdown display:** winning hand name ("two pair, kings and sevens"), highlight the winning cards,
   show split and side pots and each pot's winner. `winningHand`/`winningScore` are already sent;
   `getWinner` only reads `winningPlayerNums[0]` of the last pot.
-- [ ] **Table markers:** SB/BB chips next to the dealer button.
-- [ ] **Turn notification:** sound and/or tab title flash when it's your turn; show the 2.4 turn timer
+  Done with the category only ("two pair"); naming the ranks would need the server to send them.
+  Pot labels look winners up by player index, so they can misname a winner if a lower seat
+  leaves as the hand ends.
+- [x] **Table markers:** SB/BB chips next to the dealer button.
+- [x] **Turn notification:** sound and/or tab title flash when it's your turn; show the 2.4 turn timer
   as a countdown on the active seat. The server doesn't send the turn deadline yet; add it to `update-game`.
-- [ ] **Buy-in UX** (`web/components/BuyIn.tsx`): show min/max, validate, a labeled confirm button instead of
+- [x] **Buy-in UX** (`web/components/BuyIn.tsx`): show min/max, validate, a labeled confirm button instead of
   a lone checkmark.
-- [ ] **Leave seat / sit out / rebuy** buttons (uses 2.4 engine work).
-- [ ] **Join form** (`web/components/Join.tsx`): one `autoFocus`, use a real `<form onSubmit>` instead of a
+- [x] **Leave seat / sit out / rebuy** buttons (uses 2.4 engine work).
+- [x] **Join form** (`web/components/Join.tsx`): one `autoFocus`, use a real `<form onSubmit>` instead of a
   document-wide `keydown` listener. (Create/join buttons and disabling are done.)
 
 # Stage 5: host and table features
@@ -175,10 +178,10 @@ Needs the host role from 2.2.
 
 ## 6.1 Design tokens (light pass, can go before Stage 4)
 
-- [ ] Pick one neutral palette (currently `zinc`, `neutral`, and `gray` are mixed), a radius scale
+- [x] Pick one neutral palette (currently `zinc`, `neutral`, and `gray` are mixed), a radius scale
   (currently `rounded-sm`/`xl`/`2xl` drift), and spacing. Put them in the CSS `@theme` (Tailwind 4, no config file).
-- [ ] Button variants: primary, secondary, danger, ghost. Replace ad-hoc button classes.
-- [ ] One voice for labels (currently lowercase "join"/"fold" but "Start").
+- [x] Button variants: primary, secondary, danger, ghost. Replace ad-hoc button classes.
+- [x] One voice for labels (currently lowercase "join"/"fold" but "Start").
 
 ## 6.2 Feedback states
 
