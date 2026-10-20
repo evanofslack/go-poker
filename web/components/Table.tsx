@@ -75,7 +75,7 @@ export default function Table({ players, setPlayers }: tableProps) {
     }, [game?.pots]);
 
     return (
-        <div className="mt-2 grid h-3/4 w-full max-w-screen-xl grid-cols-5 grid-rows-5 sm:mt-28 sm:h-3/5">
+        <div className="mt-2 grid h-3/4 w-full max-w-(--breakpoint-xl) grid-cols-5 grid-rows-5 sm:mt-28 sm:h-3/5">
             <div></div>
             <Seat
                 key={3}
