@@ -13,10 +13,7 @@ import (
 const gameAdminName string = "system"
 
 func handleJoinTable(c *Client, tablename string) {
-	table := c.hub.findTableByName(tablename)
-	if table == nil {
-		table = c.hub.createTable(tablename)
-	}
+	table := c.hub.getOrCreateTable(tablename)
 	c.table = table
 	table.register <- c
 }
