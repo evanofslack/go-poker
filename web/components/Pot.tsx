@@ -16,11 +16,12 @@ const initialPot: PotType[] = [
 export default function Pot() {
     const { appState, dispatch } = useContext(AppContext);
     const game = appState.game;
+    const [stage, setStage] = useState(game?.stage);
+    const [pots, setPots] = useState(initialPot);
+
     if (!game || !game.pots) {
         return null;
     }
-    const [stage, setStage] = useState(game.stage);
-    const [pots, setPots] = useState(initialPot);
 
     if (game.stage != stage) {
         setStage(game.stage);
