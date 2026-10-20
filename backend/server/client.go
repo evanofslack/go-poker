@@ -212,7 +212,7 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		if !validLength(message.Message, maxMessageLen) {
 			return errors.New("invalid chat message")
 		}
-		handleSendMessage(c, message.Username, message.Message)
+		handleSendMessage(c, message.Message)
 		return nil
 
 	case actionSendLog:

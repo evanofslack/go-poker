@@ -35,8 +35,12 @@ func handleLeaveTable(c *Client, tablename string) {
 	}
 }
 
-func handleSendMessage(c *Client, username string, message string) {
-	c.table.broadcast <- createNewMessage(username, message)
+func handleSendMessage(c *Client, message string) {
+	// use the name the server knows, not one from the message
+	if c.username == "" {
+		return
+	}
+	c.table.broadcast <- createNewMessage(c.username, message)
 }
 
 func handleSendLog(c *Client, message string) {
