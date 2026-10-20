@@ -191,6 +191,8 @@ func (g *Game) resetForNextHand() {
 	for i := range g.players {
 		g.players[i].Bet = 0
 		g.players[i].TotalBet = 0
+		g.players[i].In = false
+		g.players[i].Called = false
 
 		if g.players[i].Stack == 0 {
 			g.players[i].Ready = false
@@ -425,12 +427,11 @@ func NewGame() *Game {
 	return &newGame
 }
 
-// Start checks that all players are ready, then sets running to true and deals the first hand
+// Start checks that at least 2 players are ready, then sets running to true and deals the first hand.
+// Players who aren't ready sit the hand out.
 func (g *Game) Start() error {
-	for _, p := range g.players {
-		if !p.Ready {
-			return ErrStartGame
-		}
+	if g.readyCount() < minPlayers {
+		return ErrStartGame
 	}
 	g.running = true
 	err := Deal(g, g.dealerNum, 0)

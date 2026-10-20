@@ -139,7 +139,15 @@ func (g *Game) GeneratePlayerView(pn uint) *GameView {
 		}
 	}
 
-	if g.getStage() == PreDeal && inCount > 1 {
+	// In is cleared when a hand ends, so use the last hand's pots to find who was in at showdown
+	inShowdown := map[uint]bool{}
+	for _, pot := range g.pots {
+		for _, j := range pot.EligiblePlayerNums {
+			inShowdown[j] = true
+		}
+	}
+
+	if g.getStage() == PreDeal && len(inShowdown) > 1 {
 
 		showCards(g.calledNum)
 		_, scoreToBeat := eval.BestFiveOfSeven(
@@ -164,7 +172,7 @@ func (g *Game) GeneratePlayerView(pn uint) *GameView {
 				g.communityCards[4],
 			)
 
-			if (iScore <= scoreToBeat) && g.players[pni].In {
+			if (iScore <= scoreToBeat) && inShowdown[pni] {
 				showCards(pni)
 				scoreToBeat = iScore
 			}

@@ -12,7 +12,7 @@ import (
 var ErrIllegalAction = errors.New("this action cannot be performed at this time")
 var ErrOutOfBounds = errors.New("error adding player at position (out of bounds)")
 var ErrInvalidPosition = errors.New("error assigning player position, position already taken")
-var ErrStartGame = errors.New("error starting the game, one or more players not ready")
+var ErrStartGame = errors.New("error starting the game, need at least 2 ready players")
 
 /*
 var ErrBuyTooBig = errors.New("this would exceed the maximum configured purchased stack size")
