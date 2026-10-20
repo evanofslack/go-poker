@@ -1,11 +1,8 @@
 package server
 
-import "github.com/go-redis/redis/v8"
-
 // Hub maintains the set of active clients and broadcasts messages to the
 // clients.
 type Hub struct {
-	rdb        *redis.Client
 	clients    map[*Client]bool
 	broadcast  chan []byte
 	register   chan *Client
@@ -13,20 +10,14 @@ type Hub struct {
 	tables     map[*table]bool
 }
 
-func newHub() (*Hub, error) {
-	redis, err := newRedisClient()
-	if err != nil {
-		return nil, err
-	}
-	hub := &Hub{
-		rdb:        redis,
+func newHub() *Hub {
+	return &Hub{
 		clients:    make(map[*Client]bool),
 		broadcast:  make(chan []byte),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		tables:     make(map[*table]bool),
 	}
-	return hub, nil
 }
 
 func (h *Hub) run() {
@@ -65,7 +56,7 @@ func (h *Hub) broadcastToClients(message []byte) {
 }
 
 func (h *Hub) createTable(name string) *table {
-	table := newTable(name, h.rdb)
+	table := newTable(name)
 	go table.run()
 	h.tables[table] = true
 	return table

@@ -37,10 +37,7 @@ func New() (*Server, error) {
 		return nil, err
 	}
 
-	hub, err := newHub()
-	if err != nil {
-		return nil, err
-	}
+	hub := newHub()
 
 	s := &Server{
 		listener: ln,
