@@ -3,7 +3,6 @@ import { AppContext } from "../providers/AppStore";
 import { playerRaise, sendLog } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import InputButton from "./InputButton";
-import { Slider } from "@mantine/core";
 import classNames from "classnames";
 
 type raiseProps = {
@@ -135,16 +134,14 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
                     </button>
                 </div>
                 <div className="w-64 pb-2">
-                    <Slider
+                    <input
+                        type="range"
+                        className="w-full cursor-pointer accent-neutral-400"
                         value={inputValue}
-                        onChange={setInputValue}
+                        onChange={handleChange}
                         min={minRaise}
                         max={currentStack + currentBet}
                         step={1}
-                        color="gray"
-                        showLabelOnHover={false}
-                        size="md"
-                        radius="xs"
                     />
                 </div>
             </div>
