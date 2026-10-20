@@ -188,6 +188,9 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		if err != nil {
 			return err
 		}
+		if !validLength(table.Tablename, maxTablenameLen) {
+			return errors.New("invalid table name")
+		}
 		handleJoinTable(c, table.Tablename)
 		return nil
 
@@ -206,6 +209,9 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		if err != nil {
 			return err
 		}
+		if !validLength(message.Message, maxMessageLen) {
+			return errors.New("invalid chat message")
+		}
 		handleSendMessage(c, message.Username, message.Message)
 		return nil
 
@@ -214,6 +220,9 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		err := json.Unmarshal(rawMessage, &log)
 		if err != nil {
 			return err
+		}
+		if !validLength(log.Message, maxMessageLen) {
+			return errors.New("invalid log message")
 		}
 		handleSendLog(c, log.Message)
 		return nil
@@ -224,6 +233,9 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		if err != nil {
 			return err
 		}
+		if !validLength(player.Username, maxUsernameLen) {
+			return errors.New("invalid username")
+		}
 		handleNewPlayer(c, player.Username)
 		return nil
 
@@ -232,6 +244,9 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		err := json.Unmarshal(rawMessage, &seat)
 		if err != nil {
 			return err
+		}
+		if !validLength(seat.Username, maxUsernameLen) {
+			return errors.New("invalid username")
 		}
 		handleTakeSeat(c, seat.Username, seat.SeatID, seat.BuyIn)
 		return nil

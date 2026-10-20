@@ -56,7 +56,8 @@ func handleTakeSeat(c *Client, username string, seatID uint, buyIn uint) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
 
-	if seatID < 1 || seatID > maxSeats || buyIn == 0 {
+	maxBuy := c.table.game.GenerateOmniView().Config.MaxBuy
+	if seatID < 1 || seatID > maxSeats || buyIn == 0 || buyIn > maxBuy {
 		slog.Default().Warn("Take seat: invalid request", "seat", seatID, "buyIn", buyIn)
 		return
 	}

@@ -370,7 +370,7 @@ func (g *Game) updateRoundInfo() {
 //	Config: {
 //		BigBlind:	20
 //		SmallBlind:	10
-//		MaxBuy:		0
+//		MaxBuy:		10000
 //	}
 func NewGame() *Game {
 	newGame := Game{}
@@ -380,7 +380,7 @@ func NewGame() *Game {
 	newGame.config = GameConfig{
 		BigBlind:   20,
 		SmallBlind: 10,
-		MaxBuy:     0,
+		MaxBuy:     10000,
 	}
 	newGame.communityCards = make([]Card, 5)
 
