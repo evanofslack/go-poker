@@ -11,8 +11,8 @@ Realtime multiplayer poker: Go websocket server (`backend/`) + Next.js client (`
 ## Architecture
 - `backend/poker/`: game engine, forked from riverboat. Keep its license header.
 - `backend/server/`: hub → tables → clients. Each table runs its own goroutine and game actions
-  are serialized through it. `hub.tables` is guarded by `hub.mu`. Don't touch game state from
-  client goroutines.
+  are serialized by `table.mu` (handlers run on client goroutines and must hold it). The table
+  goroutine owns `table.clients` and fans out messages. `hub.tables` is guarded by `hub.mu`.
 - Clients get per-player state via `GeneratePlayerView`, which hides other players' hole cards.
   Never broadcast the raw game state.
 - `web/` is a static export (`output: 'export'`) served by the Go binary from `STATIC_DIR`.
