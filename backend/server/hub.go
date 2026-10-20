@@ -1,32 +1,24 @@
 package server
 
-import "github.com/go-redis/redis/v8"
+import "sync"
 
-// Hub maintains the set of active clients and broadcasts messages to the
-// clients.
+// Hub maintains the set of active clients and tables.
 type Hub struct {
-	rdb        *redis.Client
 	clients    map[*Client]bool
-	broadcast  chan []byte
 	register   chan *Client
 	unregister chan *Client
-	tables     map[*table]bool
+
+	mu     sync.Mutex // guards tables, which client goroutines access directly
+	tables map[string]*table
 }
 
-func newHub() (*Hub, error) {
-	redis, err := newRedisClient()
-	if err != nil {
-		return nil, err
-	}
-	hub := &Hub{
-		rdb:        redis,
+func newHub() *Hub {
+	return &Hub{
 		clients:    make(map[*Client]bool),
-		broadcast:  make(chan []byte),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
-		tables:     make(map[*table]bool),
+		tables:     make(map[string]*table),
 	}
-	return hub, nil
 }
 
 func (h *Hub) run() {
@@ -36,8 +28,6 @@ func (h *Hub) run() {
 			h.registerClient(client)
 		case client := <-h.unregister:
 			h.unregisterClient(client)
-		case message := <-h.broadcast:
-			h.broadcastToClients(message)
 		}
 	}
 }
@@ -53,30 +43,21 @@ func (h *Hub) unregisterClient(client *Client) {
 	}
 }
 
-func (h *Hub) broadcastToClients(message []byte) {
-	for client := range h.clients {
-		select {
-		case client.send <- message:
-		default:
-			close(client.send)
-			delete(h.clients, client)
-		}
+// getOrCreateTable returns the table with the given name, creating it if needed.
+func (h *Hub) getOrCreateTable(name string) *table {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if t, ok := h.tables[name]; ok {
+		return t
 	}
-}
-
-func (h *Hub) createTable(name string) *table {
-	table := newTable(name, h.rdb)
-	go table.run()
-	h.tables[table] = true
-	return table
+	t := newTable(name)
+	go t.run()
+	h.tables[name] = t
+	return t
 }
 
 func (h *Hub) findTableByName(name string) *table {
-	var foundTable *table
-	for table := range h.tables {
-		if table.name == name {
-			foundTable = table
-		}
-	}
-	return foundTable
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.tables[name]
 }

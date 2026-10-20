@@ -1,6 +1,6 @@
 # go-poker
 
-Real time multiplayer poker application powered by go, react, websockets and redis pubsub
+Real time multiplayer poker application powered by go, react, and websockets
 
 ## demo
 
@@ -14,8 +14,6 @@ https://poker.evanslack.dev
 
 Can run from a prebuilt container: `evanofslack/go-poker:latest`
 
-First copy `.env.example` to `.env` and change values if needed
-
 ```yaml
 services:
   go-poker:
@@ -24,25 +22,6 @@ services:
     restart: unless-stopped
     ports:
       - 8080:8080
-    environment:
-      REDIS_URL: ${REDIS_URL}
-    depends_on:
-      - redis
-
-  redis:
-    container_name: go-poker-redis
-    image: redis:latest
-    restart: unless-stopped
-    entrypoint: redis-server --appendonly yes
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-    volumes:
-      - redis:/data
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-
-volumes:
-  redis:
 ```
 
 ## development

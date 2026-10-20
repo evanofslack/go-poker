@@ -649,3 +649,60 @@ func TestIntegration_Scenarios(t *testing.T) {
 		}
 	})
 }
+
+func readyPlayers(t *testing.T, g *Game, n int) {
+	for i := 0; i < n; i++ {
+		pn := g.AddPlayer()
+		if err := BuyIn(g, pn, 100); err != nil {
+			t.Fatal(err)
+		}
+		if err := SetSeatID(g, pn, uint(i+1)); err != nil {
+			t.Fatal(err)
+		}
+		if err := ToggleReady(g, pn, 0); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestResetThenStart(t *testing.T) {
+	g := newTestGame()
+	readyPlayers(t, g, 3)
+	g.dealerNum = 2
+	g.Reset()
+	readyPlayers(t, g, 2)
+	if err := g.Start(); err != nil {
+		t.Fatalf("start after reset: %s", err)
+	}
+}
+
+func TestSeatZeroRejected(t *testing.T) {
+	g := newTestGame()
+	pn := g.AddPlayer()
+	if err := SetSeatID(g, pn, 0); err != ErrInvalidPosition {
+		t.Errorf("seat 0: got %v, want ErrInvalidPosition", err)
+	}
+}
+
+func TestFoldBeforeDeal(t *testing.T) {
+	g := newTestGame()
+	readyPlayers(t, g, 2)
+	if err := Fold(g, g.actionNum, 0); err != ErrIllegalAction {
+		t.Errorf("fold before deal: got %v, want ErrIllegalAction", err)
+	}
+}
+
+func TestDealerUnreadyWrapsAround(t *testing.T) {
+	g := newTestGame()
+	readyPlayers(t, g, 2)
+	g.dealerNum = 1
+	if err := ToggleReady(g, 1, 0); err != nil {
+		t.Fatal(err)
+	}
+	if g.dealerNum != 0 {
+		t.Errorf("dealer = %d, want 0", g.dealerNum)
+	}
+	if err := ToggleReady(g, 0, 0); err != nil {
+		t.Fatal(err)
+	}
+}

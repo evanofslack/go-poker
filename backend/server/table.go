@@ -1,29 +1,27 @@
 package server
 
 import (
-	"context"
-	"fmt"
+	"sync"
 
 	"github.com/evanofslack/go-poker/poker"
-	"github.com/go-redis/redis/v8"
 )
 
 // table is a single table or game of poker
 type table struct {
 	name       string
-	rdb        *redis.Client
 	clients    map[*Client]bool
 	register   chan *Client
 	unregister chan *Client
 	broadcast  chan []byte
 	game       *poker.Game
+
+	mu sync.Mutex // serializes game actions from client goroutines
 }
 
 // newTable creates a new table
-func newTable(name string, redisClient *redis.Client) *table {
+func newTable(name string) *table {
 	return &table{
 		name:       name,
-		rdb:        redisClient,
 		clients:    make(map[*Client]bool),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
@@ -33,8 +31,6 @@ func newTable(name string, redisClient *redis.Client) *table {
 }
 
 func (t *table) run() {
-	go t.subscribeToMessages()
-
 	for {
 		select {
 		case client := <-t.register:
@@ -42,7 +38,7 @@ func (t *table) run() {
 		case client := <-t.unregister:
 			t.unregisterClient(client)
 		case message := <-t.broadcast:
-			t.publishMessages(message)
+			t.broadcastToClients(message)
 		}
 	}
 }
@@ -62,26 +58,10 @@ func (t *table) broadcastToClients(message []byte) {
 		select {
 		case client.send <- message:
 		default:
-			close(client.send)
+			// slow client: drop it and let its readPump unregister it,
+			// the hub is the only one that closes client.send
 			delete(t.clients, client)
+			client.conn.Close()
 		}
-	}
-}
-
-var ctx = context.Background()
-
-func (t *table) publishMessages(message []byte) {
-	err := t.rdb.Publish(ctx, t.name, message).Err()
-	if err != nil {
-		fmt.Println(err)
-	}
-}
-
-func (t *table) subscribeToMessages() {
-	pubsub := t.rdb.Subscribe(ctx, t.name)
-	ch := pubsub.Channel()
-
-	for msg := range ch {
-		t.broadcastToClients([]byte(msg.Payload))
 	}
 }

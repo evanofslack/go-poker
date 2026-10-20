@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -44,10 +45,12 @@ func newClient(conn *websocket.Conn, hub *Hub) *Client {
 }
 
 func (c *Client) disconnect() {
-	c.hub.unregister <- c
+	// leave the table before the hub closes c.send, so the table never
+	// sends on a closed channel
 	if c.table != nil {
 		c.table.unregister <- c
 	}
+	c.hub.unregister <- c
 	c.conn.Close()
 }
 
@@ -74,7 +77,7 @@ func (c *Client) readPump() {
 			slog.Default().Warn("Read from websocket", "error", err)
 			break
 		}
-		if err = c.processEvents(message); err != nil {
+		if err = c.safeProcessEvents(message); err != nil {
 			slog.Default().Warn("Process websocket message", "error", err)
 		}
 	}
@@ -103,6 +106,7 @@ func (c *Client) writePump() {
 			w, err := c.conn.NextWriter(websocket.TextMessage)
 			if err != nil {
 				slog.Default().Warn("Write websocket message", "error", err)
+				return
 			}
 			w.Write(message)
 
@@ -138,6 +142,17 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	go client.readPump()
 }
 
+// safeProcessEvents recovers from a panic while handling a message, so one bad
+// message cannot take down the server.
+func (c *Client) safeProcessEvents(rawMessage []byte) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic processing message: %v", r)
+		}
+	}()
+	return c.processEvents(rawMessage)
+}
+
 func (c *Client) processEvents(rawMessage []byte) error {
 	var baseMessage base
 	err := json.Unmarshal(rawMessage, &baseMessage)
@@ -147,6 +162,10 @@ func (c *Client) processEvents(rawMessage []byte) error {
 
 	if baseMessage.Action == "" {
 		return errors.New("deserialize message")
+	}
+
+	if baseMessage.Action != actionJoinTable && c.table == nil {
+		return errors.New("client has not joined a table")
 	}
 
 	switch baseMessage.Action {

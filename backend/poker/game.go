@@ -405,6 +405,7 @@ func (g *Game) Start() error {
 // Reset resets the game to a blank game
 func (g *Game) Reset() {
 	g.running = false
+	g.dealerNum, g.actionNum, g.utgNum, g.sbNum, g.bbNum, g.calledNum = 0, 0, 0, 0, 0, 0
 	g.players = []player{}
 	g.pots = []Pot{}
 	g.communityCards = make([]Card, 5)

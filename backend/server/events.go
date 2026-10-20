@@ -10,12 +10,15 @@ import (
 	"github.com/google/uuid"
 )
 
-const gameAdminName string = "system"
+const (
+	gameAdminName string = "system"
+	maxSeats      uint   = 6 // seats rendered by the frontend
+)
 
 func handleJoinTable(c *Client, tablename string) {
-	table := c.hub.findTableByName(tablename)
-	if table == nil {
-		table = c.hub.createTable(tablename)
+	table := c.hub.getOrCreateTable(tablename)
+	if c.table != nil && c.table != table {
+		c.table.unregister <- c
 	}
 	c.table = table
 	table.register <- c
@@ -23,7 +26,13 @@ func handleJoinTable(c *Client, tablename string) {
 
 func handleLeaveTable(c *Client, tablename string) {
 	table := c.hub.findTableByName(tablename)
+	if table == nil {
+		return
+	}
 	table.unregister <- c
+	if c.table == table {
+		c.table = nil
+	}
 }
 
 func handleSendMessage(c *Client, username string, message string) {
@@ -35,12 +44,29 @@ func handleSendLog(c *Client, message string) {
 }
 
 func handleNewPlayer(c *Client, username string) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	c.username = username
 	c.send <- createUpdatedGame(c)
 	c.table.broadcast <- createNewMessage(gameAdminName, fmt.Sprintf("%s has joined", username))
 }
 
 func handleTakeSeat(c *Client, username string, seatID uint, buyIn uint) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
+	if seatID < 1 || seatID > maxSeats || buyIn == 0 {
+		slog.Default().Warn("Take seat: invalid request", "seat", seatID, "buyIn", buyIn)
+		return
+	}
+	for _, p := range c.table.game.GenerateOmniView().Players {
+		if p.SeatID == seatID {
+			slog.Default().Warn("Take seat: seat taken", "seat", seatID)
+			return
+		}
+	}
+
 	position := c.table.game.AddPlayer()
 	c.uuid = c.table.game.GenerateOmniView().Players[position].UUID
 	c.send <- createUpdatedPlayerUUID(c)
@@ -69,6 +95,9 @@ func handleTakeSeat(c *Client, username string, seatID uint, buyIn uint) {
 }
 
 func handleStartGame(c *Client) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	err := c.table.game.Start()
 	if err != nil {
 		fmt.Println(err)
@@ -78,11 +107,17 @@ func handleStartGame(c *Client) {
 }
 
 func handleResetGame(c *Client) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	c.table.game.Reset()
 	c.table.broadcast <- createUpdatedGame(c)
 }
 
 func handleDealGame(c *Client) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	broadcastDeal(c.table)
 
 	view := c.table.game.GenerateOmniView()
@@ -94,8 +129,14 @@ func handleDealGame(c *Client) {
 }
 
 func handleCall(c *Client) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	view := c.table.game.GenerateOmniView()
 	pn := view.ActionNum
+	if pn >= uint(len(view.Players)) {
+		return
+	}
 	currentPlayer := view.Players[pn]
 
 	// compute amount needed to call
@@ -120,8 +161,14 @@ func handleCall(c *Client) {
 }
 
 func handleRaise(c *Client, raise uint) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	view := c.table.game.GenerateOmniView()
 	pn := view.ActionNum
+	if pn >= uint(len(view.Players)) {
+		return
+	}
 	err := poker.Bet(c.table.game, pn, raise)
 	if err != nil {
 		slog.Default().Warn("Handle raise", "error", err)
@@ -131,8 +178,14 @@ func handleRaise(c *Client, raise uint) {
 }
 
 func handleCheck(c *Client) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	view := c.table.game.GenerateOmniView()
 	pn := view.ActionNum
+	if pn >= uint(len(view.Players)) {
+		return
+	}
 	err := poker.Bet(c.table.game, pn, 0)
 	if err != nil {
 		slog.Default().Warn("Handle check", "error", err)
@@ -141,8 +194,14 @@ func handleCheck(c *Client) {
 }
 
 func handleFold(c *Client) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	view := c.table.game.GenerateOmniView()
 	pn := view.ActionNum
+	if pn >= uint(len(view.Players)) {
+		return
+	}
 	err := poker.Fold(c.table.game, pn, 0)
 	if err != nil {
 		slog.Default().Warn("Handle fold", "error", err)
@@ -207,6 +266,9 @@ func createUpdatedPlayerUUID(c *Client) []byte {
 
 func broadcastDeal(table *table) {
 	view := table.game.GenerateOmniView()
+	if view.SBNum >= uint(len(view.Players)) || view.BBNum >= uint(len(view.Players)) {
+		return
+	}
 
 	startMsg := "starting new hand"
 	table.broadcast <- createNewLog(startMsg)
