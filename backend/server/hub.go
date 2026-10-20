@@ -112,6 +112,7 @@ func (h *Hub) leaveTable(c *Client) {
 	t.unregister <- c
 
 	t.mu.Lock()
+	leaveSeat(t, c.id())
 	t.removeUser(c)
 	if t.host != nil {
 		broadcastGame(t) // the host may have changed

@@ -18,6 +18,7 @@ import (
 
 func TestMain(m *testing.M) {
 	nextHandDelay = 50 * time.Millisecond
+	turnTimeout = 500 * time.Millisecond
 	os.Exit(m.Run())
 }
 
@@ -424,22 +425,10 @@ func waitError(t *testing.T, r received) string {
 
 func TestOnlyActOnYourTurn(t *testing.T) {
 	srv := newTestServer(t)
-	a, aRecv := createAndWait(t, srv, "t", "a")
-	b, bRecv := dialRecv(t, srv)
+	a, aRecv, b, bRecv := seatTwo(t, srv)
 	spectator, sRecv := dialRecv(t, srv)
-	// a sits first so is dealer
-	send(t, a, seatMsg(1))
-	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
-	send(t, b, joinMsg("t", "b"), seatMsg(2))
 	send(t, spectator, joinMsg("t", "s"))
-	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
-	send(t, a, `{"action":"start-game"}`)
-	g := waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Betting })
 
-	// heads up, the dealer (a) acts first preflop
-	if g.ActionNum != 0 {
-		t.Fatalf("action on player %d, want 0", g.ActionNum)
-	}
 	send(t, b, `{"action":"player-fold"}`)
 	if msg := waitError(t, bRecv); msg != "not your turn" {
 		t.Errorf("b got error %q", msg)
@@ -451,7 +440,7 @@ func TestOnlyActOnYourTurn(t *testing.T) {
 
 	// neither fold happened: a can still act, and the hand goes on
 	send(t, a, `{"action":"player-call"}`)
-	g = waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.ActionNum == 1 })
+	g := waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.ActionNum == 1 })
 	if !g.Players[1].In {
 		t.Error("b was folded by someone else")
 	}
@@ -535,15 +524,7 @@ func TestOnlyHostResets(t *testing.T) {
 
 func TestServerDealsNextHand(t *testing.T) {
 	srv := newTestServer(t)
-	a, aRecv := createAndWait(t, srv, "t", "a")
-	b := dial(t, srv)
-	// a sits first so is dealer
-	send(t, a, seatMsg(1))
-	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
-	send(t, b, joinMsg("t", "b"), seatMsg(2))
-	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
-	send(t, a, `{"action":"start-game"}`)
-	waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Betting })
+	a, aRecv, _, _ := seatTwo(t, srv)
 
 	// heads up, a acts first; folding ends the hand
 	send(t, a, `{"action":"player-fold"}`)
@@ -580,4 +561,78 @@ func TestHandName(t *testing.T) {
 			t.Errorf("handName(%d) = %q, want %q", score, got, want)
 		}
 	}
+}
+
+// collectLogs returns the logs r receives over d.
+func collectLogs(r received, d time.Duration) []string {
+	var logs []string
+	timeout := time.After(d)
+	for {
+		select {
+		case l := <-r.logs:
+			logs = append(logs, l)
+		case <-timeout:
+			return logs
+		}
+	}
+}
+
+// seatTwo seats a in seat 1, then b in seat 2, and starts the game. Seating
+// in order makes a the dealer, who acts first heads up.
+func seatTwo(t *testing.T, srv *httptest.Server) (a *websocket.Conn, aRecv received, b *websocket.Conn, bRecv received) {
+	t.Helper()
+	a, aRecv = createAndWait(t, srv, "t", "a")
+	send(t, a, seatMsg(1))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
+	b, bRecv = dialRecv(t, srv)
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
+	send(t, a, `{"action":"start-game"}`)
+	g := waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Betting })
+	if actor := g.Players[g.ActionNum].Username; actor != "a" {
+		t.Fatalf("%s acts first, want a", actor)
+	}
+	return a, aRecv, b, bRecv
+}
+
+func TestTurnTimeout(t *testing.T) {
+	srv := newTestServer(t)
+	_, aRecv, _, _ := seatTwo(t, srv)
+
+	// a is small blind facing the big blind, so is folded
+	logs := collectLogs(aRecv, turnTimeout+300*time.Millisecond)
+	if !slices.Contains(logs, "a folds (out of time)") {
+		t.Errorf("a was not folded, logs: %q", logs)
+	}
+}
+
+func TestDisconnectFoldsAndRemoves(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv, b, _ := seatTwo(t, srv)
+
+	// b leaves while it's a's turn; once a calls, b is folded and removed
+	b.Close()
+	time.Sleep(100 * time.Millisecond)
+	send(t, a, `{"action":"player-call"}`)
+	g := waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
+	if g.Players[0].Username != "a" {
+		t.Errorf("wrong player removed: %+v", g.Players)
+	}
+	logs := collectLogs(aRecv, 100*time.Millisecond)
+	for _, want := range []string{"b folds", "a wins 40", "b left the table"} {
+		if !slices.Contains(logs, want) {
+			t.Errorf("missing log %q, logs: %q", want, logs)
+		}
+	}
+}
+
+func TestLeaveBetweenHands(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	b := dial(t, srv)
+	send(t, a, seatMsg(1))
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
+	send(t, b, `{"action":"leave-table","tablename":"t"}`)
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
 }

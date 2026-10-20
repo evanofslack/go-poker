@@ -16,9 +16,11 @@ const (
 	maxSeats      uint   = 6 // seats rendered by the frontend
 )
 
-// nextHandDelay is the pause after a hand ends before the next one is dealt.
-// A var so tests can shorten it.
-var nextHandDelay = 5 * time.Second
+// Vars so tests can shorten them.
+var (
+	nextHandDelay = 5 * time.Second  // pause after a hand before dealing the next
+	turnTimeout   = 30 * time.Second // time to act before checking or folding for you
+)
 
 func handleJoinTable(c *Client, tablename string, username string, create bool) {
 	if err := c.hub.joinTable(c, tablename, username, create); err != nil {
@@ -96,6 +98,12 @@ func handleTakeSeat(c *Client, seatID uint, buyIn uint) {
 		slog.Default().Warn("Set seat id", "error", err)
 	}
 	c.table.send(createNewLog(fmt.Sprintf("%s sits down with %d", c.username, buyIn)))
+
+	// a running game may be waiting for players
+	view := c.table.game.GenerateOmniView()
+	if view.Running && view.Stage == poker.PreDeal {
+		c.table.scheduleDeal()
+	}
 	broadcastGame(c.table)
 }
 
@@ -113,6 +121,7 @@ func handleStartGame(c *Client) {
 		return
 	}
 	logDeal(c.table)
+	c.table.startTurnTimer()
 	broadcastGame(c.table)
 }
 
@@ -127,6 +136,7 @@ func handleResetGame(c *Client) {
 	if c.table.dealTimer != nil {
 		c.table.dealTimer.Stop()
 	}
+	c.table.turnSeq++ // cancel the turn timer
 	c.table.game.Reset()
 	c.table.send(createNewLog(fmt.Sprintf("%s reset the table", c.username)))
 	broadcastGame(c.table)
@@ -217,13 +227,124 @@ func handleFold(c *Client) {
 // action ended the hand it also logs the winners and deals the next hand
 // after a pause. Caller holds t.mu.
 func finishAction(t *table, msg string) {
-	t.send(createNewLog(msg))
+	if msg != "" {
+		t.send(createNewLog(msg))
+	}
+	foldLeavers(t)
 	view := t.game.GenerateOmniView()
 	if view.Stage == poker.PreDeal {
 		logWinners(t, view)
-		t.dealTimer = time.AfterFunc(nextHandDelay, func() { dealNextHand(t) })
+		removeLeavers(t)
+		t.scheduleDeal()
+	} else {
+		t.startTurnTimer()
 	}
 	broadcastGame(t)
+}
+
+// scheduleDeal deals the next hand after a pause. Caller holds t.mu.
+func (t *table) scheduleDeal() {
+	if t.dealTimer != nil {
+		t.dealTimer.Stop()
+	}
+	t.dealTimer = time.AfterFunc(nextHandDelay, func() { dealNextHand(t) })
+}
+
+// startTurnTimer gives the player to act turnTimeout to do so. Caller holds t.mu.
+func (t *table) startTurnTimer() {
+	t.turnSeq++
+	seq := t.turnSeq
+	if t.turnTimer != nil {
+		t.turnTimer.Stop()
+	}
+	t.turnTimer = time.AfterFunc(turnTimeout, func() { turnTimedOut(t, seq) })
+}
+
+// turnTimedOut checks for the player to act if they can, and folds otherwise.
+func turnTimedOut(t *table, seq int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	select {
+	case <-t.done:
+		return
+	default:
+	}
+	view := t.game.GenerateOmniView()
+	if seq != t.turnSeq || !view.Betting {
+		return
+	}
+	pn := view.ActionNum
+	p := view.Players[pn]
+	var maxBet uint
+	for _, q := range view.Players {
+		maxBet = max(maxBet, q.Bet)
+	}
+	if p.Bet >= maxBet && poker.Bet(t.game, pn, 0) == nil {
+		finishAction(t, fmt.Sprintf("%s checks (out of time)", p.Username))
+		return
+	}
+	if err := poker.Fold(t.game, pn, 0); err != nil {
+		slog.Default().Warn("Turn timeout fold", "error", err)
+		return
+	}
+	finishAction(t, fmt.Sprintf("%s folds (out of time)", p.Username))
+}
+
+// leaveSeat takes the player with uuid out of the game: right away between
+// hands, otherwise by folding them when it's their turn. Caller holds t.mu.
+func leaveSeat(t *table, uuid string) {
+	view := t.game.GenerateOmniView()
+	seated := false
+	for _, p := range view.Players {
+		seated = seated || p.UUID == uuid
+	}
+	if !seated {
+		return
+	}
+	t.leaving[uuid] = true
+	switch {
+	case !view.Betting && view.Stage == poker.PreDeal:
+		removeLeavers(t)
+		broadcastGame(t)
+	case view.Betting && view.Players[view.ActionNum].UUID == uuid:
+		finishAction(t, "") // folds them
+	}
+}
+
+// foldLeavers folds players who left once action reaches them. Caller holds t.mu.
+func foldLeavers(t *table) {
+	for {
+		view := t.game.GenerateOmniView()
+		if !view.Betting {
+			return
+		}
+		p := view.Players[view.ActionNum]
+		if !t.leaving[p.UUID] {
+			return
+		}
+		if err := poker.Fold(t.game, view.ActionNum, 0); err != nil {
+			slog.Default().Warn("Fold leaver", "error", err)
+			return
+		}
+		t.send(createNewLog(fmt.Sprintf("%s folds", p.Username)))
+	}
+}
+
+// removeLeavers removes players who left from the game. Only works between
+// hands. Caller holds t.mu.
+func removeLeavers(t *table) {
+	for uuid := range t.leaving {
+		for pn, p := range t.game.GenerateOmniView().Players {
+			if p.UUID != uuid {
+				continue
+			}
+			if err := poker.RemovePlayer(t.game, uint(pn), 0); err != nil {
+				return // mid-hand, try again after it
+			}
+			t.send(createNewLog(fmt.Sprintf("%s left the table", p.Username)))
+		}
+		delete(t.leaving, uuid)
+	}
 }
 
 // dealNextHand deals a new hand, unless the table was reset or deleted.
@@ -244,6 +365,7 @@ func dealNextHand(t *table) {
 		return
 	}
 	logDeal(t)
+	t.startTurnTimer()
 	broadcastGame(t)
 }
 

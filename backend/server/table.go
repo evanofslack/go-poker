@@ -31,7 +31,10 @@ type table struct {
 	users map[*Client]bool // clients at this table, guarded by mu
 	host  *Client          // guarded by mu
 
-	dealTimer *time.Timer // deals the next hand, guarded by mu
+	dealTimer *time.Timer     // deals the next hand, guarded by mu
+	turnTimer *time.Timer     // acts for an idle player, guarded by mu
+	turnSeq   int             // invalidates old turn timers, guarded by mu
+	leaving   map[string]bool // uuids of players who left, guarded by mu
 }
 
 // newTable creates a new table
@@ -46,6 +49,7 @@ func newTable(name string) *table {
 		game:       poker.NewGame(),
 		done:       make(chan struct{}),
 		users:      make(map[*Client]bool),
+		leaving:    make(map[string]bool),
 	}
 }
 
