@@ -87,6 +87,14 @@ export function SocketProvider(props: SocketProviderProps) {
                     };
                     dispatch({ type: "updateGame", payload: newGame });
                     return;
+                case "error":
+                    // rejected actions only go to this client, show them in the log
+                    let errorLog: Log = {
+                        message: "error: " + event.message,
+                        timestamp: event.timestamp,
+                    };
+                    dispatch({ type: "addLog", payload: errorLog });
+                    return;
                 case "update-player-uuid":
                     dispatch({ type: "updatePlayerID", payload: event.uuid });
                     return;

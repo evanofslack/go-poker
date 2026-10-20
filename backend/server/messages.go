@@ -94,6 +94,7 @@ const (
 	actionNewLog           string = "new-log"
 	actionUpdateGame       string = "update-game"
 	actionUpdatePlayerUUID string = "update-player-uuid"
+	actionError            string = "error"
 )
 
 type newMessage struct {
@@ -114,6 +115,13 @@ type newLog struct {
 type updateGame struct {
 	base                 // actionUpdateGame
 	Game *poker.GameView `json:"game"`
+}
+
+// errorMessage tells one client why its action was rejected
+type errorMessage struct {
+	base             // actionError
+	Message   string `json:"message"`
+	Timestamp string `json:"timestamp"`
 }
 
 type updatePlayerUUID struct {

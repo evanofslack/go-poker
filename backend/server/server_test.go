@@ -299,15 +299,21 @@ func TestSpectatorCannotStart(t *testing.T) {
 	eventually(t, func() bool { return isRunning(t, hub, "t") }, "seated player could not start the game")
 }
 
-// dialGames is dial, but also collects the game views the client receives.
-func dialGames(t *testing.T, srv *httptest.Server) (*websocket.Conn, <-chan poker.GameView) {
+// received collects what the server sends one client.
+type received struct {
+	games  chan poker.GameView
+	errors chan string
+}
+
+// dialRecv is dial, but also collects the game views and errors the client receives.
+func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 	url := "ws" + strings.TrimPrefix(srv.URL, "http")
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { conn.Close() })
-	games := make(chan poker.GameView, 256)
+	r := received{make(chan poker.GameView, 256), make(chan string, 256)}
 	go func() {
 		for {
 			_, msg, err := conn.ReadMessage()
@@ -315,18 +321,28 @@ func dialGames(t *testing.T, srv *httptest.Server) (*websocket.Conn, <-chan poke
 				return
 			}
 			var u struct {
-				Action string         `json:"action"`
-				Game   poker.GameView `json:"game"`
+				Action  string         `json:"action"`
+				Game    poker.GameView `json:"game"`
+				Message string         `json:"message"`
 			}
-			if json.Unmarshal(msg, &u) == nil && u.Action == actionUpdateGame {
+			if json.Unmarshal(msg, &u) != nil {
+				continue
+			}
+			switch u.Action {
+			case actionUpdateGame:
 				select {
-				case games <- u.Game:
+				case r.games <- u.Game:
+				default:
+				}
+			case actionError:
+				select {
+				case r.errors <- u.Message:
 				default:
 				}
 			}
 		}
 	}()
-	return conn, games
+	return conn, r
 }
 
 // waitGame returns the first game view matching cond.
@@ -347,9 +363,9 @@ func waitGame(t *testing.T, games <-chan poker.GameView, cond func(poker.GameVie
 
 func TestHoleCardsHidden(t *testing.T) {
 	srv := newTestServer(t)
-	a, aGames := dialGames(t, srv)
-	b, bGames := dialGames(t, srv)
-	spectator, sGames := dialGames(t, srv)
+	a, aRecv := dialRecv(t, srv)
+	b, bRecv := dialRecv(t, srv)
+	spectator, sRecv := dialRecv(t, srv)
 	for i, c := range []*websocket.Conn{a, b} {
 		send(t, c,
 			`{"action":"join-table","tablename":"t"}`,
@@ -358,14 +374,14 @@ func TestHoleCardsHidden(t *testing.T) {
 		)
 	}
 	send(t, spectator, `{"action":"join-table","tablename":"t"}`)
-	waitGame(t, aGames, func(g poker.GameView) bool { return len(g.Players) == 2 })
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
 	send(t, a, `{"action":"start-game"}`)
 
 	running := func(g poker.GameView) bool { return g.Running && g.Players[0].In }
 	views := map[string]poker.GameView{
-		"a":         waitGame(t, aGames, running),
-		"b":         waitGame(t, bGames, running),
-		"spectator": waitGame(t, sGames, running),
+		"a":         waitGame(t, aRecv.games, running),
+		"b":         waitGame(t, bRecv.games, running),
+		"spectator": waitGame(t, sRecv.games, running),
 	}
 	own := map[string]int{"a": 0, "b": 1, "spectator": -1}
 	for name, g := range views {
@@ -374,5 +390,80 @@ func TestHoleCardsHidden(t *testing.T) {
 				t.Errorf("%s sees player %d cards = %v, want %v", name, pn, shown, want)
 			}
 		}
+	}
+}
+
+// waitError returns the next error the client receives.
+func waitError(t *testing.T, r received) string {
+	t.Helper()
+	select {
+	case msg := <-r.errors:
+		return msg
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for error")
+		return ""
+	}
+}
+
+func TestOnlyActOnYourTurn(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := dialRecv(t, srv)
+	b, bRecv := dialRecv(t, srv)
+	spectator, sRecv := dialRecv(t, srv)
+	// a sits first so is dealer
+	for i, c := range []*websocket.Conn{a, b} {
+		send(t, c,
+			`{"action":"join-table","tablename":"t"}`,
+			`{"action":"new-player","username":"p"}`,
+			`{"action":"take-seat","username":"p","seatID":`+strconv.Itoa(i+1)+`,"buyIn":100}`,
+		)
+		waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == i+1 })
+	}
+	send(t, spectator, `{"action":"join-table","tablename":"t"}`)
+	send(t, a, `{"action":"start-game"}`)
+	g := waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Betting })
+
+	// heads up, the dealer (a) acts first preflop
+	if g.ActionNum != 0 {
+		t.Fatalf("action on player %d, want 0", g.ActionNum)
+	}
+	send(t, b, `{"action":"player-fold"}`)
+	if msg := waitError(t, bRecv); msg != "not your turn" {
+		t.Errorf("b got error %q", msg)
+	}
+	send(t, spectator, `{"action":"player-fold"}`)
+	if msg := waitError(t, sRecv); msg != "take a seat first" {
+		t.Errorf("spectator got error %q", msg)
+	}
+
+	// neither fold happened: a can still act, and the hand goes on
+	send(t, a, `{"action":"player-call"}`)
+	g = waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.ActionNum == 1 })
+	if !g.Players[1].In {
+		t.Error("b was folded by someone else")
+	}
+}
+
+func TestSeatErrors(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := dialRecv(t, srv)
+	b, bRecv := dialRecv(t, srv)
+	for _, c := range []*websocket.Conn{a, b} {
+		send(t, c, `{"action":"join-table","tablename":"t"}`, `{"action":"new-player","username":"p"}`)
+	}
+	send(t, a, `{"action":"take-seat","username":"p","seatID":1,"buyIn":100}`)
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
+
+	send(t, a, `{"action":"take-seat","username":"p","seatID":2,"buyIn":100}`)
+	if msg := waitError(t, aRecv); msg != "you already have a seat" {
+		t.Errorf("second seat: got %q", msg)
+	}
+	send(t, b, `{"action":"take-seat","username":"p","seatID":1,"buyIn":100}`)
+	if msg := waitError(t, bRecv); msg != "seat taken" {
+		t.Errorf("taken seat: got %q", msg)
+	}
+	send(t, b, `{"action":"take-seat","username":"p","seatID":2,"buyIn":999999}`)
+	if msg := waitError(t, bRecv); !strings.HasPrefix(msg, "buy-in must be") {
+		t.Errorf("bad buy-in: got %q", msg)
 	}
 }
