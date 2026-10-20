@@ -153,7 +153,7 @@ func setSeatID(g *Game, pn uint, data uint) error {
 	// 	return Error
 	// }
 	if data == 0 {
-		panic("cannot insert player at position zero")
+		return ErrInvalidPosition
 	}
 
 	for _, p := range g.players {

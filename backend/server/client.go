@@ -149,6 +149,10 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		return errors.New("deserialize message")
 	}
 
+	if baseMessage.Action != actionJoinTable && c.table == nil {
+		return errors.New("client has not joined a table")
+	}
+
 	switch baseMessage.Action {
 
 	case actionJoinTable:
