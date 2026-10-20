@@ -61,6 +61,7 @@ export default function Join() {
                         className="m-2 rounded-sm bg-neutral-700 py-2 pl-4 text-white focus:outline-none"
                         id="username"
                         type="text"
+                        maxLength={20}
                         value={username}
                         placeholder="name"
                         onChange={handleUsername}
@@ -71,6 +72,7 @@ export default function Join() {
                             className="w-28 rounded-sm bg-neutral-700 py-2 pl-4 text-white focus:outline-none"
                             id="tablename"
                             type="text"
+                            maxLength={32}
                             value={tablename}
                             placeholder="table"
                             onChange={handleTablename}

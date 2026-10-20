@@ -38,7 +38,7 @@ type leaveTable struct {
 
 type sendMessage struct {
 	base            // actionSendMessage
-	Username string `json:"username"`
+	Username string `json:"username"` // ignored, the server uses the client's username
 	Message  string `json:"message"`
 }
 

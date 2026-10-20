@@ -60,6 +60,7 @@ export default function Chat() {
                     className="w-full bg-zinc-800 p-2 text-neutral-400 placeholder-neutral-600"
                     id="input"
                     type="text"
+                    maxLength={200}
                     value={inputValue}
                     placeholder="say something..."
                     onChange={handleChange}

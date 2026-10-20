@@ -18,11 +18,15 @@ const (
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 1024
+
+	// close connections that send more than this many messages per second
+	maxMessagesPerSecond = 20
 )
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin:     checkOrigin,
 }
 
 // Client is a middleman between the websocket connection and the hub.
@@ -47,9 +51,7 @@ func newClient(conn *websocket.Conn, hub *Hub) *Client {
 func (c *Client) disconnect() {
 	// leave the table before the hub closes c.send, so the table never
 	// sends on a closed channel
-	if c.table != nil {
-		c.table.unregister <- c
-	}
+	c.hub.leaveTable(c)
 	c.hub.unregister <- c
 	c.conn.Close()
 }
@@ -68,6 +70,7 @@ func (c *Client) readPump() {
 		slog.Default().Warn("set read deadline", "error", err)
 	}
 	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	windowStart, count := time.Now(), 0
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
@@ -75,6 +78,14 @@ func (c *Client) readPump() {
 				slog.Default().Warn("Websocket unexpected close", "error", err)
 			}
 			slog.Default().Warn("Read from websocket", "error", err)
+			break
+		}
+		if time.Since(windowStart) > time.Second {
+			windowStart, count = time.Now(), 0
+		}
+		count++
+		if count > maxMessagesPerSecond {
+			slog.Default().Warn("Websocket rate limit exceeded, closing", "uuid", c.uuid)
 			break
 		}
 		if err = c.safeProcessEvents(message); err != nil {
@@ -126,7 +137,6 @@ func (c *Client) writePump() {
 
 // serveWs handles websocket requests from the peer.
 func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -176,8 +186,10 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		if err != nil {
 			return err
 		}
-		handleJoinTable(c, table.Tablename)
-		return nil
+		if !validLength(table.Tablename, maxTablenameLen) {
+			return errors.New("invalid table name")
+		}
+		return handleJoinTable(c, table.Tablename)
 
 	case actionLeaveTable:
 		var table leaveTable
@@ -194,7 +206,10 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		if err != nil {
 			return err
 		}
-		handleSendMessage(c, message.Username, message.Message)
+		if !validLength(message.Message, maxMessageLen) {
+			return errors.New("invalid chat message")
+		}
+		handleSendMessage(c, message.Message)
 		return nil
 
 	case actionSendLog:
@@ -202,6 +217,9 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		err := json.Unmarshal(rawMessage, &log)
 		if err != nil {
 			return err
+		}
+		if !validLength(log.Message, maxMessageLen) {
+			return errors.New("invalid log message")
 		}
 		handleSendLog(c, log.Message)
 		return nil
@@ -212,6 +230,9 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		if err != nil {
 			return err
 		}
+		if !validLength(player.Username, maxUsernameLen) {
+			return errors.New("invalid username")
+		}
 		handleNewPlayer(c, player.Username)
 		return nil
 
@@ -220,6 +241,9 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		err := json.Unmarshal(rawMessage, &seat)
 		if err != nil {
 			return err
+		}
+		if !validLength(seat.Username, maxUsernameLen) {
+			return errors.New("invalid username")
 		}
 		handleTakeSeat(c, seat.Username, seat.SeatID, seat.BuyIn)
 		return nil

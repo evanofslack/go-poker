@@ -1,6 +1,9 @@
 package server
 
-import "sync"
+import (
+	"errors"
+	"sync"
+)
 
 // Hub maintains the set of active clients and tables.
 type Hub struct {
@@ -43,21 +46,55 @@ func (h *Hub) unregisterClient(client *Client) {
 	}
 }
 
-// getOrCreateTable returns the table with the given name, creating it if needed.
-func (h *Hub) getOrCreateTable(name string) *table {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if t, ok := h.tables[name]; ok {
-		return t
+// maxTables caps how many tables can exist at once.
+const maxTables = 100
+
+var errTooManyTables = errors.New("too many tables")
+
+// joinTable moves c to the named table, creating the table if needed.
+func (h *Hub) joinTable(c *Client, name string) error {
+	if c.table != nil && c.table.name == name {
+		return nil
 	}
-	t := newTable(name)
-	go t.run()
-	h.tables[name] = t
-	return t
+
+	h.mu.Lock()
+	t, ok := h.tables[name]
+	if !ok {
+		if len(h.tables) >= maxTables {
+			h.mu.Unlock()
+			return errTooManyTables
+		}
+		t = newTable(name)
+		go t.run()
+		h.tables[name] = t
+	}
+	t.members++
+	h.mu.Unlock()
+
+	h.leaveTable(c)
+	c.table = t
+	t.register <- c
+	return nil
 }
 
-func (h *Hub) findTableByName(name string) *table {
+// leaveTable removes c from its table, and deletes the table once empty.
+func (h *Hub) leaveTable(c *Client) {
+	t := c.table
+	if t == nil {
+		return
+	}
+	c.table = nil
+	t.unregister <- c
+
 	h.mu.Lock()
-	defer h.mu.Unlock()
-	return h.tables[name]
+	t.members--
+	empty := t.members == 0
+	if empty {
+		delete(h.tables, t.name)
+	}
+	h.mu.Unlock()
+
+	if empty {
+		close(t.done)
+	}
 }

@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -12,13 +13,18 @@ import (
 )
 
 func newTestServer(t *testing.T) *httptest.Server {
+	srv, _ := newTestServerHub(t)
+	return srv
+}
+
+func newTestServerHub(t *testing.T) (*httptest.Server, *Hub) {
 	hub := newHub()
 	go hub.run()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		serveWs(hub, w, r)
 	}))
 	t.Cleanup(srv.Close)
-	return srv
+	return srv, hub
 }
 
 func dial(t *testing.T, srv *httptest.Server) *websocket.Conn {
@@ -114,7 +120,7 @@ func TestConcurrentPlayers(t *testing.T) {
 				`{"action":"new-player","username":"p"}`,
 				`{"action":"take-seat","username":"p","seatID":`+string(rune('0'+seat))+`,"buyIn":100}`,
 			)
-			for j := 0; j < 20; j++ {
+			for j := 0; j < 2; j++ { // stay under the rate limit
 				send(t, conn,
 					`{"action":"start-game"}`,
 					`{"action":"player-call"}`,
@@ -145,9 +151,143 @@ func TestDisconnectMidGame(t *testing.T) {
 	}
 	send(t, a, `{"action":"start-game"}`)
 	a.Close()
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 10; i++ {
 		send(t, b, `{"action":"send-message","username":"p","message":"still here"}`)
 	}
 	time.Sleep(200 * time.Millisecond)
 	assertAlive(t, srv)
+}
+
+func TestCrossOriginRejected(t *testing.T) {
+	srv := newTestServer(t)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http")
+
+	_, resp, err := websocket.DefaultDialer.Dial(url, http.Header{"Origin": {"https://evil.example"}})
+	if err == nil {
+		t.Fatal("cross-origin websocket was accepted")
+	}
+	if resp == nil || resp.StatusCode != http.StatusForbidden {
+		t.Errorf("want 403, got %v", resp)
+	}
+
+	conn, _, err := websocket.DefaultDialer.Dial(url, http.Header{"Origin": {srv.URL}})
+	if err != nil {
+		t.Fatalf("same-origin websocket rejected: %s", err)
+	}
+	conn.Close()
+}
+
+func TestFloodDisconnects(t *testing.T) {
+	srv := newTestServer(t)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http")
+	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	send(t, conn, `{"action":"join-table","tablename":"t"}`)
+	for i := 0; i < 2*maxMessagesPerSecond; i++ {
+		conn.WriteMessage(websocket.TextMessage, []byte(`{"action":"send-message","username":"p","message":"spam"}`))
+	}
+	// the server should close the connection, so writes start failing
+	deadline := time.Now().Add(2 * time.Second)
+	for conn.WriteMessage(websocket.TextMessage, []byte(`{}`)) == nil {
+		if time.Now().After(deadline) {
+			t.Fatal("flooding client was not disconnected")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	assertAlive(t, srv)
+}
+
+func tableNames(h *Hub) []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	var names []string
+	for name := range h.tables {
+		names = append(names, name)
+	}
+	return names
+}
+
+func waitForTables(t *testing.T, h *Hub, want int) {
+	deadline := time.Now().Add(2 * time.Second)
+	for len(tableNames(h)) != want {
+		if time.Now().After(deadline) {
+			t.Fatalf("tables = %v, want %d", tableNames(h), want)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestEmptyTablesDeleted(t *testing.T) {
+	srv, hub := newTestServerHub(t)
+	conn := dial(t, srv)
+
+	send(t, conn, `{"action":"join-table","tablename":"a"}`, `{"action":"join-table","tablename":"b"}`)
+	waitForTables(t, hub, 1)
+	if names := tableNames(hub); names[0] != "b" {
+		t.Errorf("tables = %v, want [b]", names)
+	}
+
+	send(t, conn, `{"action":"leave-table","tablename":"b"}`)
+	waitForTables(t, hub, 0)
+
+	send(t, conn, `{"action":"join-table","tablename":"c"}`)
+	waitForTables(t, hub, 1)
+	conn.Close()
+	waitForTables(t, hub, 0)
+}
+
+func TestTableCap(t *testing.T) {
+	srv, hub := newTestServerHub(t)
+	for i := 0; i < maxTables+5; i++ {
+		conn := dial(t, srv)
+		send(t, conn, `{"action":"join-table","tablename":"t`+strconv.Itoa(i)+`"}`)
+	}
+	time.Sleep(200 * time.Millisecond)
+	if n := len(tableNames(hub)); n != maxTables {
+		t.Errorf("tables = %d, want %d", n, maxTables)
+	}
+}
+
+func isRunning(t *testing.T, h *Hub, name string) bool {
+	h.mu.Lock()
+	tbl := h.tables[name]
+	h.mu.Unlock()
+	if tbl == nil {
+		t.Fatalf("no table %q", name)
+	}
+	tbl.mu.Lock()
+	defer tbl.mu.Unlock()
+	return tbl.game.GenerateOmniView().Running
+}
+
+func TestSpectatorCannotStart(t *testing.T) {
+	srv, hub := newTestServerHub(t)
+	for i := 1; i <= 2; i++ {
+		send(t, dial(t, srv),
+			`{"action":"join-table","tablename":"t"}`,
+			`{"action":"new-player","username":"p"}`,
+			`{"action":"take-seat","username":"p","seatID":`+strconv.Itoa(i)+`,"buyIn":100}`,
+		)
+	}
+	spectator := dial(t, srv)
+	send(t, spectator, `{"action":"join-table","tablename":"t"}`, `{"action":"start-game"}`)
+	time.Sleep(200 * time.Millisecond)
+	if isRunning(t, hub, "t") {
+		t.Fatal("spectator started the game")
+	}
+
+	player := dial(t, srv)
+	send(t, player,
+		`{"action":"join-table","tablename":"t"}`,
+		`{"action":"new-player","username":"p"}`,
+		`{"action":"take-seat","username":"p","seatID":3,"buyIn":100}`,
+		`{"action":"start-game"}`,
+	)
+	time.Sleep(200 * time.Millisecond)
+	if !isRunning(t, hub, "t") {
+		t.Fatal("seated player could not start the game")
+	}
 }
