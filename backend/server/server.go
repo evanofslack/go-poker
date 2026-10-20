@@ -1,7 +1,9 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"mime"
 	"net"
@@ -9,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -40,9 +43,13 @@ func New() (*Server, error) {
 
 	s := &Server{
 		listener: ln,
-		server:   &http.Server{Addr: addr},
-		router:   chi.NewRouter(),
-		hub:      hub,
+		server: &http.Server{
+			Addr:              addr,
+			ReadHeaderTimeout: 10 * time.Second,
+			IdleTimeout:       120 * time.Second,
+		},
+		router: chi.NewRouter(),
+		hub:    hub,
 	}
 
 	s.server.Handler = s.router
@@ -54,12 +61,25 @@ func New() (*Server, error) {
 	return s, nil
 }
 
-func (s *Server) Run() error {
+// Run starts the hub and http server, and returns a channel that receives
+// the error if the server stops unexpectedly.
+func (s *Server) Run() <-chan error {
 	go s.hub.run()
 	slog.Default().Info("running websocket hub")
-	go s.server.Serve(s.listener)
+
+	errc := make(chan error, 1)
+	go func() {
+		if err := s.server.Serve(s.listener); !errors.Is(err, http.ErrServerClosed) {
+			errc <- err
+		}
+	}()
 	slog.Default().Info("starting http server")
-	return nil
+	return errc
+}
+
+// Shutdown stops accepting connections and waits for in-flight requests.
+func (s *Server) Shutdown(ctx context.Context) error {
+	return s.server.Shutdown(ctx)
 }
 
 func getPort() string {

@@ -5,20 +5,19 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/evanofslack/go-poker/server"
 	"github.com/joho/godotenv"
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() { <-c; cancel() }()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	err := godotenv.Load()
-	if err != nil {
-		slog.Default().Error("load env", "error", err)
+	if err := godotenv.Load(); err != nil {
+		slog.Default().Info("no .env file loaded", "error", err)
 	}
 
 	s, err := server.New()
@@ -26,11 +25,18 @@ func main() {
 		slog.Default().Error("create http server", "error", err)
 		os.Exit(1)
 	}
-	if err := s.Run(); err != nil {
-		slog.Default().Error("start http server", "error", err)
+
+	select {
+	case err := <-s.Run():
+		slog.Default().Error("http server", "error", err)
 		os.Exit(1)
+	case <-ctx.Done():
 	}
 
-	<-ctx.Done()
 	slog.Default().Info("Shutting down...")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := s.Shutdown(shutdownCtx); err != nil {
+		slog.Default().Error("shutdown http server", "error", err)
+	}
 }
