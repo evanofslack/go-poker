@@ -8,7 +8,6 @@ import classNames from "classnames";
 type seatProps = {
     player: Player | null;
     id: number;
-    reveal: boolean;
 };
 
 function chipPosition(id: number) {
@@ -49,18 +48,12 @@ function active(player: Player, game: Game) {
     );
 }
 
-export default function Seat({ player, id, reveal }: seatProps) {
+export default function Seat({ player, id }: seatProps) {
     const { appState, dispatch } = useContext(AppContext);
     const [sitDown, setSitDown] = useState(false);
 
-    let hidden = false;
     if (player && appState.game) {
-        if (appState.game.running) {
-            if (appState.clientID !== player?.uuid) {
-                hidden = true;
-            }
-        }
-        // This is the player's seat
+        // This is the player's seat. The server only sends cards this client may see.
         return (
             <div className="relative">
                 <div className={active(player, appState.game)}>
@@ -71,7 +64,7 @@ export default function Seat({ player, id, reveal }: seatProps) {
                                     card={c}
                                     placeholder={false}
                                     folded={!player.in}
-                                    hidden={reveal ? false : hidden}
+                                    hidden={!c}
                                 />
                             </div>
                         ))}
