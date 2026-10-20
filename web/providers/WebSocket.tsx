@@ -45,7 +45,7 @@ export function SocketProvider(props: SocketProviderProps) {
         setSocket(_socket);
 
         return () => {
-            socket?.close();
+            _socket?.close();
         };
     }, [dispatch]);
 

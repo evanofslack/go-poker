@@ -14,7 +14,7 @@ export default function BuyIn({ seatID, sitDown, setSitDown }: buyInProps) {
     const socket = useSocket();
     const { appState, dispatch } = useContext(AppContext);
     const [buyIn, setBuyIn] = useState(
-        appState.game?.config.maxBuyIn ? appState.game?.config.maxBuyIn : 2000
+        appState.game ? Math.min(100 * appState.game.config.bb, appState.game.config.maxBuy) : 2000
     );
 
     const handleBuyIn = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

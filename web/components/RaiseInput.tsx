@@ -19,6 +19,18 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
     const socket = useSocket();
     const { appState, dispatch } = useContext(AppContext);
 
+    // hooks must run before the early return, so derive the initial raise safely
+    const minRaise = appState.game
+        ? Math.max(...appState.game.players.map((player) => player.bet)) + appState.game.minRaise
+        : 0;
+
+    const [inputValue, setInputValue] = useState(minRaise);
+
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const bet = parseInt(e.target.value);
+        setInputValue(bet);
+    }, []);
+
     if (!appState.game) {
         return null;
     }
@@ -29,7 +41,6 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
     const currentStack = appState.game.players[appState.game.action].stack; // active player's stack
     const playerBets = appState.game.players.map((player) => player.bet); // array of all players' bets
     const maxBet = Math.max(...playerBets); // largest bet out of all player's bets
-    const minRaise = maxBet + appState.game.minRaise;
 
     const currentPot =
         appState.game.pots.length != 0 ? appState.game.pots[0].amount : bigBlind + smallBlind;
@@ -59,13 +70,6 @@ export default function RaiseInput({ showRaise, setShowRaise }: raiseProps) {
 
     const full = appState.game.pots.length != 0 ? potBet : bigBlind * 3;
     const allIn = currentStack + currentBet;
-
-    const [inputValue, setInputValue] = useState(minRaise);
-
-    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        const bet = parseInt(e.target.value);
-        setInputValue(bet);
-    }, []);
 
     const handleRaise = (user: string | null, amount: number) => {
         if (socket) {
