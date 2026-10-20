@@ -44,10 +44,12 @@ func newClient(conn *websocket.Conn, hub *Hub) *Client {
 }
 
 func (c *Client) disconnect() {
-	c.hub.unregister <- c
+	// leave the table before the hub closes c.send, so the table never
+	// sends on a closed channel
 	if c.table != nil {
 		c.table.unregister <- c
 	}
+	c.hub.unregister <- c
 	c.conn.Close()
 }
 
@@ -103,6 +105,7 @@ func (c *Client) writePump() {
 			w, err := c.conn.NextWriter(websocket.TextMessage)
 			if err != nil {
 				slog.Default().Warn("Write websocket message", "error", err)
+				return
 			}
 			w.Write(message)
 

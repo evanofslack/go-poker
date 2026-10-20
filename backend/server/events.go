@@ -17,6 +17,9 @@ const (
 
 func handleJoinTable(c *Client, tablename string) {
 	table := c.hub.getOrCreateTable(tablename)
+	if c.table != nil && c.table != table {
+		c.table.unregister <- c
+	}
 	c.table = table
 	table.register <- c
 }

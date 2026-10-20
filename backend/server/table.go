@@ -58,8 +58,10 @@ func (t *table) broadcastToClients(message []byte) {
 		select {
 		case client.send <- message:
 		default:
-			close(client.send)
+			// slow client: drop it and let its readPump unregister it,
+			// the hub is the only one that closes client.send
 			delete(t.clients, client)
+			client.conn.Close()
 		}
 	}
 }
