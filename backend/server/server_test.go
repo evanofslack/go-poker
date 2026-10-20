@@ -151,3 +151,22 @@ func TestDisconnectMidGame(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 	assertAlive(t, srv)
 }
+
+func TestCrossOriginRejected(t *testing.T) {
+	srv := newTestServer(t)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http")
+
+	_, resp, err := websocket.DefaultDialer.Dial(url, http.Header{"Origin": {"https://evil.example"}})
+	if err == nil {
+		t.Fatal("cross-origin websocket was accepted")
+	}
+	if resp == nil || resp.StatusCode != http.StatusForbidden {
+		t.Errorf("want 403, got %v", resp)
+	}
+
+	conn, _, err := websocket.DefaultDialer.Dial(url, http.Header{"Origin": {srv.URL}})
+	if err != nil {
+		t.Fatalf("same-origin websocket rejected: %s", err)
+	}
+	conn.Close()
+}
