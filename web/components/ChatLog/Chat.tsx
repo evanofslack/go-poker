@@ -14,7 +14,7 @@ export default function Chat() {
     const messageRef = useRef(null);
 
     const handleClick = useCallback(
-        (e) => {
+        (e: { preventDefault(): void }) => {
             e.preventDefault();
             if (socket && appState.username && inputValue != "") {
                 sendMessage(socket, appState.username, inputValue);
