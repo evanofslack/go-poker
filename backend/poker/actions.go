@@ -1,6 +1,7 @@
 package poker
 
 import (
+	"slices"
 	"sort"
 )
 
@@ -394,4 +395,71 @@ func toggleReady(g *Game, pn uint, data uint) error {
 	p.Left = false
 
 	return nil
+}
+
+// RemovePlayer removes a player from the game entirely. Every player after pn moves down one
+// player number. RemovePlayer will return an error unless g is between hands.
+// RemovePlayer ignores the value passed in as data.
+func RemovePlayer(g *Game, pn uint, data uint) error {
+	g.mtx.Lock()
+	defer g.mtx.Unlock()
+	return removePlayer(g, pn, data)
+}
+
+func removePlayer(g *Game, pn uint, data uint) error {
+	if g.getStage() != PreDeal || g.getBetting() {
+		return ErrIllegalAction
+	}
+
+	g.players = slices.Delete(g.players, int(pn), int(pn+1))
+	for i := range g.players {
+		g.players[i].Position = uint(i)
+	}
+
+	// shift player numbers that pointed past pn so they point at the same player.
+	// If pn itself was pointed at, this now points at the next player.
+	shift := func(num uint) uint {
+		if num > pn {
+			num--
+		}
+		if len(g.players) == 0 {
+			return 0
+		}
+		return num % uint(len(g.players))
+	}
+
+	g.dealerNum = shift(g.dealerNum)
+	g.calledNum = shift(g.calledNum)
+	g.actionNum = shift(g.actionNum)
+
+	// the last hand's results are still shown between hands, so fix up their player numbers too
+	for i := range g.pots {
+		g.pots[i].EligiblePlayerNums = removePlayerNum(g.pots[i].EligiblePlayerNums, pn)
+		g.pots[i].WinningPlayerNums = removePlayerNum(g.pots[i].WinningPlayerNums, pn)
+	}
+
+	if g.readyCount() > 0 {
+		for !g.players[g.dealerNum].Ready {
+			g.dealerNum = (g.dealerNum + 1) % uint(len(g.players))
+		}
+	}
+
+	g.updateBlindNums()
+
+	return nil
+}
+
+// removePlayerNum drops pn from nums and shifts down the player numbers after it
+func removePlayerNum(nums []uint, pn uint) []uint {
+	ret := []uint{}
+	for _, num := range nums {
+		if num == pn {
+			continue
+		}
+		if num > pn {
+			num--
+		}
+		ret = append(ret, num)
+	}
+	return ret
 }
