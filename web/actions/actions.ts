@@ -8,12 +8,13 @@ export function createTable(socket: WebSocket, tablename: string, username: stri
     );
 }
 
-export function joinTable(socket: WebSocket, tablename: string, username: string) {
+export function joinTable(socket: WebSocket, tablename: string, username: string, token?: string) {
     socket.send(
         JSON.stringify({
             action: "join-table",
             tablename: tablename,
             username: username,
+            token: token,
         })
     );
 }

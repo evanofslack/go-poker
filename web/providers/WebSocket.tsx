@@ -1,6 +1,30 @@
-import { createContext, ReactNode, useEffect, useState, useContext } from "react";
+import { createContext, ReactNode, useEffect, useState, useContext, useRef } from "react";
 import { AppContext } from "../providers/AppStore";
 import { Message, Game, Log } from "../interfaces";
+import { joinTable } from "../actions/actions";
+
+// Session lets a tab rejoin its table, and reclaim its seat with the token,
+// after a dropped connection or a reload.
+type Session = { table: string; username: string; token?: string };
+const sessionKey = "session";
+
+function loadSession(): Session | null {
+    try {
+        return JSON.parse(sessionStorage.getItem(sessionKey) || "null");
+    } catch {
+        return null;
+    }
+}
+
+function saveSession(session: Session | null) {
+    try {
+        if (session) {
+            sessionStorage.setItem(sessionKey, JSON.stringify(session));
+        } else {
+            sessionStorage.removeItem(sessionKey);
+        }
+    } catch {}
+}
 
 /*  
 WebSocket context creates a single connection to the server per client. 
@@ -18,34 +42,53 @@ export function SocketProvider(props: SocketProviderProps) {
     const [socket, setSocket] = useState<WebSocket | null>(null);
     const { appState, dispatch } = useContext(AppContext);
 
+    // true while rejoining after a reconnect, so a failed rejoin can go back to the join form
+    const rejoining = useRef(false);
+
     useEffect(() => {
         // WebSocket api is browser side only.
-        const isBrowser = typeof window !== "undefined";
-
-        let wsUrl = '';
-        if (isBrowser) {
-            // NEXT_PUBLIC_WS_URL points next dev at the go server, otherwise same origin
-            wsUrl = process.env.NEXT_PUBLIC_WS_URL || `${window.location.origin.replace('http', 'ws')}/ws`;
-            console.log("websocket url: ", wsUrl);
+        if (typeof window === "undefined") {
+            return;
         }
+        // NEXT_PUBLIC_WS_URL points next dev at the go server, otherwise same origin
+        const wsUrl =
+            process.env.NEXT_PUBLIC_WS_URL || `${window.location.origin.replace("http", "ws")}/ws`;
 
-        const _socket = isBrowser ? new WebSocket(wsUrl) : null;
+        let ws: WebSocket;
+        let retry: ReturnType<typeof setTimeout>;
+        let delay = 1000;
+        let stopped = false;
 
-        if (_socket) {
-            _socket.onopen = () => {
-                console.log("websocket connected");
+        // connect, and reconnect with backoff whenever the connection drops
+        const connect = () => {
+            ws = new WebSocket(wsUrl);
+            ws.onopen = () => {
+                delay = 1000;
+                const session = loadSession();
+                if (session) {
+                    rejoining.current = true;
+                    joinTable(ws, session.table, session.username, session.token);
+                }
             };
-            _socket.onclose = () => {
-                console.log("websocket disconnected");
+            ws.onclose = () => {
+                if (stopped) {
+                    return;
+                }
+                setSocket(null);
+                retry = setTimeout(connect, delay);
+                delay = Math.min(delay * 2, 10000);
             };
-            _socket.onerror = (error) => {
+            ws.onerror = (error) => {
                 console.error("websocket error: ", error);
             };
-        }
-        setSocket(_socket);
+            setSocket(ws);
+        };
+        connect();
 
         return () => {
-            socket?.close();
+            stopped = true;
+            clearTimeout(retry);
+            ws.close();
         };
     }, [dispatch]);
 
@@ -96,16 +139,36 @@ export function SocketProvider(props: SocketProviderProps) {
                     };
                     dispatch({ type: "addLog", payload: errorLog });
                     dispatch({ type: "setError", payload: event.message });
+                    if (rejoining.current) {
+                        rejoining.current = false;
+                        saveSession(null);
+                        dispatch({ type: "resetGame" });
+                    }
                     return;
-                case "joined-table":
+                case "joined-table": {
+                    rejoining.current = false;
+                    // keep the token when rejoining the same seat
+                    const prev = loadSession();
+                    const same = prev?.table === event.tablename && prev?.username === event.username;
+                    saveSession({
+                        table: event.tablename,
+                        username: event.username,
+                        token: same ? prev?.token : undefined,
+                    });
                     dispatch({ type: "setError", payload: null });
                     dispatch({ type: "setTablename", payload: event.tablename });
                     dispatch({ type: "updatePlayerID", payload: event.uuid });
                     dispatch({ type: "setUsername", payload: event.username });
                     return;
-                case "update-player-uuid":
+                }
+                case "update-player-uuid": {
+                    const session = loadSession();
+                    if (session && event.token) {
+                        saveSession({ ...session, token: event.token });
+                    }
                     dispatch({ type: "updatePlayerID", payload: event.uuid });
                     return;
+                }
                 default:
                     throw new Error();
             }
