@@ -1,4 +1,4 @@
-import { createContext, useReducer, ReactChild } from "react";
+import { createContext, useReducer, ReactNode } from "react";
 import { AppState, Message, Game, Log } from "../interfaces";
 
 const initialState: AppState = {
@@ -46,7 +46,7 @@ export const AppContext = createContext<{
 }>({ appState: initialState, dispatch: () => null });
 
 type StoreProviderProps = {
-    children: ReactChild;
+    children: ReactNode;
 };
 
 export function AppStoreProvider(props: StoreProviderProps) {
