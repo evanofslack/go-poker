@@ -50,14 +50,22 @@ func handleTakeSeat(c *Client, username string, seatID uint, buyIn uint) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
 
+	if isSeated(c) {
+		sendError(c, "you already have a seat")
+		return
+	}
 	maxBuy := c.table.game.GenerateOmniView().Config.MaxBuy
-	if seatID < 1 || seatID > maxSeats || buyIn == 0 || buyIn > maxBuy {
-		slog.Default().Warn("Take seat: invalid request", "seat", seatID, "buyIn", buyIn)
+	if seatID < 1 || seatID > maxSeats {
+		sendError(c, "invalid seat")
+		return
+	}
+	if buyIn == 0 || buyIn > maxBuy {
+		sendError(c, fmt.Sprintf("buy-in must be between 1 and %d", maxBuy))
 		return
 	}
 	for _, p := range c.table.game.GenerateOmniView().Players {
 		if p.SeatID == seatID {
-			slog.Default().Warn("Take seat: seat taken", "seat", seatID)
+			sendError(c, "seat taken")
 			return
 		}
 	}
@@ -93,12 +101,14 @@ func handleStartGame(c *Client) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
 	if !isSeated(c) {
+		sendError(c, "take a seat first")
 		return
 	}
 
 	err := c.table.game.Start()
 	if err != nil {
-		fmt.Println(err)
+		sendError(c, "need at least two ready players")
+		return
 	}
 	broadcastDeal(c.table)
 	broadcastGame(c.table)
@@ -108,6 +118,7 @@ func handleResetGame(c *Client) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
 	if !isSeated(c) {
+		sendError(c, "take a seat first")
 		return
 	}
 
@@ -119,6 +130,7 @@ func handleDealGame(c *Client) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
 	if !isSeated(c) {
+		sendError(c, "take a seat first")
 		return
 	}
 
@@ -136,11 +148,11 @@ func handleCall(c *Client) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
 
-	view := c.table.game.GenerateOmniView()
-	pn := view.ActionNum
-	if pn >= uint(len(view.Players)) {
+	pn, ok := actingPlayer(c)
+	if !ok {
 		return
 	}
+	view := c.table.game.GenerateOmniView()
 	currentPlayer := view.Players[pn]
 
 	// compute amount needed to call
@@ -157,9 +169,9 @@ func handleCall(c *Client) {
 		callAmount = currentPlayer.Stack
 	}
 
-	err := poker.Bet(c.table.game, pn, callAmount)
-	if err != nil {
-		slog.Default().Warn("Handle call", "error", err)
+	if err := poker.Bet(c.table.game, pn, callAmount); err != nil {
+		sendError(c, "can't call")
+		return
 	}
 	broadcastGame(c.table)
 }
@@ -168,16 +180,14 @@ func handleRaise(c *Client, raise uint) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
 
-	view := c.table.game.GenerateOmniView()
-	pn := view.ActionNum
-	if pn >= uint(len(view.Players)) {
+	pn, ok := actingPlayer(c)
+	if !ok {
 		return
 	}
-	err := poker.Bet(c.table.game, pn, raise)
-	if err != nil {
-		slog.Default().Warn("Handle raise", "error", err)
+	if err := poker.Bet(c.table.game, pn, raise); err != nil {
+		sendError(c, "invalid bet")
+		return
 	}
-
 	broadcastGame(c.table)
 }
 
@@ -185,14 +195,13 @@ func handleCheck(c *Client) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
 
-	view := c.table.game.GenerateOmniView()
-	pn := view.ActionNum
-	if pn >= uint(len(view.Players)) {
+	pn, ok := actingPlayer(c)
+	if !ok {
 		return
 	}
-	err := poker.Bet(c.table.game, pn, 0)
-	if err != nil {
-		slog.Default().Warn("Handle check", "error", err)
+	if err := poker.Bet(c.table.game, pn, 0); err != nil {
+		sendError(c, "can't check")
+		return
 	}
 	broadcastGame(c.table)
 }
@@ -201,17 +210,45 @@ func handleFold(c *Client) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
 
-	view := c.table.game.GenerateOmniView()
-	pn := view.ActionNum
-	if pn >= uint(len(view.Players)) {
+	pn, ok := actingPlayer(c)
+	if !ok {
 		return
 	}
-	err := poker.Fold(c.table.game, pn, 0)
-	if err != nil {
-		slog.Default().Warn("Handle fold", "error", err)
+	if err := poker.Fold(c.table.game, pn, 0); err != nil {
+		sendError(c, "can't fold")
 		return
 	}
 	broadcastGame(c.table)
+}
+
+// actingPlayer returns c's player index if it is c's turn, and otherwise
+// tells c why not. Caller holds c.table.mu.
+func actingPlayer(c *Client) (uint, bool) {
+	pn, ok := playerNum(c)
+	if !ok {
+		sendError(c, "take a seat first")
+		return 0, false
+	}
+	view := c.table.game.GenerateOmniView()
+	if !view.Betting || view.ActionNum != pn {
+		sendError(c, "not your turn")
+		return 0, false
+	}
+	return pn, true
+}
+
+// sendError tells c its action was rejected. It never blocks, so it is safe
+// while holding c.table.mu.
+func sendError(c *Client, message string) {
+	resp, err := json.Marshal(errorMessage{base{actionError}, message, currentTime()})
+	if err != nil {
+		slog.Default().Warn("Marshal error", "error", err)
+		return
+	}
+	select {
+	case c.send <- resp:
+	default:
+	}
 }
 
 // playerNum finds c's player index. Indexes change as players sit down, so
