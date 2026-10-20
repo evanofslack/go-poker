@@ -1,16 +1,16 @@
-FROM node:18-alpine AS frontend-builder
+FROM node:24-alpine AS frontend-builder
 WORKDIR /app/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
 COPY web/ ./
 RUN npm run build
 
-FROM golang:1.24.3-alpine AS backend-builder
+FROM golang:1.26-alpine AS backend-builder
 WORKDIR /build
 COPY backend/ ./
 RUN go build cmd/go-poker/main.go
 
-FROM alpine:latest
+FROM alpine:3.24
 RUN apk --no-cache add ca-certificates && \
     adduser -S -D -H -h /app appuser
 USER appuser
