@@ -44,3 +44,12 @@ func TestValidUsername(t *testing.T) {
 		}
 	}
 }
+
+func TestValidAmount(t *testing.T) {
+	if validAmount(0) {
+		t.Error("validAmount(0) = true, want false")
+	}
+	if !validAmount(500) {
+		t.Error("validAmount(500) = false, want true")
+	}
+}
