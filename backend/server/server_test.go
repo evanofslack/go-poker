@@ -537,7 +537,9 @@ func TestServerDealsNextHand(t *testing.T) {
 	srv := newTestServer(t)
 	a, aRecv := createAndWait(t, srv, "t", "a")
 	b := dial(t, srv)
+	// a sits first so is dealer
 	send(t, a, seatMsg(1))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
 	send(t, b, joinMsg("t", "b"), seatMsg(2))
 	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
 	send(t, a, `{"action":"start-game"}`)
