@@ -56,7 +56,7 @@ export type Game = {
 };
 
 export type Config = {
-    maxBuyIn: number;
+    maxBuy: number;
     bb: number;
     sb: number;
 };
