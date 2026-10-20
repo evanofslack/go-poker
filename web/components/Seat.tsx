@@ -75,7 +75,7 @@ export default function Seat({ player, id }: seatProps) {
                                     card={c}
                                     placeholder={false}
                                     // everyone is out between hands; cards shown then reached showdown
-                                    folded={!player.in && appState.game!.stage !== 1}
+                                    folded={!player.in && !(appState.game!.stage === 1 && c)}
                                     hidden={!c}
                                     highlight={winningCards(appState.game!).has(String(c))}
                                 />
