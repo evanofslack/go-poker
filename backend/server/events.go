@@ -42,7 +42,7 @@ func handleNewPlayer(c *Client, username string) {
 	defer c.table.mu.Unlock()
 
 	c.username = username
-	c.send <- createUpdatedGame(c)
+	c.send <- createGameView(c)
 	c.table.broadcast <- createNewMessage(gameAdminName, fmt.Sprintf("%s has joined", username))
 }
 
@@ -63,7 +63,7 @@ func handleTakeSeat(c *Client, username string, seatID uint, buyIn uint) {
 	}
 
 	position := c.table.game.AddPlayer()
-	c.uuid = c.table.game.GenerateOmniView().Players[position].UUID
+	c.uuid.Store(c.table.game.GenerateOmniView().Players[position].UUID)
 	c.send <- createUpdatedPlayerUUID(c)
 	err := poker.SetUsername(c.table.game, position, username)
 	if err != nil {
@@ -86,7 +86,7 @@ func handleTakeSeat(c *Client, username string, seatID uint, buyIn uint) {
 	if err != nil {
 		slog.Default().Warn("Set seat id", "error", err)
 	}
-	c.table.broadcast <- createUpdatedGame(c)
+	broadcastGame(c.table)
 }
 
 func handleStartGame(c *Client) {
@@ -101,7 +101,7 @@ func handleStartGame(c *Client) {
 		fmt.Println(err)
 	}
 	broadcastDeal(c.table)
-	c.table.broadcast <- createUpdatedGame(c)
+	broadcastGame(c.table)
 }
 
 func handleResetGame(c *Client) {
@@ -112,7 +112,7 @@ func handleResetGame(c *Client) {
 	}
 
 	c.table.game.Reset()
-	c.table.broadcast <- createUpdatedGame(c)
+	broadcastGame(c.table)
 }
 
 func handleDealGame(c *Client) {
@@ -129,7 +129,7 @@ func handleDealGame(c *Client) {
 	if err != nil {
 		slog.Default().Warn("Deal table", "error", err)
 	}
-	c.table.broadcast <- createUpdatedGame(c)
+	broadcastGame(c.table)
 }
 
 func handleCall(c *Client) {
@@ -161,7 +161,7 @@ func handleCall(c *Client) {
 	if err != nil {
 		slog.Default().Warn("Handle call", "error", err)
 	}
-	c.table.broadcast <- createUpdatedGame(c)
+	broadcastGame(c.table)
 }
 
 func handleRaise(c *Client, raise uint) {
@@ -178,7 +178,7 @@ func handleRaise(c *Client, raise uint) {
 		slog.Default().Warn("Handle raise", "error", err)
 	}
 
-	c.table.broadcast <- createUpdatedGame(c)
+	broadcastGame(c.table)
 }
 
 func handleCheck(c *Client) {
@@ -194,7 +194,7 @@ func handleCheck(c *Client) {
 	if err != nil {
 		slog.Default().Warn("Handle check", "error", err)
 	}
-	c.table.broadcast <- createUpdatedGame(c)
+	broadcastGame(c.table)
 }
 
 func handleFold(c *Client) {
@@ -211,17 +211,24 @@ func handleFold(c *Client) {
 		slog.Default().Warn("Handle fold", "error", err)
 		return
 	}
-	c.table.broadcast <- createUpdatedGame(c)
+	broadcastGame(c.table)
+}
+
+// playerNum finds c's player index. Indexes change as players sit down, so
+// look it up for every action. Caller holds c.table.mu.
+func playerNum(c *Client) (uint, bool) {
+	for i, p := range c.table.game.GenerateOmniView().Players {
+		if p.UUID == c.id() {
+			return uint(i), true
+		}
+	}
+	return 0, false
 }
 
 // isSeated reports whether c has a seat at its table. Caller holds c.table.mu.
 func isSeated(c *Client) bool {
-	for _, p := range c.table.game.GenerateOmniView().Players {
-		if p.UUID == c.uuid {
-			return true
-		}
-	}
-	return false
+	_, ok := playerNum(c)
+	return ok
 }
 
 func createNewMessage(username string, message string) []byte {
@@ -253,10 +260,30 @@ func createNewLog(message string) []byte {
 	return resp
 }
 
-func createUpdatedGame(c *Client) []byte {
+// broadcastGame sends every client its own view of the game. Caller holds t.mu.
+func broadcastGame(t *table) {
+	u := stateUpdate{byUUID: map[string][]byte{}}
+	players := t.game.GenerateOmniView().Players
+	for i, p := range players {
+		u.byUUID[p.UUID] = createUpdatedGame(t.game.GeneratePlayerView(uint(i)))
+	}
+	u.spectator = createUpdatedGame(t.game.GeneratePlayerView(uint(len(players))))
+	t.updates <- u
+}
+
+// createGameView is c's own view of the game. Caller holds c.table.mu.
+func createGameView(c *Client) []byte {
+	pn, ok := playerNum(c)
+	if !ok {
+		pn = uint(len(c.table.game.GenerateOmniView().Players))
+	}
+	return createUpdatedGame(c.table.game.GeneratePlayerView(pn))
+}
+
+func createUpdatedGame(view *poker.GameView) []byte {
 	game := updateGame{
 		base{actionUpdateGame},
-		c.table.game.GenerateOmniView(),
+		view,
 	}
 
 	resp, err := json.Marshal(game)
@@ -269,7 +296,7 @@ func createUpdatedGame(c *Client) []byte {
 func createUpdatedPlayerUUID(c *Client) []byte {
 	uuid := updatePlayerUUID{
 		base{actionUpdatePlayerUUID},
-		c.uuid,
+		c.id(),
 	}
 	resp, err := json.Marshal(uuid)
 	if err != nil {
