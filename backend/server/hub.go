@@ -2,7 +2,9 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"sync"
+	"time"
 )
 
 // Hub maintains the set of active clients and tables.
@@ -58,8 +60,9 @@ var (
 )
 
 // joinTable adds c to the named table as username. With create, the table
-// must not exist yet and c becomes its host; otherwise it must exist.
-func (h *Hub) joinTable(c *Client, name string, username string, create bool) error {
+// must not exist yet and c becomes its host; otherwise it must exist. A valid
+// token reclaims a disconnected player's seat, and their name.
+func (h *Hub) joinTable(c *Client, name string, username string, token string, create bool) error {
 	if c.table != nil {
 		return errAtTable
 	}
@@ -81,7 +84,21 @@ func (h *Hub) joinTable(c *Client, name string, username string, create bool) er
 		t = newTable(name)
 	}
 	t.mu.Lock()
-	if t.nameTaken(username) {
+	if uuid, seatName, ok := t.reclaim(token); ok && !create {
+		// another connection may still hold the seat, e.g. a stale tab
+		for u := range t.users {
+			if u.id() == uuid {
+				u.uuid.Store(newUUID())
+				u.conn.Close()
+			}
+		}
+		if timer, ok := t.grace[uuid]; ok {
+			timer.Stop()
+			delete(t.grace, uuid)
+		}
+		c.uuid.Store(uuid)
+		username = seatName
+	} else if t.nameTaken(username) {
 		t.mu.Unlock()
 		return errNameTaken
 	}
@@ -102,8 +119,9 @@ func (h *Hub) joinTable(c *Client, name string, username string, create bool) er
 	return nil
 }
 
-// leaveTable removes c from its table, and deletes the table once empty.
-func (h *Hub) leaveTable(c *Client) {
+// leaveTable removes c from its table, and deletes the table once empty. A
+// seated player who disconnected keeps their seat for reconnectGrace.
+func (h *Hub) leaveTable(c *Client, disconnected bool) {
 	t := c.table
 	if t == nil {
 		return
@@ -112,6 +130,13 @@ func (h *Hub) leaveTable(c *Client) {
 	t.unregister <- c
 
 	t.mu.Lock()
+	uuid := c.id()
+	if disconnected && isSeatedUUID(t, uuid) {
+		t.send(createNewLog(fmt.Sprintf("%s disconnected", c.username)))
+		t.grace[uuid] = time.AfterFunc(reconnectGrace, func() { h.graceExpired(t, uuid) })
+	} else {
+		leaveSeat(t, uuid)
+	}
 	t.removeUser(c)
 	if t.host != nil {
 		broadcastGame(t) // the host may have changed
@@ -120,7 +145,28 @@ func (h *Hub) leaveTable(c *Client) {
 
 	h.mu.Lock()
 	t.members--
-	empty := t.members == 0
+	h.mu.Unlock()
+	h.deleteIfEmpty(t)
+}
+
+// graceExpired removes a disconnected player who didn't come back in time.
+func (h *Hub) graceExpired(t *table, uuid string) {
+	t.mu.Lock()
+	if _, ok := t.grace[uuid]; ok {
+		delete(t.grace, uuid)
+		leaveSeat(t, uuid)
+	}
+	t.mu.Unlock()
+	h.deleteIfEmpty(t)
+}
+
+// deleteIfEmpty deletes t once nobody is connected and no seat is waiting
+// for a reconnect.
+func (h *Hub) deleteIfEmpty(t *table) {
+	h.mu.Lock()
+	t.mu.Lock()
+	empty := t.members == 0 && len(t.grace) == 0 && h.tables[t.name] == t
+	t.mu.Unlock()
 	if empty {
 		delete(h.tables, t.name)
 	}

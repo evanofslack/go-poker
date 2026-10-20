@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -14,6 +15,13 @@ import (
 	"github.com/evanofslack/go-poker/poker"
 	"github.com/gorilla/websocket"
 )
+
+func TestMain(m *testing.M) {
+	nextHandDelay = 50 * time.Millisecond
+	turnTimeout = 500 * time.Millisecond
+	reconnectGrace = 300 * time.Millisecond
+	os.Exit(m.Run())
+}
 
 func newTestServer(t *testing.T) *httptest.Server {
 	srv, _ := newTestServerHub(t)
@@ -114,7 +122,6 @@ func TestMalformedMessagesDoNotCrash(t *testing.T) {
 		// actions at an empty table
 		createMsg("t", "a"),
 		`{"action":"start-game"}`,
-		`{"action":"deal-game"}`,
 		`{"action":"player-fold"}`,
 		`{"action":"player-call"}`,
 		`{"action":"reset-game"}`,
@@ -150,7 +157,6 @@ func TestConcurrentPlayers(t *testing.T) {
 					`{"action":"player-check"}`,
 					`{"action":"player-raise","amount":40}`,
 					`{"action":"player-fold"}`,
-					`{"action":"deal-game"}`,
 					`{"action":"send-message","username":"p","message":"hi"}`,
 				)
 			}
@@ -310,6 +316,8 @@ type received struct {
 	games  chan poker.GameView
 	hosts  chan string // host of each game update
 	errors chan string
+	logs   chan string
+	tokens chan string // session tokens from taking a seat
 }
 
 // dialRecv is dial, but also collects the game views and errors the client receives.
@@ -320,7 +328,13 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { conn.Close() })
-	r := received{make(chan poker.GameView, 256), make(chan string, 256), make(chan string, 256)}
+	r := received{
+		games:  make(chan poker.GameView, 256),
+		hosts:  make(chan string, 256),
+		errors: make(chan string, 256),
+		logs:   make(chan string, 256),
+		tokens: make(chan string, 256),
+	}
 	go func() {
 		for {
 			_, msg, err := conn.ReadMessage()
@@ -332,6 +346,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				Game    poker.GameView `json:"game"`
 				Message string         `json:"message"`
 				Host    string         `json:"host"`
+				Token   string         `json:"token"`
 			}
 			if json.Unmarshal(msg, &u) != nil {
 				continue
@@ -349,6 +364,16 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 			case actionError:
 				select {
 				case r.errors <- u.Message:
+				default:
+				}
+			case actionUpdatePlayerUUID:
+				select {
+				case r.tokens <- u.Token:
+				default:
+				}
+			case actionNewLog:
+				select {
+				case r.logs <- u.Message:
 				default:
 				}
 			}
@@ -414,22 +439,10 @@ func waitError(t *testing.T, r received) string {
 
 func TestOnlyActOnYourTurn(t *testing.T) {
 	srv := newTestServer(t)
-	a, aRecv := createAndWait(t, srv, "t", "a")
-	b, bRecv := dialRecv(t, srv)
+	a, aRecv, b, bRecv := seatTwo(t, srv)
 	spectator, sRecv := dialRecv(t, srv)
-	// a sits first so is dealer
-	send(t, a, seatMsg(1))
-	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
-	send(t, b, joinMsg("t", "b"), seatMsg(2))
 	send(t, spectator, joinMsg("t", "s"))
-	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
-	send(t, a, `{"action":"start-game"}`)
-	g := waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Betting })
 
-	// heads up, the dealer (a) acts first preflop
-	if g.ActionNum != 0 {
-		t.Fatalf("action on player %d, want 0", g.ActionNum)
-	}
 	send(t, b, `{"action":"player-fold"}`)
 	if msg := waitError(t, bRecv); msg != "not your turn" {
 		t.Errorf("b got error %q", msg)
@@ -441,7 +454,7 @@ func TestOnlyActOnYourTurn(t *testing.T) {
 
 	// neither fold happened: a can still act, and the hand goes on
 	send(t, a, `{"action":"player-call"}`)
-	g = waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.ActionNum == 1 })
+	g := waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.ActionNum == 1 })
 	if !g.Players[1].In {
 		t.Error("b was folded by someone else")
 	}
@@ -521,4 +534,198 @@ func TestOnlyHostResets(t *testing.T) {
 	}
 	send(t, b, `{"action":"reset-game"}`)
 	eventually(t, func() bool { return !isRunning(t, hub, "t") }, "new host could not reset")
+}
+
+func TestServerDealsNextHand(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv, _, _ := seatTwo(t, srv)
+
+	// heads up, a acts first; folding ends the hand
+	send(t, a, `{"action":"player-fold"}`)
+	time.Sleep(5 * nextHandDelay)
+
+	var logs []string
+	for len(aRecv.logs) > 0 {
+		logs = append(logs, <-aRecv.logs)
+	}
+	count := func(prefix string) int {
+		n := 0
+		for _, l := range logs {
+			if strings.HasPrefix(l, prefix) {
+				n++
+			}
+		}
+		return n
+	}
+	if n := count("a folds"); n != 1 {
+		t.Errorf("fold logged %d times, logs: %q", n, logs)
+	}
+	if n := count("b wins 30"); n != 1 {
+		t.Errorf("win logged %d times, logs: %q", n, logs)
+	}
+	if n := count("starting new hand"); n != 2 {
+		t.Errorf("%d hands dealt, want 2 (start and next), logs: %q", n, logs)
+	}
+}
+
+func TestHandName(t *testing.T) {
+	tests := map[int]string{1: "a straight flush", 166: "four of a kind", 3000: "two pair", 7462: "high card", 8000: ""}
+	for score, want := range tests {
+		if got := handName(score); got != want {
+			t.Errorf("handName(%d) = %q, want %q", score, got, want)
+		}
+	}
+}
+
+// collectLogs returns the logs r receives over d.
+func collectLogs(r received, d time.Duration) []string {
+	var logs []string
+	timeout := time.After(d)
+	for {
+		select {
+		case l := <-r.logs:
+			logs = append(logs, l)
+		case <-timeout:
+			return logs
+		}
+	}
+}
+
+// seatTwo seats a in seat 1, then b in seat 2, and starts the game. Seating
+// in order makes a the dealer, who acts first heads up.
+func seatTwo(t *testing.T, srv *httptest.Server) (a *websocket.Conn, aRecv received, b *websocket.Conn, bRecv received) {
+	t.Helper()
+	a, aRecv = createAndWait(t, srv, "t", "a")
+	send(t, a, seatMsg(1))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
+	b, bRecv = dialRecv(t, srv)
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
+	send(t, a, `{"action":"start-game"}`)
+	g := waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Betting })
+	if actor := g.Players[g.ActionNum].Username; actor != "a" {
+		t.Fatalf("%s acts first, want a", actor)
+	}
+	return a, aRecv, b, bRecv
+}
+
+func TestTurnTimeout(t *testing.T) {
+	srv := newTestServer(t)
+	_, aRecv, _, _ := seatTwo(t, srv)
+
+	// a is small blind facing the big blind, so is folded
+	logs := collectLogs(aRecv, turnTimeout+300*time.Millisecond)
+	if !slices.Contains(logs, "a folds (out of time)") {
+		t.Errorf("a was not folded, logs: %q", logs)
+	}
+}
+
+func TestDisconnectFoldsAndRemoves(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv, b, _ := seatTwo(t, srv)
+
+	// b leaves while it's a's turn; once a calls, b is folded and removed
+	b.Close()
+	time.Sleep(100 * time.Millisecond)
+	send(t, a, `{"action":"player-call"}`)
+	g := waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
+	if g.Players[0].Username != "a" {
+		t.Errorf("wrong player removed: %+v", g.Players)
+	}
+	logs := collectLogs(aRecv, 100*time.Millisecond)
+	for _, want := range []string{"b folds", "a wins 40", "b left the table"} {
+		if !slices.Contains(logs, want) {
+			t.Errorf("missing log %q, logs: %q", want, logs)
+		}
+	}
+}
+
+func TestLeaveBetweenHands(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	b := dial(t, srv)
+	send(t, a, seatMsg(1))
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
+	send(t, b, `{"action":"leave-table","tablename":"t"}`)
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
+}
+
+func waitToken(t *testing.T, r received) string {
+	t.Helper()
+	select {
+	case token := <-r.tokens:
+		return token
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for session token")
+		return ""
+	}
+}
+
+func TestReconnectKeepsSeat(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	b, bRecv := dialRecv(t, srv)
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	token := waitToken(t, bRecv)
+	send(t, a, seatMsg(1))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
+
+	// b drops and comes back on a new connection within the grace period,
+	// reclaiming its seat and name even with a different name in the message
+	b.Close()
+	b2, b2Recv := dialRecv(t, srv)
+	send(t, b2, `{"action":"join-table","tablename":"t","username":"whoever","token":"`+token+`"}`)
+	waitGame(t, b2Recv.games, func(g poker.GameView) bool { return true })
+	time.Sleep(2 * reconnectGrace)
+	send(t, a, `{"action":"start-game"}`)
+	g := waitGame(t, b2Recv.games, func(g poker.GameView) bool { return g.Betting })
+	if len(g.Players) != 2 {
+		t.Fatalf("players = %d, want 2", len(g.Players))
+	}
+	for _, p := range g.Players {
+		if p.Username == "b" && p.Cards[0] == 0 {
+			t.Error("reconnected b can't see its own cards")
+		}
+	}
+}
+
+func TestReconnectAfterGraceFails(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	b, bRecv := dialRecv(t, srv)
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	token := waitToken(t, bRecv)
+	send(t, a, seatMsg(1))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
+
+	b.Close()
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
+
+	// the token no longer works, so this is a normal join as a spectator
+	b2, b2Recv := dialRecv(t, srv)
+	send(t, b2, `{"action":"join-table","tablename":"t","username":"b","token":"`+token+`"}`)
+	g := waitGame(t, b2Recv.games, func(g poker.GameView) bool { return true })
+	if len(g.Players) != 1 {
+		t.Errorf("players = %d, want 1", len(g.Players))
+	}
+}
+
+func TestTableKeptForReconnect(t *testing.T) {
+	srv, hub := newTestServerHub(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	send(t, a, seatMsg(1))
+	token := waitToken(t, aRecv)
+
+	// the only player drops: the table waits for them, then goes
+	a.Close()
+	time.Sleep(reconnectGrace / 3)
+	if names := tableNames(hub); !slices.Equal(names, []string{"t"}) {
+		t.Fatalf("tables = %v, want [t] during grace period", names)
+	}
+	a2, a2Recv := dialRecv(t, srv)
+	send(t, a2, `{"action":"join-table","tablename":"t","username":"a","token":"`+token+`"}`)
+	waitGame(t, a2Recv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
+	a2.Close()
+	waitForTables(t, hub)
 }

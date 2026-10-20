@@ -3,6 +3,7 @@ package server
 import (
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/evanofslack/go-poker/poker"
 )
@@ -29,6 +30,16 @@ type table struct {
 	mu    sync.Mutex       // serializes game actions from client goroutines
 	users map[*Client]bool // clients at this table, guarded by mu
 	host  *Client          // guarded by mu
+
+	dealTimer *time.Timer     // deals the next hand, guarded by mu
+	turnTimer *time.Timer     // acts for an idle player, guarded by mu
+	turnSeq   int             // invalidates old turn timers, guarded by mu
+	leaving   map[string]bool // uuids of players who left, guarded by mu
+
+	// seated players who disconnect can reconnect within reconnectGrace.
+	// Both guarded by mu.
+	tokens map[string]string      // session token to player uuid
+	grace  map[string]*time.Timer // player uuid to the timer that removes them
 }
 
 // newTable creates a new table
@@ -43,6 +54,9 @@ func newTable(name string) *table {
 		game:       poker.NewGame(),
 		done:       make(chan struct{}),
 		users:      make(map[*Client]bool),
+		leaving:    make(map[string]bool),
+		tokens:     make(map[string]string),
+		grace:      make(map[string]*time.Timer),
 	}
 }
 
@@ -80,6 +94,21 @@ func (t *table) nameTaken(name string) bool {
 	return false
 }
 
+// reclaim returns the uuid and name of the player that token belongs to, if
+// they're still seated. Caller holds t.mu.
+func (t *table) reclaim(token string) (uuid string, name string, ok bool) {
+	uuid, ok = t.tokens[token]
+	if !ok || t.leaving[uuid] {
+		return "", "", false
+	}
+	for _, p := range t.game.GenerateOmniView().Players {
+		if p.UUID == uuid {
+			return uuid, p.Username, true
+		}
+	}
+	return "", "", false
+}
+
 // removeUser takes c out of the table's users, passing the host role on if c
 // had it: to a seated user first, else anyone. Caller holds t.mu.
 func (t *table) removeUser(c *Client) {
@@ -108,6 +137,14 @@ func (t *table) hostID() string {
 		return ""
 	}
 	return t.host.id()
+}
+
+// send queues message for every client, unless the table has been deleted.
+func (t *table) send(message []byte) {
+	select {
+	case t.broadcast <- message:
+	case <-t.done:
+	}
 }
 
 func (t *table) registerClient(client *Client) {

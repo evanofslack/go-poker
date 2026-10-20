@@ -47,8 +47,12 @@ func newClient(conn *websocket.Conn, hub *Hub) *Client {
 		conn: conn,
 		send: make(chan []byte, 1024),
 	}
-	c.uuid.Store(uuid.New().String())
+	c.uuid.Store(newUUID())
 	return c
+}
+
+func newUUID() string {
+	return uuid.New().String()
 }
 
 // id is the client's UUID, which becomes its player's UUID once seated.
@@ -59,7 +63,7 @@ func (c *Client) id() string {
 func (c *Client) disconnect() {
 	// leave the table before the hub closes c.send, so the table never
 	// sends on a closed channel
-	c.hub.leaveTable(c)
+	c.hub.leaveTable(c, true)
 	c.hub.unregister <- c
 	c.conn.Close()
 }
@@ -204,7 +208,7 @@ func (c *Client) processEvents(rawMessage []byte) error {
 			sendError(c, "invalid name")
 			return errors.New("invalid username")
 		}
-		handleJoinTable(c, table.Tablename, username, baseMessage.Action == actionCreateTable)
+		handleJoinTable(c, table.Tablename, username, table.Token, baseMessage.Action == actionCreateTable)
 		return nil
 
 	case actionLeaveTable:
@@ -228,18 +232,6 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		handleSendMessage(c, message.Message)
 		return nil
 
-	case actionSendLog:
-		var log sendLog
-		err := json.Unmarshal(rawMessage, &log)
-		if err != nil {
-			return err
-		}
-		if !validLength(log.Message, maxMessageLen) {
-			return errors.New("invalid log message")
-		}
-		handleSendLog(c, log.Message)
-		return nil
-
 	case actionTakeSeat:
 		var seat takeSeat
 		err := json.Unmarshal(rawMessage, &seat)
@@ -255,10 +247,6 @@ func (c *Client) processEvents(rawMessage []byte) error {
 
 	case actionResetGame:
 		handleResetGame(c)
-		return nil
-
-	case actionDealGame:
-		handleDealGame(c)
 		return nil
 
 	case actionPlayerCall:

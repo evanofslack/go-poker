@@ -1,6 +1,6 @@
 import { useState, useContext } from "react";
 import { AppContext } from "../providers/AppStore";
-import { playerCall, playerCheck, playerFold, sendLog } from "../actions/actions";
+import { playerCall, playerCheck, playerFold } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import InputButton from "./InputButton";
 import RaiseInput from "./RaiseInput";
@@ -12,22 +12,16 @@ export default function Input() {
 
     const handleCall = (user: string | null, amount: number) => {
         if (socket) {
-            let callMessage = user + " calls " + amount;
-            sendLog(socket, callMessage);
             playerCall(socket);
         }
     };
     const handleCheck = (user: string | null) => {
         if (socket) {
-            let checkMessage = user + " checks";
-            sendLog(socket, checkMessage);
             playerCheck(socket);
         }
     };
     const handleFold = (user: string | null) => {
         if (socket) {
-            let foldMessage = user + " folds";
-            sendLog(socket, foldMessage);
             playerFold(socket);
         }
     };

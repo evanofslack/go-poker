@@ -8,12 +8,13 @@ export function createTable(socket: WebSocket, tablename: string, username: stri
     );
 }
 
-export function joinTable(socket: WebSocket, tablename: string, username: string) {
+export function joinTable(socket: WebSocket, tablename: string, username: string, token?: string) {
     socket.send(
         JSON.stringify({
             action: "join-table",
             tablename: tablename,
             username: username,
+            token: token,
         })
     );
 }
@@ -23,15 +24,6 @@ export function sendMessage(socket: WebSocket, username: string, message: string
         JSON.stringify({
             action: "send-message",
             username: username,
-            message: message,
-        })
-    );
-}
-
-export function sendLog(socket: WebSocket, message: string) {
-    socket.send(
-        JSON.stringify({
-            action: "send-log",
             message: message,
         })
     );
@@ -60,14 +52,6 @@ export function resetGame(socket: WebSocket) {
     socket.send(
         JSON.stringify({
             action: "reset-game",
-        })
-    );
-}
-
-export function dealGame(socket: WebSocket) {
-    socket.send(
-        JSON.stringify({
-            action: "deal-game",
         })
     );
 }

@@ -10,10 +10,8 @@ const (
 	actionJoinTable   string = "join-table"
 	actionLeaveTable  string = "leave-table"
 	actionSendMessage string = "send-message"
-	actionSendLog     string = "send-log"
 	actionTakeSeat    string = "take-seat"
 	actionStartGame   string = "start-game"
-	actionDealGame    string = "deal-game"
 	actionResetGame   string = "reset-game"
 	actionPlayerCall  string = "player-call"
 	actionPlayerCheck string = "player-check"
@@ -31,6 +29,7 @@ type joinTable struct {
 	base             // actionCreateTable, actionJoinTable
 	Tablename string `json:"tablename"`
 	Username  string `json:"username"`
+	Token     string `json:"token"` // optional, reclaims a seat after a disconnect
 }
 
 type leaveTable struct {
@@ -42,11 +41,6 @@ type sendMessage struct {
 	base            // actionSendMessage
 	Username string `json:"username"` // ignored, the server uses the client's username
 	Message  string `json:"message"`
-}
-
-type sendLog struct {
-	base           // actionSendLog
-	Message string `json:"message"`
 }
 
 type takeSeat struct {
@@ -62,10 +56,6 @@ type startGame struct {
 
 type resetGame struct {
 	base // actionResetGame
-}
-
-type dealGame struct {
-	base // actionDealGame
 }
 
 type playerCall struct {
@@ -132,6 +122,7 @@ type errorMessage struct {
 }
 
 type updatePlayerUUID struct {
-	base        //actionUpdatePlayerUUID
-	Uuid string `json:"uuid"`
+	base         //actionUpdatePlayerUUID
+	Uuid  string `json:"uuid"`
+	Token string `json:"token"` // secret for reclaiming the seat, only sent to its player
 }
