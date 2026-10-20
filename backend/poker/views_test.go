@@ -252,6 +252,40 @@ func TestGame_GenerateOmniViewChangedVals(t *testing.T) {
 	}
 }
 
+func TestShowdownRevealsWinners(t *testing.T) {
+	g := NewGame()
+	seatPlayers(t, g, 100, 100)
+	observer := g.AddPlayer()
+	if err := SetSeatID(g, observer, 9); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.Start(); err != nil {
+		t.Fatal(err)
+	}
+	// both all in preflop, the board runs out to showdown
+	if err := Bet(g, 0, 90); err != nil {
+		t.Fatal(err)
+	}
+	if err := Bet(g, 1, 80); err != nil {
+		t.Fatal(err)
+	}
+	if g.getStage() != PreDeal {
+		t.Fatalf("stage = %d, want PreDeal", g.getStage())
+	}
+
+	gv := g.GeneratePlayerView(observer)
+	for _, pot := range g.pots {
+		for _, pn := range pot.WinningPlayerNums {
+			if gv.Players[pn].Cards[0] == 0 {
+				t.Errorf("winner %d cards hidden after showdown", pn)
+			}
+		}
+	}
+	if gv.Players[observer].Cards[0] != 0 {
+		t.Error("observer should have no cards")
+	}
+}
+
 func (g *Game) String() string {
 	formatStr := "&{dealerNum:%d actionNum:%d utgNum:%d sbNum:%d bbNum:%d communityCards:%v "
 	formatStr += "stage:%v betting:%v config:%+v players:%+v deck:%v pots:%+v minRaise:%v"
