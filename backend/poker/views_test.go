@@ -305,3 +305,61 @@ func (g *Game) String() string {
 		g.minRaise,
 	)
 }
+
+func TestPlayerViewRevealsShowdownHands(t *testing.T) {
+	g := NewGame()
+	for i := uint(0); i < 3; i++ {
+		pn := g.AddPlayer()
+		_ = BuyIn(g, pn, 1000)
+		_ = ToggleReady(g, pn, 0)
+		_ = SetSeatID(g, pn, i+1)
+	}
+	if err := g.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	// first to act folds, the rest call or check down to showdown
+	folded := g.actionNum
+	if err := Fold(g, folded, 0); err != nil {
+		t.Fatal(err)
+	}
+	for g.getStage() != PreDeal {
+		pn := g.actionNum
+		if err := Bet(g, pn, g.toCall()-g.players[pn].Bet); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for viewer := uint(0); viewer <= 3; viewer++ { // 3 is a spectator
+		gv := g.GeneratePlayerView(viewer)
+		for pn, p := range gv.Players {
+			shown := p.Cards[0] != 0
+			if want := uint(pn) != folded; shown != want {
+				t.Errorf("viewer %d: player %d cards shown = %v, want %v", viewer, pn, shown, want)
+			}
+		}
+	}
+}
+
+func TestPlayerViewHidesOtherHands(t *testing.T) {
+	g := NewGame()
+	for i := uint(0); i < 2; i++ {
+		pn := g.AddPlayer()
+		_ = BuyIn(g, pn, 1000)
+		_ = ToggleReady(g, pn, 0)
+		_ = SetSeatID(g, pn, i+1)
+	}
+	if err := g.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	for viewer := uint(0); viewer <= 2; viewer++ { // 2 is a spectator
+		gv := g.GeneratePlayerView(viewer)
+		for pn, p := range gv.Players {
+			shown := p.Cards[0] != 0
+			if want := uint(pn) == viewer; shown != want {
+				t.Errorf("viewer %d: player %d cards shown = %v, want %v", viewer, pn, shown, want)
+			}
+		}
+	}
+}
