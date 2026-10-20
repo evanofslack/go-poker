@@ -19,6 +19,7 @@ import (
 func TestMain(m *testing.M) {
 	nextHandDelay = 50 * time.Millisecond
 	turnTimeout = 500 * time.Millisecond
+	reconnectGrace = 300 * time.Millisecond
 	os.Exit(m.Run())
 }
 
@@ -316,6 +317,7 @@ type received struct {
 	hosts  chan string // host of each game update
 	errors chan string
 	logs   chan string
+	tokens chan string // session tokens from taking a seat
 }
 
 // dialRecv is dial, but also collects the game views and errors the client receives.
@@ -326,7 +328,13 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { conn.Close() })
-	r := received{make(chan poker.GameView, 256), make(chan string, 256), make(chan string, 256), make(chan string, 256)}
+	r := received{
+		games:  make(chan poker.GameView, 256),
+		hosts:  make(chan string, 256),
+		errors: make(chan string, 256),
+		logs:   make(chan string, 256),
+		tokens: make(chan string, 256),
+	}
 	go func() {
 		for {
 			_, msg, err := conn.ReadMessage()
@@ -338,6 +346,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				Game    poker.GameView `json:"game"`
 				Message string         `json:"message"`
 				Host    string         `json:"host"`
+				Token   string         `json:"token"`
 			}
 			if json.Unmarshal(msg, &u) != nil {
 				continue
@@ -355,6 +364,11 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 			case actionError:
 				select {
 				case r.errors <- u.Message:
+				default:
+				}
+			case actionUpdatePlayerUUID:
+				select {
+				case r.tokens <- u.Token:
 				default:
 				}
 			case actionNewLog:
@@ -635,4 +649,83 @@ func TestLeaveBetweenHands(t *testing.T) {
 	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
 	send(t, b, `{"action":"leave-table","tablename":"t"}`)
 	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
+}
+
+func waitToken(t *testing.T, r received) string {
+	t.Helper()
+	select {
+	case token := <-r.tokens:
+		return token
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for session token")
+		return ""
+	}
+}
+
+func TestReconnectKeepsSeat(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	b, bRecv := dialRecv(t, srv)
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	token := waitToken(t, bRecv)
+	send(t, a, seatMsg(1))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
+
+	// b drops and comes back on a new connection within the grace period,
+	// reclaiming its seat and name even with a different name in the message
+	b.Close()
+	b2, b2Recv := dialRecv(t, srv)
+	send(t, b2, `{"action":"join-table","tablename":"t","username":"whoever","token":"`+token+`"}`)
+	waitGame(t, b2Recv.games, func(g poker.GameView) bool { return true })
+	time.Sleep(2 * reconnectGrace)
+	send(t, a, `{"action":"start-game"}`)
+	g := waitGame(t, b2Recv.games, func(g poker.GameView) bool { return g.Betting })
+	if len(g.Players) != 2 {
+		t.Fatalf("players = %d, want 2", len(g.Players))
+	}
+	for _, p := range g.Players {
+		if p.Username == "b" && p.Cards[0] == 0 {
+			t.Error("reconnected b can't see its own cards")
+		}
+	}
+}
+
+func TestReconnectAfterGraceFails(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	b, bRecv := dialRecv(t, srv)
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	token := waitToken(t, bRecv)
+	send(t, a, seatMsg(1))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
+
+	b.Close()
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
+
+	// the token no longer works, so this is a normal join as a spectator
+	b2, b2Recv := dialRecv(t, srv)
+	send(t, b2, `{"action":"join-table","tablename":"t","username":"b","token":"`+token+`"}`)
+	g := waitGame(t, b2Recv.games, func(g poker.GameView) bool { return true })
+	if len(g.Players) != 1 {
+		t.Errorf("players = %d, want 1", len(g.Players))
+	}
+}
+
+func TestTableKeptForReconnect(t *testing.T) {
+	srv, hub := newTestServerHub(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	send(t, a, seatMsg(1))
+	token := waitToken(t, aRecv)
+
+	// the only player drops: the table waits for them, then goes
+	a.Close()
+	time.Sleep(reconnectGrace / 3)
+	if names := tableNames(hub); !slices.Equal(names, []string{"t"}) {
+		t.Fatalf("tables = %v, want [t] during grace period", names)
+	}
+	a2, a2Recv := dialRecv(t, srv)
+	send(t, a2, `{"action":"join-table","tablename":"t","username":"a","token":"`+token+`"}`)
+	waitGame(t, a2Recv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
+	a2.Close()
+	waitForTables(t, hub)
 }

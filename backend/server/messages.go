@@ -29,6 +29,7 @@ type joinTable struct {
 	base             // actionCreateTable, actionJoinTable
 	Tablename string `json:"tablename"`
 	Username  string `json:"username"`
+	Token     string `json:"token"` // optional, reclaims a seat after a disconnect
 }
 
 type leaveTable struct {
@@ -121,6 +122,7 @@ type errorMessage struct {
 }
 
 type updatePlayerUUID struct {
-	base        //actionUpdatePlayerUUID
-	Uuid string `json:"uuid"`
+	base         //actionUpdatePlayerUUID
+	Uuid  string `json:"uuid"`
+	Token string `json:"token"` // secret for reclaiming the seat, only sent to its player
 }

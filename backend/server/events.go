@@ -18,12 +18,13 @@ const (
 
 // Vars so tests can shorten them.
 var (
-	nextHandDelay = 5 * time.Second  // pause after a hand before dealing the next
-	turnTimeout   = 30 * time.Second // time to act before checking or folding for you
+	nextHandDelay  = 5 * time.Second  // pause after a hand before dealing the next
+	turnTimeout    = 30 * time.Second // time to act before checking or folding for you
+	reconnectGrace = 60 * time.Second // how long a disconnected player keeps their seat
 )
 
-func handleJoinTable(c *Client, tablename string, username string, create bool) {
-	if err := c.hub.joinTable(c, tablename, username, create); err != nil {
+func handleJoinTable(c *Client, tablename string, username string, token string, create bool) {
+	if err := c.hub.joinTable(c, tablename, username, token, create); err != nil {
 		sendError(c, err.Error())
 		return
 	}
@@ -37,7 +38,7 @@ func handleJoinTable(c *Client, tablename string, username string, create bool) 
 
 func handleLeaveTable(c *Client, tablename string) {
 	if c.table != nil && c.table.name == tablename {
-		c.hub.leaveTable(c)
+		c.hub.leaveTable(c, false)
 	}
 }
 
@@ -75,7 +76,9 @@ func handleTakeSeat(c *Client, seatID uint, buyIn uint) {
 
 	position := c.table.game.AddPlayer()
 	c.uuid.Store(c.table.game.GenerateOmniView().Players[position].UUID)
-	c.send <- createUpdatedPlayerUUID(c)
+	token := newUUID()
+	c.table.tokens[token] = c.id()
+	c.send <- createUpdatedPlayerUUID(c, token)
 	err := poker.SetUsername(c.table.game, position, c.username)
 	if err != nil {
 		slog.Default().Warn("Set username", "error", err)
@@ -293,14 +296,10 @@ func turnTimedOut(t *table, seq int) {
 // leaveSeat takes the player with uuid out of the game: right away between
 // hands, otherwise by folding them when it's their turn. Caller holds t.mu.
 func leaveSeat(t *table, uuid string) {
-	view := t.game.GenerateOmniView()
-	seated := false
-	for _, p := range view.Players {
-		seated = seated || p.UUID == uuid
-	}
-	if !seated {
+	if !isSeatedUUID(t, uuid) {
 		return
 	}
+	view := t.game.GenerateOmniView()
 	t.leaving[uuid] = true
 	switch {
 	case !view.Betting && view.Stage == poker.PreDeal:
@@ -344,6 +343,11 @@ func removeLeavers(t *table) {
 			t.send(createNewLog(fmt.Sprintf("%s left the table", p.Username)))
 		}
 		delete(t.leaving, uuid)
+		for token, u := range t.tokens {
+			if u == uuid {
+				delete(t.tokens, token)
+			}
+		}
 	}
 }
 
@@ -459,8 +463,17 @@ func playerNum(c *Client) (uint, bool) {
 
 // isSeated reports whether c has a seat at its table. Caller holds c.table.mu.
 func isSeated(c *Client) bool {
-	_, ok := playerNum(c)
-	return ok
+	return isSeatedUUID(c.table, c.id())
+}
+
+// isSeatedUUID reports whether a player with uuid is seated. Caller holds t.mu.
+func isSeatedUUID(t *table, uuid string) bool {
+	for _, p := range t.game.GenerateOmniView().Players {
+		if p.UUID == uuid {
+			return true
+		}
+	}
+	return false
 }
 
 func createNewMessage(username string, message string) []byte {
@@ -544,10 +557,11 @@ func createJoinedTable(c *Client) []byte {
 	return resp
 }
 
-func createUpdatedPlayerUUID(c *Client) []byte {
+func createUpdatedPlayerUUID(c *Client, token string) []byte {
 	uuid := updatePlayerUUID{
 		base{actionUpdatePlayerUUID},
 		c.id(),
+		token,
 	}
 	resp, err := json.Marshal(uuid)
 	if err != nil {
