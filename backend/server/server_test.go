@@ -114,7 +114,7 @@ func TestConcurrentPlayers(t *testing.T) {
 				`{"action":"new-player","username":"p"}`,
 				`{"action":"take-seat","username":"p","seatID":`+string(rune('0'+seat))+`,"buyIn":100}`,
 			)
-			for j := 0; j < 20; j++ {
+			for j := 0; j < 2; j++ { // stay under the rate limit
 				send(t, conn,
 					`{"action":"start-game"}`,
 					`{"action":"player-call"}`,
@@ -145,7 +145,7 @@ func TestDisconnectMidGame(t *testing.T) {
 	}
 	send(t, a, `{"action":"start-game"}`)
 	a.Close()
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 10; i++ {
 		send(t, b, `{"action":"send-message","username":"p","message":"still here"}`)
 	}
 	time.Sleep(200 * time.Millisecond)
@@ -169,4 +169,27 @@ func TestCrossOriginRejected(t *testing.T) {
 		t.Fatalf("same-origin websocket rejected: %s", err)
 	}
 	conn.Close()
+}
+
+func TestFloodDisconnects(t *testing.T) {
+	srv := newTestServer(t)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http")
+	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	send(t, conn, `{"action":"join-table","tablename":"t"}`)
+	for i := 0; i < 2*maxMessagesPerSecond; i++ {
+		conn.WriteMessage(websocket.TextMessage, []byte(`{"action":"send-message","username":"p","message":"spam"}`))
+	}
+	// the server should close the connection, so writes start failing
+	deadline := time.Now().Add(2 * time.Second)
+	for conn.WriteMessage(websocket.TextMessage, []byte(`{}`)) == nil {
+		if time.Now().After(deadline) {
+			t.Fatal("flooding client was not disconnected")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	assertAlive(t, srv)
 }

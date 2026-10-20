@@ -18,6 +18,9 @@ const (
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 1024
+
+	// close connections that send more than this many messages per second
+	maxMessagesPerSecond = 20
 )
 
 var upgrader = websocket.Upgrader{
@@ -69,6 +72,7 @@ func (c *Client) readPump() {
 		slog.Default().Warn("set read deadline", "error", err)
 	}
 	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	windowStart, count := time.Now(), 0
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
@@ -76,6 +80,14 @@ func (c *Client) readPump() {
 				slog.Default().Warn("Websocket unexpected close", "error", err)
 			}
 			slog.Default().Warn("Read from websocket", "error", err)
+			break
+		}
+		if time.Since(windowStart) > time.Second {
+			windowStart, count = time.Now(), 0
+		}
+		count++
+		if count > maxMessagesPerSecond {
+			slog.Default().Warn("Websocket rate limit exceeded, closing", "uuid", c.uuid)
 			break
 		}
 		if err = c.safeProcessEvents(message); err != nil {
