@@ -1,6 +1,8 @@
 package server
 
 import (
+	"sync"
+
 	"github.com/evanofslack/go-poker/poker"
 )
 
@@ -12,6 +14,8 @@ type table struct {
 	unregister chan *Client
 	broadcast  chan []byte
 	game       *poker.Game
+
+	mu sync.Mutex // serializes game actions from client goroutines
 }
 
 // newTable creates a new table

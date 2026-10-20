@@ -32,12 +32,18 @@ func handleSendLog(c *Client, message string) {
 }
 
 func handleNewPlayer(c *Client, username string) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	c.username = username
 	c.send <- createUpdatedGame(c)
 	c.table.broadcast <- createNewMessage(gameAdminName, fmt.Sprintf("%s has joined", username))
 }
 
 func handleTakeSeat(c *Client, username string, seatID uint, buyIn uint) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	position := c.table.game.AddPlayer()
 	c.uuid = c.table.game.GenerateOmniView().Players[position].UUID
 	c.send <- createUpdatedPlayerUUID(c)
@@ -66,6 +72,9 @@ func handleTakeSeat(c *Client, username string, seatID uint, buyIn uint) {
 }
 
 func handleStartGame(c *Client) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	err := c.table.game.Start()
 	if err != nil {
 		fmt.Println(err)
@@ -75,11 +84,17 @@ func handleStartGame(c *Client) {
 }
 
 func handleResetGame(c *Client) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	c.table.game.Reset()
 	c.table.broadcast <- createUpdatedGame(c)
 }
 
 func handleDealGame(c *Client) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	broadcastDeal(c.table)
 
 	view := c.table.game.GenerateOmniView()
@@ -91,6 +106,9 @@ func handleDealGame(c *Client) {
 }
 
 func handleCall(c *Client) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	view := c.table.game.GenerateOmniView()
 	pn := view.ActionNum
 	currentPlayer := view.Players[pn]
@@ -117,6 +135,9 @@ func handleCall(c *Client) {
 }
 
 func handleRaise(c *Client, raise uint) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	view := c.table.game.GenerateOmniView()
 	pn := view.ActionNum
 	err := poker.Bet(c.table.game, pn, raise)
@@ -128,6 +149,9 @@ func handleRaise(c *Client, raise uint) {
 }
 
 func handleCheck(c *Client) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	view := c.table.game.GenerateOmniView()
 	pn := view.ActionNum
 	err := poker.Bet(c.table.game, pn, 0)
@@ -138,6 +162,9 @@ func handleCheck(c *Client) {
 }
 
 func handleFold(c *Client) {
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
 	view := c.table.game.GenerateOmniView()
 	pn := view.ActionNum
 	err := poker.Fold(c.table.game, pn, 0)
