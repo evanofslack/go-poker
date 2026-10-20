@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -10,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evanofslack/go-poker/poker"
 	"github.com/gorilla/websocket"
 )
 
@@ -295,4 +297,82 @@ func TestSpectatorCannotStart(t *testing.T) {
 		`{"action":"start-game"}`,
 	)
 	eventually(t, func() bool { return isRunning(t, hub, "t") }, "seated player could not start the game")
+}
+
+// dialGames is dial, but also collects the game views the client receives.
+func dialGames(t *testing.T, srv *httptest.Server) (*websocket.Conn, <-chan poker.GameView) {
+	url := "ws" + strings.TrimPrefix(srv.URL, "http")
+	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	games := make(chan poker.GameView, 256)
+	go func() {
+		for {
+			_, msg, err := conn.ReadMessage()
+			if err != nil {
+				return
+			}
+			var u struct {
+				Action string         `json:"action"`
+				Game   poker.GameView `json:"game"`
+			}
+			if json.Unmarshal(msg, &u) == nil && u.Action == actionUpdateGame {
+				select {
+				case games <- u.Game:
+				default:
+				}
+			}
+		}
+	}()
+	return conn, games
+}
+
+// waitGame returns the first game view matching cond.
+func waitGame(t *testing.T, games <-chan poker.GameView, cond func(poker.GameView) bool) poker.GameView {
+	t.Helper()
+	timeout := time.After(2 * time.Second)
+	for {
+		select {
+		case g := <-games:
+			if cond(g) {
+				return g
+			}
+		case <-timeout:
+			t.Fatal("timed out waiting for game update")
+		}
+	}
+}
+
+func TestHoleCardsHidden(t *testing.T) {
+	srv := newTestServer(t)
+	a, aGames := dialGames(t, srv)
+	b, bGames := dialGames(t, srv)
+	spectator, sGames := dialGames(t, srv)
+	for i, c := range []*websocket.Conn{a, b} {
+		send(t, c,
+			`{"action":"join-table","tablename":"t"}`,
+			`{"action":"new-player","username":"p"}`,
+			`{"action":"take-seat","username":"p","seatID":`+strconv.Itoa(i+1)+`,"buyIn":100}`,
+		)
+	}
+	send(t, spectator, `{"action":"join-table","tablename":"t"}`)
+	waitGame(t, aGames, func(g poker.GameView) bool { return len(g.Players) == 2 })
+	send(t, a, `{"action":"start-game"}`)
+
+	running := func(g poker.GameView) bool { return g.Running && g.Players[0].In }
+	views := map[string]poker.GameView{
+		"a":         waitGame(t, aGames, running),
+		"b":         waitGame(t, bGames, running),
+		"spectator": waitGame(t, sGames, running),
+	}
+	own := map[string]int{"a": 0, "b": 1, "spectator": -1}
+	for name, g := range views {
+		for pn, p := range g.Players {
+			if shown, want := p.Cards[0] != 0, pn == own[name]; shown != want {
+				t.Errorf("%s sees player %d cards = %v, want %v", name, pn, shown, want)
+			}
+		}
+	}
 }

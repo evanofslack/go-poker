@@ -7,6 +7,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,18 +35,24 @@ type Client struct {
 	hub      *Hub
 	conn     *websocket.Conn // Websocket connection
 	send     chan []byte     // Buffered channel of outbound bytes
-	uuid     string          // UUID
+	uuid     atomic.Value    // string, read by the table goroutine; use id()
 	username string
 	table    *table // Player's table
 }
 
 func newClient(conn *websocket.Conn, hub *Hub) *Client {
-	return &Client{
+	c := &Client{
 		hub:  hub,
 		conn: conn,
 		send: make(chan []byte, 1024),
-		uuid: uuid.New().String(),
 	}
+	c.uuid.Store(uuid.New().String())
+	return c
+}
+
+// id is the client's UUID, which becomes its player's UUID once seated.
+func (c *Client) id() string {
+	return c.uuid.Load().(string)
 }
 
 func (c *Client) disconnect() {
@@ -85,7 +92,7 @@ func (c *Client) readPump() {
 		}
 		count++
 		if count > maxMessagesPerSecond {
-			slog.Default().Warn("Websocket rate limit exceeded, closing", "uuid", c.uuid)
+			slog.Default().Warn("Websocket rate limit exceeded, closing", "uuid", c.id())
 			break
 		}
 		if err = c.safeProcessEvents(message); err != nil {

@@ -29,21 +29,10 @@ function handleWinner(game: GameType | null, socket: WebSocket | null) {
     }
 }
 
-function getRevealedPlayers(game: GameType) {
-    const revealedNums = game.pots[game.pots.length - 1].eligiblePlayerNums;
-    // if only one player was eligible for the pot (everyone else folded), then they do not have to reveal
-    if (revealedNums.length <= 1) {
-        return [];
-    }
-    const revealedPlayers = game.players.filter((player) => revealedNums.includes(player.position));
-    return revealedPlayers;
-}
-
 export default function Table({ players, setPlayers }: tableProps) {
     const socket = useSocket();
     const { appState, dispatch } = useContext(AppContext);
     const game = appState.game;
-    const [revealedPlayers, setRevealedPlayers] = useState<Player[]>([]);
 
     // map game players to their visual seats
     useEffect(() => {
@@ -60,10 +49,8 @@ export default function Table({ players, setPlayers }: tableProps) {
     useEffect(() => {
         // this effect triggers when betting is over
         if (game && game.stage === 1 && game.pots.length !== 0) {
-            setRevealedPlayers(getRevealedPlayers(game));
             handleWinner(game, socket);
             const timer = setTimeout(() => {
-                setRevealedPlayers([]);
                 if (socket) {
                     dealGame(socket);
                 }
@@ -81,14 +68,12 @@ export default function Table({ players, setPlayers }: tableProps) {
                 key={3}
                 player={players[3]}
                 id={4}
-                reveal={players[3] ? revealedPlayers.includes(players[3]) : false}
             />
             <div></div>
             <Seat
                 key={4}
                 player={players[4]}
                 id={5}
-                reveal={players[4] ? revealedPlayers.includes(players[4]) : false}
             />
             <div></div>
             <div></div>
@@ -100,13 +85,11 @@ export default function Table({ players, setPlayers }: tableProps) {
                 key={2}
                 player={players[2]}
                 id={3}
-                reveal={players[2] ? revealedPlayers.includes(players[2]) : false}
             />
             <Seat
                 key={5}
                 player={players[5]}
                 id={6}
-                reveal={players[5] ? revealedPlayers.includes(players[5]) : false}
             />
             <div></div>
             <div></div>
@@ -115,14 +98,12 @@ export default function Table({ players, setPlayers }: tableProps) {
                 key={1}
                 player={players[1]}
                 id={2}
-                reveal={players[1] ? revealedPlayers.includes(players[1]) : false}
             />
             <div></div>
             <Seat
                 key={0}
                 player={players[0]}
                 id={1}
-                reveal={players[0] ? revealedPlayers.includes(players[0]) : false}
             />
             <div></div>
         </div>

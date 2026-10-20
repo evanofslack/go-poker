@@ -2,6 +2,7 @@ package poker
 
 import (
 	"math"
+	"slices"
 	"sort"
 	"sync"
 
@@ -125,7 +126,8 @@ func (g *Game) readyCount() uint {
 }
 
 func (g *Game) isCalled(pn uint) bool {
-	return g.players[pn].allIn() || (g.players[pn].Called)
+	// Called players still owe chips if a short all-in raised the bet after they acted
+	return g.players[pn].allIn() || (g.players[pn].Called && g.players[pn].Bet == g.toCall())
 }
 
 // Returns nil if there are more than 2 players ready, ErrIllegalAction otherwise
@@ -189,6 +191,8 @@ func (g *Game) resetForNextHand() {
 	for i := range g.players {
 		g.players[i].Bet = 0
 		g.players[i].TotalBet = 0
+		g.players[i].In = false
+		g.players[i].Called = false
 
 		if g.players[i].Stack == 0 {
 			g.players[i].Ready = false
@@ -197,31 +201,23 @@ func (g *Game) resetForNextHand() {
 	}
 
 	g.dealerNum = (g.dealerNum + 1) % uint(len(g.players))
-	for !g.players[g.dealerNum].Ready {
-		g.dealerNum = (g.dealerNum + 1) % uint(len(g.players))
+	if g.readyCount() > 0 {
+		for !g.players[g.dealerNum].Ready {
+			g.dealerNum = (g.dealerNum + 1) % uint(len(g.players))
+		}
 	}
 
 	g.setStageAndBetting(PreDeal, false)
 }
 
-func (g *Game) updateRoundInfo() {
-
-	var allCalled = true
+// updatePots rebuilds the pots from each player's TotalBet, with one side pot per all-in player
+func (g *Game) updatePots() {
 	var allInPlayerNums = []uint{}
-	var inPlayerNums = []uint{}
-
 	for i, p := range g.players {
-		if p.In {
-			inPlayerNums = append(inPlayerNums, uint(i))
-			if p.allIn() {
-				allInPlayerNums = append(allInPlayerNums, uint(i))
-			} else if !g.isCalled(uint(i)) {
-				allCalled = false
-			}
+		if p.allIn() {
+			allInPlayerNums = append(allInPlayerNums, uint(i))
 		}
 	}
-
-	// Update the pot information
 
 	sort.Slice(allInPlayerNums, func(i, j int) bool {
 		return g.players[allInPlayerNums[i]].TotalBet < g.players[allInPlayerNums[j]].TotalBet
@@ -264,9 +260,29 @@ func (g *Game) updateRoundInfo() {
 	}
 
 	g.pots = append(g.pots, finalPot)
+}
+
+func (g *Game) updateRoundInfo() {
+
+	var allCalled = true
+	var allInCount = 0
+	var inPlayerNums = []uint{}
+
+	for i, p := range g.players {
+		if p.In {
+			inPlayerNums = append(inPlayerNums, uint(i))
+			if p.allIn() {
+				allInCount++
+			} else if !g.isCalled(uint(i)) {
+				allCalled = false
+			}
+		}
+	}
 
 	// If less than two players are still in, the hand has been conceded
 	if len(inPlayerNums) < 2 {
+		g.updatePots()
+
 		//the sole number in the array is the winner by default
 		//TODO: Create a pot here to simplify sending result description
 
@@ -288,6 +304,8 @@ func (g *Game) updateRoundInfo() {
 
 	// If two or more players are in, but not everybody has called
 	if !allCalled {
+		g.updatePots()
+
 		// just move action to next player
 		for g.isCalled(g.actionNum) || !g.players[g.actionNum].In {
 			g.actionNum = (g.actionNum + 1) % uint(len(g.players))
@@ -301,20 +319,29 @@ func (g *Game) updateRoundInfo() {
 	//If the only players in are both all in for the exact same amount of money, nothing happens here
 	//(but we can't skip in the "0 not all in" case because technically before this step happens a player who after this step may read as not all in
 	//could return true for the isAllIn method)
-	if (len(inPlayerNums) - len(allInPlayerNums)) < 2 {
-		var topBettor1 uint = 0
-		var topBettor2 uint = 0
-		// TODO: what if everyone is all in?
+	runOut := len(inPlayerNums)-allInCount < 2
+	if runOut {
+		var topBettor, topBet, secondBet uint
 		for _, ndx := range inPlayerNums {
-			if g.players[ndx].TotalBet > g.players[topBettor1].TotalBet {
-				topBettor2 = topBettor1
-				topBettor1 = ndx
-			} else if g.players[ndx].TotalBet > g.players[topBettor2].TotalBet {
-				topBettor2 = ndx
+			if bet := g.players[ndx].TotalBet; bet > topBet {
+				secondBet = topBet
+				topBet = bet
+				topBettor = ndx
+			} else if bet > secondBet {
+				secondBet = bet
 			}
 		}
 
-		g.players[topBettor1].returnChips(g.players[topBettor1].TotalBet - g.players[topBettor2].TotalBet)
+		g.players[topBettor].returnChips(topBet - secondBet)
+	}
+
+	// Build the pots after returning chips so the returned chips aren't also won
+	g.updatePots()
+
+	// Nobody is left to bet against, so deal out the rest of the board
+	for runOut && g.getStage() != River {
+		g.setBetting(false)
+		deal(g, g.dealerNum, 0)
 	}
 
 	//If there are two or more players in, and everybody has called or is all in, then end the hand f we've just finished river betting
@@ -344,9 +371,22 @@ func (g *Game) updateRoundInfo() {
 				}
 			}
 
-			for _, num := range g.pots[i].WinningPlayerNums {
-				g.players[num].Stack += (g.pots[i].Amt / uint(len(g.pots[i].WinningPlayerNums)))
-				//TODO: leave the remainder in the middle! (fractional money will disappear currently)
+			winners := g.pots[i].WinningPlayerNums
+			if len(winners) == 0 {
+				continue
+			}
+			for _, num := range winners {
+				g.players[num].Stack += g.pots[i].Amt / uint(len(winners))
+			}
+
+			// The odd chips go to the first winner left of the dealer
+			remainder := g.pots[i].Amt % uint(len(winners))
+			for k := 1; remainder > 0 && k <= len(g.players); k++ {
+				num := (g.dealerNum + uint(k)) % uint(len(g.players))
+				if slices.Contains(winners, num) {
+					g.players[num].Stack += remainder
+					remainder = 0
+				}
 			}
 		}
 
@@ -387,12 +427,11 @@ func NewGame() *Game {
 	return &newGame
 }
 
-// Start checks that all players are ready, then sets running to true and deals the first hand
+// Start checks that at least 2 players are ready, then sets running to true and deals the first hand.
+// Players who aren't ready sit the hand out.
 func (g *Game) Start() error {
-	for _, p := range g.players {
-		if !p.Ready {
-			return ErrStartGame
-		}
+	if g.readyCount() < minPlayers {
+		return ErrStartGame
 	}
 	g.running = true
 	err := Deal(g, g.dealerNum, 0)
@@ -416,5 +455,6 @@ func (g *Game) Reset() {
 func (g *Game) AddPlayer() uint {
 	g.players = append(g.players, player{})
 	g.players[len(g.players)-1].initialize()
+	g.players[len(g.players)-1].Position = uint(len(g.players) - 1)
 	return uint(len(g.players) - 1)
 }

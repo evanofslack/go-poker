@@ -252,6 +252,40 @@ func TestGame_GenerateOmniViewChangedVals(t *testing.T) {
 	}
 }
 
+func TestShowdownRevealsWinners(t *testing.T) {
+	g := NewGame()
+	seatPlayers(t, g, 100, 100)
+	observer := g.AddPlayer()
+	if err := SetSeatID(g, observer, 9); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.Start(); err != nil {
+		t.Fatal(err)
+	}
+	// both all in preflop, the board runs out to showdown
+	if err := Bet(g, 0, 90); err != nil {
+		t.Fatal(err)
+	}
+	if err := Bet(g, 1, 80); err != nil {
+		t.Fatal(err)
+	}
+	if g.getStage() != PreDeal {
+		t.Fatalf("stage = %d, want PreDeal", g.getStage())
+	}
+
+	gv := g.GeneratePlayerView(observer)
+	for _, pot := range g.pots {
+		for _, pn := range pot.WinningPlayerNums {
+			if gv.Players[pn].Cards[0] == 0 {
+				t.Errorf("winner %d cards hidden after showdown", pn)
+			}
+		}
+	}
+	if gv.Players[observer].Cards[0] != 0 {
+		t.Error("observer should have no cards")
+	}
+}
+
 func (g *Game) String() string {
 	formatStr := "&{dealerNum:%d actionNum:%d utgNum:%d sbNum:%d bbNum:%d communityCards:%v "
 	formatStr += "stage:%v betting:%v config:%+v players:%+v deck:%v pots:%+v minRaise:%v"
@@ -270,4 +304,62 @@ func (g *Game) String() string {
 		g.pots,
 		g.minRaise,
 	)
+}
+
+func TestPlayerViewRevealsShowdownHands(t *testing.T) {
+	g := NewGame()
+	for i := uint(0); i < 3; i++ {
+		pn := g.AddPlayer()
+		_ = BuyIn(g, pn, 1000)
+		_ = ToggleReady(g, pn, 0)
+		_ = SetSeatID(g, pn, i+1)
+	}
+	if err := g.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	// first to act folds, the rest call or check down to showdown
+	folded := g.actionNum
+	if err := Fold(g, folded, 0); err != nil {
+		t.Fatal(err)
+	}
+	for g.getStage() != PreDeal {
+		pn := g.actionNum
+		if err := Bet(g, pn, g.toCall()-g.players[pn].Bet); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for viewer := uint(0); viewer <= 3; viewer++ { // 3 is a spectator
+		gv := g.GeneratePlayerView(viewer)
+		for pn, p := range gv.Players {
+			shown := p.Cards[0] != 0
+			if want := uint(pn) != folded; shown != want {
+				t.Errorf("viewer %d: player %d cards shown = %v, want %v", viewer, pn, shown, want)
+			}
+		}
+	}
+}
+
+func TestPlayerViewHidesOtherHands(t *testing.T) {
+	g := NewGame()
+	for i := uint(0); i < 2; i++ {
+		pn := g.AddPlayer()
+		_ = BuyIn(g, pn, 1000)
+		_ = ToggleReady(g, pn, 0)
+		_ = SetSeatID(g, pn, i+1)
+	}
+	if err := g.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	for viewer := uint(0); viewer <= 2; viewer++ { // 2 is a spectator
+		gv := g.GeneratePlayerView(viewer)
+		for pn, p := range gv.Players {
+			shown := p.Cards[0] != 0
+			if want := uint(pn) == viewer; shown != want {
+				t.Errorf("viewer %d: player %d cards shown = %v, want %v", viewer, pn, shown, want)
+			}
+		}
+	}
 }

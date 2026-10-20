@@ -97,6 +97,7 @@ func (g *Game) FillFromView(gv *GameView) {
 
 // GeneratePlayerView is primarily for creating a view that can be serialized for delivery to a specific player
 // The generated view holds only the information that the player denoted by pn is entitled to see at the moment it is generated.
+// A pn that isn't a player (e.g. len(players)) gets a spectator view.
 func (g *Game) GeneratePlayerView(pn uint) *GameView {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
@@ -139,40 +140,18 @@ func (g *Game) GeneratePlayerView(pn uint) *GameView {
 		}
 	}
 
-	if g.getStage() == PreDeal && inCount > 1 {
-
-		showCards(g.calledNum)
-		_, scoreToBeat := eval.BestFiveOfSeven(
-			g.players[g.calledNum].Cards[0],
-			g.players[g.calledNum].Cards[1],
-			g.communityCards[0],
-			g.communityCards[1],
-			g.communityCards[2],
-			g.communityCards[3],
-			g.communityCards[4],
-		)
-
-		for i := range g.players {
-			pni := (g.calledNum + uint(i)) % uint(len(g.players))
-			_, iScore := eval.BestFiveOfSeven(
-				g.players[pni].Cards[0],
-				g.players[pni].Cards[1],
-				g.communityCards[0],
-				g.communityCards[1],
-				g.communityCards[2],
-				g.communityCards[3],
-				g.communityCards[4],
-			)
-
-			if (iScore <= scoreToBeat) && g.players[pni].In {
-				showCards(pni)
-				scoreToBeat = iScore
+	// after a showdown, reveal every hand that was eligible for a pot
+	if g.getStage() == PreDeal {
+		shown := map[uint]bool{}
+		for _, pot := range g.pots {
+			for _, j := range pot.EligiblePlayerNums {
+				if j < uint(len(g.players)) {
+					shown[j] = true
+				}
 			}
 		}
-
-		for _, pot := range g.pots {
-
-			for _, j := range pot.WinningPlayerNums {
+		if len(shown) > 1 {
+			for j := range shown {
 				showCards(j)
 			}
 		}

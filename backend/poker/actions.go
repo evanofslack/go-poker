@@ -1,6 +1,7 @@
 package poker
 
 import (
+	"slices"
 	"sort"
 )
 
@@ -59,14 +60,22 @@ func bet(g *Game, pn uint, data uint) error {
 		//You can always go all-in
 		betLegalError = nil
 	} else if betVal < (minBet - p.Bet) {
-		//Not calling the minimum needed
-		betLegalError = ErrIllegalAction
+		//Not calling the minimum needed, which is only legal all-in
+		if betVal != p.Stack {
+			betLegalError = ErrIllegalAction
+		}
 	} else if betVal == (minBet - p.Bet) {
 		//Calling exactly
 		betLegalError = nil
-	} else if betVal < (minBet + g.minRaise - p.Bet) {
-		// More than calling, but less than minimum raise
+	} else if p.Called {
+		// Already acted, and a short all-in doesn't reopen betting, so can only call
 		betLegalError = ErrIllegalAction
+	} else if betVal < (minBet + g.minRaise - p.Bet) {
+		// More than calling, but less than minimum raise, which is only legal all-in.
+		// It is not a full raise, so it does not reopen betting.
+		if betVal != p.Stack {
+			betLegalError = ErrIllegalAction
+		}
 	} else {
 		// More than calling, and at least the minimum raise
 		betLegalError = nil
@@ -164,15 +173,7 @@ func setSeatID(g *Game, pn uint, data uint) error {
 	p := g.getPlayer(pn)
 	p.SeatID = data
 
-	// rearrange player order to match positions
-	sort.Slice(g.players, func(i, j int) bool {
-		return g.players[i].SeatID < g.players[j].SeatID
-	})
-
-	// update player position
-	for i := range g.players {
-		g.players[i].Position = uint(i)
-	}
+	// players are sorted by seat at the start of the next hand, see deal
 
 	return nil
 }
@@ -222,6 +223,21 @@ func deal(g *Game, pn uint, data uint) error {
 		}
 
 		g.pots = []Pot{}
+
+		// rearrange player order to match seats, keeping the same dealer
+		dealerUUID := g.players[g.dealerNum].UUID
+		sort.SliceStable(g.players, func(i, j int) bool {
+			return g.players[i].SeatID < g.players[j].SeatID
+		})
+		for i := range g.players {
+			g.players[i].Position = uint(i)
+			if g.players[i].UUID == dealerUUID {
+				g.dealerNum = uint(i)
+			}
+		}
+		for !g.players[g.dealerNum].Ready {
+			g.dealerNum = (g.dealerNum + 1) % uint(len(g.players))
+		}
 
 		g.updateBlindNums()
 
@@ -379,4 +395,71 @@ func toggleReady(g *Game, pn uint, data uint) error {
 	p.Left = false
 
 	return nil
+}
+
+// RemovePlayer removes a player from the game entirely. Every player after pn moves down one
+// player number. RemovePlayer will return an error unless g is between hands.
+// RemovePlayer ignores the value passed in as data.
+func RemovePlayer(g *Game, pn uint, data uint) error {
+	g.mtx.Lock()
+	defer g.mtx.Unlock()
+	return removePlayer(g, pn, data)
+}
+
+func removePlayer(g *Game, pn uint, data uint) error {
+	if g.getStage() != PreDeal || g.getBetting() {
+		return ErrIllegalAction
+	}
+
+	g.players = slices.Delete(g.players, int(pn), int(pn+1))
+	for i := range g.players {
+		g.players[i].Position = uint(i)
+	}
+
+	// shift player numbers that pointed past pn so they point at the same player.
+	// If pn itself was pointed at, this now points at the next player.
+	shift := func(num uint) uint {
+		if num > pn {
+			num--
+		}
+		if len(g.players) == 0 {
+			return 0
+		}
+		return num % uint(len(g.players))
+	}
+
+	g.dealerNum = shift(g.dealerNum)
+	g.calledNum = shift(g.calledNum)
+	g.actionNum = shift(g.actionNum)
+
+	// the last hand's results are still shown between hands, so fix up their player numbers too
+	for i := range g.pots {
+		g.pots[i].EligiblePlayerNums = removePlayerNum(g.pots[i].EligiblePlayerNums, pn)
+		g.pots[i].WinningPlayerNums = removePlayerNum(g.pots[i].WinningPlayerNums, pn)
+	}
+
+	if g.readyCount() > 0 {
+		for !g.players[g.dealerNum].Ready {
+			g.dealerNum = (g.dealerNum + 1) % uint(len(g.players))
+		}
+	}
+
+	g.updateBlindNums()
+
+	return nil
+}
+
+// removePlayerNum drops pn from nums and shifts down the player numbers after it
+func removePlayerNum(nums []uint, pn uint) []uint {
+	ret := []uint{}
+	for _, num := range nums {
+		if num == pn {
+			continue
+		}
+		if num > pn {
+			num--
+		}
+		ret = append(ret, num)
+	}
+	return ret
 }
