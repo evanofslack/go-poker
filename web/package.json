@@ -11,16 +11,11 @@
     "@mantine/core": "^4.1.2",
     "autoprefixer": "^10.4.2",
     "classnames": "^2.3.1",
-    "eslint-config-next": "^13.4.4",
     "next": "^13.4.4",
     "postcss": "^8.4.6",
     "react": "^18.2.0",
-    "react-colorful": "^5.5.1",
     "react-dom": "^18.2.0",
     "react-icons": "^4.3.1",
-    "socket.io": "^4.7.5",
-    "socket.io-client": "^4.7.5",
-    "swr": "^1.2.2",
     "use-chat-scroll": "^1.0.3"
   },
   "devDependencies": {
