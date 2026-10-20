@@ -1,8 +1,19 @@
-export function joinTable(socket: WebSocket, tablename: string) {
+export function createTable(socket: WebSocket, tablename: string, username: string) {
+    socket.send(
+        JSON.stringify({
+            action: "create-table",
+            tablename: tablename,
+            username: username,
+        })
+    );
+}
+
+export function joinTable(socket: WebSocket, tablename: string, username: string) {
     socket.send(
         JSON.stringify({
             action: "join-table",
             tablename: tablename,
+            username: username,
         })
     );
 }
@@ -57,15 +68,6 @@ export function dealGame(socket: WebSocket) {
     socket.send(
         JSON.stringify({
             action: "deal-game",
-        })
-    );
-}
-
-export function newPlayer(socket: WebSocket, username: string) {
-    socket?.send(
-        JSON.stringify({
-            action: "new-player",
-            username: username,
         })
     );
 }

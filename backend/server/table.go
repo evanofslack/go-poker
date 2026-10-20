@@ -1,6 +1,7 @@
 package server
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/evanofslack/go-poker/poker"
@@ -25,7 +26,9 @@ type table struct {
 	done       chan struct{} // closed when the table is deleted
 	members    int           // clients at this table, guarded by Hub.mu
 
-	mu sync.Mutex // serializes game actions from client goroutines
+	mu    sync.Mutex       // serializes game actions from client goroutines
+	users map[*Client]bool // clients at this table, guarded by mu
+	host  *Client          // guarded by mu
 }
 
 // newTable creates a new table
@@ -39,6 +42,7 @@ func newTable(name string) *table {
 		updates:    make(chan stateUpdate),
 		game:       poker.NewGame(),
 		done:       make(chan struct{}),
+		users:      make(map[*Client]bool),
 	}
 }
 
@@ -57,6 +61,53 @@ func (t *table) run() {
 			return
 		}
 	}
+}
+
+// nameTaken reports whether name is used by anyone at the table, ignoring
+// case. Caller holds t.mu.
+func (t *table) nameTaken(name string) bool {
+	for u := range t.users {
+		if strings.EqualFold(u.username, name) {
+			return true
+		}
+	}
+	// seated players may no longer be connected
+	for _, p := range t.game.GenerateOmniView().Players {
+		if strings.EqualFold(p.Username, name) {
+			return true
+		}
+	}
+	return false
+}
+
+// removeUser takes c out of the table's users, passing the host role on if c
+// had it: to a seated user first, else anyone. Caller holds t.mu.
+func (t *table) removeUser(c *Client) {
+	delete(t.users, c)
+	if t.host != c {
+		return
+	}
+	t.host = nil
+	for _, p := range t.game.GenerateOmniView().Players {
+		for u := range t.users {
+			if u.id() == p.UUID {
+				t.host = u
+				return
+			}
+		}
+	}
+	for u := range t.users {
+		t.host = u
+		return
+	}
+}
+
+// hostID is the host's uuid, or empty if there is none. Caller holds t.mu.
+func (t *table) hostID() string {
+	if t.host == nil {
+		return ""
+	}
+	return t.host.id()
 }
 
 func (t *table) registerClient(client *Client) {

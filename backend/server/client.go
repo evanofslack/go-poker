@@ -7,6 +7,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -181,22 +182,30 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		return errors.New("deserialize message")
 	}
 
-	if baseMessage.Action != actionJoinTable && c.table == nil {
+	joining := baseMessage.Action == actionCreateTable || baseMessage.Action == actionJoinTable
+	if !joining && c.table == nil {
 		return errors.New("client has not joined a table")
 	}
 
 	switch baseMessage.Action {
 
-	case actionJoinTable:
+	case actionCreateTable, actionJoinTable:
 		var table joinTable
 		err := json.Unmarshal(rawMessage, &table)
 		if err != nil {
 			return err
 		}
+		username := strings.TrimSpace(table.Username)
 		if !validLength(table.Tablename, maxTablenameLen) {
+			sendError(c, "invalid table name")
 			return errors.New("invalid table name")
 		}
-		return handleJoinTable(c, table.Tablename)
+		if !validUsername(username) {
+			sendError(c, "invalid name")
+			return errors.New("invalid username")
+		}
+		handleJoinTable(c, table.Tablename, username, baseMessage.Action == actionCreateTable)
+		return nil
 
 	case actionLeaveTable:
 		var table leaveTable
@@ -231,28 +240,13 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		handleSendLog(c, log.Message)
 		return nil
 
-	case actionNewPlayer:
-		var player newPlayer
-		err := json.Unmarshal(rawMessage, &player)
-		if err != nil {
-			return err
-		}
-		if !validLength(player.Username, maxUsernameLen) {
-			return errors.New("invalid username")
-		}
-		handleNewPlayer(c, player.Username)
-		return nil
-
 	case actionTakeSeat:
 		var seat takeSeat
 		err := json.Unmarshal(rawMessage, &seat)
 		if err != nil {
 			return err
 		}
-		if !validLength(seat.Username, maxUsernameLen) {
-			return errors.New("invalid username")
-		}
-		handleTakeSeat(c, seat.Username, seat.SeatID, seat.BuyIn)
+		handleTakeSeat(c, seat.SeatID, seat.BuyIn)
 		return nil
 
 	case actionStartGame:

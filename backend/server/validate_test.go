@@ -24,3 +24,23 @@ func TestValidLength(t *testing.T) {
 		}
 	}
 }
+
+func TestValidUsername(t *testing.T) {
+	tests := []struct {
+		s    string
+		want bool
+	}{
+		{"evan", true},
+		{"", false},
+		{strings.Repeat("a", maxUsernameLen+1), false},
+		{"system", false},
+		{"System", false},
+		{" SYSTEM ", false},
+		{"systems", true},
+	}
+	for _, tt := range tests {
+		if got := validUsername(tt.s); got != tt.want {
+			t.Errorf("validUsername(%q) = %v, want %v", tt.s, got, tt.want)
+		}
+	}
+}
