@@ -250,3 +250,44 @@ func TestTableCap(t *testing.T) {
 		t.Errorf("tables = %d, want %d", n, maxTables)
 	}
 }
+
+func isRunning(t *testing.T, h *Hub, name string) bool {
+	h.mu.Lock()
+	tbl := h.tables[name]
+	h.mu.Unlock()
+	if tbl == nil {
+		t.Fatalf("no table %q", name)
+	}
+	tbl.mu.Lock()
+	defer tbl.mu.Unlock()
+	return tbl.game.GenerateOmniView().Running
+}
+
+func TestSpectatorCannotStart(t *testing.T) {
+	srv, hub := newTestServerHub(t)
+	for i := 1; i <= 2; i++ {
+		send(t, dial(t, srv),
+			`{"action":"join-table","tablename":"t"}`,
+			`{"action":"new-player","username":"p"}`,
+			`{"action":"take-seat","username":"p","seatID":`+strconv.Itoa(i)+`,"buyIn":100}`,
+		)
+	}
+	spectator := dial(t, srv)
+	send(t, spectator, `{"action":"join-table","tablename":"t"}`, `{"action":"start-game"}`)
+	time.Sleep(200 * time.Millisecond)
+	if isRunning(t, hub, "t") {
+		t.Fatal("spectator started the game")
+	}
+
+	player := dial(t, srv)
+	send(t, player,
+		`{"action":"join-table","tablename":"t"}`,
+		`{"action":"new-player","username":"p"}`,
+		`{"action":"take-seat","username":"p","seatID":3,"buyIn":100}`,
+		`{"action":"start-game"}`,
+	)
+	time.Sleep(200 * time.Millisecond)
+	if !isRunning(t, hub, "t") {
+		t.Fatal("seated player could not start the game")
+	}
+}

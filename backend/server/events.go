@@ -92,6 +92,9 @@ func handleTakeSeat(c *Client, username string, seatID uint, buyIn uint) {
 func handleStartGame(c *Client) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
+	if !isSeated(c) {
+		return
+	}
 
 	err := c.table.game.Start()
 	if err != nil {
@@ -104,6 +107,9 @@ func handleStartGame(c *Client) {
 func handleResetGame(c *Client) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
+	if !isSeated(c) {
+		return
+	}
 
 	c.table.game.Reset()
 	c.table.broadcast <- createUpdatedGame(c)
@@ -112,6 +118,9 @@ func handleResetGame(c *Client) {
 func handleDealGame(c *Client) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
+	if !isSeated(c) {
+		return
+	}
 
 	broadcastDeal(c.table)
 
@@ -203,6 +212,16 @@ func handleFold(c *Client) {
 		return
 	}
 	c.table.broadcast <- createUpdatedGame(c)
+}
+
+// isSeated reports whether c has a seat at its table. Caller holds c.table.mu.
+func isSeated(c *Client) bool {
+	for _, p := range c.table.game.GenerateOmniView().Players {
+		if p.UUID == c.uuid {
+			return true
+		}
+	}
+	return false
 }
 
 func createNewMessage(username string, message string) []byte {
