@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -207,17 +208,26 @@ func tableNames(h *Hub) []string {
 	for name := range h.tables {
 		names = append(names, name)
 	}
+	slices.Sort(names)
 	return names
 }
 
-func waitForTables(t *testing.T, h *Hub, want int) {
+// eventually polls cond until it is true, failing the test after 2 seconds.
+func eventually(t *testing.T, cond func() bool, msg string, args ...any) {
+	t.Helper()
 	deadline := time.Now().Add(2 * time.Second)
-	for len(tableNames(h)) != want {
+	for !cond() {
 		if time.Now().After(deadline) {
-			t.Fatalf("tables = %v, want %d", tableNames(h), want)
+			t.Fatalf(msg, args...)
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
+}
+
+// waitForTables waits until exactly the wanted tables exist.
+func waitForTables(t *testing.T, h *Hub, want ...string) {
+	t.Helper()
+	eventually(t, func() bool { return slices.Equal(tableNames(h), want) }, "tables = %v, want %v", tableNames(h), want)
 }
 
 func TestEmptyTablesDeleted(t *testing.T) {
@@ -225,18 +235,15 @@ func TestEmptyTablesDeleted(t *testing.T) {
 	conn := dial(t, srv)
 
 	send(t, conn, `{"action":"join-table","tablename":"a"}`, `{"action":"join-table","tablename":"b"}`)
-	waitForTables(t, hub, 1)
-	if names := tableNames(hub); names[0] != "b" {
-		t.Errorf("tables = %v, want [b]", names)
-	}
+	waitForTables(t, hub, "b")
 
 	send(t, conn, `{"action":"leave-table","tablename":"b"}`)
-	waitForTables(t, hub, 0)
+	waitForTables(t, hub)
 
 	send(t, conn, `{"action":"join-table","tablename":"c"}`)
-	waitForTables(t, hub, 1)
+	waitForTables(t, hub, "c")
 	conn.Close()
-	waitForTables(t, hub, 0)
+	waitForTables(t, hub)
 }
 
 func TestTableCap(t *testing.T) {
@@ -245,7 +252,8 @@ func TestTableCap(t *testing.T) {
 		conn := dial(t, srv)
 		send(t, conn, `{"action":"join-table","tablename":"t`+strconv.Itoa(i)+`"}`)
 	}
-	time.Sleep(200 * time.Millisecond)
+	eventually(t, func() bool { return len(tableNames(hub)) >= maxTables }, "tables never reached the cap")
+	time.Sleep(100 * time.Millisecond) // give extra joins time to (wrongly) succeed
 	if n := len(tableNames(hub)); n != maxTables {
 		t.Errorf("tables = %d, want %d", n, maxTables)
 	}
@@ -286,8 +294,5 @@ func TestSpectatorCannotStart(t *testing.T) {
 		`{"action":"take-seat","username":"p","seatID":3,"buyIn":100}`,
 		`{"action":"start-game"}`,
 	)
-	time.Sleep(200 * time.Millisecond)
-	if !isRunning(t, hub, "t") {
-		t.Fatal("seated player could not start the game")
-	}
+	eventually(t, func() bool { return isRunning(t, hub, "t") }, "seated player could not start the game")
 }
