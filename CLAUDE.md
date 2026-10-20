@@ -3,10 +3,12 @@
 Realtime multiplayer poker: Go websocket server (`backend/`) + Next.js client (`web/`).
 
 ## Commands
-- Dev: `make start` (go on :8080, next on :3000). Needs `cd web && npm install` first.
-- Backend (run from `backend/`): `gofmt -l .` (must be empty), `go vet ./...`, `go test -race ./...`
-- Web (run from `web/`): `npm run type-check`, `npm run build`. No test suite.
-- Run the checks for whichever side you touched before calling it done. CI runs exactly these.
+- Dev: `just start` (go on :8080, next on :3000; installs web deps if missing). `just serve` runs the
+  production-like build on :8080. `just` lists all recipes.
+- `just check` runs exactly what CI runs:
+  - Backend (run from `backend/`): `gofmt -l .` (must be empty), `go vet ./...`, `go test -race ./...`
+  - Web (run from `web/`): `npm run type-check`, `npm run build`. No test suite.
+- Run the checks for whichever side you touched before calling it done.
 
 ## Architecture
 - `backend/poker/`: game engine, forked from riverboat. Keep its license header.

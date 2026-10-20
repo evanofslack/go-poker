@@ -50,14 +50,13 @@ Set `ALLOWED_ORIGINS` (comma separated) to allow websockets from other origins, 
 
 ## development
 
-Run the go server and next dev server with hot reload (needs go and node):
+Run the go server and next dev server with hot reload (needs go, node and [just](https://github.com/casey/just)):
 
 ```bash
-cd web && npm install && cd ..
-make start
+just start
 ```
 
-Then open http://localhost:3000. Or build and run the production image from local code:
+Then open http://localhost:3000. Run `just check` for the same checks as CI, or `just` to list all recipes. Or build and run the production image from local code:
 
 ```bash
 docker compose -f docker-compose-dev.yaml up --build
