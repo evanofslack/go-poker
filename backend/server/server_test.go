@@ -57,6 +57,28 @@ func send(t *testing.T, conn *websocket.Conn, msgs ...string) {
 	}
 }
 
+func createMsg(table, name string) string {
+	return `{"action":"create-table","tablename":"` + table + `","username":"` + name + `"}`
+}
+
+func joinMsg(table, name string) string {
+	return `{"action":"join-table","tablename":"` + table + `","username":"` + name + `"}`
+}
+
+func seatMsg(seat int) string {
+	return `{"action":"take-seat","seatID":` + strconv.Itoa(seat) + `,"buyIn":100}`
+}
+
+// createAndWait creates a table and waits until the server has made it, so
+// other clients can join.
+func createAndWait(t *testing.T, srv *httptest.Server, table, name string) (*websocket.Conn, received) {
+	t.Helper()
+	conn, r := dialRecv(t, srv)
+	send(t, conn, createMsg(table, name))
+	waitGame(t, r.games, func(poker.GameView) bool { return true })
+	return conn, r
+}
+
 // assertAlive checks a fresh client can still join and get a game update.
 func assertAlive(t *testing.T, srv *httptest.Server) {
 	url := "ws" + strings.TrimPrefix(srv.URL, "http")
@@ -65,7 +87,7 @@ func assertAlive(t *testing.T, srv *httptest.Server) {
 		t.Fatalf("server not accepting connections: %s", err)
 	}
 	defer conn.Close()
-	send(t, conn, `{"action":"join-table","tablename":"alive"}`, `{"action":"new-player","username":"probe"}`)
+	send(t, conn, createMsg("alive", "probe"))
 	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	for {
 		_, msg, err := conn.ReadMessage()
@@ -90,7 +112,7 @@ func TestMalformedMessagesDoNotCrash(t *testing.T) {
 		`{"action":"leave-table","tablename":"nope"}`,
 		`not json`,
 		// actions at an empty table
-		`{"action":"join-table","tablename":"t"}`,
+		createMsg("t", "a"),
 		`{"action":"start-game"}`,
 		`{"action":"deal-game"}`,
 		`{"action":"player-fold"}`,
@@ -101,8 +123,9 @@ func TestMalformedMessagesDoNotCrash(t *testing.T) {
 		`{"action":"take-seat","username":"a","seatID":99,"buyIn":100}`,
 		`{"action":"take-seat","username":"a","seatID":1,"buyIn":100}`,
 		`{"action":"take-seat","username":"a","seatID":1,"buyIn":100}`,
-		// switch tables without leaving
-		`{"action":"join-table","tablename":"other"}`,
+		// join or create without leaving
+		joinMsg("other", "a"),
+		createMsg("other", "a"),
 	)
 	time.Sleep(200 * time.Millisecond)
 	assertAlive(t, srv)
@@ -110,6 +133,7 @@ func TestMalformedMessagesDoNotCrash(t *testing.T) {
 
 func TestConcurrentPlayers(t *testing.T) {
 	srv := newTestServer(t)
+	createAndWait(t, srv, "t", "host")
 
 	var wg sync.WaitGroup
 	for i := 1; i <= 4; i++ {
@@ -118,11 +142,7 @@ func TestConcurrentPlayers(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			send(t, conn,
-				`{"action":"join-table","tablename":"t"}`,
-				`{"action":"new-player","username":"p"}`,
-				`{"action":"take-seat","username":"p","seatID":`+string(rune('0'+seat))+`,"buyIn":100}`,
-			)
+			send(t, conn, joinMsg("t", "p"+strconv.Itoa(seat)), seatMsg(seat))
 			for j := 0; j < 2; j++ { // stay under the rate limit
 				send(t, conn,
 					`{"action":"start-game"}`,
@@ -143,15 +163,10 @@ func TestConcurrentPlayers(t *testing.T) {
 
 func TestDisconnectMidGame(t *testing.T) {
 	srv := newTestServer(t)
-	a := dial(t, srv)
+	a, _ := createAndWait(t, srv, "t", "a")
 	b := dial(t, srv)
-	for i, c := range []*websocket.Conn{a, b} {
-		send(t, c,
-			`{"action":"join-table","tablename":"t"}`,
-			`{"action":"new-player","username":"p"}`,
-			`{"action":"take-seat","username":"p","seatID":`+string(rune('1'+i))+`,"buyIn":100}`,
-		)
-	}
+	send(t, a, seatMsg(1))
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
 	send(t, a, `{"action":"start-game"}`)
 	a.Close()
 	for i := 0; i < 10; i++ {
@@ -188,7 +203,7 @@ func TestFloodDisconnects(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer conn.Close()
-	send(t, conn, `{"action":"join-table","tablename":"t"}`)
+	send(t, conn, createMsg("t", "p"))
 	for i := 0; i < 2*maxMessagesPerSecond; i++ {
 		conn.WriteMessage(websocket.TextMessage, []byte(`{"action":"send-message","username":"p","message":"spam"}`))
 	}
@@ -236,13 +251,13 @@ func TestEmptyTablesDeleted(t *testing.T) {
 	srv, hub := newTestServerHub(t)
 	conn := dial(t, srv)
 
-	send(t, conn, `{"action":"join-table","tablename":"a"}`, `{"action":"join-table","tablename":"b"}`)
-	waitForTables(t, hub, "b")
+	send(t, conn, createMsg("a", "p"))
+	waitForTables(t, hub, "a")
 
-	send(t, conn, `{"action":"leave-table","tablename":"b"}`)
+	send(t, conn, `{"action":"leave-table","tablename":"a"}`)
 	waitForTables(t, hub)
 
-	send(t, conn, `{"action":"join-table","tablename":"c"}`)
+	send(t, conn, createMsg("c", "p"))
 	waitForTables(t, hub, "c")
 	conn.Close()
 	waitForTables(t, hub)
@@ -252,7 +267,7 @@ func TestTableCap(t *testing.T) {
 	srv, hub := newTestServerHub(t)
 	for i := 0; i < maxTables+5; i++ {
 		conn := dial(t, srv)
-		send(t, conn, `{"action":"join-table","tablename":"t`+strconv.Itoa(i)+`"}`)
+		send(t, conn, createMsg("t"+strconv.Itoa(i), "p"))
 	}
 	eventually(t, func() bool { return len(tableNames(hub)) >= maxTables }, "tables never reached the cap")
 	time.Sleep(100 * time.Millisecond) // give extra joins time to (wrongly) succeed
@@ -275,33 +290,25 @@ func isRunning(t *testing.T, h *Hub, name string) bool {
 
 func TestSpectatorCannotStart(t *testing.T) {
 	srv, hub := newTestServerHub(t)
-	for i := 1; i <= 2; i++ {
-		send(t, dial(t, srv),
-			`{"action":"join-table","tablename":"t"}`,
-			`{"action":"new-player","username":"p"}`,
-			`{"action":"take-seat","username":"p","seatID":`+strconv.Itoa(i)+`,"buyIn":100}`,
-		)
-	}
+	host, _ := createAndWait(t, srv, "t", "p1")
+	send(t, host, seatMsg(1))
+	send(t, dial(t, srv), joinMsg("t", "p2"), seatMsg(2))
 	spectator := dial(t, srv)
-	send(t, spectator, `{"action":"join-table","tablename":"t"}`, `{"action":"start-game"}`)
+	send(t, spectator, joinMsg("t", "s"), `{"action":"start-game"}`)
 	time.Sleep(200 * time.Millisecond)
 	if isRunning(t, hub, "t") {
 		t.Fatal("spectator started the game")
 	}
 
 	player := dial(t, srv)
-	send(t, player,
-		`{"action":"join-table","tablename":"t"}`,
-		`{"action":"new-player","username":"p"}`,
-		`{"action":"take-seat","username":"p","seatID":3,"buyIn":100}`,
-		`{"action":"start-game"}`,
-	)
+	send(t, player, joinMsg("t", "p3"), seatMsg(3), `{"action":"start-game"}`)
 	eventually(t, func() bool { return isRunning(t, hub, "t") }, "seated player could not start the game")
 }
 
 // received collects what the server sends one client.
 type received struct {
 	games  chan poker.GameView
+	hosts  chan string // host of each game update
 	errors chan string
 }
 
@@ -313,7 +320,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { conn.Close() })
-	r := received{make(chan poker.GameView, 256), make(chan string, 256)}
+	r := received{make(chan poker.GameView, 256), make(chan string, 256), make(chan string, 256)}
 	go func() {
 		for {
 			_, msg, err := conn.ReadMessage()
@@ -324,6 +331,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				Action  string         `json:"action"`
 				Game    poker.GameView `json:"game"`
 				Message string         `json:"message"`
+				Host    string         `json:"host"`
 			}
 			if json.Unmarshal(msg, &u) != nil {
 				continue
@@ -332,6 +340,10 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 			case actionUpdateGame:
 				select {
 				case r.games <- u.Game:
+				default:
+				}
+				select {
+				case r.hosts <- u.Host:
 				default:
 				}
 			case actionError:
@@ -363,17 +375,12 @@ func waitGame(t *testing.T, games <-chan poker.GameView, cond func(poker.GameVie
 
 func TestHoleCardsHidden(t *testing.T) {
 	srv := newTestServer(t)
-	a, aRecv := dialRecv(t, srv)
+	a, aRecv := createAndWait(t, srv, "t", "a")
 	b, bRecv := dialRecv(t, srv)
 	spectator, sRecv := dialRecv(t, srv)
-	for i, c := range []*websocket.Conn{a, b} {
-		send(t, c,
-			`{"action":"join-table","tablename":"t"}`,
-			`{"action":"new-player","username":"p"}`,
-			`{"action":"take-seat","username":"p","seatID":`+strconv.Itoa(i+1)+`,"buyIn":100}`,
-		)
-	}
-	send(t, spectator, `{"action":"join-table","tablename":"t"}`)
+	send(t, a, seatMsg(1))
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	send(t, spectator, joinMsg("t", "s"))
 	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
 	send(t, a, `{"action":"start-game"}`)
 
@@ -407,19 +414,15 @@ func waitError(t *testing.T, r received) string {
 
 func TestOnlyActOnYourTurn(t *testing.T) {
 	srv := newTestServer(t)
-	a, aRecv := dialRecv(t, srv)
+	a, aRecv := createAndWait(t, srv, "t", "a")
 	b, bRecv := dialRecv(t, srv)
 	spectator, sRecv := dialRecv(t, srv)
 	// a sits first so is dealer
-	for i, c := range []*websocket.Conn{a, b} {
-		send(t, c,
-			`{"action":"join-table","tablename":"t"}`,
-			`{"action":"new-player","username":"p"}`,
-			`{"action":"take-seat","username":"p","seatID":`+strconv.Itoa(i+1)+`,"buyIn":100}`,
-		)
-		waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == i+1 })
-	}
-	send(t, spectator, `{"action":"join-table","tablename":"t"}`)
+	send(t, a, seatMsg(1))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	send(t, spectator, joinMsg("t", "s"))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
 	send(t, a, `{"action":"start-game"}`)
 	g := waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Betting })
 
@@ -446,24 +449,76 @@ func TestOnlyActOnYourTurn(t *testing.T) {
 
 func TestSeatErrors(t *testing.T) {
 	srv := newTestServer(t)
-	a, aRecv := dialRecv(t, srv)
+	a, aRecv := createAndWait(t, srv, "t", "a")
 	b, bRecv := dialRecv(t, srv)
-	for _, c := range []*websocket.Conn{a, b} {
-		send(t, c, `{"action":"join-table","tablename":"t"}`, `{"action":"new-player","username":"p"}`)
-	}
-	send(t, a, `{"action":"take-seat","username":"p","seatID":1,"buyIn":100}`)
+	send(t, b, joinMsg("t", "b"))
+	send(t, a, seatMsg(1))
 	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
 
-	send(t, a, `{"action":"take-seat","username":"p","seatID":2,"buyIn":100}`)
+	send(t, a, seatMsg(2))
 	if msg := waitError(t, aRecv); msg != "you already have a seat" {
 		t.Errorf("second seat: got %q", msg)
 	}
-	send(t, b, `{"action":"take-seat","username":"p","seatID":1,"buyIn":100}`)
+	send(t, b, seatMsg(1))
 	if msg := waitError(t, bRecv); msg != "seat taken" {
 		t.Errorf("taken seat: got %q", msg)
 	}
-	send(t, b, `{"action":"take-seat","username":"p","seatID":2,"buyIn":999999}`)
+	send(t, b, `{"action":"take-seat","seatID":2,"buyIn":999999}`)
 	if msg := waitError(t, bRecv); !strings.HasPrefix(msg, "buy-in must be") {
 		t.Errorf("bad buy-in: got %q", msg)
 	}
+}
+
+func TestCreateAndJoinErrors(t *testing.T) {
+	srv := newTestServer(t)
+	createAndWait(t, srv, "t", "alice")
+
+	tests := []struct {
+		msg  string
+		want string
+	}{
+		{createMsg("t", "bob"), errTableExists.Error()},
+		{joinMsg("missing", "bob"), errNoTable.Error()},
+		{joinMsg("t", "ALICE"), errNameTaken.Error()},
+		{joinMsg("t", "System"), "invalid name"},
+	}
+	for _, tt := range tests {
+		conn, r := dialRecv(t, srv)
+		send(t, conn, tt.msg)
+		if got := waitError(t, r); got != tt.want {
+			t.Errorf("%s: got error %q, want %q", tt.msg, got, tt.want)
+		}
+	}
+}
+
+func TestOnlyHostResets(t *testing.T) {
+	srv, hub := newTestServerHub(t)
+	host, hostRecv := createAndWait(t, srv, "t", "host")
+	b, bRecv := dialRecv(t, srv)
+	send(t, host, seatMsg(1))
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	g := waitGame(t, hostRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
+	send(t, b, `{"action":"start-game"}`)
+	eventually(t, func() bool { return isRunning(t, hub, "t") }, "game did not start")
+
+	send(t, b, `{"action":"reset-game"}`)
+	if msg := waitError(t, bRecv); msg != "only the host can reset the table" {
+		t.Errorf("b got error %q", msg)
+	}
+	if !isRunning(t, hub, "t") {
+		t.Fatal("non-host reset the table")
+	}
+
+	// the host leaves, so b (the only one left) becomes host
+	host.Close()
+	timeout := time.After(2 * time.Second)
+	for h := ""; h != g.Players[1].UUID; {
+		select {
+		case h = <-bRecv.hosts:
+		case <-timeout:
+			t.Fatal("b never became host")
+		}
+	}
+	send(t, b, `{"action":"reset-game"}`)
+	eventually(t, func() bool { return !isRunning(t, hub, "t") }, "new host could not reset")
 }

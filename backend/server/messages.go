@@ -6,11 +6,11 @@ import (
 
 // inbound (client) actions
 const (
+	actionCreateTable string = "create-table"
 	actionJoinTable   string = "join-table"
 	actionLeaveTable  string = "leave-table"
 	actionSendMessage string = "send-message"
 	actionSendLog     string = "send-log"
-	actionNewPlayer   string = "new-player"
 	actionTakeSeat    string = "take-seat"
 	actionStartGame   string = "start-game"
 	actionDealGame    string = "deal-game"
@@ -26,9 +26,11 @@ type base struct {
 	Action string `json:"action"`
 }
 
+// joinTable is used for both actionCreateTable and actionJoinTable
 type joinTable struct {
-	base             // actionJoinTable
+	base             // actionCreateTable, actionJoinTable
 	Tablename string `json:"tablename"`
+	Username  string `json:"username"`
 }
 
 type leaveTable struct {
@@ -47,14 +49,9 @@ type sendLog struct {
 	Message string `json:"message"`
 }
 
-type newPlayer struct {
-	base            // actionNewPlayer
-	Username string `json:"username"`
-}
-
 type takeSeat struct {
 	base            // actionTakeSeat
-	Username string `json:"username"`
+	Username string `json:"username"` // ignored, the server uses the client's username
 	SeatID   uint   `json:"seatID"`
 	BuyIn    uint   `json:"buyIn"`
 }
@@ -95,6 +92,7 @@ const (
 	actionUpdateGame       string = "update-game"
 	actionUpdatePlayerUUID string = "update-player-uuid"
 	actionError            string = "error"
+	actionJoinedTable      string = "joined-table"
 )
 
 type newMessage struct {
@@ -115,6 +113,15 @@ type newLog struct {
 type updateGame struct {
 	base                 // actionUpdateGame
 	Game *poker.GameView `json:"game"`
+	Host string          `json:"host"` // uuid of the host client
+}
+
+// joinedTable confirms a create-table or join-table
+type joinedTable struct {
+	base             // actionJoinedTable
+	Tablename string `json:"tablename"`
+	Username  string `json:"username"`
+	Uuid      string `json:"uuid"`
 }
 
 // errorMessage tells one client why its action was rejected

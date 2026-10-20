@@ -12,6 +12,11 @@ const (
 	maxMessageLen   = 200
 )
 
+// validUsername reports whether s can be used as a player's name.
+func validUsername(s string) bool {
+	return validLength(s, maxUsernameLen) && !strings.EqualFold(strings.TrimSpace(s), gameAdminName)
+}
+
 // validLength reports whether s is non-blank and at most max characters.
 func validLength(s string, max int) bool {
 	n := utf8.RuneCountInString(s)

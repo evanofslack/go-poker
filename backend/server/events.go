@@ -15,8 +15,17 @@ const (
 	maxSeats      uint   = 6 // seats rendered by the frontend
 )
 
-func handleJoinTable(c *Client, tablename string) error {
-	return c.hub.joinTable(c, tablename)
+func handleJoinTable(c *Client, tablename string, username string, create bool) {
+	if err := c.hub.joinTable(c, tablename, username, create); err != nil {
+		sendError(c, err.Error())
+		return
+	}
+	c.table.mu.Lock()
+	defer c.table.mu.Unlock()
+
+	c.send <- createJoinedTable(c)
+	c.send <- createGameView(c)
+	c.table.broadcast <- createNewMessage(gameAdminName, fmt.Sprintf("%s has joined", username))
 }
 
 func handleLeaveTable(c *Client, tablename string) {
@@ -37,16 +46,7 @@ func handleSendLog(c *Client, message string) {
 	c.table.broadcast <- createNewLog(message)
 }
 
-func handleNewPlayer(c *Client, username string) {
-	c.table.mu.Lock()
-	defer c.table.mu.Unlock()
-
-	c.username = username
-	c.send <- createGameView(c)
-	c.table.broadcast <- createNewMessage(gameAdminName, fmt.Sprintf("%s has joined", username))
-}
-
-func handleTakeSeat(c *Client, username string, seatID uint, buyIn uint) {
+func handleTakeSeat(c *Client, seatID uint, buyIn uint) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
 
@@ -73,7 +73,7 @@ func handleTakeSeat(c *Client, username string, seatID uint, buyIn uint) {
 	position := c.table.game.AddPlayer()
 	c.uuid.Store(c.table.game.GenerateOmniView().Players[position].UUID)
 	c.send <- createUpdatedPlayerUUID(c)
-	err := poker.SetUsername(c.table.game, position, username)
+	err := poker.SetUsername(c.table.game, position, c.username)
 	if err != nil {
 		slog.Default().Warn("Set username", "error", err)
 	}
@@ -117,8 +117,8 @@ func handleStartGame(c *Client) {
 func handleResetGame(c *Client) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
-	if !isSeated(c) {
-		sendError(c, "take a seat first")
+	if c.table.host != c {
+		sendError(c, "only the host can reset the table")
 		return
 	}
 
@@ -301,10 +301,11 @@ func createNewLog(message string) []byte {
 func broadcastGame(t *table) {
 	u := stateUpdate{byUUID: map[string][]byte{}}
 	players := t.game.GenerateOmniView().Players
+	host := t.hostID()
 	for i, p := range players {
-		u.byUUID[p.UUID] = createUpdatedGame(t.game.GeneratePlayerView(uint(i)))
+		u.byUUID[p.UUID] = createUpdatedGame(t.game.GeneratePlayerView(uint(i)), host)
 	}
-	u.spectator = createUpdatedGame(t.game.GeneratePlayerView(uint(len(players))))
+	u.spectator = createUpdatedGame(t.game.GeneratePlayerView(uint(len(players))), host)
 	t.updates <- u
 }
 
@@ -314,18 +315,33 @@ func createGameView(c *Client) []byte {
 	if !ok {
 		pn = uint(len(c.table.game.GenerateOmniView().Players))
 	}
-	return createUpdatedGame(c.table.game.GeneratePlayerView(pn))
+	return createUpdatedGame(c.table.game.GeneratePlayerView(pn), c.table.hostID())
 }
 
-func createUpdatedGame(view *poker.GameView) []byte {
+func createUpdatedGame(view *poker.GameView, host string) []byte {
 	game := updateGame{
 		base{actionUpdateGame},
 		view,
+		host,
 	}
 
 	resp, err := json.Marshal(game)
 	if err != nil {
 		slog.Default().Warn("Marshal update game", "error", err)
+	}
+	return resp
+}
+
+func createJoinedTable(c *Client) []byte {
+	joined := joinedTable{
+		base{actionJoinedTable},
+		c.table.name,
+		c.username,
+		c.id(),
+	}
+	resp, err := json.Marshal(joined)
+	if err != nil {
+		slog.Default().Warn("Marshal joined table", "error", err)
 	}
 	return resp
 }

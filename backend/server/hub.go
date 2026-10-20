@@ -49,29 +49,54 @@ func (h *Hub) unregisterClient(client *Client) {
 // maxTables caps how many tables can exist at once.
 const maxTables = 100
 
-var errTooManyTables = errors.New("too many tables")
+var (
+	errTooManyTables = errors.New("too many tables")
+	errTableExists   = errors.New("table already exists")
+	errNoTable       = errors.New("table not found")
+	errNameTaken     = errors.New("name already taken at this table")
+	errAtTable       = errors.New("already at a table")
+)
 
-// joinTable moves c to the named table, creating the table if needed.
-func (h *Hub) joinTable(c *Client, name string) error {
-	if c.table != nil && c.table.name == name {
-		return nil
+// joinTable adds c to the named table as username. With create, the table
+// must not exist yet and c becomes its host; otherwise it must exist.
+func (h *Hub) joinTable(c *Client, name string, username string, create bool) error {
+	if c.table != nil {
+		return errAtTable
 	}
 
 	h.mu.Lock()
+	defer h.mu.Unlock()
 	t, ok := h.tables[name]
-	if !ok {
-		if len(h.tables) >= maxTables {
-			h.mu.Unlock()
-			return errTooManyTables
-		}
+	switch {
+	case create && ok:
+		return errTableExists
+	case !create && !ok:
+		return errNoTable
+	case create && len(h.tables) >= maxTables:
+		return errTooManyTables
+	}
+
+	// lock order is hub.mu, then table.mu
+	if create {
 		t = newTable(name)
+	}
+	t.mu.Lock()
+	if t.nameTaken(username) {
+		t.mu.Unlock()
+		return errNameTaken
+	}
+	c.username = username
+	t.users[c] = true
+	if create {
+		t.host = c
+	}
+	t.mu.Unlock()
+
+	if create {
 		go t.run()
 		h.tables[name] = t
 	}
 	t.members++
-	h.mu.Unlock()
-
-	h.leaveTable(c)
 	c.table = t
 	t.register <- c
 	return nil
@@ -85,6 +110,13 @@ func (h *Hub) leaveTable(c *Client) {
 	}
 	c.table = nil
 	t.unregister <- c
+
+	t.mu.Lock()
+	t.removeUser(c)
+	if t.host != nil {
+		broadcastGame(t) // the host may have changed
+	}
+	t.mu.Unlock()
 
 	h.mu.Lock()
 	t.members--
