@@ -1,119 +1,61 @@
 import { useState, useContext } from "react";
 import { AppContext } from "../providers/AppStore";
-import { playerCall, playerCheck, playerFold } from "../actions/actions";
+import { playerCall, playerCheck, playerFold, playerRaise } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
+import { bettingInfo } from "../lib/betting";
 import Button from "./Button";
 import RaiseInput from "./RaiseInput";
 
 export default function Input() {
     const socket = useSocket();
-    const { appState, dispatch } = useContext(AppContext);
+    const { appState } = useContext(AppContext);
     const [showRaise, setShowRaise] = useState(false);
 
-    const handleCall = (user: string | null, amount: number) => {
-        if (socket) {
-            playerCall(socket);
-        }
-    };
-    const handleCheck = (user: string | null) => {
-        if (socket) {
-            playerCheck(socket);
-        }
-    };
-    const handleFold = (user: string | null) => {
-        if (socket) {
-            playerFold(socket);
-        }
+    const game = appState.game;
+    if (!socket || !game || !game.betting) return null;
+
+    const b = bettingInfo(game);
+    if (b.player.uuid !== appState.clientID) {
+        return <p className="p-6 text-xl text-subtle">waiting for {b.player.username}</p>;
+    }
+
+    // the server takes the chips added, not the new total
+    const raiseTo = (to: number) => {
+        playerRaise(socket, to - b.player.bet);
+        setShowRaise(false);
     };
 
-    if (!appState.game || appState.game.betting == false) return null;
+    if (showRaise) {
+        return <RaiseInput b={b} onRaise={raiseTo} onClose={() => setShowRaise(false)} />;
+    }
 
-    const action = appState.clientID === appState.game.players[appState.game.action].uuid;
-
-    const player = appState.game.players[appState.game.action];
-    const playerBets = appState.game.players.map((player) => player.bet);
-    const maxBet = Math.max(...playerBets);
-
-    const canCheck = player.bet >= maxBet;
-    const canCall = maxBet - player.bet === 0;
-    const callAmount = maxBet - player.bet < player.stack ? maxBet - player.bet : player.stack;
-
-    if (action) {
-        if (showRaise) {
-            return <RaiseInput setShowRaise={setShowRaise} showRaise={showRaise} />;
-        }
-        return (
-            <div className="flex flex-row p-6">
-                <Button
-                    variant="primary"
-                    className="mx-1 text-xl"
-                    onClick={() => handleCall(appState.username, callAmount)}
-                    disabled={canCall}
-                >
-                    {canCall ? "call" : "call (" + callAmount + ")"}
-                </Button>
-                <Button
-                    variant="primary"
-                    className="mx-1 text-xl"
-                    onClick={() => setShowRaise(!showRaise)}
-                    disabled={false}
-                >
-                    bet
-                </Button>
-                <Button
-                    variant="primary"
-                    className="mx-1 text-xl"
-                    onClick={() => handleCheck(appState.username)}
-                    disabled={!canCheck}
-                >
-                    check
-                </Button>
-                <Button
-                    variant="danger"
-                    className="mx-1 text-xl"
-                    onClick={() => handleFold(appState.username)}
-                    disabled={false}
-                >
-                    fold
-                </Button>
-            </div>
-        );
+    let callLabel = "check";
+    if (b.toCall > 0) {
+        callLabel = b.toCall === b.player.stack ? `all in ${b.toCall}` : `call ${b.toCall}`;
     }
 
     return (
         <div className="flex flex-row p-6">
-            <Button
-                variant="primary"
-                className="mx-1 text-xl"
-                onClick={() => handleCall(appState.username, callAmount)}
-                disabled={true}
-            >
-                {canCall ? "call" : "call (" + callAmount + ")"}
-            </Button>
-            <Button
-                variant="primary"
-                className="mx-1 text-xl"
-                onClick={() => setShowRaise(!showRaise)}
-                disabled={true}
-            >
-                bet
-            </Button>
-            <Button
-                variant="primary"
-                className="mx-1 text-xl"
-                onClick={() => handleCheck(appState.username)}
-                disabled={true}
-            >
-                check
-            </Button>
-            <Button
-                variant="danger"
-                className="mx-1 text-xl"
-                onClick={() => handleFold(appState.username)}
-                disabled={true}
-            >
+            <Button variant="danger" className="mx-1 text-xl" onClick={() => playerFold(socket)}>
                 fold
             </Button>
+            <Button
+                variant="primary"
+                className="mx-1 text-xl"
+                onClick={() => (b.toCall > 0 ? playerCall(socket) : playerCheck(socket))}
+            >
+                {callLabel}
+            </Button>
+            {b.canRaise && b.fullRaise && (
+                <Button variant="primary" className="mx-1 text-xl" onClick={() => setShowRaise(true)}>
+                    {b.opening ? "bet" : "raise"}
+                </Button>
+            )}
+            {b.canRaise && !b.fullRaise && (
+                <Button variant="primary" className="mx-1 text-xl" onClick={() => raiseTo(b.maxTo)}>
+                    all in {b.maxTo}
+                </Button>
+            )}
         </div>
     );
 }
