@@ -3,6 +3,7 @@ import { AppContext } from "../providers/AppStore";
 import { Game, Player } from "../interfaces/index";
 import Card from "./Card";
 import BuyIn from "./BuyIn";
+import Countdown from "./Countdown";
 import { isWinner, winningCards } from "../lib/hands";
 import classNames from "classnames";
 
@@ -45,7 +46,7 @@ function active(player: Player, game: Game) {
             "bg-panel text-fg ": !winner && !game.betting,
         },
 
-        "rounded-xl m-4 h-20 w-56 flex flex-row justify-start items-center z-2"
+        "relative rounded-xl m-4 h-20 w-56 flex flex-row justify-start items-center z-2"
     );
 }
 
@@ -85,6 +86,11 @@ export default function Seat({ player, id }: seatProps) {
                         <p className="-mb-1 text-lg font-normal">{player.username}</p>
                         <p className="text-lg font-semibold">{player.stack}</p>
                     </div>
+                    {appState.game.betting &&
+                        appState.game.action === player.position &&
+                        appState.game.turnEndsIn > 0 && (
+                            <Countdown endsIn={appState.game.turnEndsIn} />
+                        )}
                 </div>
                 <div className={chipPosition(id)}>
                     {appState.game.running && appState.game.dealer == player.position && (

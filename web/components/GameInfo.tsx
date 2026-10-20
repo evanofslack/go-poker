@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect } from "react";
 import { AppContext } from "../providers/AppStore";
+import TurnAlert from "./TurnAlert";
 
 export default function GameInfo() {
     const { appState, dispatch } = useContext(AppContext);
@@ -12,6 +13,7 @@ export default function GameInfo() {
                 </p>
             )}
             <p>table: {appState.table}</p>
+            <TurnAlert />
         </div>
     );
 }
