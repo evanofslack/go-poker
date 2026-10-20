@@ -17,6 +17,9 @@ const (
 	actionPlayerCheck string = "player-check"
 	actionPlayerRaise string = "player-raise"
 	actionPlayerFold  string = "player-fold"
+	actionLeaveSeat   string = "leave-seat"
+	actionSitOut      string = "sit-out"
+	actionRebuy       string = "rebuy"
 )
 
 type base struct {
@@ -75,6 +78,20 @@ type playerFold struct {
 	base // actionPlayerFold
 }
 
+type leaveSeatMsg struct {
+	base // actionLeaveSeat
+}
+
+// sitOut toggles sitting out: right away between hands, else after the hand
+type sitOut struct {
+	base // actionSitOut
+}
+
+type rebuy struct {
+	base        // actionRebuy
+	Amount uint `json:"amount"`
+}
+
 // outbound (server) actions
 const (
 	actionNewMessage       string = "new-message"
@@ -104,6 +121,9 @@ type updateGame struct {
 	base                 // actionUpdateGame
 	Game *poker.GameView `json:"game"`
 	Host string          `json:"host"` // uuid of the host client
+
+	// milliseconds until the player to act times out, 0 when nobody is betting
+	TurnEndsIn int64 `json:"turnEndsIn"`
 }
 
 // joinedTable confirms a create-table or join-table

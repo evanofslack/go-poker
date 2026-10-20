@@ -22,3 +22,8 @@ func validLength(s string, max int) bool {
 	n := utf8.RuneCountInString(s)
 	return strings.TrimSpace(s) != "" && n <= max
 }
+
+// validAmount reports whether n is a usable chip amount, like a rebuy.
+func validAmount(n uint) bool {
+	return n > 0
+}

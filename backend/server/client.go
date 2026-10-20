@@ -270,6 +270,27 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		handleFold(c)
 		return nil
 
+	case actionLeaveSeat:
+		handleLeaveSeat(c)
+		return nil
+
+	case actionSitOut:
+		handleSitOut(c)
+		return nil
+
+	case actionRebuy:
+		var r rebuy
+		err := json.Unmarshal(rawMessage, &r)
+		if err != nil {
+			return err
+		}
+		if !validAmount(r.Amount) {
+			sendError(c, "rebuy amount must be more than 0")
+			return errors.New("invalid rebuy amount")
+		}
+		handleRebuy(c, r.Amount)
+		return nil
+
 	default:
 		return errors.New("unexpected message action")
 	}

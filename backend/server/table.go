@@ -36,6 +36,9 @@ type table struct {
 	turnSeq   int             // invalidates old turn timers, guarded by mu
 	leaving   map[string]bool // uuids of players who left, guarded by mu
 
+	turnDeadline time.Time       // when the player to act times out, guarded by mu
+	sitOutNext   map[string]bool // uuids of players sitting out after this hand, guarded by mu
+
 	// seated players who disconnect can reconnect within reconnectGrace.
 	// Both guarded by mu.
 	tokens map[string]string      // session token to player uuid
@@ -55,6 +58,7 @@ func newTable(name string) *table {
 		done:       make(chan struct{}),
 		users:      make(map[*Client]bool),
 		leaving:    make(map[string]bool),
+		sitOutNext: make(map[string]bool),
 		tokens:     make(map[string]string),
 		grace:      make(map[string]*time.Timer),
 	}
