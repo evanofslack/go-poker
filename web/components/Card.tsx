@@ -6,6 +6,7 @@ type cardProps = {
     placeholder: boolean;
     folded: boolean;
     hidden: boolean;
+    highlight?: boolean;
 };
 
 function cardToString(card: CardType) {
@@ -55,9 +56,10 @@ function getSuitChar(letter: string) {
     }
 }
 
-function color(card: CardType) {
+function color(card: CardType, highlight = false) {
     return classNames(
         {
+            "ring-4 ring-amber-300": highlight,
             "text-red-700": card[1] == "H",
             "text-blue-700": card[1] == "D",
             "text-green-700": card[1] == "C",
@@ -67,7 +69,7 @@ function color(card: CardType) {
     );
 }
 
-export default function Card({ card, placeholder, folded, hidden }: cardProps) {
+export default function Card({ card, placeholder, folded, hidden, highlight }: cardProps) {
     if (placeholder) {
         return (
             <div className="flex h-24 w-16 items-center justify-center rounded-md bg-green-900 opacity-20"></div>
@@ -107,7 +109,7 @@ export default function Card({ card, placeholder, folded, hidden }: cardProps) {
         );
     }
     return (
-        <div className={color(c)}>
+        <div className={color(c, highlight)}>
             <div className={"flex w-full items-start justify-start text-3xl font-semibold"}>
                 {c[0]}
             </div>

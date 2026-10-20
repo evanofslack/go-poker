@@ -3,6 +3,7 @@ import { AppContext } from "../providers/AppStore";
 import { Game, Player } from "../interfaces/index";
 import Card from "./Card";
 import BuyIn from "./BuyIn";
+import { isWinner, winningCards } from "../lib/hands";
 import classNames from "classnames";
 
 type seatProps = {
@@ -26,7 +27,7 @@ function chipPosition(id: number) {
 
 function active(player: Player, game: Game) {
     const action = player.position === game.action;
-    const winner = player.position == game?.pots[game.pots.length - 1]?.winningPlayerNums[0];
+    const winner = isWinner(game, player.position);
     return classNames(
         {
             // betting and player's turn
@@ -48,6 +49,14 @@ function active(player: Player, game: Game) {
     );
 }
 
+// blind labels the small and big blind seats for the current hand
+function blind(game: Game, position: number) {
+    if (game.stage === 1) return "";
+    if (game.sb === position) return "SB";
+    if (game.bb === position) return "BB";
+    return "";
+}
+
 export default function Seat({ player, id }: seatProps) {
     const { appState, dispatch } = useContext(AppContext);
     const [sitDown, setSitDown] = useState(false);
@@ -64,8 +73,10 @@ export default function Seat({ player, id }: seatProps) {
                                 <Card
                                     card={c}
                                     placeholder={false}
-                                    folded={!player.in}
+                                    // everyone is out between hands; cards shown then reached showdown
+                                    folded={!player.in && appState.game!.stage !== 1}
                                     hidden={!c}
+                                    highlight={winningCards(appState.game!).has(String(c))}
                                 />
                             </div>
                         ))}
@@ -79,6 +90,11 @@ export default function Seat({ player, id }: seatProps) {
                     {appState.game.running && appState.game.dealer == player.position && (
                         <div className="mx-3 my-3 flex h-7 w-8 items-center justify-center rounded-full bg-white text-xl font-bold text-purple-800">
                             D
+                        </div>
+                    )}
+                    {appState.game.running && blind(appState.game, player.position) && (
+                        <div className="mr-3 flex h-7 items-center justify-center rounded-full bg-zinc-300 px-2 text-sm font-bold text-zinc-800">
+                            {blind(appState.game, player.position)}
                         </div>
                     )}
                     {player.bet !== 0 && (

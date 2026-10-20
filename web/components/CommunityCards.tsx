@@ -1,5 +1,6 @@
 import { useContext } from "react";
 import { AppContext } from "../providers/AppStore";
+import { winningCards } from "../lib/hands";
 import Card from "./Card";
 
 export default function CommunityCards() {
@@ -8,6 +9,7 @@ export default function CommunityCards() {
     const cards = [0, 1, 2, 3, 4];
 
     if (appState.game?.communityCards) {
+        const winning = winningCards(appState.game);
         return (
             <div className="mb-4 flex flex-row p-2 text-2xl text-black">
                 {cards.map((num, i) => (
@@ -19,6 +21,7 @@ export default function CommunityCards() {
                                 placeholder={false}
                                 folded={false}
                                 hidden={false}
+                                highlight={winning.has(String(appState.game.communityCards[num]))}
                             />
                         ) : (
                             // show placeholder
