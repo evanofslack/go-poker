@@ -128,7 +128,7 @@ func (g *Game) isCalled(pn uint) bool {
 	return g.players[pn].allIn() || (g.players[pn].Called)
 }
 
-//Returns nil if there are more than 2 players ready, ErrIllegalAction otherwise
+// Returns nil if there are more than 2 players ready, ErrIllegalAction otherwise
 func (g *Game) updateBlindNums() {
 	readyCount := g.readyCount()
 
@@ -363,14 +363,15 @@ func (g *Game) updateRoundInfo() {
 
 // NewGame is a factory method that returns a pointer to an initialized game.
 // This freshly created game will have the following default values:
-// 	Players: []
-// 	GameStage: PreDeal
-// 	Betting: False
-// 	Config: {
-// 		BigBlind:	25
-// 		SmallBlind:	10
-// 		MaxBuy:		0
-// 	}
+//
+//	Players: []
+//	GameStage: PreDeal
+//	Betting: False
+//	Config: {
+//		BigBlind:	20
+//		SmallBlind:	10
+//		MaxBuy:		0
+//	}
 func NewGame() *Game {
 	newGame := Game{}
 
