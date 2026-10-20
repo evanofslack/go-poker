@@ -15,23 +15,13 @@ const (
 	maxSeats      uint   = 6 // seats rendered by the frontend
 )
 
-func handleJoinTable(c *Client, tablename string) {
-	table := c.hub.getOrCreateTable(tablename)
-	if c.table != nil && c.table != table {
-		c.table.unregister <- c
-	}
-	c.table = table
-	table.register <- c
+func handleJoinTable(c *Client, tablename string) error {
+	return c.hub.joinTable(c, tablename)
 }
 
 func handleLeaveTable(c *Client, tablename string) {
-	table := c.hub.findTableByName(tablename)
-	if table == nil {
-		return
-	}
-	table.unregister <- c
-	if c.table == table {
-		c.table = nil
+	if c.table != nil && c.table.name == tablename {
+		c.hub.leaveTable(c)
 	}
 }
 

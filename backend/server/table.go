@@ -14,6 +14,8 @@ type table struct {
 	unregister chan *Client
 	broadcast  chan []byte
 	game       *poker.Game
+	done       chan struct{} // closed when the table is deleted
+	members    int           // clients at this table, guarded by Hub.mu
 
 	mu sync.Mutex // serializes game actions from client goroutines
 }
@@ -27,6 +29,7 @@ func newTable(name string) *table {
 		unregister: make(chan *Client),
 		broadcast:  make(chan []byte),
 		game:       poker.NewGame(),
+		done:       make(chan struct{}),
 	}
 }
 
@@ -39,6 +42,8 @@ func (t *table) run() {
 			t.unregisterClient(client)
 		case message := <-t.broadcast:
 			t.broadcastToClients(message)
+		case <-t.done:
+			return
 		}
 	}
 }

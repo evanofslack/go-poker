@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -12,13 +13,18 @@ import (
 )
 
 func newTestServer(t *testing.T) *httptest.Server {
+	srv, _ := newTestServerHub(t)
+	return srv
+}
+
+func newTestServerHub(t *testing.T) (*httptest.Server, *Hub) {
 	hub := newHub()
 	go hub.run()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		serveWs(hub, w, r)
 	}))
 	t.Cleanup(srv.Close)
-	return srv
+	return srv, hub
 }
 
 func dial(t *testing.T, srv *httptest.Server) *websocket.Conn {
@@ -192,4 +198,55 @@ func TestFloodDisconnects(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	assertAlive(t, srv)
+}
+
+func tableNames(h *Hub) []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	var names []string
+	for name := range h.tables {
+		names = append(names, name)
+	}
+	return names
+}
+
+func waitForTables(t *testing.T, h *Hub, want int) {
+	deadline := time.Now().Add(2 * time.Second)
+	for len(tableNames(h)) != want {
+		if time.Now().After(deadline) {
+			t.Fatalf("tables = %v, want %d", tableNames(h), want)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestEmptyTablesDeleted(t *testing.T) {
+	srv, hub := newTestServerHub(t)
+	conn := dial(t, srv)
+
+	send(t, conn, `{"action":"join-table","tablename":"a"}`, `{"action":"join-table","tablename":"b"}`)
+	waitForTables(t, hub, 1)
+	if names := tableNames(hub); names[0] != "b" {
+		t.Errorf("tables = %v, want [b]", names)
+	}
+
+	send(t, conn, `{"action":"leave-table","tablename":"b"}`)
+	waitForTables(t, hub, 0)
+
+	send(t, conn, `{"action":"join-table","tablename":"c"}`)
+	waitForTables(t, hub, 1)
+	conn.Close()
+	waitForTables(t, hub, 0)
+}
+
+func TestTableCap(t *testing.T) {
+	srv, hub := newTestServerHub(t)
+	for i := 0; i < maxTables+5; i++ {
+		conn := dial(t, srv)
+		send(t, conn, `{"action":"join-table","tablename":"t`+strconv.Itoa(i)+`"}`)
+	}
+	time.Sleep(200 * time.Millisecond)
+	if n := len(tableNames(hub)); n != maxTables {
+		t.Errorf("tables = %d, want %d", n, maxTables)
+	}
 }
