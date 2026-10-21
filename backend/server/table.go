@@ -63,6 +63,7 @@ type table struct {
 	history   []handRecord             // the last maxHands hands as played, guarded by mu
 	current   *handRecord              // the hand being played, nil between hands; guarded by mu
 	totals    map[string]*playerTotals // by name, over every hand; guarded by mu
+	logs      []newLog                 // the last maxLogs log lines, guarded by mu
 
 	requests map[string]buyRequest // buy-ins waiting for the host, by name; guarded by mu
 

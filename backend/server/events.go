@@ -34,6 +34,7 @@ func handleJoinTable(c *Client, tablename, username, token, password string, cre
 	c.send <- createStats(c.table.hands, c.table.totalsView(), true)
 	hands, more := historyFor(c.table, c.id(), 0)
 	c.send <- createHistory(hands, true, more)
+	c.send <- createLogHistory(c.table.logs)
 	broadcastGame(c.table) // the watching count may have changed
 	switch {
 	case reconnected: // already logged
@@ -135,7 +136,7 @@ func seatPlayer(t *table, name string, seatID uint, buyIn uint) string {
 		slog.Default().Warn("Set seat id", "error", err)
 	}
 	t.record(name, entryBuyIn, buyIn, name, "")
-	t.send(createNewLog(fmt.Sprintf("%s sits down with %d", name, buyIn)))
+	t.log(fmt.Sprintf("%s sits down with %d", name, buyIn))
 
 	// a running game may be waiting for players
 	view := t.game.GenerateOmniView()
@@ -336,17 +337,17 @@ func handleSitOut(c *Client) {
 	switch {
 	case t.sitOutNext[p.UUID]:
 		delete(t.sitOutNext, p.UUID)
-		t.send(createNewLog(fmt.Sprintf("%s will play the next hand", p.Username)))
+		t.log(fmt.Sprintf("%s will play the next hand", p.Username))
 	case p.Ready && view.Betting:
 		// toggling mid-hand could move the dealer, so wait for the hand to end
 		t.sitOutNext[p.UUID] = true
-		t.send(createNewLog(fmt.Sprintf("%s will sit out the next hand", p.Username)))
+		t.log(fmt.Sprintf("%s will sit out the next hand", p.Username))
 	case p.Ready:
 		if err := poker.ToggleReady(t.game, pn, 0); err != nil {
 			sendError(c, "can't sit out right now")
 			return
 		}
-		t.send(createNewLog(fmt.Sprintf("%s sits out", p.Username)))
+		t.log(fmt.Sprintf("%s sits out", p.Username))
 	case p.Stack == 0:
 		sendError(c, "you're out of chips, rebuy first")
 		return
@@ -355,7 +356,7 @@ func handleSitOut(c *Client) {
 			sendError(c, "can't sit back in right now")
 			return
 		}
-		t.send(createNewLog(fmt.Sprintf("%s is back", p.Username)))
+		t.log(fmt.Sprintf("%s is back", p.Username))
 		if view.Running && view.Stage == poker.PreDeal {
 			t.scheduleDeal()
 		}
@@ -376,7 +377,7 @@ func applySitOuts(t *table) {
 				slog.Default().Warn("Sit out", "error", err)
 				continue
 			}
-			t.send(createNewLog(fmt.Sprintf("%s sits out", p.Username)))
+			t.log(fmt.Sprintf("%s sits out", p.Username))
 		}
 	}
 }
@@ -436,7 +437,7 @@ func applyRebuy(t *table, pn uint, amount uint) {
 		}
 	}
 	t.record(p.Username, entryRebuy, amount, p.Username, "")
-	t.send(createNewLog(fmt.Sprintf("%s rebuys for %d", p.Username, amount)))
+	t.log(fmt.Sprintf("%s rebuys for %d", p.Username, amount))
 	if view.Running && view.Stage == poker.PreDeal {
 		t.scheduleDeal()
 	}
@@ -448,7 +449,7 @@ func applyRebuy(t *table, pn uint, amount uint) {
 // after a pause. Caller holds t.mu.
 func finishAction(t *table, msg string) {
 	if msg != "" {
-		t.send(createNewLog(msg))
+		t.log(msg)
 	}
 	foldLeavers(t)
 	view := t.game.GenerateOmniView()
@@ -569,7 +570,7 @@ func foldLeavers(t *table) {
 			return
 		}
 		recordAction(t, view, view.ActionNum, "fold", 0, false)
-		t.send(createNewLog(fmt.Sprintf("%s folds", p.Username)))
+		t.log(fmt.Sprintf("%s folds", p.Username))
 	}
 }
 
@@ -585,7 +586,7 @@ func removeLeavers(t *table) {
 				return // mid-hand, try again after it
 			}
 			t.record(p.Username, entryCashOut, p.Stack, p.Username, "")
-			t.send(createNewLog(fmt.Sprintf("%s left the table", p.Username)))
+			t.log(fmt.Sprintf("%s left the table", p.Username))
 		}
 		delete(t.leaving, uuid)
 		delete(t.sitOutNext, uuid)
@@ -612,7 +613,7 @@ func dealNextHand(t *table) {
 		return
 	}
 	if err := poker.Deal(t.game, view.DealerNum, 0); err != nil {
-		t.send(createNewLog("waiting for players"))
+		t.log("waiting for players")
 		return
 	}
 	logDeal(t)
@@ -636,7 +637,7 @@ func logWinners(t *table, view *poker.GameView) {
 		if hand := handName(pot.WinningScore, pot.WinningHand); hand != "" {
 			msg += " with " + hand
 		}
-		t.send(createNewLog(msg))
+		t.log(msg)
 	}
 }
 
@@ -744,16 +745,33 @@ func createNewMessage(username string, message string) []byte {
 	return resp
 }
 
-func createNewLog(message string) []byte {
-	log := newLog{
+// maxLogs caps how many log lines a table keeps for people who join later
+const maxLogs = 200
+
+// log adds message to the table's log and sends it to everyone. Caller holds t.mu.
+func (t *table) log(message string) {
+	l := newLog{
 		base{actionNewLog},
 		uuid.New().String(),
 		message,
 		currentTime(),
 	}
-	resp, err := json.Marshal(log)
+	t.logs = append(t.logs, l)
+	if len(t.logs) > maxLogs {
+		t.logs = t.logs[len(t.logs)-maxLogs:]
+	}
+	resp, err := json.Marshal(l)
 	if err != nil {
 		slog.Default().Warn("Marshal new log", "error", err)
+	}
+	t.send(resp)
+}
+
+// createLogHistory sends the log lines a table has kept, oldest first.
+func createLogHistory(logs []newLog) []byte {
+	resp, err := json.Marshal(logHistory{base{actionLogHistory}, logs})
+	if err != nil {
+		slog.Default().Warn("Marshal log history", "error", err)
 	}
 	return resp
 }
@@ -854,9 +872,9 @@ func logDeal(t *table) {
 		return
 	}
 	startRecord(t, view)
-	t.send(createNewLog("starting new hand"))
-	t.send(createNewLog(fmt.Sprintf("%s is small blind (%d)", view.Players[view.SBNum].Username, view.Config.SmallBlind)))
-	t.send(createNewLog(fmt.Sprintf("%s is big blind (%d)", view.Players[view.BBNum].Username, view.Config.BigBlind)))
+	t.log("starting new hand")
+	t.log(fmt.Sprintf("%s is small blind (%d)", view.Players[view.SBNum].Username, view.Config.SmallBlind))
+	t.log(fmt.Sprintf("%s is big blind (%d)", view.Players[view.BBNum].Username, view.Config.BigBlind))
 }
 
 func currentTime() string {

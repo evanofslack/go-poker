@@ -134,8 +134,19 @@ export function SocketProvider(props: SocketProviderProps) {
                         payload: { hands: event.hands ?? [], full: event.full, more: event.more },
                     });
                     return;
+                case "log-history":
+                    dispatch({
+                        type: "setLogs",
+                        payload: (event.logs ?? []).map((l: { uuid: string; message: string; timestamp: string }) => ({
+                            id: l.uuid,
+                            message: l.message,
+                            timestamp: l.timestamp,
+                        })),
+                    });
+                    return;
                 case "new-log":
                     let newLog: Log = {
+                        id: event.uuid,
                         message: event.message,
                         timestamp: event.timestamp,
                     };

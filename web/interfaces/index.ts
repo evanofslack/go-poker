@@ -5,6 +5,7 @@ export type Message = {
 };
 
 export type Log = {
+    id?: string; // from the server; errors shown in the log have none
     message: string;
     timestamp: string;
 };

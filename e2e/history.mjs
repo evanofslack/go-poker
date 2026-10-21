@@ -79,6 +79,11 @@ await bob.waitForSelector('button[aria-label^="chat"]');
 await openHands(bob);
 check("a reload keeps the hands", await has(bob, "text=2 hands"));
 check("and your own folded-against cards", (await cardsIn(bob, 1)) === 2);
+await bob.click('[aria-label="close table panel"]');
+await bob.click('button[aria-label^="chat"]');
+await bob.click('button:text-is("log")');
+check("a reload keeps the log", await has(bob, "text=alice folds"));
+check("without repeating lines", (await bob.locator("text=alice folds").count()) === 1);
 
 await alice.setViewportSize({ width: 360, height: 740 });
 await shot(alice, "history-phone");

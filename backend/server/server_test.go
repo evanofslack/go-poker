@@ -341,6 +341,7 @@ type received struct {
 	stats   chan updateStats
 	bots    chan map[string]string // bots of each game update
 	history chan handHistory
+	backlog chan []string // messages of each log-history
 }
 
 // dialRecv is dial, but also collects the game views and errors the client receives.
@@ -371,6 +372,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 		chat:    make(chan string, 256),
 		bots:    make(chan map[string]string, 256),
 		history: make(chan handHistory, 256),
+		backlog: make(chan []string, 256),
 	}
 	go func() {
 		for {
@@ -480,6 +482,18 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				if json.Unmarshal(msg, &h) == nil {
 					select {
 					case r.history <- h:
+					default:
+					}
+				}
+			case actionLogHistory:
+				var h logHistory
+				if json.Unmarshal(msg, &h) == nil {
+					var lines []string
+					for _, l := range h.Logs {
+						lines = append(lines, l.Message)
+					}
+					select {
+					case r.backlog <- lines:
 					default:
 					}
 				}
@@ -1510,4 +1524,35 @@ func TestDisconnectedPlayers(t *testing.T) {
 	b2 := dial(t, srv)
 	send(t, b2, `{"action":"join-table","tablename":"t","username":"b","token":"`+token+`"}`)
 	waitAway(t, aRecv)
+}
+
+func TestLogBacklog(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv, _, _ := seatTwo(t, srv)
+	send(t, a, `{"action":"player-fold"}`)
+	waitLog(t, aRecv, "b wins 30")
+
+	c, cRecv := dialRecv(t, srv)
+	send(t, c, joinMsg("t", "c"))
+	select {
+	case lines := <-cRecv.backlog:
+		for _, want := range []string{"a sits down with 100", "starting new hand", "a folds", "b wins 30"} {
+			if !slices.Contains(lines, want) {
+				t.Errorf("late joiner's log is missing %q: %q", want, lines)
+			}
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for the log backlog")
+	}
+}
+
+func TestLogBacklogCapped(t *testing.T) {
+	tbl := newTable("t", defaultSettings)
+	close(tbl.done) // nobody to send to
+	for i := range maxLogs + 50 {
+		tbl.log(strconv.Itoa(i))
+	}
+	if len(tbl.logs) != maxLogs || tbl.logs[len(tbl.logs)-1].Message != strconv.Itoa(maxLogs+49) {
+		t.Errorf("kept %d lines ending %q, want the last %d", len(tbl.logs), tbl.logs[len(tbl.logs)-1].Message, maxLogs)
+	}
 }

@@ -156,6 +156,7 @@ const (
 	actionUpdateStats      string = "update-stats"
 	actionTables           string = "tables"
 	actionHandHistory      string = "hand-history"
+	actionLogHistory       string = "log-history"
 )
 
 type newMessage struct {
@@ -171,6 +172,12 @@ type newLog struct {
 	Id        string `json:"uuid"`
 	Message   string `json:"message"`
 	Timestamp string `json:"timestamp"`
+}
+
+// logHistory carries the log lines a table has kept, sent on joining
+type logHistory struct {
+	base          // actionLogHistory
+	Logs []newLog `json:"logs"`
 }
 
 type updateGame struct {

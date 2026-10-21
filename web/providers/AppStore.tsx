@@ -28,6 +28,7 @@ let nextToastID = 0;
 type ACTIONTYPE =
     | { type: "addMessage"; payload: Message }
     | { type: "addLog"; payload: Log }
+    | { type: "setLogs"; payload: Log[] }
     | { type: "setUsername"; payload: string }
     | { type: "updateGame"; payload: Game }
     | { type: "resetGame" }
@@ -48,8 +49,14 @@ function reducer(state: AppState, action: ACTIONTYPE) {
     switch (action.type) {
         case "addMessage":
             return { ...state, messages: [...state.messages, action.payload] };
-        case "addLog":
+        case "addLog": {
+            // a line can come both live and in the backlog sent on joining
+            const id = action.payload.id;
+            if (id && state.logs.some((l) => l.id === id)) return state;
             return { ...state, logs: [...state.logs, action.payload] };
+        }
+        case "setLogs":
+            return { ...state, logs: action.payload };
         case "setUsername":
             return { ...state, username: action.payload };
         case "updateGame":

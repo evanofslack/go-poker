@@ -46,7 +46,7 @@ func handleMakeHost(c *Client, name string) {
 		return
 	}
 	t.host = name
-	t.send(createNewLog(fmt.Sprintf("%s made %s the host", c.username, name)))
+	t.log(fmt.Sprintf("%s made %s the host", c.username, name))
 	broadcastGame(t)
 }
 
@@ -64,7 +64,7 @@ func handleSetBanker(c *Client, name string) {
 		return
 	}
 	t.banker = name
-	t.send(createNewLog(fmt.Sprintf("%s made %s the banker", c.username, name)))
+	t.log(fmt.Sprintf("%s made %s the banker", c.username, name))
 	broadcastGame(t)
 }
 
@@ -82,7 +82,7 @@ func handleMoveToSpectator(c *Client, name string) {
 		sendError(c, fmt.Sprintf("%s doesn't have a seat", name))
 		return
 	}
-	t.send(createNewLog(fmt.Sprintf("%s moved %s to watching", c.username, name)))
+	t.log(fmt.Sprintf("%s moved %s to watching", c.username, name))
 	unseat(t, t.game.GenerateOmniView().Players[pn].UUID)
 	broadcastGame(t)
 }
@@ -105,7 +105,7 @@ func handleRemovePlayer(c *Client, name string) {
 		sendError(c, fmt.Sprintf("%s isn't at the table", name))
 		return
 	}
-	t.send(createNewLog(fmt.Sprintf("%s removed %s from the table", c.username, name)))
+	t.log(fmt.Sprintf("%s removed %s from the table", c.username, name))
 	if seated {
 		unseat(t, t.game.GenerateOmniView().Players[pn].UUID)
 	}
@@ -140,13 +140,13 @@ func handleSitOutPlayer(c *Client, name string) {
 	case view.Betting:
 		// toggling mid-hand could move the dealer, so wait for the hand to end
 		t.sitOutNext[p.UUID] = true
-		t.send(createNewLog(fmt.Sprintf("%s will sit %s out after this hand", c.username, name)))
+		t.log(fmt.Sprintf("%s will sit %s out after this hand", c.username, name))
 	default:
 		if err := poker.ToggleReady(t.game, pn, 0); err != nil {
 			sendError(c, fmt.Sprintf("can't sit %s out right now", name))
 			return
 		}
-		t.send(createNewLog(fmt.Sprintf("%s sat %s out", c.username, name)))
+		t.log(fmt.Sprintf("%s sat %s out", c.username, name))
 	}
 	broadcastGame(t)
 }
@@ -189,7 +189,7 @@ func handleAdjustChips(c *Client, name string, amount int64, reason string) {
 			}
 		}
 		t.record(name, entryAdd, add, c.username, reason)
-		t.send(createNewLog(fmt.Sprintf("%s added %d to %s's stack%s", c.username, add, name, note)))
+		t.log(fmt.Sprintf("%s added %d to %s's stack%s", c.username, add, name, note))
 		if view.Running && view.Stage == poker.PreDeal {
 			t.scheduleDeal()
 		}
@@ -206,7 +206,7 @@ func handleAdjustChips(c *Client, name string, amount int64, reason string) {
 			}
 		}
 		t.record(name, entryRemove, take, c.username, reason)
-		t.send(createNewLog(fmt.Sprintf("%s took %d from %s's stack%s", c.username, take, name, note)))
+		t.log(fmt.Sprintf("%s took %d from %s's stack%s", c.username, take, name, note))
 	}
 	broadcastGame(t)
 }
@@ -232,11 +232,11 @@ func handlePause(c *Client, pause bool) {
 	view := t.game.GenerateOmniView()
 	switch {
 	case pause && view.Stage != poker.PreDeal:
-		t.send(createNewLog(fmt.Sprintf("%s paused the game after this hand", c.username)))
+		t.log(fmt.Sprintf("%s paused the game after this hand", c.username))
 	case pause:
-		t.send(createNewLog(fmt.Sprintf("%s paused the game", c.username)))
+		t.log(fmt.Sprintf("%s paused the game", c.username))
 	default:
-		t.send(createNewLog(fmt.Sprintf("%s resumed the game", c.username)))
+		t.log(fmt.Sprintf("%s resumed the game", c.username))
 		if view.Running && view.Stage == poker.PreDeal {
 			t.scheduleDeal()
 		}
@@ -259,11 +259,11 @@ func handleEndSession(c *Client) {
 	}
 	if t.game.GenerateOmniView().Stage != poker.PreDeal {
 		t.ending = true
-		t.send(createNewLog(fmt.Sprintf("%s will end the session after this hand", c.username)))
+		t.log(fmt.Sprintf("%s will end the session after this hand", c.username))
 		broadcastGame(t)
 		return
 	}
-	t.send(createNewLog(fmt.Sprintf("%s ended the session", c.username)))
+	t.log(fmt.Sprintf("%s ended the session", c.username))
 	endSession(t)
 	broadcastGame(t)
 }
@@ -278,6 +278,6 @@ func endSession(t *table) {
 		t.dealTimer.Stop()
 	}
 	t.turnSeq++ // cancel the turn timer
-	t.send(createNewLog("the session has ended, the ledger is final"))
+	t.log("the session has ended, the ledger is final")
 	time.AfterFunc(endedTableTTL, func() { t.hub.closeTable(t) })
 }
