@@ -27,7 +27,7 @@ export default function TableHint() {
     const { appState } = useContext(AppContext);
     const game = appState.game;
     if (appState.connection !== "open") {
-        return <p className="rounded-full bg-amber-400 px-4 py-1 text-sm text-zinc-900">reconnecting…</p>;
+        return <p className="rounded-full bg-warn px-4 py-1 text-sm text-zinc-900">reconnecting…</p>;
     }
     if (!game) return null;
 

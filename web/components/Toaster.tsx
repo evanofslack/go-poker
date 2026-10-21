@@ -18,7 +18,7 @@ function ToastItem({ toast }: { toast: Toast }) {
                 "pointer-events-auto rounded-md border px-4 py-2 text-sm shadow-xl",
                 toast.kind === "error"
                     ? "border-danger bg-panel text-rose-300"
-                    : "border-zinc-600 bg-panel text-fg"
+                    : "border-line bg-panel text-fg"
             )}
             role={toast.kind === "error" ? "alert" : "status"}
             onClick={() => dispatch({ type: "removeToast", payload: toast.id })}

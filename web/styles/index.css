@@ -23,8 +23,17 @@
   --color-fg: var(--color-zinc-100);
   --color-muted: var(--color-zinc-400);
   --color-subtle: var(--color-zinc-500);
+  --color-line: var(--color-zinc-600); /* borders of controls and menus */
+  --color-field: var(--color-zinc-600); /* small inputs on a panel */
+  --color-badge: var(--color-zinc-600); /* "bot", "sitting out" */
   --color-accent: var(--color-cyan-500);
+  --color-accent-hover: var(--color-cyan-400);
+  --color-on-accent: var(--color-zinc-950); /* text on accent */
   --color-danger: var(--color-rose-600);
+  --color-error: var(--color-rose-400); /* error text */
+  --color-warn: var(--color-amber-400);
+  --color-gain: var(--color-green-400); /* chips won */
+  --color-loss: var(--color-rose-400); /* chips lost */
   --color-highlight: var(--color-amber-200); /* winning seat */
 }
 

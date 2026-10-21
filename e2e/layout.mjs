@@ -69,6 +69,23 @@ for (const { p, kind, name } of pages) {
         return plates.flatMap(([n, a], i) => plates.slice(i + 1).filter(([, b]) => hit(a, b)).map(([m]) => `${n}/${m}`));
     });
     check(`${kind}: seats don't overlap`, overlaps.length === 0, overlaps.join(", "));
+    // whole seats, cards included, keep a margin from the screen edges
+    const edge = await p.evaluate(() =>
+        [...document.querySelectorAll("[data-seat]")]
+            .map((e) => [e.dataset.seat, e.getBoundingClientRect()])
+            .filter(([, r]) => r.left < 4 || r.right > window.innerWidth - 4)
+            .map(([id, r]) => `seat ${id} ${Math.round(r.left)}-${Math.round(r.right)}`)
+    );
+    check(`${kind}: seats clear of the screen edges`, edge.length === 0, edge.join(", "));
+    // the dealer button, blinds and bets stay clear of every seat and its cards
+    const covered = await p.evaluate(() => {
+        const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+        const seats = [...document.querySelectorAll("[data-seat]")].map((e) => [e.dataset.seat, e.firstElementChild.getBoundingClientRect()]);
+        return [...document.querySelectorAll("[data-markers]")].flatMap((m) =>
+            seats.filter(([, r]) => hit(m.getBoundingClientRect(), r)).map(([id]) => `${m.textContent} on seat ${id}`)
+        );
+    });
+    check(`${kind}: markers clear of the seats`, covered.length === 0, covered.join(", "));
     const gap = await footerGap(p, name);
     check(`${kind}: own seat clear of the footer`, gap >= 0, `${gap}px`);
     await shot(p, `lay-1-${kind}-${name}`);

@@ -479,6 +479,32 @@ Notes:
 - [x] Accessibility: labels for cards and buttons, turn state not conveyed only by glow/color,
   visible focus styles.
 
+## 6.4 Drift from the 5.x features
+
+Stage 6 was done before host controls, bots, the ledger and stats, which brought some drift back.
+
+### PR 1: fix seats on phones
+
+- [x] Side seats sat flush against the screen edge: the seat ring was inset by exactly half a plate.
+  The inset is now half a seat plus 0.5rem at every breakpoint.
+- [x] The dealer button, blinds and bets sat 60% of the way to each seat, which on a narrow table put
+  them under a side seat's cards. They now stay far enough in to clear the seat (`markerAt`).
+- [x] Bot badges truncated to "mediu…" on phone plates, with the host's remove "×" on top. Small
+  plates show just "bot" (the level is on hover and in the players panel), a long name truncates
+  before the badge does, and "×" sits on the plate's corner.
+- [x] `layout.mjs` checks every whole seat keeps a margin from the screen edges and markers clear every
+  seat; `bots.mjs` checks phone badges are whole and "×" doesn't cover them.
+
+Not fixed: a full nine-seat table on a 360px phone still crowds at the top, with one seat's cards over
+the next seat's plate. That was already so on main and needs its own layout change.
+
+### PR 2: name the colors
+
+- [x] Semantic tokens for the colors 5.x repeats under raw names: `line`, `field`, `badge`,
+  `accent-hover`, `on-accent`, `error`, `warn`, `gain` and `loss`. Each is the shade it replaced, so
+  nothing looks different. Card suits, the felt, the table markers and the connection dot keep their
+  own colors.
+
 # Stage 7: operator tooling
 
 Matters once the public demo gets real traffic.

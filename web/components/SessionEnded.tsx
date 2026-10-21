@@ -26,8 +26,8 @@ export default function SessionEnded() {
                         <span className="font-semibold">{r.name}</span>
                         <span
                             className={classNames(
-                                r.net > 0 && "text-green-400",
-                                r.net < 0 && "text-rose-400"
+                                r.net > 0 && "text-gain",
+                                r.net < 0 && "text-loss"
                             )}
                         >
                             {signed(r.net)}
@@ -36,7 +36,7 @@ export default function SessionEnded() {
                     </li>
                 ))}
             </ul>
-            {balance !== 0 && <p className="mb-3 text-sm text-rose-400">off by {balance}</p>}
+            {balance !== 0 && <p className="mb-3 text-sm text-error">off by {balance}</p>}
             <div className="flex justify-end gap-2">
                 <Button variant="ghost" className="px-2 py-1 text-sm" onClick={() => setClosed(true)}>
                     close

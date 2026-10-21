@@ -51,7 +51,7 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
             {open && (
                 <div
                     role="menu"
-                    className="absolute right-0 bottom-full z-30 mb-1 flex w-48 flex-col rounded-md border border-zinc-600 bg-panel py-1 text-fg shadow-xl"
+                    className="absolute right-0 bottom-full z-30 mb-1 flex w-48 flex-col rounded-md border border-line bg-panel py-1 text-fg shadow-xl"
                 >
                     {rebuying ? (
                         <div className="h-20">

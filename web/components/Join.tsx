@@ -128,7 +128,7 @@ export default function Join() {
                     </Button>
                 </form>
                 {appState.error && (
-                    <p className="mt-2 px-4 text-center text-rose-400">{appState.error}</p>
+                    <p className="mt-2 px-4 text-center text-error">{appState.error}</p>
                 )}
                 {!connected && <p className="mt-2 text-subtle">connecting to server…</p>}
                 {creating && (

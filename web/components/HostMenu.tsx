@@ -35,7 +35,7 @@ export default function HostMenu() {
             {open && (
                 <div
                     role="menu"
-                    className="absolute top-full left-0 z-40 mt-1 flex w-44 flex-col rounded-md border border-zinc-600 bg-panel py-1 text-fg shadow-xl"
+                    className="absolute top-full left-0 z-40 mt-1 flex w-44 flex-col rounded-md border border-line bg-panel py-1 text-fg shadow-xl"
                 >
                     <button
                         role="menuitem"
