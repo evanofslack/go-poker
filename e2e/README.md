@@ -2,7 +2,8 @@
 
 Browser tests that drive real players through the static build: hidden cards, host controls, next hand,
 reload and reconnect, turn timer (`session.mjs`), betting controls, showdown display, turn countdown,
-seat menu, and the join and buy-in forms. They aren't run in CI.
+seat menu, the join and buy-in forms, invite links, toasts and reconnecting (`ux.mjs`), and eight
+seats on desktop, tablet and phone screens (`layout.mjs`). They aren't run in CI.
 
 - `cd e2e && npm install`
 - `npx playwright-core install chromium`, or point `CHROMIUM_PATH` at a Chromium you already have
