@@ -75,6 +75,8 @@ type table struct {
 
 	bots map[string]botSeat // bot players by uuid, guarded by mu
 	rng  *rand.Rand         // for bot moves, guarded by mu
+	// botDelay is copied from the global so a test can change one table's
+	botDelay func() time.Duration
 }
 
 // newTable creates a new table
@@ -100,6 +102,7 @@ func newTable(name string, settings tableSettings) *table {
 		grace:      make(map[string]*time.Timer),
 		bots:       make(map[string]botSeat),
 		rng:        rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())),
+		botDelay:   botDelay,
 	}
 }
 

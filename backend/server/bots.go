@@ -72,7 +72,7 @@ func (t *table) scheduleBot(seq int) {
 		return
 	}
 	if _, ok := t.bots[view.Players[view.ActionNum].UUID]; ok {
-		time.AfterFunc(botDelay(), func() { botMove(t, seq) })
+		time.AfterFunc(t.botDelay(), func() { botMove(t, seq) })
 	}
 }
 

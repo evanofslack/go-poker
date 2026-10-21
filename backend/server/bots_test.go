@@ -178,11 +178,8 @@ func TestBotPlaysPerson(t *testing.T) {
 // TestBustedBotRebuys plays all-in hands between two bots until one busts,
 // then checks it bought back in.
 func TestBustedBotRebuys(t *testing.T) {
-	old := botDelay
-	botDelay = func() time.Duration { return time.Hour } // this test moves for the bots
-	t.Cleanup(func() { botDelay = old })
-
 	tbl := newTable("t", defaultSettings)
+	tbl.botDelay = func() time.Duration { return time.Hour } // this test moves for the bots
 	go tbl.run()
 	t.Cleanup(func() { close(tbl.done) })
 	tbl.mu.Lock()
