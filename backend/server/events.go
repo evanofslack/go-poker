@@ -32,6 +32,8 @@ func handleJoinTable(c *Client, tablename, username, token, password string, cre
 	c.send <- createJoinedTable(c)
 	c.send <- createGameView(c)
 	c.send <- createStats(c.table.hands, true)
+	hands, more := historyFor(c.table, c.id(), 0)
+	c.send <- createHistory(hands, true, more)
 	broadcastGame(c.table) // the watching count may have changed
 	switch {
 	case reconnected: // already logged
@@ -233,6 +235,7 @@ func call(t *table, pn uint) error {
 	if err := poker.Bet(t.game, pn, callAmount); err != nil {
 		return err
 	}
+	recordAction(t, view, pn, "call", callAmount, false)
 	finishAction(t, fmt.Sprintf("%s calls %d", p.Username, callAmount))
 	return nil
 }
@@ -249,31 +252,34 @@ func raise(t *table, pn uint, amount uint) error {
 	if err := poker.Bet(t.game, pn, amount); err != nil {
 		return err
 	}
-	msg := fmt.Sprintf("%s bets %d", p.Username, amount)
+	kind, msg := "bet", fmt.Sprintf("%s bets %d", p.Username, amount)
 	if maxBet > 0 {
-		msg = fmt.Sprintf("%s raises to %d", p.Username, p.Bet+amount)
+		kind, msg = "raise", fmt.Sprintf("%s raises to %d", p.Username, p.Bet+amount)
 	}
+	recordAction(t, view, pn, kind, amount, false)
 	finishAction(t, msg)
 	return nil
 }
 
 // check has pn check. Caller holds t.mu.
 func check(t *table, pn uint) error {
-	name := t.game.GenerateOmniView().Players[pn].Username
+	view := t.game.GenerateOmniView()
 	if err := poker.Bet(t.game, pn, 0); err != nil {
 		return err
 	}
-	finishAction(t, fmt.Sprintf("%s checks", name))
+	recordAction(t, view, pn, "check", 0, false)
+	finishAction(t, fmt.Sprintf("%s checks", view.Players[pn].Username))
 	return nil
 }
 
 // fold has pn fold. Caller holds t.mu.
 func fold(t *table, pn uint) error {
-	name := t.game.GenerateOmniView().Players[pn].Username
+	view := t.game.GenerateOmniView()
 	if err := poker.Fold(t.game, pn, 0); err != nil {
 		return err
 	}
-	finishAction(t, fmt.Sprintf("%s folds", name))
+	recordAction(t, view, pn, "fold", 0, false)
+	finishAction(t, fmt.Sprintf("%s folds", view.Players[pn].Username))
 	return nil
 }
 
@@ -449,6 +455,7 @@ func finishAction(t *table, msg string) {
 	if view.Stage == poker.PreDeal {
 		logWinners(t, view)
 		recordHand(t, view)
+		finishRecord(t, view)
 		removeLeavers(t)
 		applySitOuts(t)
 		if t.ending {
@@ -518,6 +525,7 @@ func turnTimedOut(t *table, seq int) {
 		maxBet = max(maxBet, q.Bet)
 	}
 	if p.Bet >= maxBet && poker.Bet(t.game, pn, 0) == nil {
+		recordAction(t, view, pn, "check", 0, true)
 		finishAction(t, fmt.Sprintf("%s checks (out of time)", p.Username))
 		return
 	}
@@ -525,6 +533,7 @@ func turnTimedOut(t *table, seq int) {
 		slog.Default().Warn("Turn timeout fold", "error", err)
 		return
 	}
+	recordAction(t, view, pn, "fold", 0, true)
 	finishAction(t, fmt.Sprintf("%s folds (out of time)", p.Username))
 }
 
@@ -560,6 +569,7 @@ func foldLeavers(t *table) {
 			slog.Default().Warn("Fold leaver", "error", err)
 			return
 		}
+		recordAction(t, view, view.ActionNum, "fold", 0, false)
 		t.send(createNewLog(fmt.Sprintf("%s folds", p.Username)))
 	}
 }
@@ -844,7 +854,7 @@ func logDeal(t *table) {
 	if view.SBNum >= uint(len(view.Players)) || view.BBNum >= uint(len(view.Players)) {
 		return
 	}
-	recordDeal(t, view)
+	startRecord(t, view)
 	t.send(createNewLog("starting new hand"))
 	t.send(createNewLog(fmt.Sprintf("%s is small blind (%d)", view.Players[view.SBNum].Username, view.Config.SmallBlind)))
 	t.send(createNewLog(fmt.Sprintf("%s is big blind (%d)", view.Players[view.BBNum].Username, view.Config.BigBlind)))

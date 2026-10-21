@@ -1,5 +1,5 @@
 import { createContext, useReducer, ReactNode } from "react";
-import { AppState, Message, Game, Log, Connection, Toast, HandStats, TableSummary } from "../interfaces";
+import { AppState, Message, Game, Log, Connection, Toast, HandStats, HandRecord, TableSummary } from "../interfaces";
 
 // maxHands matches the server's cap
 const maxHands = 1000;
@@ -17,6 +17,8 @@ const initialState: AppState = {
     connection: "connecting",
     toasts: [],
     hands: [],
+    history: [],
+    moreHistory: false,
     tables: [],
 };
 
@@ -38,6 +40,7 @@ type ACTIONTYPE =
     | { type: "addToast"; payload: Omit<Toast, "id"> }
     | { type: "removeToast"; payload: number }
     | { type: "addHands"; payload: { hands: HandStats[]; full: boolean } }
+    | { type: "addHistory"; payload: { hands: HandRecord[]; full: boolean; more: boolean } }
     | { type: "setTables"; payload: TableSummary[] };
 
 function reducer(state: AppState, action: ACTIONTYPE) {
@@ -53,6 +56,16 @@ function reducer(state: AppState, action: ACTIONTYPE) {
         case "addHands": {
             const { hands, full } = action.payload;
             return { ...state, hands: (full ? hands : [...state.hands, ...hands]).slice(-maxHands) };
+        }
+        case "addHistory": {
+            const { hands, full, more } = action.payload;
+            const byHand = new Map((full ? [] : state.history).map((h) => [h.hand, h]));
+            for (const h of hands) byHand.set(h.hand, h);
+            const history = Array.from(byHand.values()).sort((a, b) => a.hand - b.hand);
+            // more is about hands older than this message's first; an empty
+            // answer to getHands means there are none
+            const oldest = full || !hands.length || !state.history.length || hands[0].hand <= state.history[0].hand;
+            return { ...state, history, moreHistory: oldest ? more : state.moreHistory };
         }
         case "resetGame":
             return { ...state, clientID: null, username: null, game: null };

@@ -205,6 +205,11 @@ export function sessionAction(socket: WebSocket, action: "pause-game" | "resume-
     );
 }
 
+// getHands asks for the hands played before hand number before, answered with hand-history
+export function getHands(socket: WebSocket, before: number) {
+    socket?.send(JSON.stringify({ action: "get-hands", before: before }));
+}
+
 // listTables asks for the public tables, answered with tables; works before joining
 export function listTables(socket: WebSocket) {
     socket.send(JSON.stringify({ action: "list-tables" }));

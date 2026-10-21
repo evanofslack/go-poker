@@ -340,6 +340,7 @@ type received struct {
 	chat    chan string // chat messages, as "name: message"
 	stats   chan updateStats
 	bots    chan map[string]string // bots of each game update
+	history chan handHistory
 }
 
 // dialRecv is dial, but also collects the game views and errors the client receives.
@@ -369,6 +370,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 		tokens:  make(chan string, 256),
 		chat:    make(chan string, 256),
 		bots:    make(chan map[string]string, 256),
+		history: make(chan handHistory, 256),
 	}
 	go func() {
 		for {
@@ -471,6 +473,14 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				select {
 				case r.tokens <- u.Token:
 				default:
+				}
+			case actionHandHistory:
+				var h handHistory
+				if json.Unmarshal(msg, &h) == nil {
+					select {
+					case r.history <- h:
+					default:
+					}
 				}
 			case actionNewLog:
 				select {

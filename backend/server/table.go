@@ -58,9 +58,10 @@ type table struct {
 	ledger     []ledgerEntry // chips in and out by name, guarded by mu
 	hub        *Hub          // closes the table once an ended session expires
 
-	hands     []handStats // the last maxHands hands, guarded by mu
-	handCount int         // hands played, guarded by mu
-	dealt     []string    // names dealt into this hand, guarded by mu
+	hands     []handStats  // the last maxHands hands, guarded by mu
+	handCount int          // hands played, guarded by mu
+	history   []handRecord // the last maxHands hands as played, guarded by mu
+	current   *handRecord  // the hand being played, nil between hands; guarded by mu
 
 	requests map[string]buyRequest // buy-ins waiting for the host, by name; guarded by mu
 

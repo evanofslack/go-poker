@@ -309,6 +309,18 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		handleFold(c)
 		return nil
 
+	case actionGetHands:
+		var g getHands
+		err := json.Unmarshal(rawMessage, &g)
+		if err != nil {
+			return err
+		}
+		if !validHandNumber(g.Before) {
+			return errors.New("invalid hand number")
+		}
+		handleGetHands(c, g.Before)
+		return nil
+
 	case actionLeaveSeat:
 		handleLeaveSeat(c)
 		return nil

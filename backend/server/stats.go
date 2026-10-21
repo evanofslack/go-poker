@@ -19,23 +19,13 @@ type handStats struct {
 	Won    map[string]uint `json:"won"`    // pots each winner took, their own chips included
 }
 
-// recordDeal notes who was dealt in, for the hand's stats. Caller holds t.mu.
-func recordDeal(t *table, view *poker.GameView) {
-	t.dealt = t.dealt[:0]
-	for _, p := range view.Players {
-		if p.In {
-			t.dealt = append(t.dealt, p.Username)
-		}
-	}
-}
-
 // recordHand snapshots the hand that just ended and sends it to everyone.
 // Caller holds t.mu.
 func recordHand(t *table, view *poker.GameView) {
 	h := handStats{
 		Hand:   t.handCount + 1,
 		Stacks: make(map[string]uint, len(view.Players)),
-		Played: append([]string{}, t.dealt...),
+		Played: t.current.played(),
 		Won:    make(map[string]uint),
 	}
 	t.handCount++

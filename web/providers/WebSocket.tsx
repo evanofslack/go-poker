@@ -125,6 +125,12 @@ export function SocketProvider(props: SocketProviderProps) {
                 case "update-stats":
                     dispatch({ type: "addHands", payload: { hands: event.hands ?? [], full: event.full } });
                     return;
+                case "hand-history":
+                    dispatch({
+                        type: "addHistory",
+                        payload: { hands: event.hands ?? [], full: event.full, more: event.more },
+                    });
+                    return;
                 case "new-log":
                     let newLog: Log = {
                         message: event.message,

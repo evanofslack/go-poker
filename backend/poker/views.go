@@ -137,24 +137,48 @@ func (g *Game) GeneratePlayerView(pn uint) *GameView {
 		}
 	}
 
-	// after a showdown, reveal every hand that was eligible for a pot
-	if g.getStage() == PreDeal {
-		shown := map[uint]bool{}
-		for _, pot := range g.pots {
-			for _, j := range pot.EligiblePlayerNums {
-				if j < uint(len(g.players)) {
-					shown[j] = true
-				}
-			}
-		}
-		if len(shown) > 1 {
-			for j := range shown {
-				showCards(j)
-			}
-		}
+	for _, j := range g.shownPlayerNums() {
+		showCards(j)
 	}
 
 	return gv
+}
+
+// ShownPlayerNums are the players whose cards were shown at the showdown that
+// ended the last hand, in seat order. Empty mid-hand, or when everyone else
+// folded.
+func (g *Game) ShownPlayerNums() []uint {
+	g.mtx.Lock()
+	defer g.mtx.Unlock()
+
+	return g.shownPlayerNums()
+}
+
+// after a showdown, every hand that was eligible for a pot is shown
+func (g *Game) shownPlayerNums() []uint {
+	if g.getStage() != PreDeal {
+		return nil
+	}
+	shown := make([]bool, len(g.players))
+	n := 0
+	for _, pot := range g.pots {
+		for _, j := range pot.EligiblePlayerNums {
+			if j < uint(len(g.players)) && !shown[j] {
+				shown[j] = true
+				n++
+			}
+		}
+	}
+	if n < 2 {
+		return nil
+	}
+	var nums []uint
+	for j, ok := range shown {
+		if ok {
+			nums = append(nums, uint(j))
+		}
+	}
+	return nums
 }
 
 // GenerateOmniView is primarily for creating a view that can be serialized for delivery to a persistance layer, like a db or in-memory store

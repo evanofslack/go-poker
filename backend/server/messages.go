@@ -24,6 +24,7 @@ const (
 	actionAddBot      string = "add-bot"
 	actionRemoveBot   string = "remove-bot"
 	actionListTables  string = "list-tables" // works before joining a table
+	actionGetHands    string = "get-hands"
 
 	// host only
 	actionMakeHost        string = "make-host"
@@ -154,6 +155,7 @@ const (
 	actionJoinedTable      string = "joined-table"
 	actionUpdateStats      string = "update-stats"
 	actionTables           string = "tables"
+	actionHandHistory      string = "hand-history"
 )
 
 type newMessage struct {
@@ -235,6 +237,22 @@ type updateStats struct {
 	base
 	Hands []handStats `json:"hands"`
 	Full  bool        `json:"full"`
+}
+
+// getHands asks for the hands played before hand number Before
+type getHands struct {
+	base       // actionGetHands
+	Before int `json:"before"`
+}
+
+// handHistory carries hands, oldest first: the latest when Full (sent on
+// joining, replacing what the client has), else ones to add. More says the
+// table keeps hands older than the first.
+type handHistory struct {
+	base
+	Hands []handRecord `json:"hands"`
+	Full  bool         `json:"full"`
+	More  bool         `json:"more"`
 }
 
 // tableSummary is what the home page shows of a public table

@@ -31,6 +31,8 @@ export type AppState = {
     connection: Connection;
     toasts: Toast[];
     hands: HandStats[]; // the last hands played, oldest first
+    history: HandRecord[]; // hands as played, oldest first; older ones are fetched with getHands
+    moreHistory: boolean; // the table keeps hands older than history's first
     tables: TableSummary[]; // public tables for the home page, best to join first
 };
 
@@ -56,6 +58,46 @@ export type HandStats = {
     stacks: Record<string, number>; // everyone seated, after the pots are paid
     played: string[]; // names dealt in
     won: Record<string, number>; // pots each winner took, their own chips included
+};
+
+// HandRecord is one hand as it was played. Other players' cards are only
+// there if they were shown at showdown.
+export type HandRecord = {
+    hand: number; // counts from 1
+    started: number; // unix ms
+    sb: number;
+    bb: number;
+    dealer: string;
+    players: HandPlayer[]; // dealt in, in seat order
+    actions: HandAction[]; // blinds first
+    board: Card[] | null;
+    pots: HandPot[] | null;
+};
+
+export type HandPlayer = {
+    name: string;
+    seat: number;
+    stack: number; // before the blinds
+    cards?: Card[]; // yours, or shown at showdown
+    shown: boolean;
+    hand?: string; // their best hand, if shown
+    net: number; // chips won or lost
+};
+
+export type HandAction = {
+    street: "preflop" | "flop" | "turn" | "river";
+    name: string;
+    kind: "small blind" | "big blind" | "check" | "call" | "bet" | "raise" | "fold";
+    amount?: number; // chips put in
+    to?: number; // their bet on this street after
+    allIn?: boolean;
+    timeout?: boolean; // the turn timer acted for them
+};
+
+export type HandPot = {
+    amount: number;
+    winners: string[];
+    hand?: string; // empty without a showdown
 };
 
 export type Card = string;
