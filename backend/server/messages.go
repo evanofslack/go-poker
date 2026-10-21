@@ -34,6 +34,8 @@ const (
 	actionPauseGame       string = "pause-game"
 	actionResumeGame      string = "resume-game"
 	actionEndSession      string = "end-session"
+	actionApproveBuy      string = "approve-buy-in"
+	actionDenyBuy         string = "deny-buy-in"
 )
 
 type base struct {
@@ -186,7 +188,8 @@ type updateGame struct {
 	ClosesIn int64 `json:"closesIn"` // milliseconds until an ended table closes
 
 	// names of the clients at the table without a seat
-	Watchers []string `json:"watchers"`
+	BuyRequests []buyRequest `json:"buyRequests"` // waiting for the host, oldest first
+	Watchers    []string     `json:"watchers"`
 
 	// names of seated players who dropped and may still reconnect
 	Disconnected []string `json:"disconnected"`

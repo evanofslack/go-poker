@@ -56,23 +56,35 @@ func handleSendMessage(c *Client, message string) {
 }
 
 func handleTakeSeat(c *Client, seatID uint, buyIn uint) {
-	c.table.mu.Lock()
-	defer c.table.mu.Unlock()
+	t := c.table
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
 	if isSeated(c) {
 		sendError(c, "you already have a seat")
 		return
 	}
-	if err := checkSeat(c.table, seatID, buyIn); err != nil {
+	if err := checkSeat(t, seatID, buyIn); err != nil {
 		sendError(c, err.Error())
 		return
 	}
-	uuid := seatPlayer(c.table, c.username, seatID, buyIn)
+	// sitting back down is a rebuy, so leaving can't skip approval
+	if needsApproval(t, c.username) && t.inLedger(c.username) {
+		requestBuy(t, buyRequest{Name: c.username, Amount: buyIn, Seat: seatID})
+		return
+	}
+	seatClient(t, c, seatID, buyIn)
+}
+
+// seatClient sits c down, after checkSeat, and gives it the seat's token.
+// Caller holds t.mu.
+func seatClient(t *table, c *Client, seatID uint, buyIn uint) {
+	uuid := seatPlayer(t, c.username, seatID, buyIn)
 	c.uuid.Store(uuid)
 	token := newUUID()
-	c.table.tokens[token] = uuid
-	c.send <- createUpdatedPlayerUUID(c, token)
-	broadcastGame(c.table)
+	t.tokens[token] = uuid
+	trySend(c, createUpdatedPlayerUUID(c, token))
+	broadcastGame(t)
 }
 
 // checkSeat returns why a new player can't sit in seatID with buyIn, if they
@@ -373,19 +385,42 @@ func handleRebuy(c *Client, amount uint) {
 		sendError(c, "take a seat first")
 		return
 	}
+	if msg := checkRebuy(t, pn, amount); msg != "" {
+		sendError(c, msg)
+		return
+	}
+	if needsApproval(t, c.username) {
+		requestBuy(t, buyRequest{Name: c.username, Amount: amount})
+		return
+	}
+	applyRebuy(t, pn, amount)
+}
+
+// checkRebuy says why player pn can't rebuy for amount, or "" if they can.
+// Caller holds t.mu.
+func checkRebuy(t *table, pn uint, amount uint) string {
 	view := t.game.GenerateOmniView()
 	p := view.Players[pn]
 	if p.In {
-		sendError(c, "can't rebuy during a hand")
-		return
+		return "can't rebuy during a hand"
 	}
 	// topping up can be any amount, but a busted player buys back in
 	if p.Stack == 0 && amount < t.settings.MinBuy {
-		sendError(c, fmt.Sprintf("rebuy must be at least %d", t.settings.MinBuy))
-		return
+		return fmt.Sprintf("rebuy must be at least %d", t.settings.MinBuy)
 	}
+	if p.Stack+amount > view.Config.MaxBuy {
+		return fmt.Sprintf("rebuy can't take your stack above %d", view.Config.MaxBuy)
+	}
+	return ""
+}
+
+// applyRebuy adds amount to player pn's stack, after checkRebuy. Caller holds
+// t.mu.
+func applyRebuy(t *table, pn uint, amount uint) {
+	view := t.game.GenerateOmniView()
+	p := view.Players[pn]
 	if err := poker.BuyIn(t.game, pn, amount); err != nil {
-		sendError(c, fmt.Sprintf("rebuy can't take your stack above %d", view.Config.MaxBuy))
+		slog.Default().Warn("Rebuy", "error", err)
 		return
 	}
 	if !p.Ready && p.Stack == 0 {
@@ -778,6 +813,7 @@ func createUpdatedGame(t *table, view *poker.GameView, sitOutNext bool) []byte {
 		ClosesIn:     t.closesIn(),
 		HasPassword:  t.password != "",
 		Watchers:     t.watchers(),
+		BuyRequests:  t.buyRequests(),
 		Disconnected: t.disconnected(),
 		Ledger:       t.ledgerView(),
 		Bots:         t.botLevels(),

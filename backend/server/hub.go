@@ -168,6 +168,9 @@ func (h *Hub) leaveTable(c *Client, disconnected bool) {
 		leaveSeat(t, uuid)
 	}
 	delete(t.users, c)
+	if !grace {
+		delete(t.requests, c.username)
+	}
 	if t.host == c.username && !grace {
 		t.passHost()
 	}

@@ -15,6 +15,8 @@ var hostActions = map[string]func(*Client, string){
 	actionMoveToSpectator: handleMoveToSpectator,
 	actionRemovePlayer:    handleRemovePlayer,
 	actionSitOutPlayer:    handleSitOutPlayer,
+	actionApproveBuy:      handleApproveBuy,
+	actionDenyBuy:         handleDenyBuy,
 }
 
 // isHost reports whether c is the host, and tells c if it isn't. Caller holds
@@ -271,6 +273,7 @@ func handleEndSession(c *Client) {
 func endSession(t *table) {
 	t.ending = false
 	t.endedAt = time.Now()
+	clear(t.requests)
 	if t.dealTimer != nil {
 		t.dealTimer.Stop()
 	}

@@ -183,6 +183,8 @@ var closedWhenEnded = map[string]bool{
 	actionRebuy:        true,
 	actionSitOut:       true,
 	actionSitOutPlayer: true,
+	actionApproveBuy:   true,
+	actionDenyBuy:      true,
 	actionAdjustChips:  true,
 	actionPauseGame:    true,
 	actionResumeGame:   true,
@@ -350,7 +352,8 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		handleRemoveBot(c, b.SeatID)
 		return nil
 
-	case actionMakeHost, actionSetBanker, actionMoveToSpectator, actionRemovePlayer, actionSitOutPlayer:
+	case actionMakeHost, actionSetBanker, actionMoveToSpectator, actionRemovePlayer, actionSitOutPlayer,
+		actionApproveBuy, actionDenyBuy:
 		var target playerTarget
 		err := json.Unmarshal(rawMessage, &target)
 		if err != nil {

@@ -22,6 +22,7 @@ type tableSettings struct {
 	TurnTime      uint `json:"turnTime"`      // time to act before checking or folding for you, 0 for no limit
 	NextHandDelay uint `json:"nextHandDelay"` // pause after a hand before dealing the next
 	Public        bool `json:"public"`        // not used yet, for listing tables later
+	ApproveRebuys bool `json:"approveRebuys"` // rebuys, and sitting back down, wait for the host
 }
 
 // defaultSettings are used when create-table sends none. A var so tests can
@@ -56,6 +57,8 @@ type table struct {
 	password   string        // empty for none, fixed after creation
 	ledger     []ledgerEntry // chips in and out by name, guarded by mu
 	hub        *Hub          // closes the table once an ended session expires
+
+	requests map[string]buyRequest // buy-ins waiting for the host, by name; guarded by mu
 
 	paused  bool          // no new hands are dealt, guarded by mu
 	ending  bool          // the session ends once this hand does, guarded by mu
@@ -111,6 +114,7 @@ func newTable(name string, settings tableSettings) *table {
 		bots:       make(map[string]botSeat),
 		rng:        rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())),
 		botDelay:   botDelay,
+		requests:   make(map[string]buyRequest),
 	}
 }
 
