@@ -29,6 +29,7 @@ func TestMain(m *testing.M) {
 	defaultSettings.MaxBuy = 10000
 	reconnectGrace = 300 * time.Millisecond
 	botDelay = func() time.Duration { return 10 * time.Millisecond }
+	endedTableTTL = 500 * time.Millisecond
 	os.Exit(m.Run())
 }
 
@@ -321,22 +322,23 @@ func TestSpectatorCannotStart(t *testing.T) {
 
 // received collects what the server sends one client.
 type received struct {
-	games  chan poker.GameView
-	hosts  chan string        // host name of each game update
-	ends   chan int64         // turnEndsIn of each game update
-	sitOut chan bool          // sitOutNext of each game update
-	watch  chan []string      // watchers of each game update
-	ledger chan ledgerView    // ledger of each game update
-	away   chan []string      // disconnected of each game update
-	sets   chan tableSettings // settings of each game update
-	errors chan string
-	codes  chan string // code of each error
-	locked chan bool   // hasPassword of each game update
-	joined chan string // password of each joined-table
-	logs   chan string
-	tokens chan string            // session tokens from taking a seat
-	chat   chan string            // chat messages, as "name: message"
-	bots   chan map[string]string // bots of each game update
+	games   chan poker.GameView
+	hosts   chan string        // host name of each game update
+	ends    chan int64         // turnEndsIn of each game update
+	sitOut  chan bool          // sitOutNext of each game update
+	watch   chan []string      // watchers of each game update
+	ledger  chan ledgerView    // ledger of each game update
+	away    chan []string      // disconnected of each game update
+	session chan session       // session state of each game update
+	sets    chan tableSettings // settings of each game update
+	errors  chan string
+	codes   chan string // code of each error
+	locked  chan bool   // hasPassword of each game update
+	joined  chan string // password of each joined-table
+	logs    chan string
+	tokens  chan string            // session tokens from taking a seat
+	chat    chan string            // chat messages, as "name: message"
+	bots    chan map[string]string // bots of each game update
 }
 
 // dialRecv is dial, but also collects the game views and errors the client receives.
@@ -348,22 +350,23 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 	}
 	t.Cleanup(func() { conn.Close() })
 	r := received{
-		games:  make(chan poker.GameView, 256),
-		hosts:  make(chan string, 256),
-		ends:   make(chan int64, 256),
-		sitOut: make(chan bool, 256),
-		watch:  make(chan []string, 256),
-		ledger: make(chan ledgerView, 256),
-		away:   make(chan []string, 256),
-		sets:   make(chan tableSettings, 256),
-		errors: make(chan string, 256),
-		codes:  make(chan string, 256),
-		locked: make(chan bool, 256),
-		joined: make(chan string, 256),
-		logs:   make(chan string, 256),
-		tokens: make(chan string, 256),
-		chat:   make(chan string, 256),
-		bots:   make(chan map[string]string, 256),
+		games:   make(chan poker.GameView, 256),
+		hosts:   make(chan string, 256),
+		ends:    make(chan int64, 256),
+		sitOut:  make(chan bool, 256),
+		watch:   make(chan []string, 256),
+		ledger:  make(chan ledgerView, 256),
+		away:    make(chan []string, 256),
+		session: make(chan session, 256),
+		sets:    make(chan tableSettings, 256),
+		errors:  make(chan string, 256),
+		codes:   make(chan string, 256),
+		locked:  make(chan bool, 256),
+		joined:  make(chan string, 256),
+		logs:    make(chan string, 256),
+		tokens:  make(chan string, 256),
+		chat:    make(chan string, 256),
+		bots:    make(chan map[string]string, 256),
 	}
 	go func() {
 		for {
@@ -387,6 +390,9 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				Code    string            `json:"code"`
 				Locked  bool              `json:"hasPassword"`
 				Pass    string            `json:"password"`
+				Paused  bool              `json:"paused"`
+				Ending  bool              `json:"ending"`
+				Ended   bool              `json:"ended"`
 				Bots    map[string]string `json:"bots"`
 			}
 			if json.Unmarshal(msg, &u) != nil {
@@ -420,6 +426,10 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				}
 				select {
 				case r.away <- u.Away:
+				default:
+				}
+				select {
+				case r.session <- session{u.Paused, u.Ending, u.Ended}:
 				default:
 				}
 				select {

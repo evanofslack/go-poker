@@ -14,8 +14,11 @@ import (
 
 const gameAdminName string = "system"
 
-// how long a disconnected player keeps their seat, a var so tests can shorten it
-var reconnectGrace = 60 * time.Second
+// Vars so tests can shorten them.
+var (
+	reconnectGrace = 60 * time.Second // how long a disconnected player keeps their seat
+	endedTableTTL  = time.Hour        // how long a table stays readable after its session ends
+)
 
 func handleJoinTable(c *Client, tablename, username, token, password string, create bool, settings tableSettings) {
 	reconnected, err := c.hub.joinTable(c, tablename, username, token, password, create, settings)
@@ -134,6 +137,10 @@ func handleStartGame(c *Client) {
 	defer c.table.mu.Unlock()
 	if !isSeated(c) && c.table.host != c.username {
 		sendError(c, "take a seat first")
+		return
+	}
+	if c.table.paused {
+		sendError(c, "the game is paused")
 		return
 	}
 
@@ -407,8 +414,12 @@ func finishAction(t *table, msg string) {
 		logWinners(t, view)
 		removeLeavers(t)
 		applySitOuts(t)
-		rebuyBots(t)
-		t.scheduleDeal()
+		if t.ending {
+			endSession(t)
+		} else {
+			rebuyBots(t)
+			t.scheduleDeal()
+		}
 	} else {
 		t.startTurnTimer()
 	}
@@ -551,7 +562,7 @@ func dealNextHand(t *table) {
 	default:
 	}
 	view := t.game.GenerateOmniView()
-	if !view.Running || view.Stage != poker.PreDeal {
+	if !view.Running || view.Stage != poker.PreDeal || t.paused || !t.endedAt.IsZero() {
 		return
 	}
 	if err := poker.Deal(t.game, view.DealerNum, 0); err != nil {
@@ -761,6 +772,10 @@ func createUpdatedGame(t *table, view *poker.GameView, sitOutNext bool) []byte {
 		TurnEndsIn:   t.turnEndsIn(view),
 		SitOutNext:   sitOutNext,
 		Settings:     t.settings,
+		Paused:       t.paused,
+		Ending:       t.ending,
+		Ended:        !t.endedAt.IsZero(),
+		ClosesIn:     t.closesIn(),
 		HasPassword:  t.password != "",
 		Watchers:     t.watchers(),
 		Disconnected: t.disconnected(),

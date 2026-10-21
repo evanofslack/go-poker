@@ -55,8 +55,13 @@ type table struct {
 	settings   tableSettings // fixed after creation
 	password   string        // empty for none, fixed after creation
 	ledger     []ledgerEntry // chips in and out by name, guarded by mu
-	done       chan struct{} // closed when the table is deleted
-	members    int           // clients at this table, guarded by Hub.mu
+	hub        *Hub          // closes the table once an ended session expires
+
+	paused  bool          // no new hands are dealt, guarded by mu
+	ending  bool          // the session ends once this hand does, guarded by mu
+	endedAt time.Time     // when the session ended, zero until then; guarded by mu
+	done    chan struct{} // closed when the table is deleted
+	members int           // clients at this table, guarded by Hub.mu
 
 	mu     sync.Mutex       // serializes game actions from client goroutines
 	users  map[*Client]bool // clients at this table, guarded by mu
@@ -169,6 +174,22 @@ func (t *table) reclaim(token string) (uuid string, name string, ok bool) {
 		}
 	}
 	return "", "", false
+}
+
+// ended reports whether the session has ended. It takes t.mu.
+func (t *table) ended() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return !t.endedAt.IsZero()
+}
+
+// closesIn is how many milliseconds an ended table has left, or 0 if the
+// session hasn't ended. Caller holds t.mu.
+func (t *table) closesIn() int64 {
+	if t.endedAt.IsZero() {
+		return 0
+	}
+	return max(time.Until(t.endedAt.Add(endedTableTTL)).Milliseconds(), 0)
 }
 
 // passHost gives the host role to a connected seated player, else to whoever

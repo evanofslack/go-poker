@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/evanofslack/go-poker/poker"
 )
@@ -206,4 +207,74 @@ func handleAdjustChips(c *Client, name string, amount int64, reason string) {
 		t.send(createNewLog(fmt.Sprintf("%s took %d from %s's stack%s", c.username, take, name, note)))
 	}
 	broadcastGame(t)
+}
+
+// handlePause stops dealing new hands, or starts again. Mid-hand, the hand
+// plays out first.
+func handlePause(c *Client, pause bool) {
+	t := c.table
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if !isHost(c) {
+		return
+	}
+	if t.paused && pause {
+		sendError(c, "the game is already paused")
+		return
+	}
+	if !t.paused && !pause {
+		sendError(c, "the game isn't paused")
+		return
+	}
+	t.paused = pause
+	view := t.game.GenerateOmniView()
+	switch {
+	case pause && view.Stage != poker.PreDeal:
+		t.send(createNewLog(fmt.Sprintf("%s paused the game after this hand", c.username)))
+	case pause:
+		t.send(createNewLog(fmt.Sprintf("%s paused the game", c.username)))
+	default:
+		t.send(createNewLog(fmt.Sprintf("%s resumed the game", c.username)))
+		if view.Running && view.Stage == poker.PreDeal {
+			t.scheduleDeal()
+		}
+	}
+	broadcastGame(t)
+}
+
+// handleEndSession ends the session: right away between hands, else once
+// the hand ends.
+func handleEndSession(c *Client) {
+	t := c.table
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if !isHost(c) {
+		return
+	}
+	if t.ending {
+		sendError(c, "the session already ends after this hand")
+		return
+	}
+	if t.game.GenerateOmniView().Stage != poker.PreDeal {
+		t.ending = true
+		t.send(createNewLog(fmt.Sprintf("%s will end the session after this hand", c.username)))
+		broadcastGame(t)
+		return
+	}
+	t.send(createNewLog(fmt.Sprintf("%s ended the session", c.username)))
+	endSession(t)
+	broadcastGame(t)
+}
+
+// endSession stops dealing for good, so the ledger is final, and closes the
+// table after endedTableTTL. Only works between hands. Caller holds t.mu.
+func endSession(t *table) {
+	t.ending = false
+	t.endedAt = time.Now()
+	if t.dealTimer != nil {
+		t.dealTimer.Stop()
+	}
+	t.turnSeq++ // cancel the turn timer
+	t.send(createNewLog("the session has ended, the ledger is final"))
+	time.AfterFunc(endedTableTTL, func() { t.hub.closeTable(t) })
 }

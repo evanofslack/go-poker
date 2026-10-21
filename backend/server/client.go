@@ -175,6 +175,22 @@ func (c *Client) safeProcessEvents(rawMessage []byte) (err error) {
 	return c.processEvents(rawMessage)
 }
 
+// closedWhenEnded are the actions that would deal, seat or move chips, which
+// stop once a session ends so its ledger stays final.
+var closedWhenEnded = map[string]bool{
+	actionTakeSeat:     true,
+	actionStartGame:    true,
+	actionRebuy:        true,
+	actionSitOut:       true,
+	actionSitOutPlayer: true,
+	actionAdjustChips:  true,
+	actionPauseGame:    true,
+	actionResumeGame:   true,
+	actionEndSession:   true,
+	actionAddBot:       true,
+	actionRemoveBot:    true,
+}
+
 func (c *Client) processEvents(rawMessage []byte) error {
 	var baseMessage base
 	err := json.Unmarshal(rawMessage, &baseMessage)
@@ -189,6 +205,10 @@ func (c *Client) processEvents(rawMessage []byte) error {
 	joining := baseMessage.Action == actionCreateTable || baseMessage.Action == actionJoinTable
 	if !joining && c.table == nil {
 		return errors.New("client has not joined a table")
+	}
+	if closedWhenEnded[baseMessage.Action] && c.table.ended() {
+		sendError(c, "the session has ended")
+		return nil
 	}
 
 	switch baseMessage.Action {
@@ -341,6 +361,14 @@ func (c *Client) processEvents(rawMessage []byte) error {
 			return errors.New("invalid host action name")
 		}
 		hostActions[baseMessage.Action](c, target.Name)
+		return nil
+
+	case actionPauseGame, actionResumeGame:
+		handlePause(c, baseMessage.Action == actionPauseGame)
+		return nil
+
+	case actionEndSession:
+		handleEndSession(c)
 		return nil
 
 	case actionAdjustChips:

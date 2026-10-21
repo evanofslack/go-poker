@@ -31,6 +31,9 @@ const (
 	actionRemovePlayer    string = "remove-player"
 	actionSitOutPlayer    string = "sit-out-player"
 	actionAdjustChips     string = "adjust-chips"
+	actionPauseGame       string = "pause-game"
+	actionResumeGame      string = "resume-game"
+	actionEndSession      string = "end-session"
 )
 
 type base struct {
@@ -132,6 +135,12 @@ type adjustChips struct {
 	Reason string `json:"reason"` // optional, shown in the log
 }
 
+// pauseGame, resumeGame and endSession carry nothing: actionPauseGame,
+// actionResumeGame, actionEndSession
+type sessionAction struct {
+	base
+}
+
 // outbound (server) actions
 const (
 	actionNewMessage       string = "new-message"
@@ -170,6 +179,11 @@ type updateGame struct {
 
 	Settings    tableSettings `json:"settings"`
 	HasPassword bool          `json:"hasPassword"` // never the password itself
+
+	Paused   bool  `json:"paused"`   // no new hands are dealt
+	Ending   bool  `json:"ending"`   // the session ends after this hand
+	Ended    bool  `json:"ended"`    // the session is over and the ledger final
+	ClosesIn int64 `json:"closesIn"` // milliseconds until an ended table closes
 
 	// names of the clients at the table without a seat
 	Watchers []string `json:"watchers"`
