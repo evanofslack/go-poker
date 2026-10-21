@@ -443,7 +443,7 @@ Notes:
 - [x] Snapshot every player's stack at the end of each hand, bounded (last 1000 hands).
 - [x] From the snapshots: chips over time per player, hands played and won, biggest pot won.
 - [x] Chart colors come from the design tokens in `web/styles/index.css`.
-- [ ] Detailed stats (how often each player puts money in, etc.) need hand history; see the backlog.
+- [x] Detailed stats (how often each player puts money in, etc.) need hand history. See PR 7.
 
 Notes:
 - Snapshots go out in their own `update-stats` message: everything kept on joining, then one per hand
@@ -463,6 +463,22 @@ Notes:
   panel's tabs, read-only for everyone. Later, maybe editable by the host. A "settings" tab, with the
   table name and invite link too; the header drops "nl texas holdem" and the lock icon, which moved
   there. e2e: `settings.mjs`.
+
+### PR 7: add hand history and detailed stats
+
+- [x] Name hand ranks: "two pair, kings and sevens", in the log and per pot in `update-game`
+  (`potHands`). The client no longer mirrors `handName`.
+- [x] Record every hand on the server (`history.go`): players with start stacks and cards, actions by
+  street, board, pots and nets. Capped at 1000 hands, in memory like the rest.
+- [x] Records only leave through `viewFor`: your own cards, plus hands shown at showdown
+  (`ShownPlayerNums`, the same rule as `GeneratePlayerView`). Spectators see shown hands only.
+- [x] `hand-history` sends each hand as it ends, the last 20 on joining, and older pages for
+  `get-hands`.
+- [x] A "hands" tab: newest first and open, actions by street, a "hands I played" filter. e2e:
+  `history.mjs`.
+- [x] Play style stats from totals the server keeps by name (`tally`): VPIP, PFR, 3-bet, AF,
+  WTSD, W$SD and bb/100, plus each player's best hand shown. Rows stay gray under 20 hands.
+- [ ] Keep the log on the server so late joiners and reloads get it (`log-history`).
 
 # Stage 6: UI consistency and mobile
 
@@ -535,7 +551,6 @@ Matters once the public demo gets real traffic.
   once it's enabled, retrying when the turn moves on; wait for a state rather than any update), trim
   checks that pin exact text or pixels, and consider a non-blocking CI job so the suite protects
   main. See the guidance in `e2e/README.md`.
-- Hand history / review last hand
 - Pre-action buttons (check/fold, call any) and keyboard shortcuts
 - Run it twice, straddles, antes, show/muck at showdown
 - Pot-limit Omaha

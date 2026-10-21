@@ -379,27 +379,28 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				return
 			}
 			var u struct {
-				Action  string            `json:"action"`
-				Game    poker.GameView    `json:"game"`
-				Message string            `json:"message"`
-				Host    string            `json:"host"`
-				Token   string            `json:"token"`
-				Ends    int64             `json:"turnEndsIn"`
-				SitOut  bool              `json:"sitOutNext"`
-				Watch   []string          `json:"watchers"`
-				Ledger  ledgerView        `json:"ledger"`
-				Away    []string          `json:"disconnected"`
-				Name    string            `json:"username"`
-				Sets    tableSettings     `json:"settings"`
-				Code    string            `json:"code"`
-				Locked  bool              `json:"hasPassword"`
-				Pass    string            `json:"password"`
-				Paused  bool              `json:"paused"`
-				Ending  bool              `json:"ending"`
-				Ended   bool              `json:"ended"`
-				Hands   []handStats       `json:"hands"`
-				Full    bool              `json:"full"`
-				Bots    map[string]string `json:"bots"`
+				Action  string                  `json:"action"`
+				Game    poker.GameView          `json:"game"`
+				Message string                  `json:"message"`
+				Host    string                  `json:"host"`
+				Token   string                  `json:"token"`
+				Ends    int64                   `json:"turnEndsIn"`
+				SitOut  bool                    `json:"sitOutNext"`
+				Watch   []string                `json:"watchers"`
+				Ledger  ledgerView              `json:"ledger"`
+				Away    []string                `json:"disconnected"`
+				Name    string                  `json:"username"`
+				Sets    tableSettings           `json:"settings"`
+				Code    string                  `json:"code"`
+				Locked  bool                    `json:"hasPassword"`
+				Pass    string                  `json:"password"`
+				Paused  bool                    `json:"paused"`
+				Ending  bool                    `json:"ending"`
+				Ended   bool                    `json:"ended"`
+				Hands   []handStats             `json:"hands"`
+				Full    bool                    `json:"full"`
+				Totals  map[string]playerTotals `json:"totals"`
+				Bots    map[string]string       `json:"bots"`
 			}
 			if json.Unmarshal(msg, &u) != nil {
 				continue
@@ -461,7 +462,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				}
 			case actionUpdateStats:
 				select {
-				case r.stats <- updateStats{Hands: u.Hands, Full: u.Full}:
+				case r.stats <- updateStats{Hands: u.Hands, Full: u.Full, Totals: u.Totals}:
 				default:
 				}
 			case actionJoinedTable:

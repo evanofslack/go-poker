@@ -235,8 +235,9 @@ type updatePlayerUUID struct {
 // joining), else the hand that just ended.
 type updateStats struct {
 	base
-	Hands []handStats `json:"hands"`
-	Full  bool        `json:"full"`
+	Hands  []handStats             `json:"hands"`
+	Full   bool                    `json:"full"`
+	Totals map[string]playerTotals `json:"totals"` // everyone's, every time
 }
 
 // getHands asks for the hands played before hand number Before

@@ -123,7 +123,10 @@ export function SocketProvider(props: SocketProviderProps) {
                     dispatch({ type: "setTables", payload: event.tables ?? [] });
                     return;
                 case "update-stats":
-                    dispatch({ type: "addHands", payload: { hands: event.hands ?? [], full: event.full } });
+                    dispatch({
+                        type: "addHands",
+                        payload: { hands: event.hands ?? [], full: event.full, totals: event.totals ?? {} },
+                    });
                     return;
                 case "hand-history":
                     dispatch({

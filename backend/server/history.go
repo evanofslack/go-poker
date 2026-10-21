@@ -36,6 +36,7 @@ type handPlayer struct {
 	Shown bool     `json:"shown"`           // at showdown
 	Hand  string   `json:"hand,omitempty"`  // their best hand, if Shown
 	Net   int      `json:"net"`             // chips won or lost
+	score int      // of Hand, lower is better
 }
 
 type handAction struct {
@@ -155,12 +156,13 @@ func recordAction(t *table, view *poker.GameView, pn uint, kind string, amount u
 	t.current.Actions = append(t.current.Actions, a)
 }
 
-// finishRecord completes the hand that just ended, keeps it and sends it to
-// everyone as they may see it. Caller holds t.mu.
-func finishRecord(t *table, view *poker.GameView) {
+// finishRecord completes the hand that just ended, adds it to the totals,
+// keeps it and sends it to everyone as they may see it. It returns the hand,
+// nil if none was being recorded. Caller holds t.mu.
+func finishRecord(t *table, view *poker.GameView) *handRecord {
 	r := t.current
 	if r == nil {
-		return
+		return nil
 	}
 	t.current = nil
 
@@ -195,12 +197,13 @@ func finishRecord(t *table, view *poker.GameView) {
 				if q.UUID == hp.UUID {
 					cards, score := eval.BestFiveOfSeven(q.Cards[0], q.Cards[1], b[0], b[1], b[2], b[3], b[4])
 					p.Shown = true
-					p.Hand = handName(score, cards)
+					p.Hand, p.score = handName(score, cards), score
 				}
 			}
 		}
 	}
 
+	tally(t.totals, r)
 	t.history = append(t.history, *r)
 	if len(t.history) > maxHands {
 		t.history = t.history[len(t.history)-maxHands:]
@@ -216,6 +219,7 @@ func finishRecord(t *table, view *poker.GameView) {
 	case t.updates <- u:
 	case <-t.done:
 	}
+	return r
 }
 
 // historyFor is up to handsPerPage hands from before hand number before (0

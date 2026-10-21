@@ -1,4 +1,4 @@
-import { HandStats } from "../interfaces/index";
+import { HandStats, PlayerTotals } from "../interfaces/index";
 
 // the chart has 8 series colors; anyone past them is drawn in gray
 export const seriesColors = 8;
@@ -40,5 +40,43 @@ export function playerStats(hands: HandStats[]): PlayerStats[] {
             }
         }
         return s;
+    });
+}
+
+// fewHands is how many hands a player needs before their style stats mean much
+export const fewHands = 20;
+
+export type StyleStats = {
+    name: string;
+    hands: number;
+    vpip: string;
+    pfr: string;
+    threeBet: string;
+    af: string; // aggression factor
+    wtsd: string; // went to showdown, of hands that saw the flop
+    wsd: string; // won at showdown
+    bb100: string; // big blinds won per 100 hands
+    bestHand: string;
+};
+
+const pct = (n: number, of: number) => (of > 0 ? `${Math.round((100 * n) / of)}%` : "–");
+
+// styleStats works out how each player plays from their totals, in order
+export function styleStats(totals: Record<string, PlayerTotals>, order: string[], bb: number): StyleStats[] {
+    const all = [...order.filter((n) => totals[n]), ...Object.keys(totals).filter((n) => !order.includes(n)).sort()];
+    return all.map((name) => {
+        const t = totals[name];
+        return {
+            name,
+            hands: t.hands,
+            vpip: pct(t.vpip, t.hands),
+            pfr: pct(t.pfr, t.hands),
+            threeBet: pct(t.threeBets, t.threeBetSpots),
+            af: t.calls > 0 ? (t.aggressive / t.calls).toFixed(1) : t.aggressive > 0 ? "∞" : "–",
+            wtsd: pct(t.showdowns, t.sawFlop),
+            wsd: pct(t.showdownWins, t.showdowns),
+            bb100: t.hands > 0 && bb > 0 ? ((100 * t.net) / bb / t.hands).toFixed(0) : "–",
+            bestHand: t.bestHand ?? "",
+        };
     });
 }

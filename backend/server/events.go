@@ -31,7 +31,7 @@ func handleJoinTable(c *Client, tablename, username, token, password string, cre
 
 	c.send <- createJoinedTable(c)
 	c.send <- createGameView(c)
-	c.send <- createStats(c.table.hands, true)
+	c.send <- createStats(c.table.hands, c.table.totalsView(), true)
 	hands, more := historyFor(c.table, c.id(), 0)
 	c.send <- createHistory(hands, true, more)
 	broadcastGame(c.table) // the watching count may have changed
@@ -454,8 +454,7 @@ func finishAction(t *table, msg string) {
 	view := t.game.GenerateOmniView()
 	if view.Stage == poker.PreDeal {
 		logWinners(t, view)
-		recordHand(t, view)
-		finishRecord(t, view)
+		recordHand(t, view, finishRecord(t, view))
 		removeLeavers(t)
 		applySitOuts(t)
 		if t.ending {

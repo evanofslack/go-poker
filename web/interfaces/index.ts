@@ -31,6 +31,7 @@ export type AppState = {
     connection: Connection;
     toasts: Toast[];
     hands: HandStats[]; // the last hands played, oldest first
+    totals: Record<string, PlayerTotals>; // by name, over every hand
     history: HandRecord[]; // hands as played, oldest first; older ones are fetched with getHands
     moreHistory: boolean; // the table keeps hands older than history's first
     tables: TableSummary[]; // public tables for the home page, best to join first
@@ -58,6 +59,22 @@ export type HandStats = {
     stacks: Record<string, number>; // everyone seated, after the pots are paid
     played: string[]; // names dealt in
     won: Record<string, number>; // pots each winner took, their own chips included
+};
+
+// PlayerTotals add up how someone has played every hand at the table
+export type PlayerTotals = {
+    hands: number; // dealt in
+    vpip: number; // hands they chose to put money in preflop
+    pfr: number; // hands they raised preflop
+    threeBetSpots: number; // hands they acted preflop facing one raise
+    threeBets: number; // and re-raised
+    aggressive: number; // bets and raises
+    calls: number;
+    sawFlop: number; // hands still in when the flop came
+    showdowns: number; // hands they showed
+    showdownWins: number; // and won a pot
+    net: number; // chips won or lost
+    bestHand?: string;
 };
 
 // HandRecord is one hand as it was played. Other players' cards are only

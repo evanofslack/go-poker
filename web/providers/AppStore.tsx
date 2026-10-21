@@ -1,5 +1,5 @@
 import { createContext, useReducer, ReactNode } from "react";
-import { AppState, Message, Game, Log, Connection, Toast, HandStats, HandRecord, TableSummary } from "../interfaces";
+import { AppState, Message, Game, Log, Connection, Toast, HandStats, HandRecord, PlayerTotals, TableSummary } from "../interfaces";
 
 // maxHands matches the server's cap
 const maxHands = 1000;
@@ -17,6 +17,7 @@ const initialState: AppState = {
     connection: "connecting",
     toasts: [],
     hands: [],
+    totals: {},
     history: [],
     moreHistory: false,
     tables: [],
@@ -39,7 +40,7 @@ type ACTIONTYPE =
     | { type: "setConnection"; payload: Connection }
     | { type: "addToast"; payload: Omit<Toast, "id"> }
     | { type: "removeToast"; payload: number }
-    | { type: "addHands"; payload: { hands: HandStats[]; full: boolean } }
+    | { type: "addHands"; payload: { hands: HandStats[]; full: boolean; totals: Record<string, PlayerTotals> } }
     | { type: "addHistory"; payload: { hands: HandRecord[]; full: boolean; more: boolean } }
     | { type: "setTables"; payload: TableSummary[] };
 
@@ -54,8 +55,8 @@ function reducer(state: AppState, action: ACTIONTYPE) {
         case "updateGame":
             return { ...state, game: action.payload };
         case "addHands": {
-            const { hands, full } = action.payload;
-            return { ...state, hands: (full ? hands : [...state.hands, ...hands]).slice(-maxHands) };
+            const { hands, full, totals } = action.payload;
+            return { ...state, hands: (full ? hands : [...state.hands, ...hands]).slice(-maxHands), totals };
         }
         case "addHistory": {
             const { hands, full, more } = action.payload;
