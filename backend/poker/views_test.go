@@ -334,7 +334,8 @@ func TestPlayerViewRevealsShowdownHands(t *testing.T) {
 		gv := g.GeneratePlayerView(viewer)
 		for pn, p := range gv.Players {
 			shown := p.Cards[0] != 0
-			if want := uint(pn) != folded; shown != want {
+			// the folder's cards stay hidden, except from the folder
+			if want := uint(pn) != folded || uint(pn) == viewer; shown != want {
 				t.Errorf("viewer %d: player %d cards shown = %v, want %v", viewer, pn, shown, want)
 			}
 		}
@@ -360,6 +361,35 @@ func TestPlayerViewHidesOtherHands(t *testing.T) {
 			if want := uint(pn) == viewer; shown != want {
 				t.Errorf("viewer %d: player %d cards shown = %v, want %v", viewer, pn, shown, want)
 			}
+		}
+	}
+}
+
+func TestPlayerViewShowsOwnCardsAfterFold(t *testing.T) {
+	g := NewGame()
+	for i := uint(0); i < 3; i++ {
+		pn := g.AddPlayer()
+		_ = BuyIn(g, pn, 1000)
+		_ = ToggleReady(g, pn, 0)
+		_ = SetSeatID(g, pn, i+1)
+	}
+	if err := g.Start(); err != nil {
+		t.Fatal(err)
+	}
+	folded := g.actionNum
+	dealt := g.players[folded].Cards
+	if err := Fold(g, folded, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	gv := g.GeneratePlayerView(folded)
+	for pn, p := range gv.Players {
+		if uint(pn) == folded {
+			if p.Cards != dealt {
+				t.Errorf("folded player sees %v, want own cards %v", p.Cards, dealt)
+			}
+		} else if p.Cards != [2]Card{} {
+			t.Errorf("folded player sees player %d cards %v", pn, p.Cards)
 		}
 	}
 }

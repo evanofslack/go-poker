@@ -7,7 +7,7 @@
 | 3 | Upgrades | done |
 | 4 | Core play experience | done |
 | 5 | Host and table features | planned |
-| 6 | UI consistency and mobile | planned |
+| 6 | UI consistency and mobile | accessibility left |
 | 7 | Operator tooling | planned |
 | - | Backlog | unranked |
 
@@ -149,8 +149,6 @@ Consider the light token pass from 6.1 first so new components aren't restyled t
   show split and side pots and each pot's winner. `winningHand`/`winningScore` are already sent;
   `getWinner` only reads `winningPlayerNums[0]` of the last pot.
   Done with the category only ("two pair"); naming the ranks would need the server to send them.
-  Pot labels look winners up by player index, so they can misname a winner if a lower seat
-  leaves as the hand ends.
 - [x] **Table markers:** SB/BB chips next to the dealer button.
 - [x] **Turn notification:** sound and/or tab title flash when it's your turn; show the 2.4 turn timer
   as a countdown on the active seat. The server doesn't send the turn deadline yet; add it to `update-game`.
@@ -159,12 +157,13 @@ Consider the light token pass from 6.1 first so new components aren't restyled t
 - [x] **Leave seat / sit out / rebuy** buttons (uses 2.4 engine work).
 - [x] **Join form** (`web/components/Join.tsx`): one `autoFocus`, use a real `<form onSubmit>` instead of a
   document-wide `keydown` listener. (Create/join buttons and disabling are done.)
+- The dealer button passing on when the dealer sits out is the engine's intended behavior; left as is.
 
 # Stage 5: host and table features
 
 Needs the host role from 2.2.
 
-- [ ] **Invite links:** a `/t/:name` route (or `?table=`) and a "copy invite link" button, instead of telling
+- [x] **Invite links:** a `/t/:name` route (or `?table=`) and a "copy invite link" button, instead of telling
   friends to type the same table name.
 - [ ] **Table settings** for the host: blinds, min/max buy-in, seat count, turn timer length,
   private/password tables. `GameConfig` is currently fixed at creation.
@@ -185,17 +184,17 @@ Needs the host role from 2.2.
 
 ## 6.2 Feedback states
 
-- [ ] Connection status indicator (connected / reconnecting / disconnected).
-- [ ] Toasts for server errors (reusing 2.3/2.7 plumbing).
-- [ ] Loading and empty states (new table shows six "Open" seats with no guidance).
+- [x] Connection status indicator (connected / reconnecting / disconnected).
+- [x] Toasts for server errors (reusing 2.3/2.7 plumbing).
+- [x] Loading and empty states (new table shows six "Open" seats with no guidance).
 
 ## 6.3 Layout and accessibility
 
-- [ ] Responsive layout. Today it's absolutely positioned corners, fixed `w-96` chat and `w-56` seats,
+- [x] Responsive layout. Today it's absolutely positioned corners, fixed `w-96` chat and `w-56` seats,
   and `GameInfo` hidden on small screens.
-- [ ] Compute seat positions around an oval from seat count instead of hand-placed `chipPosition`
+- [x] Compute seat positions around an oval from seat count instead of hand-placed `chipPosition`
   percentages (also unlocks 9-max tables from Stage 5 settings).
-- [ ] Simplify `Seat.tsx` (four render branches, duplicated markup).
+- [x] Simplify `Seat.tsx` (four render branches, duplicated markup).
 - [ ] Accessibility: labels for cards and buttons, turn state not conveyed only by glow/color,
   visible focus styles.
 

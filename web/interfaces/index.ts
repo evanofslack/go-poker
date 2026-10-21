@@ -9,6 +9,15 @@ export type Log = {
     timestamp: string;
 };
 
+// connecting until the first open; reconnecting after a drop
+export type Connection = "connecting" | "open" | "reconnecting";
+
+export type Toast = {
+    id: number;
+    message: string;
+    kind: "info" | "error";
+};
+
 export type AppState = {
     messages: Message[];
     logs: Log[];
@@ -17,6 +26,8 @@ export type AppState = {
     table: string | null;
     game: Game | null;
     error: string | null;
+    connection: Connection;
+    toasts: Toast[];
 };
 
 export type Card = string;
@@ -54,6 +65,8 @@ export type Game = {
     readyCount: number;
     host: string;
     turnEndsIn: number; // ms until the player to act times out, 0 when not betting
+    sitOutNext: boolean; // you asked to sit out once this hand ends
+    seats: number; // seats at the table
 };
 
 export type Config = {

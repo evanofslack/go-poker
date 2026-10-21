@@ -33,10 +33,20 @@ export default function BuyIn({ max, initial, label, onSubmit, onCancel }: buyIn
                     value={text}
                     onChange={(e) => setText(e.target.value.replace(/\D/g, ""))}
                 />
-                <Button type="submit" variant="primary" className="px-2 py-1 text-sm" disabled={!valid}>
+                <Button
+                    type="submit"
+                    variant="primary"
+                    className="px-2 py-1 text-sm whitespace-nowrap"
+                    disabled={!valid}
+                >
                     {label}
                 </Button>
-                <Button type="button" variant="ghost" className="px-1 py-1 text-sm" onClick={onCancel}>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    className="px-1 py-1 text-sm"
+                    onClick={onCancel}
+                >
                     cancel
                 </Button>
             </div>

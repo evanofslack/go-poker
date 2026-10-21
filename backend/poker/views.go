@@ -113,12 +113,9 @@ func (g *Game) GeneratePlayerView(pn uint) *GameView {
 	inCount := 0
 
 	for i, p := range g.players {
+		// players always see their own cards, even after folding
 		if uint(i) != pn {
 			hideCards(uint(i))
-		} else {
-			if !g.players[pn].In {
-				hideCards(uint(i))
-			}
 		}
 
 		if p.allIn() {

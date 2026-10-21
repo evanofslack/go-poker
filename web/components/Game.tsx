@@ -1,36 +1,27 @@
-import { useState } from "react";
 import ChatLog from "./ChatLog";
 import Reset from "./Reset";
 import GameInfo from "./GameInfo";
 import Start from "./Start";
 import Input from "./Input";
 import Table from "./Table";
-import { Player } from "../interfaces";
 
 export default function Game() {
-    const initialPlayers: (Player | null)[] = [null, null, null, null, null, null];
-    const [players, setPlayers] = useState(initialPlayers);
-
     return (
-        <div>
-            <div className="flex h-screen w-screen items-start justify-center">
-                <Table players={players} setPlayers={setPlayers} />
-            </div>
-            <div className="absolute left-0 bottom-0">
-                <ChatLog />
-            </div>
-            <div className="absolute bottom-0 right-0">
-                <Input />
-            </div>
-            <div className="absolute left-0 top-0">
+        <div className="flex h-dvh flex-col overflow-hidden">
+            <header className="flex items-start justify-between gap-2 px-2 pt-1 sm:px-4 sm:pt-2">
                 <Reset />
-            </div>
-            <div className=" absolute top-0 right-0 ">
                 <GameInfo />
+            </header>
+            <div className="relative min-h-0 flex-1">
+                <Table />
             </div>
-            <div className="absolute bottom-0 right-0">
-                <Start players={players} />
-            </div>
+            <footer className="relative flex min-h-14 items-end gap-2 p-2 sm:p-4">
+                <ChatLog />
+                <div className="flex min-w-0 flex-1 justify-end">
+                    <Input />
+                    <Start />
+                </div>
+            </footer>
         </div>
     );
 }

@@ -13,7 +13,7 @@ export default function Reset() {
         return null;
     }
     return (
-        <Button variant="ghost" className="m-2" onClick={() => resetGame(socket)}>
+        <Button variant="ghost" className="px-1 text-sm" onClick={() => resetGame(socket)}>
             reset
         </Button>
     );

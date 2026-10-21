@@ -1,5 +1,5 @@
 import { createContext, useReducer, ReactNode } from "react";
-import { AppState, Message, Game, Log } from "../interfaces";
+import { AppState, Message, Game, Log, Connection, Toast } from "../interfaces";
 
 const initialState: AppState = {
     messages: [],
@@ -9,7 +9,11 @@ const initialState: AppState = {
     table: null,
     game: null,
     error: null,
+    connection: "connecting",
+    toasts: [],
 };
+
+let nextToastID = 0;
 
 type ACTIONTYPE =
     | { type: "addMessage"; payload: Message }
@@ -19,7 +23,10 @@ type ACTIONTYPE =
     | { type: "resetGame" }
     | { type: "updatePlayerID"; payload: string }
     | { type: "setTablename"; payload: string }
-    | { type: "setError"; payload: string | null };
+    | { type: "setError"; payload: string | null }
+    | { type: "setConnection"; payload: Connection }
+    | { type: "addToast"; payload: Omit<Toast, "id"> }
+    | { type: "removeToast"; payload: number };
 
 function reducer(state: AppState, action: ACTIONTYPE) {
     switch (action.type) {
@@ -39,6 +46,15 @@ function reducer(state: AppState, action: ACTIONTYPE) {
             return { ...state, table: action.payload };
         case "setError":
             return { ...state, error: action.payload };
+        case "setConnection":
+            return { ...state, connection: action.payload };
+        case "addToast": {
+            // keep the last few so a burst of errors doesn't fill the screen
+            const toast = { ...action.payload, id: nextToastID++ };
+            return { ...state, toasts: [...state.toasts.slice(-2), toast] };
+        }
+        case "removeToast":
+            return { ...state, toasts: state.toasts.filter((t) => t.id !== action.payload) };
         default:
             throw new Error();
     }

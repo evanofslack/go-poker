@@ -316,6 +316,7 @@ type received struct {
 	games  chan poker.GameView
 	hosts  chan string // host of each game update
 	ends   chan int64  // turnEndsIn of each game update
+	sitOut chan bool   // sitOutNext of each game update
 	errors chan string
 	logs   chan string
 	tokens chan string // session tokens from taking a seat
@@ -333,6 +334,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 		games:  make(chan poker.GameView, 256),
 		hosts:  make(chan string, 256),
 		ends:   make(chan int64, 256),
+		sitOut: make(chan bool, 256),
 		errors: make(chan string, 256),
 		logs:   make(chan string, 256),
 		tokens: make(chan string, 256),
@@ -350,6 +352,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				Host    string         `json:"host"`
 				Token   string         `json:"token"`
 				Ends    int64          `json:"turnEndsIn"`
+				SitOut  bool           `json:"sitOutNext"`
 			}
 			if json.Unmarshal(msg, &u) != nil {
 				continue
@@ -366,6 +369,10 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				}
 				select {
 				case r.ends <- u.Ends:
+				default:
+				}
+				select {
+				case r.sitOut <- u.SitOut:
 				default:
 				}
 			case actionError:
@@ -483,10 +490,16 @@ func TestSeatErrors(t *testing.T) {
 	if msg := waitError(t, bRecv); msg != "seat taken" {
 		t.Errorf("taken seat: got %q", msg)
 	}
+	send(t, b, seatMsg(9))
+	if msg := waitError(t, bRecv); msg != "invalid seat" {
+		t.Errorf("seat past the last: got %q", msg)
+	}
 	send(t, b, `{"action":"take-seat","seatID":2,"buyIn":999999}`)
 	if msg := waitError(t, bRecv); !strings.HasPrefix(msg, "buy-in must be") {
 		t.Errorf("bad buy-in: got %q", msg)
 	}
+	send(t, b, seatMsg(8))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
 }
 
 func TestCreateAndJoinErrors(t *testing.T) {
@@ -695,6 +708,22 @@ func TestReconnectKeepsSeat(t *testing.T) {
 			t.Error("reconnected b can't see its own cards")
 		}
 	}
+}
+
+func TestReconnectLogged(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	b, bRecv := dialRecv(t, srv)
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	token := waitToken(t, bRecv)
+	send(t, a, seatMsg(1))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
+
+	b.Close()
+	waitLog(t, aRecv, "b disconnected")
+	b2 := dial(t, srv)
+	send(t, b2, `{"action":"join-table","tablename":"t","username":"b","token":"`+token+`"}`)
+	waitLog(t, aRecv, "b reconnected")
 }
 
 func TestReconnectAfterGraceFails(t *testing.T) {
@@ -934,6 +963,50 @@ func TestSitOutMidHand(t *testing.T) {
 		in, _ := byName(t, g, "a")
 		return g.Betting && in
 	})
+}
+
+// nextSitOut returns the sitOutNext of the next game update r gets.
+func nextSitOut(t *testing.T, r received) bool {
+	t.Helper()
+	select {
+	case v := <-r.sitOut:
+		return v
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for game update")
+		return false
+	}
+}
+
+func TestSitOutNextConfirmed(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv, _, bRecv := seatTwo(t, srv)
+	// a has had every update up to the deal, b may still be getting them
+	for len(aRecv.sitOut) > 0 {
+		<-aRecv.sitOut
+	}
+
+	send(t, a, `{"action":"sit-out"}`)
+	if !nextSitOut(t, aRecv) {
+		t.Error("a's update after sitting out mid-hand has sitOutNext false")
+	}
+	// b didn't ask, so none of b's updates say so
+	timeout := time.After(100 * time.Millisecond)
+	for done := false; !done; {
+		select {
+		case v := <-bRecv.sitOut:
+			if v {
+				t.Error("b got sitOutNext true without asking")
+			}
+		case <-timeout:
+			done = true
+		}
+	}
+
+	// cancelling clears it
+	send(t, a, `{"action":"sit-out"}`)
+	if nextSitOut(t, aRecv) {
+		t.Error("a's update after cancelling has sitOutNext true")
+	}
 }
 
 func TestRebuyErrors(t *testing.T) {

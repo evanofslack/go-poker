@@ -124,6 +124,12 @@ type updateGame struct {
 
 	// milliseconds until the player to act times out, 0 when nobody is betting
 	TurnEndsIn int64 `json:"turnEndsIn"`
+
+	// whether this recipient asked to sit out once the current hand ends
+	SitOutNext bool `json:"sitOutNext"`
+
+	// number of seats at the table
+	Seats uint `json:"seats"`
 }
 
 // joinedTable confirms a create-table or join-table

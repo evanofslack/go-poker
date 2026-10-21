@@ -1,9 +1,10 @@
-import React, { useCallback, useContext, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import Footer from "./Footer";
 import { createTable, joinTable } from "../actions/actions";
 import Button from "./Button";
+import { invitedTable } from "../lib/invite";
 
 function randomTableGen(length: number): string {
     let chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -19,7 +20,13 @@ export default function Join() {
     const { appState, dispatch } = useContext(AppContext);
     const [username, setUsername] = useState("");
     const [tablename, setTablename] = useState("");
-    let invalid = username == "" || tablename == "";
+    const connected = appState.connection === "open";
+    let invalid = username == "" || tablename == "" || !connected;
+
+    // an invite link fills in the table, so only a name is needed
+    useEffect(() => {
+        setTablename(invitedTable());
+    }, []);
 
     // the table shows once the server confirms with joined-table
     const handleSubmit = (e: React.FormEvent, create = false) => {
@@ -28,7 +35,6 @@ export default function Join() {
             (create ? createTable : joinTable)(socket, tablename, username);
         }
     };
-
 
     const handleUsername = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setUsername(e.target.value);
@@ -41,11 +47,16 @@ export default function Join() {
     return (
         <div className="flex min-h-screen flex-col">
             <div className="flex grow flex-col items-center justify-center ">
-                <h1 className="mb-16 text-5xl font-semibold text-white">GoPoker</h1>
-                <form className="flex flex-row" onSubmit={handleSubmit}>
+                <h1 className="mb-10 text-4xl font-semibold text-white sm:mb-16 sm:text-5xl">
+                    GoPoker
+                </h1>
+                <form
+                    className="flex w-full max-w-xs flex-col gap-2 px-4 sm:w-auto sm:max-w-none sm:flex-row sm:gap-0 sm:px-0"
+                    onSubmit={handleSubmit}
+                >
                     <input
                         autoFocus
-                        className="m-2 rounded-md bg-raised py-2 pl-4 text-white focus:outline-hidden"
+                        className="rounded-md bg-raised py-2 pl-4 text-white focus:outline-hidden sm:m-2"
                         id="username"
                         type="text"
                         maxLength={20}
@@ -53,9 +64,9 @@ export default function Join() {
                         placeholder="name"
                         onChange={handleUsername}
                     />
-                    <div className=" my-2 mr-2 flex flex-row rounded-md bg-raised text-white">
+                    <div className="flex flex-row rounded-md bg-raised text-white sm:my-2 sm:mr-2">
                         <input
-                            className="w-28 rounded-md bg-raised py-2 pl-4 text-white focus:outline-hidden"
+                            className="w-full min-w-0 rounded-md bg-raised py-2 pl-4 text-white focus:outline-hidden sm:w-28"
                             id="tablename"
                             type="text"
                             maxLength={32}
@@ -75,17 +86,20 @@ export default function Join() {
                     <Button
                         type="button"
                         variant="primary"
-                        className="my-2 mr-2"
+                        className="sm:my-2 sm:mr-2"
                         disabled={invalid}
                         onClick={(e) => handleSubmit(e, true)}
                     >
                         create
                     </Button>
-                    <Button type="submit" variant="primary" className="my-2" disabled={invalid}>
+                    <Button type="submit" variant="primary" className="sm:my-2" disabled={invalid}>
                         join
                     </Button>
                 </form>
-                {appState.error && <p className="mt-2 text-rose-400">{appState.error}</p>}
+                {appState.error && (
+                    <p className="mt-2 px-4 text-center text-rose-400">{appState.error}</p>
+                )}
+                {!connected && <p className="mt-2 text-subtle">connecting to server…</p>}
             </div>
             <Footer />
         </div>

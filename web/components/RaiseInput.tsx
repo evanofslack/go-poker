@@ -24,33 +24,20 @@ export default function RaiseInput({ b, onRaise, onClose }: raiseProps) {
 
     return (
         <form
-            className="flex flex-row items-end p-6"
+            className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-end"
             onSubmit={(e) => {
                 e.preventDefault();
                 onRaise(amount);
             }}
             onKeyDown={(e) => e.key === "Escape" && onClose()}
         >
-            <div className="mx-1 flex flex-col">
-                <span className="mb-1 text-xs text-subtle">
-                    {clamped ? `${b.opening ? "bet" : "raise"} is ${amount}` : " "}
-                </span>
-                <input
-                    autoFocus
-                    className="w-28 rounded-md border-2 border-zinc-600 bg-surface p-2 text-2xl text-fg focus:outline-hidden"
-                    id="raise"
-                    inputMode="numeric"
-                    value={text}
-                    onChange={(e) => setText(e.target.value.replace(/\D/g, ""))}
-                />
-            </div>
-            <div className="mx-1 flex flex-col items-center rounded-md border-2 border-zinc-600 px-2">
-                <div className="flex flex-row">
+            <div className="flex flex-col items-center rounded-md border-2 border-zinc-600 px-2 sm:order-2">
+                <div className="flex w-full flex-row">
                     {presets.map(([label, to]) => (
                         <button
                             key={label}
                             type="button"
-                            className="mx-0.5 my-1.5 rounded-md border-2 border-zinc-600 p-2 font-light text-fg hover:bg-zinc-600"
+                            className="mx-0.5 my-1.5 flex-1 rounded-md border-2 border-zinc-600 p-1.5 text-sm font-light whitespace-nowrap text-fg hover:bg-zinc-600 sm:p-2 sm:text-base"
                             onClick={() => setText(String(clampRaise(b, to)))}
                         >
                             {label}
@@ -59,23 +46,42 @@ export default function RaiseInput({ b, onRaise, onClose }: raiseProps) {
                 </div>
                 <input
                     type="range"
-                    className="w-64 cursor-pointer accent-zinc-400"
+                    className="w-full cursor-pointer accent-zinc-400 sm:w-64"
                     value={amount}
                     onChange={(e) => setText(e.target.value)}
                     min={b.minTo}
                     max={b.maxTo}
                 />
-                <div className="flex w-64 flex-row justify-between pb-1 text-xs text-subtle">
+                <div className="flex w-full flex-row justify-between pb-1 text-xs text-subtle sm:w-64">
                     <span>min {b.minTo}</span>
                     <span>max {b.maxTo}</span>
                 </div>
             </div>
-            <Button variant="primary" type="submit" className="mx-1 text-xl">
-                {b.opening ? `bet ${amount}` : `raise to ${amount}`}
-            </Button>
-            <Button type="button" className="mx-1 text-xl" onClick={onClose}>
-                close
-            </Button>
+            <div className="flex items-end gap-2 sm:contents">
+                <div className="flex flex-col sm:order-1">
+                    <span className="mb-1 text-xs text-subtle">
+                        {clamped ? `${b.opening ? "bet" : "raise"} is ${amount}` : "\u00a0"}
+                    </span>
+                    <input
+                        autoFocus
+                        className="w-24 rounded-md border-2 border-zinc-600 bg-surface p-2 text-xl text-fg focus:outline-hidden sm:w-28 sm:text-2xl"
+                        id="raise"
+                        inputMode="numeric"
+                        value={text}
+                        onChange={(e) => setText(e.target.value.replace(/\D/g, ""))}
+                    />
+                </div>
+                <Button
+                    variant="primary"
+                    type="submit"
+                    className="flex-1 sm:order-3 sm:flex-none sm:text-xl"
+                >
+                    {b.opening ? `bet ${amount}` : `raise to ${amount}`}
+                </Button>
+                <Button type="button" className="sm:order-4 sm:text-xl" onClick={onClose}>
+                    close
+                </Button>
+            </div>
         </form>
     );
 }

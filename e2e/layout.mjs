@@ -1,0 +1,71 @@
+// Eight players on desktop, tablet and phone viewports.
+import { URL, check, finish, launch, shot } from "./lib.mjs";
+
+const views = {
+    desktop: { viewport: { width: 1280, height: 720 } },
+    laptop: { viewport: { width: 1440, height: 900 } },
+    tablet: { viewport: { width: 768, height: 1024 }, isMobile: true, hasTouch: true },
+    phone: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
+    small: { viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true },
+    landscape: { viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true },
+};
+const names = ["alice", "bob", "carol", "dave", "erin", "frank", "grace", "heidi"];
+const kinds = ["desktop", "phone", "tablet", "landscape", "small", "laptop", "desktop", "desktop"];
+
+const browser = await launch();
+const table = "lay" + Date.now();
+const pages = [];
+for (let i = 0; i < 8; i++) {
+    const p = await (await browser.newContext(views[kinds[i]])).newPage();
+    await p.goto(URL);
+    await p.fill("#username", names[i]);
+    await p.fill("#tablename", table);
+    await p.click(`button:text-is("${i === 0 ? "create" : "join"}")`);
+    await p.waitForSelector("text=Open");
+    if (i === 0) await shot(p, `lay-0-empty-desktop`);
+    if (i === 1) await shot(p, `lay-0-empty-phone`);
+    // seats are taken out of order, so seat order isn't join order
+    const seat = [3, 1, 6, 8, 2, 5, 7, 4][i];
+    await p.locator("button", { hasText: "Open" }).filter({ hasText: String(seat) }).click();
+    if (i === 1) await shot(p, `lay-0-buyin-phone`);
+    await p.locator("#buyIn ~ button").first().click();
+    await p.waitForTimeout(200);
+    pages.push({ p, kind: kinds[i], name: names[i] });
+}
+await pages[0].p.click('button:text-is("start")');
+await pages[0].p.waitForTimeout(800);
+
+for (const { p, kind, name } of pages) {
+    const overflow = await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth || document.documentElement.scrollHeight > window.innerHeight);
+    check(`${kind}: no page scroll`, !overflow);
+    // own seat sits lowest on the screen, near the middle
+    const boxes = await p.evaluate(() =>
+        [...document.querySelectorAll("p.truncate")].map((e) => {
+            const r = e.getBoundingClientRect();
+            return { name: e.textContent, x: r.x + r.width / 2, y: r.y, l: r.left, r: r.right };
+        })
+    );
+    const mine = boxes.find((b) => b.name === name);
+    const lowest = Math.max(...boxes.map((b) => b.y));
+    const vw = await p.evaluate(() => window.innerWidth);
+    check(`${kind}: own seat at the bottom`, mine && mine.y === lowest && Math.abs(mine.x - vw / 2) < vw * 0.1, JSON.stringify(mine));
+    check(`${kind}: all 8 seats on screen`, boxes.length === 8 && boxes.every((b) => b.l >= 0 && b.r <= vw), `${boxes.length}`);
+    await shot(p, `lay-1-${kind}-${name}`);
+}
+
+// open the raise input on whoever is to act, and the chat on a phone
+for (const { p, kind, name } of pages) {
+    const r = p.locator('button:text-is("raise")');
+    if (await r.count()) {
+        await r.click();
+        await shot(p, `lay-2-raise-${kind}`);
+        check(`${kind}: raise input fits`, !(await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)));
+    }
+}
+const phone = pages[1].p;
+await phone.click('button:text-is("chat")');
+await phone.fill('input[placeholder="say something..."]', "hi from the phone").catch(() => {});
+await shot(phone, `lay-3-chat-phone`);
+
+await browser.close();
+finish();

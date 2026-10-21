@@ -98,6 +98,7 @@ func (h *Hub) joinTable(c *Client, name string, username string, token string, c
 		}
 		c.uuid.Store(uuid)
 		username = seatName
+		t.send(createNewLog(fmt.Sprintf("%s reconnected", seatName)))
 	} else if t.nameTaken(username) {
 		t.mu.Unlock()
 		return errNameTaken

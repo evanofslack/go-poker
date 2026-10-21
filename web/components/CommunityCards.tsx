@@ -11,9 +11,9 @@ export default function CommunityCards() {
     if (appState.game?.communityCards) {
         const winning = winningCards(appState.game);
         return (
-            <div className="mb-4 flex flex-row p-2 text-2xl text-black">
+            <div className="flex flex-row gap-0.5 text-black sm:gap-1">
                 {cards.map((num, i) => (
-                    <div key={i} className="m-0.5">
+                    <div key={i}>
                         {appState.game?.communityCards[num] ? (
                             // show dealt card
                             <Card

@@ -2,6 +2,7 @@ import { createContext, ReactNode, useEffect, useState, useContext, useRef } fro
 import { AppContext } from "../providers/AppStore";
 import { Message, Game, Log } from "../interfaces";
 import { joinTable } from "../actions/actions";
+import { inviteLink } from "../lib/invite";
 
 // Session lets a tab rejoin its table, and reclaim its seat with the token,
 // after a dropped connection or a reload.
@@ -58,12 +59,18 @@ export function SocketProvider(props: SocketProviderProps) {
         let retry: ReturnType<typeof setTimeout>;
         let delay = 1000;
         let stopped = false;
+        let wasOpen = false;
 
         // connect, and reconnect with backoff whenever the connection drops
         const connect = () => {
             ws = new WebSocket(wsUrl);
             ws.onopen = () => {
                 delay = 1000;
+                dispatch({ type: "setConnection", payload: "open" });
+                if (wasOpen) {
+                    dispatch({ type: "addToast", payload: { message: "reconnected", kind: "info" } });
+                }
+                wasOpen = true;
                 const session = loadSession();
                 if (session) {
                     rejoining.current = true;
@@ -75,6 +82,9 @@ export function SocketProvider(props: SocketProviderProps) {
                     return;
                 }
                 setSocket(null);
+                if (wasOpen) {
+                    dispatch({ type: "setConnection", payload: "reconnecting" });
+                }
                 retry = setTimeout(connect, delay);
                 delay = Math.min(delay * 2, 10000);
             };
@@ -129,6 +139,8 @@ export function SocketProvider(props: SocketProviderProps) {
                         readyCount: event.game.readyCount,
                         host: event.host,
                         turnEndsIn: event.turnEndsIn,
+                        sitOutNext: event.sitOutNext,
+                        seats: event.seats,
                     };
                     dispatch({ type: "updateGame", payload: newGame });
                     return;
@@ -140,6 +152,10 @@ export function SocketProvider(props: SocketProviderProps) {
                     };
                     dispatch({ type: "addLog", payload: errorLog });
                     dispatch({ type: "setError", payload: event.message });
+                    // the join form shows its own errors
+                    if (appState.table) {
+                        dispatch({ type: "addToast", payload: { message: event.message, kind: "error" } });
+                    }
                     if (rejoining.current) {
                         rejoining.current = false;
                         saveSession(null);
@@ -158,6 +174,8 @@ export function SocketProvider(props: SocketProviderProps) {
                     });
                     dispatch({ type: "setError", payload: null });
                     dispatch({ type: "setTablename", payload: event.tablename });
+                    // the address bar doubles as the invite link
+                    window.history.replaceState(null, "", inviteLink(event.tablename));
                     dispatch({ type: "updatePlayerID", payload: event.uuid });
                     dispatch({ type: "setUsername", payload: event.username });
                     return;
