@@ -95,14 +95,17 @@ export default function Stats() {
                 </div>
             )}
             {best.length > 0 && (
-                <ul className="text-xs" aria-label="best hands shown">
-                    {best.map((s) => (
-                        <li key={s.name} className="flex gap-2">
-                            <span className="font-semibold text-fg">{s.name}</span>
-                            <span className="text-muted">{s.bestHand}</span>
-                        </li>
-                    ))}
-                </ul>
+                <div className="text-xs">
+                    <h3 className="text-subtle">best hand shown</h3>
+                    <ul aria-label="best hands shown">
+                        {best.map((s) => (
+                            <li key={s.name} className="flex gap-2">
+                                <span className="font-semibold text-fg">{s.name}</span>{" "}
+                                <span className="text-muted">{s.bestHand}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
             )}
             <p className="text-xs text-subtle">
                 {hands.length === 1 ? "1 hand" : `${hands.length} hands`}
