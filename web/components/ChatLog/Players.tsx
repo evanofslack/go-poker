@@ -35,8 +35,8 @@ export default function Players() {
                                 <span
                                     className={classNames(
                                         "ml-auto font-semibold",
-                                        row.net > 0 && "text-green-400",
-                                        row.net < 0 && "text-rose-400"
+                                        row.net > 0 && "text-gain",
+                                        row.net < 0 && "text-loss"
                                     )}
                                 >
                                     {signed(row.net)}
@@ -68,7 +68,7 @@ export default function Players() {
                 <span>
                     banker <span className="text-fg">{banker || "none"}</span>
                 </span>
-                <span className={balance === 0 ? "text-subtle" : "text-rose-400"}>
+                <span className={balance === 0 ? "text-subtle" : "text-error"}>
                     {balance === 0 ? "· balanced" : `· off by ${balance}`}
                 </span>
                 <Button className="ml-auto px-2 py-0.5 text-xs" onClick={() => copyLedger(appState.table ?? "", game, dispatch)}>

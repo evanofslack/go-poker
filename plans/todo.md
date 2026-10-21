@@ -500,8 +500,10 @@ the next seat's plate. That was already so on main and needs its own layout chan
 
 ### PR 2: name the colors
 
-- [ ] Semantic tokens for the colors 5.x repeats under raw names: gain and loss amounts, warnings,
-  badges and menu borders. Card suits and the felt keep their own colors.
+- [x] Semantic tokens for the colors 5.x repeats under raw names: `line`, `field`, `badge`,
+  `accent-hover`, `on-accent`, `error`, `warn`, `gain` and `loss`. Each is the shade it replaced, so
+  nothing looks different. Card suits, the felt, the table markers and the connection dot keep their
+  own colors.
 
 # Stage 7: operator tooling
 

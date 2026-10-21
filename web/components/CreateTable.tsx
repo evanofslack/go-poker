@@ -179,7 +179,7 @@ export default function CreateTable({ tablename, username, onClose }: createTabl
                     </div>
                 </details>
                 {(invalid || appState.error) && (
-                    <p className="text-sm text-rose-400" role="alert">
+                    <p className="text-sm text-error" role="alert">
                         {invalid || appState.error}
                     </p>
                 )}

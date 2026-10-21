@@ -31,13 +31,13 @@ export default function RaiseInput({ b, onRaise, onClose }: raiseProps) {
             }}
             onKeyDown={(e) => e.key === "Escape" && onClose()}
         >
-            <div className="flex flex-col items-center rounded-md border-2 border-zinc-600 px-2 sm:order-2">
+            <div className="flex flex-col items-center rounded-md border-2 border-line px-2 sm:order-2">
                 <div className="flex w-full flex-row">
                     {presets.map(([label, to]) => (
                         <button
                             key={label}
                             type="button"
-                            className="mx-0.5 my-1.5 flex-1 rounded-md border-2 border-zinc-600 p-1.5 text-sm font-light whitespace-nowrap text-fg hover:bg-zinc-600 sm:p-2 sm:text-base"
+                            className="mx-0.5 my-1.5 flex-1 rounded-md border-2 border-line p-1.5 text-sm font-light whitespace-nowrap text-fg hover:bg-line sm:p-2 sm:text-base"
                             onClick={() => setText(String(clampRaise(b, to)))}
                         >
                             {label}
@@ -64,7 +64,7 @@ export default function RaiseInput({ b, onRaise, onClose }: raiseProps) {
                     </span>
                     <input
                         autoFocus
-                        className="w-24 rounded-md border-2 border-zinc-600 bg-surface p-2 text-xl text-fg focus:outline-hidden sm:w-28 sm:text-2xl"
+                        className="w-24 rounded-md border-2 border-line bg-surface p-2 text-xl text-fg focus:outline-hidden sm:w-28 sm:text-2xl"
                         id="raise"
                         inputMode="numeric"
                         value={text}

@@ -40,7 +40,7 @@ export default function AddBot({ seat, game, onDone }: addBotProps) {
             <label className="flex flex-col gap-1 px-3 text-sm text-subtle">
                 name
                 <input
-                    className="rounded-md bg-zinc-600 p-1 text-fg focus:outline-hidden"
+                    className="rounded-md bg-field p-1 text-fg focus:outline-hidden"
                     maxLength={maxNameLength}
                     value={name}
                     onChange={(e) => setName(e.target.value)}

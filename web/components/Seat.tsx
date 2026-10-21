@@ -75,7 +75,7 @@ function PlayerSeat({ player, game, own, bot, host }: playerSeatProps) {
                     {bot && (
                         // just "bot" on small plates, so it isn't cut off
                         <span
-                            className="ml-1 shrink-0 rounded-full bg-zinc-600 px-1.5 text-xs text-fg"
+                            className="ml-1 shrink-0 rounded-full bg-badge px-1.5 text-xs text-fg"
                             title={`${bot} bot`}
                             data-bot-badge
                         >
@@ -90,7 +90,7 @@ function PlayerSeat({ player, game, own, bot, host }: playerSeatProps) {
                     <span className="sr-only">to act</span>
                 )}
                 {!player.ready && (
-                    <span className="absolute -top-2.5 left-1/2 z-20 -translate-x-1/2 rounded-full bg-zinc-600 px-2 text-xs whitespace-nowrap text-fg">
+                    <span className="absolute -top-2.5 left-1/2 z-20 -translate-x-1/2 rounded-full bg-badge px-2 text-xs whitespace-nowrap text-fg">
                         {player.stack > 0 ? "sitting out" : "out of chips"}
                     </span>
                 )}
@@ -127,7 +127,7 @@ function OpenSeat({ id, game, host }: { id: number; game: Game; host: boolean })
             <button
                 className={classNames(
                     plate,
-                    "border-2 border-dashed border-zinc-600 bg-raised/60 text-fg hover:bg-raised"
+                    "border-2 border-dashed border-line bg-raised/60 text-fg hover:bg-raised"
                 )}
                 onClick={() => setOpen("sit")}
             >

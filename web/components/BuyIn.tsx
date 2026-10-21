@@ -28,7 +28,7 @@ export default function BuyIn({ min, max, initial, label, onSubmit, onCancel }: 
             <div className="flex flex-row items-center gap-1">
                 <input
                     autoFocus
-                    className="w-20 rounded-md bg-zinc-600 p-1 text-fg focus:outline-hidden"
+                    className="w-20 rounded-md bg-field p-1 text-fg focus:outline-hidden"
                     id="buyIn"
                     inputMode="numeric"
                     value={text}
@@ -51,7 +51,7 @@ export default function BuyIn({ min, max, initial, label, onSubmit, onCancel }: 
                     cancel
                 </Button>
             </div>
-            <span className={"mt-1 text-xs " + (valid ? "text-subtle" : "text-rose-400")}>
+            <span className={"mt-1 text-xs " + (valid ? "text-subtle" : "text-error")}>
                 {min > 1 ? `${min} to ${max}` : `max ${max}`}
             </span>
         </form>
