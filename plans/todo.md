@@ -459,8 +459,9 @@ Notes:
 
 - [x] Players, stats and the host's session controls move out of the chat popover into a "table"
   drawer, top left. Chat keeps chat and log. The header host menu becomes a host-only tab.
-- [ ] Show the table config (stakes, starting stack, seats, timer, password on/off) in one of the
-  panel's tabs, read-only for everyone. Later, maybe editable by the host.
+- [x] Show the table config (stakes, starting stack, seats, timer, password on/off) in one of the
+  panel's tabs, read-only for everyone. Later, maybe editable by the host. A "settings" tab; the
+  header drops "nl texas holdem" and the lock icon, which moved there. e2e: `settings.mjs`.
 
 # Stage 6: UI consistency and mobile
 

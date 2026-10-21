@@ -3,9 +3,10 @@ import classNames from "classnames";
 import { AppContext } from "../../providers/AppStore";
 import Host from "./Host";
 import Players from "./Players";
+import Settings from "./Settings";
 import Stats from "./Stats";
 
-type tab = "players" | "stats" | "host";
+type tab = "players" | "stats" | "settings" | "host";
 const tabKey = "tablePanelTab";
 
 // savedTab is the last tab opened. The host starts on the host tab.
@@ -14,12 +15,12 @@ function savedTab(host: boolean): tab {
     try {
         saved = localStorage.getItem(tabKey);
     } catch {}
-    if (saved === "players" || saved === "stats" || saved === "host") return saved;
+    if (saved === "players" || saved === "stats" || saved === "settings" || saved === "host") return saved;
     return host ? "host" : "players";
 }
 
 // TablePanel is a drawer over the left of the table with the players, ledger,
-// stats and the host's session controls. It isn't modal, so you can still act
+// stats, table settings and the host's session controls. It isn't modal, so you can still act
 // while it's open.
 export default function TablePanel({ onClose }: { onClose: () => void }) {
     const { appState } = useContext(AppContext);
@@ -63,6 +64,9 @@ export default function TablePanel({ onClose }: { onClose: () => void }) {
                 <button className={tabStyle("stats")} onClick={() => pick("stats")}>
                     stats
                 </button>
+                <button className={tabStyle("settings")} onClick={() => pick("settings")}>
+                    settings
+                </button>
                 {host && (
                     <button className={tabStyle("host")} onClick={() => pick("host")}>
                         host
@@ -80,6 +84,7 @@ export default function TablePanel({ onClose }: { onClose: () => void }) {
             <div className="min-h-0 flex-1">
                 {tab === "players" && <Players />}
                 {tab === "stats" && <Stats />}
+                {tab === "settings" && <Settings />}
                 {tab === "host" && <Host />}
             </div>
         </div>
