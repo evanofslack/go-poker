@@ -5,6 +5,7 @@ import GameInfo from "./GameInfo";
 import Start from "./Start";
 import Input from "./Input";
 import Table from "./Table";
+import TableHint from "./TableHint";
 import { Player } from "../interfaces";
 
 export default function Game() {
@@ -30,6 +31,9 @@ export default function Game() {
             </div>
             <div className="absolute bottom-0 right-0">
                 <Start players={players} />
+            </div>
+            <div className="absolute inset-x-0 top-3 flex justify-center">
+                <TableHint />
             </div>
         </div>
     );

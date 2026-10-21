@@ -14,6 +14,10 @@ export default function Input() {
     const game = appState.game;
     if (!socket || !game || !game.betting) return null;
 
+    if (appState.connection !== "open") {
+        return <p className="p-6 text-xl text-subtle">reconnecting…</p>;
+    }
+
     const b = bettingInfo(game);
     if (b.player.uuid !== appState.clientID) {
         return <p className="p-6 text-xl text-subtle">waiting for {b.player.username}</p>;

@@ -9,6 +9,15 @@ export type Log = {
     timestamp: string;
 };
 
+// connecting until the first open; reconnecting after a drop
+export type Connection = "connecting" | "open" | "reconnecting";
+
+export type Toast = {
+    id: number;
+    message: string;
+    kind: "info" | "error";
+};
+
 export type AppState = {
     messages: Message[];
     logs: Log[];
@@ -17,6 +26,8 @@ export type AppState = {
     table: string | null;
     game: Game | null;
     error: string | null;
+    connection: Connection;
+    toasts: Toast[];
 };
 
 export type Card = string;
