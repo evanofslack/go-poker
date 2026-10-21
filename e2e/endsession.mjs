@@ -1,10 +1,16 @@
 // Host session controls: pause and resume, ending the session after the hand, and the final settle-up.
 import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
 const has = (p, sel, ms = 3000) => p.waitForSelector(sel, { timeout: ms }).then(() => true).catch(() => false);
-const hostMenu = 'button[aria-haspopup=menu]:has-text("host")';
+const panel = '[aria-label="table"]';
+const hostTab = `${panel} button:text-is("host")`;
+// openPanel opens the table panel, if it isn't already
+const openPanel = async (p) => {
+    if (!(await p.locator(panel).count())) await p.click('header button:has-text("table")');
+};
 const menu = async (p, item) => {
-    await p.click(hostMenu);
-    await p.click(`[role=menuitem]:text-is("${item}")`);
+    await openPanel(p);
+    await p.click(hostTab);
+    await p.click(`${panel} button:text-is("${item}")`);
 };
 
 const browser = await launch();
@@ -22,8 +28,11 @@ for (const [p, name, btn, seat] of [[alice, "alice", "create", 1], [bob, "bob", 
     await p.locator("#buyIn ~ button").first().click();
     await p.waitForTimeout(300);
 }
-check("host sees the host menu", (await alice.locator(hostMenu).count()) === 1);
-check("non-host doesn't see it", (await bob.locator(hostMenu).count()) === 0);
+await openPanel(alice);
+await openPanel(bob);
+check("host sees the host tab", (await alice.locator(hostTab).count()) === 1);
+check("non-host doesn't see it", (await bob.locator(hostTab).count()) === 0);
+await bob.keyboard.press("Escape");
 
 // pausing before the start blocks it
 await menu(alice, "pause");
@@ -39,7 +48,7 @@ await menu(alice, "end session");
 check("ending asks first", await has(alice, "[role=dialog] >> text=after this hand"));
 await alice.click('[role=dialog] button:text-is("end session")');
 check("everyone is told it's the last hand", await has(bob, "text=last hand"));
-check("the menu drops end session once ending", await alice.click(hostMenu).then(() => alice.locator('[role=menuitem]:text-is("end session")').count()).then((n) => n === 0));
+check("the host tab drops end session once ending", await alice.waitForSelector(`${panel} button:text-is("end session")`, { state: "detached", timeout: 3000 }).then(() => true).catch(() => false));
 await alice.keyboard.press("Escape");
 await alice.click('button:text-is("fold")');
 
@@ -51,7 +60,9 @@ await bob.click('[role=dialog] button:text-is("close")');
 check("the table says when it closes", await has(bob, "text=table closes in 60m"));
 check("open seats are gone", (await bob.locator("button", { hasText: "Open" }).count()) === 0);
 check("no more start", (await alice.locator('button:text-is("start")').count()) === 0);
-check("the host menu is gone", (await alice.locator(hostMenu).count()) === 0);
+await alice.click('[role=dialog] button:text-is("close")');
+await openPanel(alice);
+check("the host tab is gone", (await alice.locator(hostTab).count()) === 0);
 
 // a late spectator can still read it
 const carol = await (await browser.newContext()).newPage();

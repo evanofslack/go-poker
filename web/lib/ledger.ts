@@ -3,7 +3,7 @@ import { Game, LedgerRow } from "../interfaces/index";
 
 export type PlayerStatus = "playing" | "sitting out" | "out of chips" | "disconnected" | "watching" | "left";
 
-// PlayerLine is one person in the players panel: a ledger row, or a spectator
+// PlayerLine is one person in the table panel: a ledger row, or a spectator
 // who never bought in
 export type PlayerLine = {
     name: string;

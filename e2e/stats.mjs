@@ -2,8 +2,8 @@
 import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
 const has = (p, sel, ms = 3000) => p.waitForSelector(sel, { timeout: ms }).then(() => true).catch(() => false);
 const openStats = async (p) => {
-    await p.click('button[aria-label^="chat"]');
-    await p.click('button:text-is("stats")');
+    await p.click('header button:has-text("table")');
+    await p.click('[aria-label="table"] button:text-is("stats")');
 };
 // fold whoever is to act, ending the hand. The button can go as the turn
 // passes, so try again until a click lands.
