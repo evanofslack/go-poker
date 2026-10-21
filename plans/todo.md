@@ -7,7 +7,7 @@
 | 3 | Upgrades | done |
 | 4 | Core play experience | done |
 | 5 | Host and table features | planned |
-| 6 | UI consistency and mobile | accessibility left |
+| 6 | UI consistency and mobile | done |
 | 7 | Operator tooling | planned |
 | - | Backlog | unranked |
 
@@ -198,7 +198,7 @@ Needs the host role from 2.2.
 - [x] Compute seat positions around an oval from seat count instead of hand-placed `chipPosition`
   percentages (also unlocks 9-max tables from Stage 5 settings).
 - [x] Simplify `Seat.tsx` (four render branches, duplicated markup).
-- [ ] Accessibility: labels for cards and buttons, turn state not conveyed only by glow/color,
+- [x] Accessibility: labels for cards and buttons, turn state not conveyed only by glow/color,
   visible focus styles.
 
 # Stage 7: operator tooling

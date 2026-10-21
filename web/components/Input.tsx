@@ -22,7 +22,11 @@ export default function Input() {
 
     const b = bettingInfo(game);
     if (b.player.uuid !== appState.clientID) {
-        return <p className="py-2 text-subtle sm:text-xl">waiting for {b.player.username}</p>;
+        return (
+            <p aria-live="polite" className="py-2 text-subtle sm:text-xl">
+                waiting for {b.player.username}
+            </p>
+        );
     }
 
     // the server takes the chips added, not the new total
@@ -41,7 +45,7 @@ export default function Input() {
     }
 
     return (
-        <div className="flex w-full gap-2 sm:w-auto">
+        <div role="group" aria-label="your turn" className="flex w-full gap-2 sm:w-auto">
             <Button variant="danger" className={btn} onClick={() => playerFold(socket)}>
                 fold
             </Button>

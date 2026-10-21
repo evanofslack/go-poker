@@ -76,6 +76,7 @@ check("a reload stays on the join form", await has(bob, "#username"));
 await alice.click('button[aria-haspopup=menu]:has-text("host")');
 await alice.click('[role=menuitem]:text-is("reset table")');
 check("reset asks first", await has(alice, "[role=dialog] >> text=reset the table?"));
+check("the dialog takes keyboard focus", await alice.evaluate(() => !!document.activeElement?.closest("[role=dialog]")));
 await shot(alice, `ux-6-reset-confirm`);
 await alice.keyboard.press("Escape");
 check("escape cancels the reset", (await alice.locator("[role=dialog]").count()) === 0 && (await has(alice, 'p:text-is("alice")')));

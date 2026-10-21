@@ -60,6 +60,9 @@ function PlayerSeat({ player, game, own }: { player: Player; game: Game; own: bo
                 <p className="text-sm leading-tight font-semibold sm:text-lg short:text-sm">
                     {player.stack}
                 </p>
+                {game.betting && game.action === player.position && (
+                    <span className="sr-only">to act</span>
+                )}
                 {!player.ready && (
                     <span className="absolute -top-2.5 left-1/2 z-20 -translate-x-1/2 rounded-full bg-zinc-600 px-2 text-xs whitespace-nowrap text-fg">
                         {player.stack > 0 ? "sitting out" : "out of chips"}

@@ -29,10 +29,18 @@ check("countdown counts down", parseFloat(w2) < parseFloat(w1), `${w1} -> ${w2}`
 check("only one countdown", (await alice.locator('div[style*="width"]').count()) === 1, JSON.stringify(await alice.evaluate(() => [...document.querySelectorAll('div[style*="width"]')].map((e) => e.outerHTML.slice(0, 120)))));
 await shot(alice, "turn-1-countdown");
 
+// record every title bob's tab shows from here on
+await bob.evaluate(() => {
+    window.titles = [];
+    new MutationObserver(() => window.titles.push(document.title)).observe(document.querySelector("title"), { childList: true, characterData: true, subtree: true });
+});
 await alice.click('button:text-is("call 10")');
-await bob.waitForTimeout(2500);
-const titles = await bob.evaluate(() => document.title);
-check("background tab title flashes on your turn", titles !== title || (await bob.waitForFunction((t) => document.title !== t, title, { timeout: 2000 }).then(() => true).catch(() => false)), titles);
+await bob.waitForTimeout(3000);
+const titles = await bob.evaluate(() => window.titles);
+check("background tab title flashes on your turn", titles.includes("● your turn") && titles.includes(title), JSON.stringify(titles));
 check("mute toggle is shown", (await alice.locator('button[title="mute"]').count()) === 1);
+check("cards have names", (await alice.locator('[role=img][aria-label$=" of hearts"], [role=img][aria-label$=" of spades"], [role=img][aria-label$=" of clubs"], [role=img][aria-label$=" of diamonds"]').count()) === 2);
+check("opponent cards read as face down", (await alice.locator('[role=img][aria-label="face-down card"]').count()) === 2);
+check("the player to act is named for screen readers", (await alice.locator('.sr-only:text-is("to act")').count()) === 1);
 await browser.close();
 finish();

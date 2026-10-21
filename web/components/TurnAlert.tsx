@@ -63,7 +63,13 @@ export default function TurnAlert() {
     };
 
     return (
-        <button className="p-1 text-subtle hover:text-fg" title={muted ? "unmute" : "mute"} onClick={toggle}>
+        <button
+            className="p-1 text-subtle hover:text-fg"
+            title={muted ? "unmute" : "mute"}
+            aria-label="mute turn sound"
+            aria-pressed={muted}
+            onClick={toggle}
+        >
             {muted ? <FiVolumeX /> : <FiVolume2 />}
         </button>
     );
