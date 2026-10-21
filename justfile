@@ -46,7 +46,7 @@ e2e: install
     trap 'kill $server' EXIT
     for _ in $(seq 50); do curl -sf localhost:8099 >/dev/null && break; sleep 0.2; done
     failed=0
-    for t in session betting showdown turn seat forms password ux layout bots; do
+    for t in session betting showdown turn seat forms password players ux layout bots; do
         echo "== $t"
         (cd e2e && node "$t.mjs") || failed=1
     done

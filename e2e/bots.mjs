@@ -71,6 +71,13 @@ await waitFor(() => lastGame(aRec)?.players.length === 3, 3000, "second bot");
 check("server sends each bot's level", JSON.stringify(Object.values(aRec.bots).sort()) === '["easy","medium"]', JSON.stringify(aRec.bots));
 check("easy bot shows its level", await alice.locator("text=easy bot").count() === 1);
 
+// the players panel badges bots, with their buy-in in the ledger
+await alice.click('button[aria-label^="chat"]');
+await alice.click('button:text-is("players")');
+const harperRow = await alice.locator('ul[aria-label="players"] li').filter({ hasText: "harper" }).innerText();
+check("players panel badges bots, with their buy-in", harperRow.includes("medium bot") && /in \d+/.test(harperRow), harperRow);
+await alice.click('button[aria-label="close chat"]');
+
 // alice checks or calls on her turns until a hand finishes
 await alice.click('button:text-is("start")');
 const end = Date.now() + 20000;

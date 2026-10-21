@@ -3,12 +3,13 @@ import classNames from "classnames";
 import { AppContext } from "../../providers/AppStore";
 import Chat from "./Chat";
 import Log from "./Log";
+import Players from "./Players";
 
 // ChatLog is a toggle that opens the chat and game log above the footer
 export default function ChatLog() {
     const { appState } = useContext(AppContext);
     const [open, setOpen] = useState(false);
-    const [tab, setTab] = useState<"chat" | "log">("chat");
+    const [tab, setTab] = useState<"chat" | "log" | "players">("chat");
     const [seen, setSeen] = useState(0);
 
     const count = appState.messages.length;
@@ -47,6 +48,9 @@ export default function ChatLog() {
                         <button className={tabStyle("log")} onClick={() => setTab("log")}>
                             log
                         </button>
+                        <button className={tabStyle("players")} onClick={() => setTab("players")}>
+                            players
+                        </button>
                         <button
                             className="ml-auto px-2 text-subtle hover:text-fg"
                             title="close"
@@ -56,7 +60,11 @@ export default function ChatLog() {
                             ✕
                         </button>
                     </div>
-                    <div className="min-h-0 flex-1">{tab === "chat" ? <Chat /> : <Log />}</div>
+                    <div className="min-h-0 flex-1">
+                        {tab === "chat" && <Chat />}
+                        {tab === "log" && <Log />}
+                        {tab === "players" && <Players />}
+                    </div>
                 </div>
             )}
         </>

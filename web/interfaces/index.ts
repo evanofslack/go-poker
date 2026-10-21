@@ -71,6 +71,7 @@ export type Game = {
     settings: Settings; // chosen by the host when creating the table
     hasPassword: boolean;
     watchers: string[]; // names of the clients at the table without a seat
+    disconnected: string[]; // names of seated players who dropped and may still reconnect
     bots: Record<string, string>; // level of each bot, by uuid
     ledger: Ledger;
 };

@@ -148,6 +148,7 @@ export function SocketProvider(props: SocketProviderProps) {
                         settings: event.settings,
                         hasPassword: event.hasPassword,
                         watchers: event.watchers,
+                        disconnected: event.disconnected,
                         bots: event.bots ?? {},
                         ledger: event.ledger,
                     };

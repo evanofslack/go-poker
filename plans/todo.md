@@ -271,8 +271,8 @@ Decided:
 
 ### PR 1: add easy bots
 
-Built off main alongside #62 (ledger) and #63 (players panel). After those merge: record bot buy-ins
-and auto-rebuys in the ledger, and show the bot badge in the players panel.
+Built off main alongside #62 (ledger) and #63 (players panel). Done when those were rebased onto it:
+bot buy-ins and auto-rebuys go in the ledger, and the players panel shows the bot badge.
 
 
 - [x] `backend/bot/`: `Decide(level, view, pn, rng) Action` (check/call/raise/fold plus amount), pure
@@ -383,10 +383,12 @@ Decided:
 
 ### PR 2: add players panel
 
-- [ ] A "players" tab beside chat and log: every name with status (playing, sitting out,
+- [x] A "players" tab beside chat and log: every name with status (playing, sitting out,
   disconnected, left, watching), seat, stack, bought in, net, and their banker line.
-- [ ] Shows the banker, the balance check, and a "copy ledger" button with plain text for a group chat.
-- [ ] e2e: rows update on buy-in, rebuy and leaving; copy text; phone layout.
+- [x] Shows the banker, the balance check, and a "copy ledger" button with plain text for a group chat.
+- [x] e2e: rows update on buy-in, rebuy and leaving; copy text; phone layout (`players.mjs`).
+- Also: `update-game` sends `disconnected`, the names of seated players in their reconnect grace,
+  so the panel can tell disconnected from playing. "Out of chips" is its own status.
 
 ### PR 3: add host controls
 
