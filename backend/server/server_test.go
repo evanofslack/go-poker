@@ -336,8 +336,9 @@ type received struct {
 	locked  chan bool   // hasPassword of each game update
 	joined  chan string // password of each joined-table
 	logs    chan string
-	tokens  chan string            // session tokens from taking a seat
-	chat    chan string            // chat messages, as "name: message"
+	tokens  chan string // session tokens from taking a seat
+	chat    chan string // chat messages, as "name: message"
+	stats   chan updateStats
 	bots    chan map[string]string // bots of each game update
 }
 
@@ -358,6 +359,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 		ledger:  make(chan ledgerView, 256),
 		away:    make(chan []string, 256),
 		session: make(chan session, 256),
+		stats:   make(chan updateStats, 256),
 		sets:    make(chan tableSettings, 256),
 		errors:  make(chan string, 256),
 		codes:   make(chan string, 256),
@@ -393,6 +395,8 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				Paused  bool              `json:"paused"`
 				Ending  bool              `json:"ending"`
 				Ended   bool              `json:"ended"`
+				Hands   []handStats       `json:"hands"`
+				Full    bool              `json:"full"`
 				Bots    map[string]string `json:"bots"`
 			}
 			if json.Unmarshal(msg, &u) != nil {
@@ -451,6 +455,11 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				}
 				select {
 				case r.codes <- u.Code:
+				default:
+				}
+			case actionUpdateStats:
+				select {
+				case r.stats <- updateStats{Hands: u.Hands, Full: u.Full}:
 				default:
 				}
 			case actionJoinedTable:

@@ -31,6 +31,7 @@ func handleJoinTable(c *Client, tablename, username, token, password string, cre
 
 	c.send <- createJoinedTable(c)
 	c.send <- createGameView(c)
+	c.send <- createStats(c.table.hands, true)
 	broadcastGame(c.table) // the watching count may have changed
 	switch {
 	case reconnected: // already logged
@@ -447,6 +448,7 @@ func finishAction(t *table, msg string) {
 	view := t.game.GenerateOmniView()
 	if view.Stage == poker.PreDeal {
 		logWinners(t, view)
+		recordHand(t, view)
 		removeLeavers(t)
 		applySitOuts(t)
 		if t.ending {
@@ -860,6 +862,7 @@ func logDeal(t *table) {
 	if view.SBNum >= uint(len(view.Players)) || view.BBNum >= uint(len(view.Players)) {
 		return
 	}
+	recordDeal(t, view)
 	t.send(createNewLog("starting new hand"))
 	t.send(createNewLog(fmt.Sprintf("%s is small blind (%d)", view.Players[view.SBNum].Username, view.Config.SmallBlind)))
 	t.send(createNewLog(fmt.Sprintf("%s is big blind (%d)", view.Players[view.BBNum].Username, view.Config.BigBlind)))

@@ -151,6 +151,7 @@ const (
 	actionUpdatePlayerUUID string = "update-player-uuid"
 	actionError            string = "error"
 	actionJoinedTable      string = "joined-table"
+	actionUpdateStats      string = "update-stats"
 )
 
 type newMessage struct {
@@ -220,4 +221,12 @@ type updatePlayerUUID struct {
 	base         //actionUpdatePlayerUUID
 	Uuid  string `json:"uuid"`
 	Token string `json:"token"` // secret for reclaiming the seat, only sent to its player
+}
+
+// updateStats carries hand snapshots: all the table keeps when Full (sent on
+// joining), else the hand that just ended.
+type updateStats struct {
+	base
+	Hands []handStats `json:"hands"`
+	Full  bool        `json:"full"`
 }
