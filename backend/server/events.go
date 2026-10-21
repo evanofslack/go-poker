@@ -233,6 +233,7 @@ func call(t *table, pn uint) error {
 	if err := poker.Bet(t.game, pn, callAmount); err != nil {
 		return err
 	}
+	t.act(view, pn, fmt.Sprintf("call %d", callAmount), callAmount == p.Stack)
 	finishAction(t, fmt.Sprintf("%s calls %d", p.Username, callAmount))
 	return nil
 }
@@ -250,29 +251,36 @@ func raise(t *table, pn uint, amount uint) error {
 		return err
 	}
 	msg := fmt.Sprintf("%s bets %d", p.Username, amount)
+	label := fmt.Sprintf("bet %d", amount)
 	if maxBet > 0 {
 		msg = fmt.Sprintf("%s raises to %d", p.Username, p.Bet+amount)
+		label = fmt.Sprintf("raise to %d", p.Bet+amount)
 	}
+	t.act(view, pn, label, amount == p.Stack)
 	finishAction(t, msg)
 	return nil
 }
 
 // check has pn check. Caller holds t.mu.
 func check(t *table, pn uint) error {
-	name := t.game.GenerateOmniView().Players[pn].Username
+	view := t.game.GenerateOmniView()
+	name := view.Players[pn].Username
 	if err := poker.Bet(t.game, pn, 0); err != nil {
 		return err
 	}
+	t.act(view, pn, "check", false)
 	finishAction(t, fmt.Sprintf("%s checks", name))
 	return nil
 }
 
 // fold has pn fold. Caller holds t.mu.
 func fold(t *table, pn uint) error {
-	name := t.game.GenerateOmniView().Players[pn].Username
+	view := t.game.GenerateOmniView()
+	name := view.Players[pn].Username
 	if err := poker.Fold(t.game, pn, 0); err != nil {
 		return err
 	}
+	t.act(view, pn, "fold", false)
 	finishAction(t, fmt.Sprintf("%s folds", name))
 	return nil
 }
@@ -518,6 +526,7 @@ func turnTimedOut(t *table, seq int) {
 		maxBet = max(maxBet, q.Bet)
 	}
 	if p.Bet >= maxBet && poker.Bet(t.game, pn, 0) == nil {
+		t.act(view, pn, "check", false)
 		finishAction(t, fmt.Sprintf("%s checks (out of time)", p.Username))
 		return
 	}
@@ -525,6 +534,7 @@ func turnTimedOut(t *table, seq int) {
 		slog.Default().Warn("Turn timeout fold", "error", err)
 		return
 	}
+	t.act(view, pn, "fold", false)
 	finishAction(t, fmt.Sprintf("%s folds (out of time)", p.Username))
 }
 
@@ -560,6 +570,7 @@ func foldLeavers(t *table) {
 			slog.Default().Warn("Fold leaver", "error", err)
 			return
 		}
+		t.act(view, view.ActionNum, "fold", false)
 		t.send(createNewLog(fmt.Sprintf("%s folds", p.Username)))
 	}
 }
@@ -606,6 +617,7 @@ func dealNextHand(t *table) {
 		t.send(createNewLog("waiting for players"))
 		return
 	}
+	clear(t.acts)
 	logDeal(t)
 	t.startTurnTimer()
 	broadcastGame(t)
@@ -629,6 +641,38 @@ func logWinners(t *table, view *poker.GameView) {
 		}
 		t.send(createNewLog(msg))
 	}
+}
+
+// act is what a player last did, on which street
+type act struct {
+	stage poker.GameStage
+	label string // like "check" or "raise to 80"
+}
+
+// act records pn's action for their seat to show, given the view from before
+// it. Caller holds t.mu.
+func (t *table) act(view *poker.GameView, pn uint, label string, allIn bool) {
+	if allIn {
+		label = "all in"
+	}
+	t.acts[view.Players[pn].UUID] = act{view.Stage, label}
+}
+
+// shownActs are the actions the seats show by uuid: this street's, and folds.
+// Between hands the last street's stay up. Caller holds t.mu.
+func (t *table) shownActs(stage poker.GameStage) map[string]string {
+	if stage == poker.PreDeal {
+		for _, a := range t.acts {
+			stage = max(stage, a.stage)
+		}
+	}
+	shown := map[string]string{}
+	for uuid, a := range t.acts {
+		if a.stage == stage || a.label == "fold" {
+			shown[uuid] = a.label
+		}
+	}
+	return shown
 }
 
 // handName names a hand from its score, where lower is better (Cactus Kev's
@@ -818,6 +862,7 @@ func createUpdatedGame(t *table, view *poker.GameView, sitOutNext bool) []byte {
 		BuyRequests:  t.buyRequests(),
 		Disconnected: t.disconnected(),
 		Ledger:       t.ledgerView(),
+		Acts:         t.shownActs(view.Stage),
 		Bots:         t.botLevels(),
 	}
 

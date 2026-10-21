@@ -24,8 +24,16 @@ check("dealer shows D and SB", (await alice.locator("text=SB").count()) === 1 &&
 check("pot shows 30 preflop", (await alice.locator("p", { hasText: /^30$/ }).count()) === 1);
 await shot(alice, "sd-1-preflop");
 
+const made = await alice.locator("[data-made-hand]").innerText().catch(() => "");
+check("you see your own best hand on your turn", ["high card", "pair"].includes(made), made);
+check("others don't see it", (await bob.locator("[data-made-hand]").count()) === 1);
+await alice.click('button:text-is("call 10")');
+await alice.locator('button:text-is("call 10")').waitFor({ state: "detached", timeout: 2000 }).catch(() => null);
+const tagged = await bob.locator('[data-seat] [data-act]', { hasText: /^call 10$/ }).waitFor({ timeout: 2000 }).then(() => true).catch(() => false);
+check("others see a player's action by their seat", tagged);
+
 // check or call down to showdown
-const label = alice.locator("p", { hasText: /pot \d+ · / });
+const label = alice.locator("[data-act]", { hasText: /^won \d+/ });
 for (let i = 0; i < 12 && !(await label.count()); i++) {
     for (const p of [alice, bob]) {
         const b = p.locator('button:text-matches("^(check|call \\\\d+)$")');
@@ -37,10 +45,12 @@ for (let i = 0; i < 12 && !(await label.count()); i++) {
 }
 await label.first().waitFor({ timeout: 3000 }).catch(() => null);
 const text = (await label.allInnerTexts()).join(" | ");
-check("pot label names the winner and hand", /pot 40 · (split )?(alice|bob)(, bob)?, [a-z ]+$/.test(text), text);
+check("winning seats say what they won", /^won (40|20)( · [a-z ]+)?( \| won 20( · [a-z ]+)?)?$/.test(text), text);
+const hands = (await alice.locator("[data-hand]").allInnerTexts()).join(" | ");
+check("winning seats name the hand", /^[a-z ]+( \| [a-z ]+)?$/.test(hands) && !/^an? /.test(hands), hands);
 check("a winning seat is highlighted", (await alice.locator(".bg-amber-200").count()) >= 1);
 check("winning cards are ringed", (await alice.locator(".ring-amber-300").count()) >= 5, String(await alice.locator(".ring-amber-300").count()));
-check("both players see the same result", text === (await bob.locator("p", { hasText: /pot \d+ · / }).allInnerTexts()).join(" | "));
+check("both players see the same result", hands === (await bob.locator("[data-hand]").allInnerTexts()).join(" | "));
 await shot(alice, "sd-2-showdown");
 
 await browser.close();

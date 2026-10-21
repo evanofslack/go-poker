@@ -89,6 +89,7 @@ type table struct {
 	grace  map[string]*time.Timer // player uuid to the timer that removes them
 
 	bots map[string]botSeat // bot players by uuid, guarded by mu
+	acts map[string]act     // each player's last action this hand, by uuid; guarded by mu
 	rng  *rand.Rand         // for bot moves, guarded by mu
 	// botDelay is copied from the global so a test can change one table's
 	botDelay func() time.Duration
@@ -116,6 +117,7 @@ func newTable(name string, settings tableSettings) *table {
 		tokens:     make(map[string]string),
 		grace:      make(map[string]*time.Timer),
 		bots:       make(map[string]botSeat),
+		acts:       make(map[string]act),
 		rng:        rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())),
 		botDelay:   botDelay,
 		requests:   make(map[string]buyRequest),

@@ -1,6 +1,6 @@
 import { useContext } from "react";
 import { AppContext } from "../providers/AppStore";
-import { potLabel, settledPots } from "../lib/hands";
+import { settledPots } from "../lib/hands";
 
 const chip = "flex h-10 items-center justify-center rounded-full bg-green-900 px-5 text-white short:h-7 short:px-3";
 
@@ -11,18 +11,9 @@ export default function Pot() {
         return null;
     }
 
-    // between hands, say who won what
-    const settled = settledPots(game);
-    if (settled.length) {
-        return (
-            <div className="flex flex-col items-center gap-1">
-                {settled.map((pot, i) => (
-                    <p key={i} className={chip + " text-lg"}>
-                        {potLabel(game, pot, game.pots.indexOf(pot))}
-                    </p>
-                ))}
-            </div>
-        );
+    // between hands, the winners' seats say what they won
+    if (settledPots(game).length) {
+        return null;
     }
 
     // every chip committed this hand, including the current street

@@ -60,7 +60,7 @@ check("bot name is suggested from the list", names.includes(suggested), suggeste
 await alice.fill('input[maxlength="20"]', "harper");
 await shot(alice, "bots-1-dialog");
 await alice.click('button:text-is("add bot")');
-check("bots default to medium, with a badge", await alice.waitForSelector('p:has-text("harper") >> text=medium bot', { timeout: 3000 }).then(() => true).catch(() => false));
+check("bots default to medium, with an icon", await alice.waitForSelector('p:has-text("harper") >> [data-bot-badge][title="medium bot"]', { timeout: 3000 }).then(() => true).catch(() => false));
 
 await alice.locator("button", { hasText: "+ bot" }).filter({ hasText: "3" }).click();
 const second = await alice.inputValue('input[maxlength="20"]');
@@ -69,7 +69,8 @@ await alice.click('label:has-text("easy")');
 await alice.click('button:text-is("add bot")');
 await waitFor(() => lastGame(aRec)?.players.length === 3, 3000, "second bot");
 check("server sends each bot's level", JSON.stringify(Object.values(aRec.bots).sort()) === '["easy","medium"]', JSON.stringify(aRec.bots));
-check("easy bot shows its level", await alice.locator("text=easy bot").count() === 1);
+check("easy bot shows its level on hover", await alice.locator('[data-seat] [title="easy bot"]').count() === 1);
+check("seats don't spell out bot levels", await alice.locator("[data-seat] >> text=/(easy|medium|hard) bot/").count() === 0);
 
 // the host's remove buttons sit clear of the badges
 const clash = await alice.evaluate(() => {
@@ -79,7 +80,7 @@ const clash = await alice.evaluate(() => {
 });
 check("remove buttons don't cover the badges", !clash);
 
-// on a phone the badge is just "bot", whole, with the level on hover
+// on a phone the icon is whole, with the level on hover
 const phone = await (await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })).newPage();
 await phone.goto(URL);
 await phone.fill("#username", "pat");
@@ -94,8 +95,8 @@ const badges = await phone.evaluate(() =>
     }))
 );
 check(
-    "phone bot badges are short and whole",
-    badges.length === 2 && badges.every((b) => b.text === "bot" && b.whole && / bot$/.test(b.title)),
+    "phone bot icons are whole",
+    badges.length === 2 && badges.every((b) => b.text === "" && b.whole && / bot$/.test(b.title)),
     JSON.stringify(badges)
 );
 await shot(phone, "bots-phone");
