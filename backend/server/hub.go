@@ -61,10 +61,10 @@ var (
 
 // joinTable adds c to the named table as username. With create, the table
 // must not exist yet and c becomes its host; otherwise it must exist. A valid
-// token reclaims a disconnected player's seat, and their name.
-func (h *Hub) joinTable(c *Client, name string, username string, token string, create bool) error {
+// token reclaims a disconnected player's seat, and their name, and reports so.
+func (h *Hub) joinTable(c *Client, name string, username string, token string, create bool) (bool, error) {
 	if c.table != nil {
-		return errAtTable
+		return false, errAtTable
 	}
 
 	h.mu.Lock()
@@ -72,11 +72,11 @@ func (h *Hub) joinTable(c *Client, name string, username string, token string, c
 	t, ok := h.tables[name]
 	switch {
 	case create && ok:
-		return errTableExists
+		return false, errTableExists
 	case !create && !ok:
-		return errNoTable
+		return false, errNoTable
 	case create && len(h.tables) >= maxTables:
-		return errTooManyTables
+		return false, errTooManyTables
 	}
 
 	// lock order is hub.mu, then table.mu
@@ -84,7 +84,9 @@ func (h *Hub) joinTable(c *Client, name string, username string, token string, c
 		t = newTable(name)
 	}
 	t.mu.Lock()
-	if uuid, seatName, ok := t.reclaim(token); ok && !create {
+	uuid, seatName, reconnected := t.reclaim(token)
+	reconnected = reconnected && !create
+	if reconnected {
 		// another connection may still hold the seat, e.g. a stale tab
 		for u := range t.users {
 			if u.id() == uuid {
@@ -101,7 +103,7 @@ func (h *Hub) joinTable(c *Client, name string, username string, token string, c
 		t.send(createNewLog(fmt.Sprintf("%s reconnected", seatName)))
 	} else if t.nameTaken(username) {
 		t.mu.Unlock()
-		return errNameTaken
+		return false, errNameTaken
 	}
 	c.username = username
 	t.users[c] = true
@@ -117,7 +119,7 @@ func (h *Hub) joinTable(c *Client, name string, username string, token string, c
 	t.members++
 	c.table = t
 	t.register <- c
-	return nil
+	return reconnected, nil
 }
 
 // leaveTable removes c from its table, and deletes the table once empty. A

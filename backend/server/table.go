@@ -136,6 +136,17 @@ func (t *table) removeUser(c *Client) {
 }
 
 // hostID is the host's uuid, or empty if there is none. Caller holds t.mu.
+// watching counts the clients at the table without a seat. Caller holds t.mu.
+func (t *table) watching() uint {
+	var n uint
+	for u := range t.users {
+		if !isSeatedUUID(t, u.id()) {
+			n++
+		}
+	}
+	return n
+}
+
 func (t *table) hostID() string {
 	if t.host == nil {
 		return ""

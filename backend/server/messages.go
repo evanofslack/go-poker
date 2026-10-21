@@ -130,6 +130,9 @@ type updateGame struct {
 
 	// number of seats at the table
 	Seats uint `json:"seats"`
+
+	// clients at the table without a seat
+	Watching uint `json:"watching"`
 }
 
 // joinedTable confirms a create-table or join-table
