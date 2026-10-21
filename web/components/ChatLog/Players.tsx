@@ -1,7 +1,7 @@
 import { useContext, useState } from "react";
 import classNames from "classnames";
 import { AppContext } from "../../providers/AppStore";
-import { ledgerText, playerLines, settleLine, signed } from "../../lib/ledger";
+import { copyLedger, playerLines, settleLine, signed } from "../../lib/ledger";
 import Button from "../Button";
 import ManagePlayer from "./ManagePlayer";
 
@@ -16,16 +16,6 @@ export default function Players() {
     const lines = playerLines(game);
     const host = game.host === appState.username;
     const managed = lines.find((l) => l.name === managing);
-
-    const copy = async () => {
-        const text = ledgerText(appState.table ?? "", game);
-        try {
-            await navigator.clipboard.writeText(text);
-            dispatch({ type: "addToast", payload: { message: "ledger copied", kind: "info" } });
-        } catch {
-            dispatch({ type: "addToast", payload: { message: "couldn't copy the ledger", kind: "error" } });
-        }
-    };
 
     return (
         <div className="flex h-full flex-col bg-surface">
@@ -81,7 +71,7 @@ export default function Players() {
                 <span className={balance === 0 ? "text-subtle" : "text-rose-400"}>
                     {balance === 0 ? "· balanced" : `· off by ${balance}`}
                 </span>
-                <Button className="ml-auto px-2 py-0.5 text-xs" onClick={copy}>
+                <Button className="ml-auto px-2 py-0.5 text-xs" onClick={() => copyLedger(appState.table ?? "", game, dispatch)}>
                     copy ledger
                 </Button>
             </div>

@@ -1,3 +1,4 @@
+import type { Dispatch } from "react";
 import { Game, LedgerRow } from "../interfaces/index";
 
 export type PlayerStatus = "playing" | "sitting out" | "out of chips" | "disconnected" | "watching" | "left";
@@ -63,4 +64,14 @@ export function ledgerText(table: string, game: Game) {
     );
     const check = balance === 0 ? "balanced" : `off by ${balance}`;
     return [`${table} ledger, in chips (banker: ${banker || "none"})`, ...lines, check].join("\n");
+}
+
+// copyLedger copies the ledger text and says whether it worked
+export async function copyLedger(table: string, game: Game, dispatch: Dispatch<any>) {
+    try {
+        await navigator.clipboard.writeText(ledgerText(table, game));
+        dispatch({ type: "addToast", payload: { message: "ledger copied", kind: "info" } });
+    } catch {
+        dispatch({ type: "addToast", payload: { message: "couldn't copy the ledger", kind: "error" } });
+    }
 }

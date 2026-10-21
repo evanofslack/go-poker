@@ -69,7 +69,7 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
                         </div>
                     ) : (
                         <>
-                            {player.stack > 0 && (
+                            {player.stack > 0 && !game.ended && (
                                 <button
                                     role="menuitem"
                                     className={item}
@@ -81,7 +81,7 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
                                     {sitLabel}
                                 </button>
                             )}
-                            {betweenHands && room >= minRebuy && (
+                            {betweenHands && room >= minRebuy && !game.ended && (
                                 <button
                                     role="menuitem"
                                     className={item}

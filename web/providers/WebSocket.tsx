@@ -147,6 +147,10 @@ export function SocketProvider(props: SocketProviderProps) {
                         sitOutNext: event.sitOutNext,
                         settings: event.settings,
                         hasPassword: event.hasPassword,
+                        paused: event.paused,
+                        ending: event.ending,
+                        ended: event.ended,
+                        closesIn: event.closesIn,
                         watchers: event.watchers,
                         disconnected: event.disconnected,
                         bots: event.bots ?? {},
@@ -162,8 +166,8 @@ export function SocketProvider(props: SocketProviderProps) {
                     };
                     dispatch({ type: "addLog", payload: errorLog });
                     dispatch({ type: "setError", payload: event.message });
-                    if (event.code === "removed") {
-                        // the host removed us: leave, and don't rejoin on reconnect
+                    if (event.code === "removed" || event.code === "closed") {
+                        // the host removed us, or the table closed: leave, and don't rejoin on reconnect
                         if (appState.table) leaveTable(socket, appState.table);
                         saveSession(null);
                         window.history.replaceState(null, "", window.location.pathname);

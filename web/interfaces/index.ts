@@ -70,6 +70,10 @@ export type Game = {
     sitOutNext: boolean; // you asked to sit out once this hand ends
     settings: Settings; // chosen by the host when creating the table
     hasPassword: boolean;
+    paused: boolean; // no new hands are dealt
+    ending: boolean; // the session ends after this hand
+    ended: boolean; // the session is over and the ledger final
+    closesIn: number; // ms until an ended table closes
     watchers: string[]; // names of the clients at the table without a seat
     disconnected: string[]; // names of seated players who dropped and may still reconnect
     bots: Record<string, string>; // level of each bot, by uuid

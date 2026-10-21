@@ -416,14 +416,23 @@ Notes:
 
 ### PR 4: add session controls
 
-- [ ] Pause and resume. Pausing mid-hand takes effect after the hand; no new hand is dealt while
+- [x] Pause and resume. Pausing mid-hand takes effect after the hand; no new hand is dealt while
   paused. Logged.
-- [ ] End session, after the current hand. Dealing stops, seats and rebuys close, the ledger is final,
+- [x] End session, after the current hand. Dealing stops, seats and rebuys close, the ledger is final,
   and everyone sees the final settle-up. The table is deleted 1 hour after it ends, empty or not;
   until then joining it (with its password) shows the final ledger.
 - [ ] Rebuy approval setting (`approveRebuys`, off by default) in `tableSettings` and the create form.
   When on, a rebuy waits for the host to approve or deny it. Sitting back down under a name that
   already has ledger entries counts as a rebuy, so leaving and rejoining can't skip approval.
+  Split into its own PR (4b), stacked on this one.
+
+Notes:
+- Both live in the host menu, which is back. End session asks first. Between hands it ends right away.
+- Once ended, the server refuses anything that deals, seats or moves chips, and the host menu, open
+  seats, start and rebuy disappear. Everyone, including late joiners, gets a settle-up dialog; the
+  players panel keeps the ledger after it's closed. A hint shows when the table closes.
+- When the hour is up, anyone still there gets error code `closed` and goes back to the join form.
+- e2e: `endsession.mjs`.
 
 ### PR 5: add stats panel
 

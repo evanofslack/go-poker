@@ -188,3 +188,12 @@ export function adjustChips(socket: WebSocket, name: string, amount: number, rea
         })
     );
 }
+
+// host only: stop dealing new hands, start again, or end the session for good
+export function sessionAction(socket: WebSocket, action: "pause-game" | "resume-game" | "end-session") {
+    socket?.send(
+        JSON.stringify({
+            action: action,
+        })
+    );
+}
