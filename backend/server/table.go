@@ -3,6 +3,7 @@ package server
 import (
 	"crypto/subtle"
 	"math/rand/v2"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -53,6 +54,7 @@ type table struct {
 	game       *poker.Game
 	settings   tableSettings // fixed after creation
 	password   string        // empty for none, fixed after creation
+	ledger     []ledgerEntry // chips in and out by name, guarded by mu
 	done       chan struct{} // closed when the table is deleted
 	members    int           // clients at this table, guarded by Hub.mu
 
@@ -190,18 +192,20 @@ func (t *table) removeUser(c *Client) {
 	}
 }
 
-// hostID is the host's uuid, or empty if there is none. Caller holds t.mu.
-// watching counts the clients at the table without a seat. Caller holds t.mu.
-func (t *table) watching() uint {
-	var n uint
+// watchers are the names of the clients at the table without a seat, sorted.
+// Caller holds t.mu.
+func (t *table) watchers() []string {
+	names := []string{}
 	for u := range t.users {
 		if !isSeatedUUID(t, u.id()) {
-			n++
+			names = append(names, u.username)
 		}
 	}
-	return n
+	slices.Sort(names)
+	return names
 }
 
+// hostID is the host's uuid, or empty if there is none. Caller holds t.mu.
 func (t *table) hostID() string {
 	if t.host == nil {
 		return ""

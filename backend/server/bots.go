@@ -134,6 +134,7 @@ func rebuyBots(t *table) {
 				slog.Default().Warn("Toggle ready after bot rebuy", "error", err)
 			}
 		}
+		t.record(p.Username, entryRebuy, seat.buyIn, p.Username)
 		t.send(createNewLog(fmt.Sprintf("%s rebuys for %d", p.Username, seat.buyIn)))
 	}
 }

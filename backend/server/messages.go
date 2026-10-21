@@ -154,10 +154,12 @@ type updateGame struct {
 	Settings    tableSettings `json:"settings"`
 	HasPassword bool          `json:"hasPassword"` // never the password itself
 
-	// clients at the table without a seat
-	Watching uint `json:"watching"`
+	// names of the clients at the table without a seat
+	Watchers []string `json:"watchers"`
 
 	Bots map[string]string `json:"bots"` // level of each bot, by uuid
+
+	Ledger ledgerView `json:"ledger"`
 }
 
 // joinedTable confirms a create-table or join-table

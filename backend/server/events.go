@@ -29,8 +29,11 @@ func handleJoinTable(c *Client, tablename, username, token, password string, cre
 	c.send <- createJoinedTable(c)
 	c.send <- createGameView(c)
 	broadcastGame(c.table) // the watching count may have changed
-	// a reconnect is already logged
-	if !reconnected {
+	switch {
+	case reconnected: // already logged
+	case c.table.inLedger(c.username):
+		c.table.send(createNewMessage(gameAdminName, fmt.Sprintf("%s rejoined, continuing their ledger", c.username)))
+	default:
 		c.table.send(createNewMessage(gameAdminName, fmt.Sprintf("%s has joined", c.username)))
 	}
 }
@@ -113,6 +116,7 @@ func seatPlayer(t *table, name string, seatID uint, buyIn uint) string {
 	if err != nil {
 		slog.Default().Warn("Set seat id", "error", err)
 	}
+	t.record(name, entryBuyIn, buyIn, name)
 	t.send(createNewLog(fmt.Sprintf("%s sits down with %d", name, buyIn)))
 
 	// a running game may be waiting for players
@@ -155,6 +159,10 @@ func handleResetGame(c *Client) {
 		c.table.dealTimer.Stop()
 	}
 	c.table.turnSeq++ // cancel the turn timer
+	// everyone leaves with their chips, including any bet this hand
+	for _, p := range c.table.game.GenerateOmniView().Players {
+		c.table.record(p.Username, entryCashOut, p.Stack+p.TotalBet, c.username)
+	}
 	c.table.game.Reset()
 	clear(c.table.sitOutNext)
 	c.table.send(createNewLog(fmt.Sprintf("%s reset the table", c.username)))
@@ -386,6 +394,7 @@ func handleRebuy(c *Client, amount uint) {
 			slog.Default().Warn("Toggle ready after rebuy", "error", err)
 		}
 	}
+	t.record(p.Username, entryRebuy, amount, p.Username)
 	t.send(createNewLog(fmt.Sprintf("%s rebuys for %d", p.Username, amount)))
 	if view.Running && view.Stage == poker.PreDeal {
 		t.scheduleDeal()
@@ -526,6 +535,7 @@ func removeLeavers(t *table) {
 			if err := poker.RemovePlayer(t.game, uint(pn), 0); err != nil {
 				return // mid-hand, try again after it
 			}
+			t.record(p.Username, entryCashOut, p.Stack, p.Username)
 			t.send(createNewLog(fmt.Sprintf("%s left the table", p.Username)))
 		}
 		delete(t.leaving, uuid)
@@ -732,8 +742,9 @@ func createUpdatedGame(t *table, view *poker.GameView, sitOutNext bool) []byte {
 		SitOutNext:  sitOutNext,
 		Settings:    t.settings,
 		HasPassword: t.password != "",
-		Watching:    t.watching(),
+		Watchers:    t.watchers(),
 		Bots:        t.botLevels(),
+		Ledger:      t.ledgerView(),
 	}
 
 	resp, err := json.Marshal(game)

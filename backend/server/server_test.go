@@ -326,7 +326,8 @@ type received struct {
 	hosts  chan string        // host of each game update
 	ends   chan int64         // turnEndsIn of each game update
 	sitOut chan bool          // sitOutNext of each game update
-	watch  chan uint          // watching of each game update
+	watch  chan []string      // watchers of each game update
+	ledger chan ledgerView    // ledger of each game update
 	sets   chan tableSettings // settings of each game update
 	errors chan string
 	codes  chan string // code of each error
@@ -351,7 +352,8 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 		hosts:  make(chan string, 256),
 		ends:   make(chan int64, 256),
 		sitOut: make(chan bool, 256),
-		watch:  make(chan uint, 256),
+		watch:  make(chan []string, 256),
+		ledger: make(chan ledgerView, 256),
 		sets:   make(chan tableSettings, 256),
 		errors: make(chan string, 256),
 		codes:  make(chan string, 256),
@@ -376,7 +378,8 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				Token   string            `json:"token"`
 				Ends    int64             `json:"turnEndsIn"`
 				SitOut  bool              `json:"sitOutNext"`
-				Watch   uint              `json:"watching"`
+				Watch   []string          `json:"watchers"`
+				Ledger  ledgerView        `json:"ledger"`
 				Name    string            `json:"username"`
 				Sets    tableSettings     `json:"settings"`
 				Code    string            `json:"code"`
@@ -407,6 +410,10 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				}
 				select {
 				case r.watch <- u.Watch:
+				default:
+				}
+				select {
+				case r.ledger <- u.Ledger:
 				default:
 				}
 				select {
@@ -796,35 +803,35 @@ func TestReconnectLogged(t *testing.T) {
 	}
 }
 
-func TestWatchingCount(t *testing.T) {
+func TestWatchers(t *testing.T) {
 	srv := newTestServer(t)
 	a, aRecv := createAndWait(t, srv, "t", "a")
 	send(t, a, seatMsg(1))
 	b := dial(t, srv)
 	send(t, b, joinMsg("t", "b"))
-	waitWatching(t, aRecv, 1)
+	waitWatching(t, aRecv, "b")
 
 	send(t, b, seatMsg(2))
-	waitWatching(t, aRecv, 0)
+	waitWatching(t, aRecv)
 
 	send(t, b, `{"action":"leave-seat"}`)
-	waitWatching(t, aRecv, 1)
+	waitWatching(t, aRecv, "b")
 
 	b.Close()
-	waitWatching(t, aRecv, 0)
+	waitWatching(t, aRecv)
 }
 
-func waitWatching(t *testing.T, r received, n uint) {
+func waitWatching(t *testing.T, r received, names ...string) {
 	t.Helper()
 	timeout := time.After(2 * time.Second)
 	for {
 		select {
 		case w := <-r.watch:
-			if w == n {
+			if slices.Equal(w, names) || len(w) == 0 && len(names) == 0 {
 				return
 			}
 		case <-timeout:
-			t.Fatalf("timed out waiting for watching %d", n)
+			t.Fatalf("timed out waiting for watchers %q", names)
 		}
 	}
 }
@@ -1349,5 +1356,144 @@ func TestReconnectSkipsPassword(t *testing.T) {
 	}
 	if pw := <-b2Recv.joined; pw != "secret" {
 		t.Errorf("reconnected b got password %q, want %q", pw, "secret")
+	}
+}
+
+// waitLedger returns the first ledger matching cond.
+func waitLedger(t *testing.T, r received, cond func(ledgerView) bool) ledgerView {
+	t.Helper()
+	timeout := time.After(2 * time.Second)
+	var last ledgerView
+	for {
+		select {
+		case l := <-r.ledger:
+			if cond(l) {
+				return l
+			}
+			last = l
+		case <-timeout:
+			t.Fatalf("timed out waiting for ledger, last: %+v", last)
+		}
+	}
+}
+
+// row is name's ledger row, or a zero row if it has none.
+func row(l ledgerView, name string) ledgerRow {
+	for _, r := range l.Rows {
+		if r.Name == name {
+			return r
+		}
+	}
+	return ledgerRow{}
+}
+
+func TestLedgerBuyInsAndCashOuts(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	b, _ := dialRecv(t, srv)
+	send(t, a, seatMsg(1), `{"action":"rebuy","amount":50}`)
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	l := waitLedger(t, aRecv, func(l ledgerView) bool { return len(l.Rows) == 2 && l.Rows[0].BoughtIn == 150 })
+	if want := (ledgerRow{Name: "a", BoughtIn: 150, Stack: 150}); l.Rows[0] != want {
+		t.Errorf("a = %+v, want %+v", l.Rows[0], want)
+	}
+	if l.Banker != "a" || l.Balance != 0 {
+		t.Errorf("banker %q, balance %d, want a and 0", l.Banker, l.Balance)
+	}
+
+	// b cashes out on leaving the seat, and buys in again
+	send(t, b, `{"action":"leave-seat"}`)
+	l = waitLedger(t, aRecv, func(l ledgerView) bool { return row(l, "b").CashedOut == 100 })
+	if want := (ledgerRow{Name: "b", BoughtIn: 100, CashedOut: 100}); row(l, "b") != want {
+		t.Errorf("b after leaving = %+v, want %+v", row(l, "b"), want)
+	}
+	send(t, b, `{"action":"take-seat","seatID":2,"buyIn":200}`)
+	l = waitLedger(t, aRecv, func(l ledgerView) bool { return row(l, "b").Stack == 200 })
+	if want := (ledgerRow{Name: "b", BoughtIn: 300, CashedOut: 100, Stack: 200}); row(l, "b") != want {
+		t.Errorf("b after sitting again = %+v, want %+v", row(l, "b"), want)
+	}
+}
+
+func TestLedgerDuringHand(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv, _, _ := seatTwo(t, srv)
+
+	// the blinds are bet, but still count as each player's chips
+	l := waitLedger(t, aRecv, func(l ledgerView) bool { return len(l.Rows) == 2 })
+	for _, r := range l.Rows {
+		if r.Stack != 100 || r.Net != 0 {
+			t.Errorf("%s mid-hand = %+v, want stack 100 and net 0", r.Name, r)
+		}
+	}
+
+	// a folds the small blind to b
+	send(t, a, `{"action":"player-fold"}`)
+	l = waitLedger(t, aRecv, func(l ledgerView) bool { return row(l, "a").Net != 0 })
+	if row(l, "a").Net != -10 || row(l, "b").Net != 10 || l.Balance != 0 {
+		t.Errorf("after the fold: a %+v, b %+v, balance %d", row(l, "a"), row(l, "b"), l.Balance)
+	}
+}
+
+func TestLedgerKeptByName(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	send(t, a, seatMsg(1))
+	b := dial(t, srv)
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	waitLedger(t, aRecv, func(l ledgerView) bool { return row(l, "b").Stack == 100 })
+
+	// b leaves the table, then someone joins as b and continues b's row
+	send(t, b, `{"action":"leave-table","tablename":"t"}`)
+	waitLedger(t, aRecv, func(l ledgerView) bool { return row(l, "b").CashedOut == 100 })
+	b2 := dial(t, srv)
+	send(t, b2, joinMsg("t", "b"), seatMsg(2))
+	waitChat(t, aRecv, gameAdminName+": b rejoined, continuing their ledger")
+	l := waitLedger(t, aRecv, func(l ledgerView) bool { return row(l, "b").Stack == 100 })
+	if want := (ledgerRow{Name: "b", BoughtIn: 200, CashedOut: 100, Stack: 100}); row(l, "b") != want || len(l.Rows) != 2 {
+		t.Errorf("rows = %+v, want b continued as %+v", l.Rows, want)
+	}
+}
+
+func TestLedgerCashOutAfterGrace(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	send(t, a, seatMsg(1))
+	b := dial(t, srv)
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	waitLedger(t, aRecv, func(l ledgerView) bool { return row(l, "b").Stack == 100 })
+
+	// a dropped connection keeps the seat and chips until the grace period ends
+	b.Close()
+	l := waitLedger(t, aRecv, func(l ledgerView) bool { return row(l, "b").CashedOut == 100 })
+	if l.Balance != 0 {
+		t.Errorf("balance = %d after grace, want 0", l.Balance)
+	}
+}
+
+func TestLedgerResetCashesOut(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv, _, _ := seatTwo(t, srv)
+	send(t, a, `{"action":"reset-game"}`)
+	l := waitLedger(t, aRecv, func(l ledgerView) bool { return row(l, "a").CashedOut > 0 })
+	for _, r := range l.Rows {
+		if r.CashedOut != 100 || r.Stack != 0 || r.Net != 0 {
+			t.Errorf("%s after reset = %+v, want cashed out 100 with net 0", r.Name, r)
+		}
+	}
+}
+
+// waitChat waits for the client to receive chat msg, as "name: message".
+func waitChat(t *testing.T, r received, msg string) {
+	t.Helper()
+	timeout := time.After(2 * time.Second)
+	for {
+		select {
+		case m := <-r.chat:
+			if m == msg {
+				return
+			}
+		case <-timeout:
+			t.Fatalf("timed out waiting for chat %q", msg)
+		}
 	}
 }
