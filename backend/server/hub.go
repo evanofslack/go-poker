@@ -60,9 +60,10 @@ var (
 )
 
 // joinTable adds c to the named table as username. With create, the table
-// must not exist yet and c becomes its host; otherwise it must exist. A valid
+// must not exist yet, is made with settings, and c becomes its host;
+// otherwise it must exist. A valid
 // token reclaims a disconnected player's seat, and their name, and reports so.
-func (h *Hub) joinTable(c *Client, name string, username string, token string, create bool) (bool, error) {
+func (h *Hub) joinTable(c *Client, name string, username string, token string, create bool, settings tableSettings) (bool, error) {
 	if c.table != nil {
 		return false, errAtTable
 	}
@@ -81,7 +82,7 @@ func (h *Hub) joinTable(c *Client, name string, username string, token string, c
 
 	// lock order is hub.mu, then table.mu
 	if create {
-		t = newTable(name)
+		t = newTable(name, settings)
 	}
 	t.mu.Lock()
 	uuid, seatName, reconnected := t.reclaim(token)

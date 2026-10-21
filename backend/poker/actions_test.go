@@ -7,9 +7,12 @@ import (
 	. "github.com/alexclewontin/riverboat/eval"
 )
 
+// testConfig is the engine's old default config
+var testConfig = GameConfig{BigBlind: 20, SmallBlind: 10, MaxBuy: 10000}
+
 // newTestGame returns a game with the blinds these scenarios were written against
 func newTestGame() *Game {
-	g := NewGame()
+	g := NewGame(testConfig)
 	g.config.BigBlind = 25
 	return g
 }

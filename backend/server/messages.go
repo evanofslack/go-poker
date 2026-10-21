@@ -1,6 +1,8 @@
 package server
 
 import (
+	"encoding/json"
+
 	"github.com/evanofslack/go-poker/poker"
 )
 
@@ -33,6 +35,9 @@ type joinTable struct {
 	Tablename string `json:"tablename"`
 	Username  string `json:"username"`
 	Token     string `json:"token"` // optional, reclaims a seat after a disconnect
+
+	// create-table only, a tableSettings. Missing fields get their default.
+	Settings json.RawMessage `json:"settings"`
 }
 
 type leaveTable struct {
@@ -128,8 +133,7 @@ type updateGame struct {
 	// whether this recipient asked to sit out once the current hand ends
 	SitOutNext bool `json:"sitOutNext"`
 
-	// number of seats at the table
-	Seats uint `json:"seats"`
+	Settings tableSettings `json:"settings"`
 
 	// clients at the table without a seat
 	Watching uint `json:"watching"`
