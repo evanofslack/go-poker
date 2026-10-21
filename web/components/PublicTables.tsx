@@ -12,7 +12,15 @@ type publicTablesProps = {
     onPick: (table: TableSummary) => void;
 };
 
-export const isFull = (t: TableSummary) => t.players >= t.seats;
+// column widths, shared by the header and each row
+const stakesCol = "w-16 shrink-0 text-right";
+const seatsCol = "w-10 shrink-0 text-right";
+const statusCol = "w-14 shrink-0 text-right";
+
+// chips shortens big blinds so custom stakes fit their column: 10000 is 10K
+const chips = (n: number) => new Intl.NumberFormat("en", { notation: "compact" }).format(n);
+
+export const isFull =(t: TableSummary) => t.players >= t.seats;
 
 function status(t: TableSummary): string {
     if (isFull(t)) return "full";
@@ -37,7 +45,17 @@ export default function PublicTables({ onPick }: publicTablesProps) {
 
     return (
         <section className="mt-10 w-full max-w-md px-4" aria-label="public tables">
-            <h2 className="mb-2 text-sm text-muted">public tables</h2>
+            {/* labels the columns below, so it shares their widths */}
+            <div className="mb-2 flex items-center gap-3 px-3 text-sm text-muted">
+                <h2 className="grow">public tables</h2>
+                {appState.tables.length > 0 && (
+                    <>
+                        <span className={`${stakesCol} text-xs`}>blinds</span>
+                        <span className={`${seatsCol} text-xs`}>seats</span>
+                        <span className={statusCol} />
+                    </>
+                )}
+            </div>
             {appState.tables.length === 0 ? (
                 <p className="text-sm text-subtle">no public tables yet, create one</p>
             ) : (
@@ -60,13 +78,13 @@ export default function PublicTables({ onPick }: publicTablesProps) {
                                         />
                                     )}
                                 </span>
-                                <span className="shrink-0 text-muted">
-                                    {t.sb}/{t.bb}
+                                <span className={`${stakesCol} text-muted`}>
+                                    {chips(t.sb)}/{chips(t.bb)}
                                 </span>
-                                <span className="w-10 shrink-0 text-right">
+                                <span className={seatsCol}>
                                     {t.players}/{t.seats}
                                 </span>
-                                <span className="w-14 shrink-0 text-right text-xs text-subtle">{status(t)}</span>
+                                <span className={`${statusCol} text-xs text-subtle`}>{status(t)}</span>
                             </button>
                         </li>
                     ))}

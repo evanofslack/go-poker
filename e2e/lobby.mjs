@@ -1,8 +1,9 @@
 // Public tables on the home page: which are listed, their order, the lock, and joining from the list.
+// No table name contains "open", which other scripts match to find empty seats.
 import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
 const browser = await launch();
 const id = Date.now();
-const [full, open, locked, hidden] = ["full", "open", "locked", "hidden"].map((s) => `lob${s}${id}`);
+const [full, free, locked, hidden] = ["full", "free", "locked", "hidden"].map((s) => `lob${s}${id}`);
 
 const page = async () => {
     const p = await (await browser.newContext()).newPage();
@@ -44,7 +45,7 @@ await confirmCreate(first);
 await first.waitForSelector("text=Open");
 await sit(first);
 
-const second = await create(open, "cat");
+const second = await create(free, "cat");
 await sit(second);
 await create(locked, "dan", (p) => p.fill("#tablePassword", "s3cret"));
 await create(hidden, "eve", (p) => p.locator('label:has-text("listed on the home page") input').uncheck());
@@ -61,18 +62,19 @@ await sit(bob);
 const v = await page();
 const listed = async () => {
     const names = await rows(v);
-    return names.includes(open) && names.includes(locked) && names.includes(full) && (await row(v, full).textContent()).includes("full");
+    return names.includes(free) && names.includes(locked) && names.includes(full) && (await row(v, full).textContent()).includes("full");
 };
 const deadline = Date.now() + 8000;
 while (!(await listed()) && Date.now() < deadline) await v.waitForTimeout(250);
 check("public tables are listed", await listed());
 const names = await rows(v);
 check("private tables aren't listed", !names.includes(hidden));
-check("more players sort first", names.indexOf(open) < names.indexOf(locked), names.join(", "));
-check("full tables sort last", names.indexOf(full) > names.indexOf(open) && names.indexOf(full) > names.indexOf(locked));
+check("more players sort first", names.indexOf(free) < names.indexOf(locked), names.join(", "));
+check("full tables sort last", names.indexOf(full) > names.indexOf(free) && names.indexOf(full) > names.indexOf(locked));
 check("rows show stakes and seats", (await row(v, full).textContent()).includes("2/2"));
+check("blinds and seats are labelled", (await v.locator('section[aria-label="public tables"] >> text=blinds').count()) === 1 && (await v.locator('section[aria-label="public tables"] >> text=seats').count()) === 1);
 check("password tables show a lock", (await row(v, locked).locator('[aria-label="needs a password"]').count()) === 1);
-check("open tables have no lock", (await row(v, open).locator('[aria-label="needs a password"]').count()) === 0);
+check("open tables have no lock", (await row(v, free).locator('[aria-label="needs a password"]').count()) === 0);
 await shot(v, "lobby");
 await v.setViewportSize({ width: 390, height: 844 });
 check("no sideways scroll on a phone", await v.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
