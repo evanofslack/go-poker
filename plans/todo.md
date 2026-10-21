@@ -258,9 +258,16 @@ Decided:
   guarded by `mu`. They don't count as members, so a table with only bots left is deleted as today.
 - Only the host adds or removes bots. Adding follows the same seat and timing rules as `take-seat`.
 - A bot decides from `GeneratePlayerView(pn)` only, so it never sees anyone else's cards.
-- Bots buy in for 100 BB (clamped to the table's min/max) and rebuy automatically when busted.
-- Names come from a short fixed list, skipping ones taken at the table. The UI marks them as bots.
-- No hand is dealt when only bots are seated, so bots don't play forever at an abandoned table.
+- "Add bot" opens a dialog like sitting down: buy-in (defaults to the same 100 BB as a player's,
+  within the table's min/max) and a name. Bots rebuy for that same amount when busted.
+- The name is prefilled with a random first name of a character from HBO's *Industry* that isn't
+  taken at the table (Harper, Eric, Yasmin, Robert, Gus, Rishi, Venetia, Kenny, Daria, Sweetpea,
+  Henry, Jesse), and the host can edit it. The list lives in the web client; the server only checks
+  the name like a username (length, reserved, not taken). The name is fixed once the bot sits.
+- The UI marks bots with a badge, separate from the name.
+- A game can run with only bots seated: the host can start it without a seat, and the server keeps
+  dealing. A table with no connected clients is still deleted, bots and all.
+- Bots keep playing while their table waits out a disconnected player's reconnect grace. Fine.
 
 ### PR 1: add easy bots
 
@@ -274,14 +281,19 @@ Decided:
   The move checks the table isn't done and the bot is still the player to act.
 - [ ] Pull call/check/raise/fold out of the client handlers into `act(t, pn, kind, amount)`, shared by
   clients, bots and `turnTimedOut`. If a bot's action is rejected, it checks or folds instead.
-- [ ] Protocol: inbound `add-bot {seatID, level}` and `remove-bot {seatID}`; `update-game` gets
-  `bots: uuid[]`. Update `messages.go`, `actions.ts`, `interfaces/index.ts`; validate `level` in
-  `validate.go` (only `easy` for now).
+- [ ] Protocol: inbound `add-bot {seatID, buyIn, name, level}` and `remove-bot {seatID}`; `update-game`
+  gets `bots: uuid[]`. Update `messages.go`, `actions.ts`, `interfaces/index.ts`; validate name and
+  `level` in `validate.go` (only `easy` for now). Buy-in uses the same bounds as `take-seat`.
+- [ ] Share the seating steps (add player, name, buy in, ready, seat) between `handleTakeSeat` and
+  add-bot instead of copying them.
+- [ ] `start-game` is allowed for the host even without a seat, so a bots-only game can start.
 - [ ] Remove a bot like a leaving player: folded on its turn and removed after the hand.
-- [ ] Web: the host sees an "add bot" button on empty seats (seated or not, mid-game too); bot seats show
-  a "bot" badge, and the host gets a remove button on them. No level picker until there's a second level.
-- [ ] Tests: host-only add/remove, seat taken, bot acts on its turn and the hand finishes, bot can't see
-  hole cards, busted bot rebuys, no deal with only bots seated, and level validation.
+- [ ] Web: the host sees an "add bot" button on empty seats (seated or not, mid-game too) that opens the
+  buy-in and name dialog. Bot seats show a "bot" badge, and the host gets a remove button on them.
+  Bot names in `web/lib/bots.ts`. No level picker until there's a second level.
+- [ ] Tests: host-only add/remove, seat taken, bad buy-in, name taken or invalid, bot acts on its turn
+  and the hand finishes, bot can't see hole cards, busted bot rebuys for its buy-in, host starts a
+  bots-only game and it keeps dealing, table with only bots and no clients is deleted, level validation.
   `e2e/bots.mjs`: host sits, adds two bots, starts, and plays a hand to showdown.
 
 ### Later: medium bot
