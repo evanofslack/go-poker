@@ -27,9 +27,9 @@ func requestBuy(t *table, r buyRequest) {
 	r.at = time.Now()
 	t.requests[r.Name] = r
 	if r.Seat == 0 {
-		t.send(createNewLog(fmt.Sprintf("%s asks to rebuy for %d", r.Name, r.Amount)))
+		t.log(fmt.Sprintf("%s asks to rebuy for %d", r.Name, r.Amount))
 	} else {
-		t.send(createNewLog(fmt.Sprintf("%s asks to sit back down with %d", r.Name, r.Amount)))
+		t.log(fmt.Sprintf("%s asks to sit back down with %d", r.Name, r.Amount))
 	}
 	broadcastGame(t)
 }
@@ -90,7 +90,7 @@ func handleApproveBuy(c *Client, name string) {
 			return
 		}
 		delete(t.requests, name)
-		t.send(createNewLog(fmt.Sprintf("%s approved %s's rebuy", c.username, name)))
+		t.log(fmt.Sprintf("%s approved %s's rebuy", c.username, name))
 		applyRebuy(t, pn, r.Amount)
 		return
 	}
@@ -109,7 +109,7 @@ func handleApproveBuy(c *Client, name string) {
 		return
 	}
 	delete(t.requests, name)
-	t.send(createNewLog(fmt.Sprintf("%s approved %s's buy-in", c.username, name)))
+	t.log(fmt.Sprintf("%s approved %s's buy-in", c.username, name))
 	seatClient(t, u, r.Seat, r.Amount)
 }
 
@@ -126,6 +126,6 @@ func handleDenyBuy(c *Client, name string) {
 		return
 	}
 	delete(t.requests, name)
-	t.send(createNewLog(fmt.Sprintf("%s turned down %s's buy-in", c.username, name)))
+	t.log(fmt.Sprintf("%s turned down %s's buy-in", c.username, name))
 	broadcastGame(t)
 }

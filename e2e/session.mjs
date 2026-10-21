@@ -5,7 +5,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // every frame a page receives, parsed
 function record(page) {
-    const rec = { games: [], logs: [], errors: [] };
+    const rec = { games: [], logs: [], errors: [], hands: [] };
     page.on("websocket", (ws) => {
         ws.on("framereceived", ({ payload }) => {
             try {
@@ -13,11 +13,16 @@ function record(page) {
                 if (m.action === "update-game") rec.games.push(m.game);
                 if (m.action === "new-log") rec.logs.push(m.message);
                 if (m.action === "error") rec.errors.push(m.message);
+                // hands as they end; the backlog on joining is full
+                if (m.action === "hand-history" && !m.full) rec.hands.push(...m.hands);
             } catch {}
         });
     });
     return rec;
 }
+
+// dealt counts the hands dealt, from updates where betting starts
+const dealt = (rec) => rec.games.filter((g, i) => g.betting && !rec.games[i - 1]?.betting).length;
 
 async function waitFor(cond, ms, what) {
     const end = Date.now() + ms;
@@ -88,13 +93,18 @@ check(
     preShowdown(bRec).every((g) => !cardsShown(g, "alice")) && cardsShown(lastGame(bRec), "bob"),
 );
 
-// alice (dealer, small blind) folds; the server logs it and deals the next hand once
+// alice (dealer, small blind) folds; the server records it and deals the next hand once
 await alice.click('button:text-is("fold")');
-await waitFor(() => aRec.logs.filter((l) => l === "starting new hand").length >= 2, 8000, "next hand");
+await waitFor(() => dealt(aRec) >= 2, 8000, "next hand");
 await sleep(1000);
-const hands = aRec.logs.filter((l) => l === "starting new hand").length;
-check("server deals the next hand exactly once", hands === 2, `logs: ${JSON.stringify(aRec.logs)}`);
-check("fold and win logged by the server", aRec.logs.includes("alice folds") && aRec.logs.includes("bob wins 30"));
+check("server deals the next hand exactly once", dealt(aRec) === 2, `dealt ${dealt(aRec)}`);
+const first = aRec.hands[0];
+check(
+    "fold and win recorded by the server",
+    first?.actions.at(-1)?.name === "alice" && first?.actions.at(-1)?.kind === "fold" && first?.pots[0]?.winners[0] === "bob",
+    JSON.stringify(first),
+);
+check("the log leaves out poker actions", !aRec.logs.some((l) => /folds|wins|starting new hand|blind/.test(l)), JSON.stringify(aRec.logs));
 
 // reload bob's tab mid-hand: it rejoins and keeps the seat
 const bobStack = lastGame(aRec).players.find((p) => p.username === "bob").stack;
@@ -112,8 +122,12 @@ await shot(bob, "4-bob-after-reload");
 // close bob's tab; bob acts first in hand 2 (dealer), so the turn timer acts for him
 await bobCtx.close();
 console.log("  waiting for the 30s turn timer...");
-const timedOut = await waitFor(() => aRec.logs.some((l) => l.startsWith("bob") && l.includes("(out of time)")), 40000, "turn timeout");
-check("turn timer acts for a closed tab", timedOut, aRec.logs.slice(-6).join(" | "));
+const timedOut = await waitFor(
+    () => aRec.hands.some((h) => h.actions.some((a) => a.name === "bob" && a.timeout)),
+    40000,
+    "turn timeout",
+);
+check("turn timer acts for a closed tab", timedOut, JSON.stringify(aRec.hands.at(-1)?.actions));
 console.log("  waiting for the 60s grace period...");
 const removed = await waitFor(() => aRec.logs.includes("bob left the table"), 70000, "bob removed");
 check("closed tab is removed after the grace period", removed);

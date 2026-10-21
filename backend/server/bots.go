@@ -135,7 +135,7 @@ func rebuyBots(t *table) {
 			}
 		}
 		t.record(p.Username, entryRebuy, seat.buyIn, p.Username, "")
-		t.send(createNewLog(fmt.Sprintf("%s rebuys for %d", p.Username, seat.buyIn)))
+		t.log(fmt.Sprintf("%s rebuys for %d", p.Username, seat.buyIn))
 	}
 }
 

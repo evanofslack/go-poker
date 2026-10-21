@@ -1,6 +1,6 @@
 import { createContext, ReactNode, useEffect, useState, useContext, useRef } from "react";
 import { AppContext } from "../providers/AppStore";
-import { Message, Game, Log } from "../interfaces";
+import { Message, Game, Log, Pot } from "../interfaces";
 import { joinTable, leaveTable } from "../actions/actions";
 import { inviteLink } from "../lib/invite";
 
@@ -123,10 +123,30 @@ export function SocketProvider(props: SocketProviderProps) {
                     dispatch({ type: "setTables", payload: event.tables ?? [] });
                     return;
                 case "update-stats":
-                    dispatch({ type: "addHands", payload: { hands: event.hands ?? [], full: event.full } });
+                    dispatch({
+                        type: "addHands",
+                        payload: { hands: event.hands ?? [], full: event.full, totals: event.totals ?? {} },
+                    });
+                    return;
+                case "hand-history":
+                    dispatch({
+                        type: "addHistory",
+                        payload: { hands: event.hands ?? [], full: event.full, more: event.more },
+                    });
+                    return;
+                case "log-history":
+                    dispatch({
+                        type: "setLogs",
+                        payload: (event.logs ?? []).map((l: { uuid: string; message: string; timestamp: string }) => ({
+                            id: l.uuid,
+                            message: l.message,
+                            timestamp: l.timestamp,
+                        })),
+                    });
                     return;
                 case "new-log":
                     let newLog: Log = {
+                        id: event.uuid,
                         message: event.message,
                         timestamp: event.timestamp,
                     };
@@ -145,7 +165,7 @@ export function SocketProvider(props: SocketProviderProps) {
                         betting: event.game.betting,
                         config: event.game.config,
                         players: event.game.players,
-                        pots: event.game.pots,
+                        pots: (event.game.pots ?? []).map((p: Pot, i: number) => ({ ...p, hand: event.potHands?.[i] ?? "" })),
                         minRaise: event.game.minRaise,
                         readyCount: event.game.readyCount,
                         host: event.host,

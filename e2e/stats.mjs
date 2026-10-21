@@ -47,6 +47,12 @@ check("a row per player", (await rows.count()) === 2);
 const aliceRow = await rows.filter({ hasText: "alice" }).innerText();
 check("hands played", /alice\s+3\s/.test(aliceRow), aliceRow);
 check("a line per player", (await alice.locator('svg[aria-label="chips over time per player"] path').count()) === 2);
+const style = alice.locator('table[aria-label="play style"] tbody tr');
+check("a play style row per player", (await style.count()) === 2);
+const bobStyle = await style.filter({ hasText: "bob" }).innerText();
+check("few hands hide play style", /^bob\s+7 more hands$/.test(bobStyle.trim()), bobStyle);
+check("and say when it shows", await has(alice, "text=play style shows after 10 hands"));
+check("columns explain themselves", (await alice.locator('abbr[title^="voluntarily put money in"]').count()) === 1);
 check("short tables label the lines", (await alice.locator('svg text:text-is("bob")').count()) === 1);
 
 const chart = alice.locator('svg[aria-label="chips over time per player"] rect');

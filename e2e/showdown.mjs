@@ -37,7 +37,11 @@ for (let i = 0; i < 12 && !(await label.count()); i++) {
 }
 await label.first().waitFor({ timeout: 3000 }).catch(() => null);
 const text = (await label.allInnerTexts()).join(" | ");
-check("pot label names the winner and hand", /pot 40 · (split )?(alice|bob)(, bob)?, [a-z ]+$/.test(text), text);
+check(
+    "pot label names the winner and hand with its ranks",
+    /pot 40 · (split )?(alice|bob)(, bob)?, [a-z ,]+(s|high|royal flush)$/.test(text),
+    text,
+);
 check("a winning seat is highlighted", (await alice.locator(".bg-amber-200").count()) >= 1);
 check("winning cards are ringed", (await alice.locator(".ring-amber-300").count()) >= 5, String(await alice.locator(".ring-amber-300").count()));
 check("both players see the same result", text === (await bob.locator("p", { hasText: /pot \d+ · / }).allInnerTexts()).join(" | "));

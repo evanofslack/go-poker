@@ -138,3 +138,11 @@ func TestValidReason(t *testing.T) {
 		t.Error("validReason allows empty and short reasons only")
 	}
 }
+
+func TestValidHandNumber(t *testing.T) {
+	for n, want := range map[int]bool{-1: false, 0: false, 1: true, 500: true} {
+		if got := validHandNumber(n); got != want {
+			t.Errorf("validHandNumber(%d) = %v, want %v", n, got, want)
+		}
+	}
+}

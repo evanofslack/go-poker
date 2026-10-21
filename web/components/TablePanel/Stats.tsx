@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { HandStats } from "../../interfaces/index";
-import { names, playerStats, seriesColor } from "../../lib/stats";
+import { fewHands, names, playerStats, seriesColor, styleStats } from "../../lib/stats";
 import { AppContext } from "../../providers/AppStore";
 
 const height = 130;
@@ -16,6 +16,8 @@ export default function Stats() {
     }
     const all = names(hands);
     const stats = playerStats(hands);
+    const style = styleStats(appState.totals, all, appState.game?.settings.bb ?? 0);
+    const best = style.filter((s) => s.bestHand);
 
     return (
         <div className="flex h-full flex-col gap-2 overflow-y-auto pr-1">
@@ -55,13 +57,79 @@ export default function Stats() {
                     ))}
                 </tbody>
             </table>
+            {style.length > 0 && (
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs" aria-label="play style">
+                        <thead className="text-subtle">
+                            <tr>
+                                <th className="font-normal">play style</th>
+                                {styleColumns.map(([label, title]) => (
+                                    <th key={label} className="text-right font-normal">
+                                        <abbr title={title} className="no-underline">
+                                            {label}
+                                        </abbr>
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="tabular-nums">
+                            {style.map((s) =>
+                                s.hands < fewHands ? (
+                                    <tr key={s.name} className="text-subtle">
+                                        <td className="font-semibold">{s.name}</td>
+                                        <td colSpan={styleColumns.length} className="text-right">
+                                            {fewHands - s.hands === 1 ? "1 more hand" : `${fewHands - s.hands} more hands`}
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    <tr key={s.name} className="text-fg">
+                                        <td className="font-semibold">{s.name}</td>
+                                        <td className="text-right">{s.vpip}</td>
+                                        <td className="text-right">{s.pfr}</td>
+                                        <td className="text-right">{s.threeBet}</td>
+                                        <td className="text-right">{s.af}</td>
+                                        <td className="text-right">{s.wtsd}</td>
+                                        <td className="text-right">{s.wsd}</td>
+                                        <td className="text-right">{s.bb100}</td>
+                                    </tr>
+                                )
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+            {best.length > 0 && (
+                <div className="text-xs">
+                    <h3 className="text-subtle">best hand shown</h3>
+                    <ul aria-label="best hands shown">
+                        {best.map((s) => (
+                            <li key={s.name} className="flex gap-2">
+                                <span className="font-semibold text-fg">{s.name}</span>{" "}
+                                <span className="text-muted">{s.bestHand}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
             <p className="text-xs text-subtle">
                 {hands.length === 1 ? "1 hand" : `${hands.length} hands`}
                 {hands[0].hand > 1 && ` · from hand ${hands[0].hand}`}
+                {style.some((s) => s.hands < fewHands) && ` · play style shows after ${fewHands} hands`}
             </p>
         </div>
     );
 }
+
+// styleColumns label the play style table, with what each one means on hover
+const styleColumns = [
+    ["VPIP", "voluntarily put money in: hands they called or raised before the flop"],
+    ["PFR", "preflop raise: hands they raised before the flop"],
+    ["3B", "3-bet: re-raised a raise before the flop, when they had the chance"],
+    ["AF", "aggression factor: bets and raises for each call"],
+    ["WTSD", "went to showdown, of the hands they saw a flop in"],
+    ["W$SD", "won at showdown, of the showdowns they went to"],
+    ["bb/100", "big blinds won per 100 hands"],
+];
 
 // useWidth tracks an element's width, so the chart draws at its real size
 function useWidth() {
