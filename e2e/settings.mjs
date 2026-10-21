@@ -8,7 +8,7 @@ const openSettings = async (p) => {
     await p.click('[aria-label="table"] button:text-is("settings")');
 };
 
-const host = await (await browser.newContext()).newPage();
+const host = await (await browser.newContext({ permissions: ["clipboard-read", "clipboard-write"] })).newPage();
 await host.goto(URL);
 await host.fill("#username", "host");
 await host.fill("#tablename", table);
@@ -41,6 +41,10 @@ for (const [who, page] of [["host", host], ["a player", p]]) {
     check(`${who} sees the password is on`, (await row(page, "password")) === "on");
     check(`${who} sees the host`, (await row(page, "host")) === "host");
 }
+check("shows the table name", (await row(host, "table")).includes(table));
+await host.click('[aria-label="table settings"] button[aria-label="copy invite link"]');
+const invite = await host.evaluate(() => navigator.clipboard.readText());
+check("copies the invite link", invite.endsWith(`?table=${table}#pw=s3cret`), invite);
 check("the password itself isn't shown", !(await p.locator('[aria-label="table"]').innerText()).includes("s3cret"));
 await shot(host, "settings");
 await shot(p, "settings-phone");
