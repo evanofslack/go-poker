@@ -16,10 +16,14 @@ export default function Countdown({ endsIn }: { endsIn: number }) {
         return () => clearInterval(id);
     }, [endsIn]);
 
+    // inside the bottom of the seat plate, so it never spills past the seat
     return (
-        <div className="absolute right-4 -bottom-4 left-4 h-1.5 rounded-full bg-zinc-400/40">
+        <div className="absolute inset-x-3 bottom-1 h-1 rounded-full bg-zinc-400/40">
             <div
-                className={classNames("h-full rounded-full", left < 10000 ? "bg-danger" : "bg-accent")}
+                className={classNames(
+                    "h-full rounded-full",
+                    left < 10000 ? "bg-danger" : "bg-accent"
+                )}
                 style={{ width: `${Math.min(100, (left / turnMs) * 100)}%` }}
             />
         </div>

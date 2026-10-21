@@ -27,6 +27,8 @@ export default function ChatLog() {
         <>
             <button
                 className="relative shrink-0 rounded-md bg-raised px-3 py-2 text-sm text-muted hover:text-fg"
+                aria-label={unread > 0 ? `chat, ${unread} unread` : "chat"}
+                aria-expanded={open}
                 onClick={() => setOpen(!open)}
             >
                 chat
@@ -48,6 +50,7 @@ export default function ChatLog() {
                         <button
                             className="ml-auto px-2 text-subtle hover:text-fg"
                             title="close"
+                            aria-label="close chat"
                             onClick={() => setOpen(false)}
                         >
                             ✕

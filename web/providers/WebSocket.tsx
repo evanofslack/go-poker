@@ -17,6 +17,11 @@ function loadSession(): Session | null {
     }
 }
 
+// clearSession forgets the table, so a reload goes back to the join form
+export function clearSession() {
+    saveSession(null);
+}
+
 function saveSession(session: Session | null) {
     try {
         if (session) {
@@ -141,6 +146,7 @@ export function SocketProvider(props: SocketProviderProps) {
                         turnEndsIn: event.turnEndsIn,
                         sitOutNext: event.sitOutNext,
                         seats: event.seats,
+                        watching: event.watching,
                     };
                     dispatch({ type: "updateGame", payload: newGame });
                     return;

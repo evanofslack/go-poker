@@ -8,6 +8,14 @@
 /* short screens, like a phone on its side; listed last so it wins over sm: and lg: */
 @custom-variant short (@media (max-height: 500px));
 
+/* a visible keyboard focus ring everywhere; inputs opt out with outline-hidden */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
 @theme {
   --color-surface: var(--color-zinc-800); /* page background */
   --color-panel: var(--color-zinc-900); /* seats */
@@ -15,7 +23,7 @@
   --color-fg: var(--color-zinc-100);
   --color-muted: var(--color-zinc-400);
   --color-subtle: var(--color-zinc-500);
-  --color-accent: var(--color-emerald-500);
+  --color-accent: var(--color-cyan-500);
   --color-danger: var(--color-rose-600);
   --color-highlight: var(--color-amber-200); /* winning seat */
 }

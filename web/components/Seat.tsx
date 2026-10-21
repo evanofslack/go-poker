@@ -1,11 +1,11 @@
 import { useState, useContext } from "react";
-import { createPortal } from "react-dom";
 import { AppContext } from "../providers/AppStore";
 import { takeSeat } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { Game, Player } from "../interfaces/index";
 import Card, { cardSize } from "./Card";
 import BuyIn from "./BuyIn";
+import Dialog from "./Dialog";
 import Countdown from "./Countdown";
 import SeatMenu from "./SeatMenu";
 import { isWinner, winningCards } from "../lib/hands";
@@ -16,6 +16,7 @@ const plate =
 
 function plateStyle(player: Player, game: Game) {
     const action = game.betting && player.position === game.action;
+    const counting = action && game.turnEndsIn > 0;
     const winner = !game.betting && isWinner(game, player.position);
     return classNames(plate, "relative", {
         "bg-zinc-100 text-zinc-900 shadow-[0_0_40px_2px_rgba(255,255,255,0.3)]": action,
@@ -25,6 +26,8 @@ function plateStyle(player: Player, game: Game) {
         "opacity-50": !player.ready && !action && !winner,
         // clear the cards that overlap the top of the plate
         "pt-2.5 short:py-0.5 short:pl-3": true,
+        // room for the countdown along the bottom
+        "pb-2.5 short:pb-2 lg:pb-3": counting,
     });
 }
 
@@ -57,6 +60,9 @@ function PlayerSeat({ player, game, own }: { player: Player; game: Game; own: bo
                 <p className="text-sm leading-tight font-semibold sm:text-lg short:text-sm">
                     {player.stack}
                 </p>
+                {game.betting && game.action === player.position && (
+                    <span className="sr-only">to act</span>
+                )}
                 {!player.ready && (
                     <span className="absolute -top-2.5 left-1/2 z-20 -translate-x-1/2 rounded-full bg-zinc-600 px-2 text-xs whitespace-nowrap text-fg">
                         {player.stack > 0 ? "sitting out" : "out of chips"}
@@ -89,31 +95,22 @@ function OpenSeat({ id, game }: { id: number; game: Game }) {
                 <span className="text-lg sm:text-2xl">{id}</span>
                 <span className="block text-xs opacity-70 sm:text-sm">Open</span>
             </button>
-            {sitDown &&
-                // a portal, since the seat's transform would otherwise contain a fixed overlay
-                createPortal(
-                    <div
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-                        onClick={(e) => e.target === e.currentTarget && setSitDown(false)}
-                    >
-                        <div className="w-72 rounded-xl bg-panel p-4 text-fg shadow-xl">
-                            <p className="mb-2 font-semibold">sit in seat {id}</p>
-                            <BuyIn
-                                max={game.config.maxBuy}
-                                initial={100 * game.config.bb}
-                                label="sit down"
-                                onSubmit={(amount) => {
-                                    if (socket && appState.username) {
-                                        takeSeat(socket, appState.username, id, amount);
-                                    }
-                                    setSitDown(false);
-                                }}
-                                onCancel={() => setSitDown(false)}
-                            />
-                        </div>
-                    </div>,
-                    document.body
-                )}
+            {sitDown && (
+                <Dialog title={`sit in seat ${id}`} onClose={() => setSitDown(false)}>
+                    <BuyIn
+                        max={game.config.maxBuy}
+                        initial={100 * game.config.bb}
+                        label="sit down"
+                        onSubmit={(amount) => {
+                            if (socket && appState.username) {
+                                takeSeat(socket, appState.username, id, amount);
+                            }
+                            setSitDown(false);
+                        }}
+                        onCancel={() => setSitDown(false)}
+                    />
+                </Dialog>
+            )}
         </>
     );
 }

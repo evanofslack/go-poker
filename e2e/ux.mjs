@@ -1,4 +1,4 @@
-// Invite links, table hints, error toasts, connection status.
+// Invite links, table hints, error toasts, connection status, header and leaving.
 import { URL, check, finish, launch, shot } from "./lib.mjs";
 const has = (p, sel, ms = 3000) => p.waitForSelector(sel, { timeout: ms }).then(() => true).catch(() => false);
 
@@ -40,8 +40,10 @@ check("invite link fills the table", (await bob.inputValue("#tablename")) === ta
 await bob.fill("#username", "bob");
 await bob.press("#username", "Enter");
 check("spectator hint before sitting", await has(bob, "text=pick an open seat to play"));
+check("header counts the spectator", await has(alice, "text=watching 1"));
 await bob.locator("button", { hasText: "Open" }).filter({ hasText: "2" }).click();
 await bob.locator("#buyIn ~ button").first().click();
+check("watching count clears once seated", await alice.waitForSelector("text=watching 1", { state: "detached", timeout: 3000 }).then(() => true).catch(() => false));
 check("hint clears when two are ready", await alice.waitForSelector("text=waiting for another player", { state: "detached", timeout: 3000 }).then(() => true).catch(() => false));
 
 aliceWS.send(JSON.stringify({ action: "error", message: "can't rebuy during a hand", timestamp: "" }));
@@ -54,6 +56,34 @@ check("dropped connection shows reconnecting", await has(alice, "text=reconnecti
 await shot(alice, `ux-3-reconnecting`);
 check("reconnects with a toast", await has(alice, "text=reconnected", 5000));
 check("seat kept after reconnect", await has(alice, 'p:text-is("alice")'));
+
+await alice.click('button[aria-label="copy invite link"]');
+check("header copy icon copies the link", await has(alice, "text=invite link copied"));
+await shot(alice, `ux-4-header`);
+
+// bob goes home: seated, so it asks first
+await bob.click('button:text-is("GoPoker")');
+check("home asks before leaving a seat", await has(bob, "[role=dialog] >> text=leave the table?"));
+await shot(bob, `ux-5-leave-confirm`);
+await bob.click('[role=dialog] button:text-is("leave")');
+check("leaving shows the join form", await has(bob, "#username"));
+check("leaving clears the invite from the url", !bob.url().includes("?table="), bob.url());
+check("bob's seat is freed", await alice.waitForSelector('p:text-is("bob")', { state: "detached", timeout: 3000 }).then(() => true).catch(() => false));
+await bob.reload();
+check("a reload stays on the join form", await has(bob, "#username"));
+
+// reset sits behind the host menu and a confirm
+await alice.click('button[aria-haspopup=menu]:has-text("host")');
+await alice.click('[role=menuitem]:text-is("reset table")');
+check("reset asks first", await has(alice, "[role=dialog] >> text=reset the table?"));
+check("the dialog takes keyboard focus", await alice.evaluate(() => !!document.activeElement?.closest("[role=dialog]")));
+await shot(alice, `ux-6-reset-confirm`);
+await alice.keyboard.press("Escape");
+check("escape cancels the reset", (await alice.locator("[role=dialog]").count()) === 0 && (await has(alice, 'p:text-is("alice")')));
+await alice.click('button[aria-haspopup=menu]:has-text("host")');
+await alice.click('[role=menuitem]:text-is("reset table")');
+await alice.click('[role=dialog] button:text-is("reset")');
+check("confirmed reset clears the seats", await alice.waitForSelector('p:text-is("alice")', { state: "detached", timeout: 3000 }).then(() => true).catch(() => false));
 
 await browser.close();
 finish();

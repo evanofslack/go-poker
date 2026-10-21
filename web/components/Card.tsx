@@ -42,6 +42,20 @@ function cardToString(card: CardType) {
     return numToCharRanks[rank] + numToCharSuits.get(suit);
 }
 
+const rankNames: Record<string, string> = {
+    T: "ten",
+    J: "jack",
+    Q: "queen",
+    K: "king",
+    A: "ace",
+};
+const suitNames: Record<string, string> = { H: "hearts", D: "diamonds", C: "clubs", S: "spades" };
+
+// cardName reads a card string like "TH" out loud, as "ten of hearts"
+function cardName(c: string) {
+    return `${rankNames[c[0]] ?? c[0]} of ${suitNames[c[1]]}`;
+}
+
 function getSuitChar(letter: string) {
     // convert letter suit to unicode symbol
     switch (letter) {
@@ -80,7 +94,10 @@ function color(card: CardType, highlight = false) {
 export default function Card({ card, placeholder, folded, hidden, highlight }: cardProps) {
     if (placeholder) {
         return (
-            <div className={classNames(cardSize.box, "rounded-md bg-green-900 opacity-20")}></div>
+            <div
+                aria-hidden
+                className={classNames(cardSize.box, "rounded-md bg-green-900 opacity-20")}
+            ></div>
         );
     }
 
@@ -92,10 +109,12 @@ export default function Card({ card, placeholder, folded, hidden, highlight }: c
     }
     if (hidden) {
         if (folded) {
-            return <div className={cardSize.box}></div>;
+            return <div aria-hidden className={cardSize.box}></div>;
         }
         return (
             <div
+                role="img"
+                aria-label="face-down card"
                 className={classNames(
                     cardSize.box,
                     "rounded-md border-2 border-white bg-red-900 lg:border-4"
@@ -105,7 +124,7 @@ export default function Card({ card, placeholder, folded, hidden, highlight }: c
     }
     if (folded) {
         return (
-            <div className={color(c)}>
+            <div role="img" aria-label={cardName(c) + ", folded"} className={color(c)}>
                 <div
                     className={classNames(
                         "flex w-full items-start justify-start font-semibold opacity-40",
@@ -119,7 +138,11 @@ export default function Card({ card, placeholder, folded, hidden, highlight }: c
         );
     }
     return (
-        <div className={color(c, highlight)}>
+        <div
+            role="img"
+            aria-label={cardName(c) + (highlight ? ", in the winning hand" : "")}
+            className={color(c, highlight)}
+        >
             <div
                 className={classNames("flex w-full items-start justify-start font-semibold", rank)}
             >

@@ -1,13 +1,17 @@
 import { useContext } from "react";
+import { FiCopy } from "react-icons/fi";
 import classNames from "classnames";
 import { AppContext } from "../providers/AppStore";
+import { copyInvite } from "../lib/invite";
 import TurnAlert from "./TurnAlert";
-import InviteButton from "./InviteButton";
 
+// GameInfo shows the game, stakes, table and connection, and copies the invite link
 export default function GameInfo() {
-    const { appState } = useContext(AppContext);
+    const { appState, dispatch } = useContext(AppContext);
     const config = appState.game?.config;
+    const watching = appState.game?.watching ?? 0;
     const open = appState.connection === "open";
+    const table = appState.table;
 
     return (
         <div className="ml-auto min-w-0 text-right text-xs text-subtle sm:text-sm">
@@ -15,17 +19,38 @@ export default function GameInfo() {
                 <span
                     className={classNames(
                         "h-2 w-2 shrink-0 rounded-full",
-                        open ? "bg-accent" : "animate-pulse bg-amber-400"
+                        open ? "bg-green-500" : "animate-pulse bg-red-500"
                     )}
+                    role="status"
+                    aria-label={open ? "connected" : "reconnecting"}
                     title={open ? "connected" : "reconnecting"}
                 />
                 <span className="truncate">
-                    {config && `${config.sb}/${config.bb}`}
-                    <span className="hidden sm:inline"> nl texas holdem</span> · {appState.table}
+                    nl <span className="hidden sm:inline">texas </span>holdem
+                    {config && (
+                        <>
+                            {" · "}
+                            <span className="hidden sm:inline">stakes </span>
+                            {config.sb}/{config.bb}
+                        </>
+                    )}
                 </span>
             </p>
             <div className="flex items-center justify-end gap-1">
-                <InviteButton compact />
+                {watching > 0 && <span className="mr-1">watching {watching} ·</span>}
+                <span className="truncate">
+                    table <span className="text-muted">{table}</span>
+                </span>
+                {table && (
+                    <button
+                        className="p-1 hover:text-fg"
+                        title="copy invite link"
+                        aria-label="copy invite link"
+                        onClick={() => copyInvite(table, dispatch)}
+                    >
+                        <FiCopy />
+                    </button>
+                )}
                 <TurnAlert />
             </div>
         </div>

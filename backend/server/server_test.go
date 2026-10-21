@@ -317,9 +317,11 @@ type received struct {
 	hosts  chan string // host of each game update
 	ends   chan int64  // turnEndsIn of each game update
 	sitOut chan bool   // sitOutNext of each game update
+	watch  chan uint   // watching of each game update
 	errors chan string
 	logs   chan string
 	tokens chan string // session tokens from taking a seat
+	chat   chan string // chat messages, as "name: message"
 }
 
 // dialRecv is dial, but also collects the game views and errors the client receives.
@@ -335,9 +337,11 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 		hosts:  make(chan string, 256),
 		ends:   make(chan int64, 256),
 		sitOut: make(chan bool, 256),
+		watch:  make(chan uint, 256),
 		errors: make(chan string, 256),
 		logs:   make(chan string, 256),
 		tokens: make(chan string, 256),
+		chat:   make(chan string, 256),
 	}
 	go func() {
 		for {
@@ -353,6 +357,8 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				Token   string         `json:"token"`
 				Ends    int64          `json:"turnEndsIn"`
 				SitOut  bool           `json:"sitOutNext"`
+				Watch   uint           `json:"watching"`
+				Name    string         `json:"username"`
 			}
 			if json.Unmarshal(msg, &u) != nil {
 				continue
@@ -375,6 +381,10 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				case r.sitOut <- u.SitOut:
 				default:
 				}
+				select {
+				case r.watch <- u.Watch:
+				default:
+				}
 			case actionError:
 				select {
 				case r.errors <- u.Message:
@@ -388,6 +398,11 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 			case actionNewLog:
 				select {
 				case r.logs <- u.Message:
+				default:
+				}
+			case actionNewMessage:
+				select {
+				case r.chat <- u.Name + ": " + u.Message:
 				default:
 				}
 			}
@@ -721,9 +736,52 @@ func TestReconnectLogged(t *testing.T) {
 
 	b.Close()
 	waitLog(t, aRecv, "b disconnected")
+	for len(aRecv.chat) > 0 {
+		<-aRecv.chat // b's first join
+	}
 	b2 := dial(t, srv)
 	send(t, b2, `{"action":"join-table","tablename":"t","username":"b","token":"`+token+`"}`)
 	waitLog(t, aRecv, "b reconnected")
+	// the reconnect is logged, not announced again in chat
+	time.Sleep(200 * time.Millisecond)
+	for len(aRecv.chat) > 0 {
+		if m := <-aRecv.chat; m == gameAdminName+": b has joined" {
+			t.Error("reconnect announced as a join")
+		}
+	}
+}
+
+func TestWatchingCount(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	send(t, a, seatMsg(1))
+	b := dial(t, srv)
+	send(t, b, joinMsg("t", "b"))
+	waitWatching(t, aRecv, 1)
+
+	send(t, b, seatMsg(2))
+	waitWatching(t, aRecv, 0)
+
+	send(t, b, `{"action":"leave-seat"}`)
+	waitWatching(t, aRecv, 1)
+
+	b.Close()
+	waitWatching(t, aRecv, 0)
+}
+
+func waitWatching(t *testing.T, r received, n uint) {
+	t.Helper()
+	timeout := time.After(2 * time.Second)
+	for {
+		select {
+		case w := <-r.watch:
+			if w == n {
+				return
+			}
+		case <-timeout:
+			t.Fatalf("timed out waiting for watching %d", n)
+		}
+	}
 }
 
 func TestReconnectAfterGraceFails(t *testing.T) {

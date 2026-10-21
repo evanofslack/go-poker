@@ -24,7 +24,8 @@ var (
 )
 
 func handleJoinTable(c *Client, tablename string, username string, token string, create bool) {
-	if err := c.hub.joinTable(c, tablename, username, token, create); err != nil {
+	reconnected, err := c.hub.joinTable(c, tablename, username, token, create)
+	if err != nil {
 		sendError(c, err.Error())
 		return
 	}
@@ -33,7 +34,11 @@ func handleJoinTable(c *Client, tablename string, username string, token string,
 
 	c.send <- createJoinedTable(c)
 	c.send <- createGameView(c)
-	c.table.send(createNewMessage(gameAdminName, fmt.Sprintf("%s has joined", username)))
+	broadcastGame(c.table) // the watching count may have changed
+	// a reconnect is already logged
+	if !reconnected {
+		c.table.send(createNewMessage(gameAdminName, fmt.Sprintf("%s has joined", c.username)))
+	}
 }
 
 func handleLeaveTable(c *Client, tablename string) {
@@ -639,12 +644,10 @@ func createNewLog(message string) []byte {
 func broadcastGame(t *table) {
 	u := stateUpdate{byUUID: map[string][]byte{}}
 	view := t.game.GenerateOmniView()
-	host := t.hostID()
-	endsIn := t.turnEndsIn(view)
 	for i, p := range view.Players {
-		u.byUUID[p.UUID] = createUpdatedGame(t.game.GeneratePlayerView(uint(i)), host, endsIn, t.sitOutNext[p.UUID])
+		u.byUUID[p.UUID] = createUpdatedGame(t, t.game.GeneratePlayerView(uint(i)), t.sitOutNext[p.UUID])
 	}
-	u.spectator = createUpdatedGame(t.game.GeneratePlayerView(uint(len(view.Players))), host, endsIn, false)
+	u.spectator = createUpdatedGame(t, t.game.GeneratePlayerView(uint(len(view.Players))), false)
 	select {
 	case t.updates <- u:
 	case <-t.done:
@@ -658,17 +661,19 @@ func createGameView(c *Client) []byte {
 		pn = uint(len(c.table.game.GenerateOmniView().Players))
 	}
 	view := c.table.game.GeneratePlayerView(pn)
-	return createUpdatedGame(view, c.table.hostID(), c.table.turnEndsIn(view), ok && c.table.sitOutNext[c.id()])
+	return createUpdatedGame(c.table, view, ok && c.table.sitOutNext[c.id()])
 }
 
-func createUpdatedGame(view *poker.GameView, host string, turnEndsIn int64, sitOutNext bool) []byte {
+// createUpdatedGame wraps one recipient's view of the game. Caller holds t.mu.
+func createUpdatedGame(t *table, view *poker.GameView, sitOutNext bool) []byte {
 	game := updateGame{
 		base:       base{actionUpdateGame},
 		Game:       view,
-		Host:       host,
-		TurnEndsIn: turnEndsIn,
+		Host:       t.hostID(),
+		TurnEndsIn: t.turnEndsIn(view),
 		SitOutNext: sitOutNext,
 		Seats:      maxSeats,
+		Watching:   t.watching(),
 	}
 
 	resp, err := json.Marshal(game)

@@ -89,6 +89,16 @@ export function playerFold(socket: WebSocket) {
     );
 }
 
+// leaveTable leaves the table, giving up any seat
+export function leaveTable(socket: WebSocket, tablename: string) {
+    socket?.send(
+        JSON.stringify({
+            action: "leave-table",
+            tablename: tablename,
+        })
+    );
+}
+
 // leaveSeat gives up the seat but stays at the table as a spectator
 export function leaveSeat(socket: WebSocket) {
     socket?.send(

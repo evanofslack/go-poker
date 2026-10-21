@@ -9,6 +9,14 @@ const views = {
     small: { viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true },
     landscape: { viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true },
 };
+// gap between the bottom of name's seat plate and the footer's controls, negative on overlap
+const footerGap = (p, name) =>
+    p.evaluate((name) => {
+        const plate = [...document.querySelectorAll("p.truncate")].find((e) => e.textContent === name).parentElement;
+        const controls = [...document.querySelectorAll("footer button, footer input")].map((e) => e.getBoundingClientRect().top);
+        return Math.min(...controls) - plate.getBoundingClientRect().bottom;
+    }, name);
+
 const names = ["alice", "bob", "carol", "dave", "erin", "frank", "grace", "heidi"];
 const kinds = ["desktop", "phone", "tablet", "landscape", "small", "laptop", "desktop", "desktop"];
 
@@ -50,6 +58,8 @@ for (const { p, kind, name } of pages) {
     const vw = await p.evaluate(() => window.innerWidth);
     check(`${kind}: own seat at the bottom`, mine && mine.y === lowest && Math.abs(mine.x - vw / 2) < vw * 0.1, JSON.stringify(mine));
     check(`${kind}: all 8 seats on screen`, boxes.length === 8 && boxes.every((b) => b.l >= 0 && b.r <= vw), `${boxes.length}`);
+    const gap = await footerGap(p, name);
+    check(`${kind}: own seat clear of the footer`, gap >= 0, `${gap}px`);
     await shot(p, `lay-1-${kind}-${name}`);
 }
 
@@ -60,7 +70,20 @@ for (const { p, kind, name } of pages) {
         await r.click();
         await shot(p, `lay-2-raise-${kind}`);
         check(`${kind}: raise input fits`, !(await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)));
+        const gap = await footerGap(p, name);
+        check(`${kind}: own seat clear of the raise input`, gap >= 0, `${gap}px`);
     }
+}
+
+// the seat menu opens upward from the bottom seat, so it stays on screen
+for (const { p, kind } of pages.filter((x) => ["phone", "landscape"].includes(x.kind))) {
+    await p.click('button[title="seat options"]');
+    const menu = await p.locator('button:text-is("leave seat")').boundingBox();
+    const vh = await p.evaluate(() => window.innerHeight);
+    check(`${kind}: seat menu on screen`, menu && menu.y >= 0 && menu.y + menu.height <= vh, JSON.stringify(menu));
+    await shot(p, `lay-4-menu-${kind}`);
+    await p.keyboard.press("Escape");
+    check(`${kind}: escape closes the seat menu`, (await p.locator('button:text-is("leave seat")').count()) === 0);
 }
 const phone = pages[1].p;
 await phone.click('button:text-is("chat")');
