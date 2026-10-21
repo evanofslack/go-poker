@@ -175,7 +175,7 @@ Needs the host role from 2.2.
 - [ ] **End session with a ledger:** net result per player (buy-ins vs final stack), copyable.
 - [ ] **Spectator mode** made explicit in the UI. The header now counts spectators ("watching 2");
   a list of who's watching is left.
-- [ ] **Bots** so one person can demo the app alone. See 5.2.
+- [x] **Bots** so one person can demo the app alone (easy level). See 5.2.
 
 ## 5.1 Table settings
 
@@ -275,30 +275,37 @@ Built off main alongside #62 (ledger) and #63 (players panel). After those merge
 and auto-rebuys in the ledger, and show the bot badge in the players panel.
 
 
-- [ ] `backend/bot/`: `Decide(level, view, pn, rng) Action` (check/call/raise/fold plus amount), pure
+- [x] `backend/bot/`: `Decide(level, view, pn, rng) Action` (check/call/raise/fold plus amount), pure
   and table-free so levels are unit tested on their own.
-- [ ] **Easy** (calling station): checks when free, calls most bets, folds weak hands to big bets
+- [x] **Easy** (calling station): checks when free, calls most bets, folds weak hands to big bets
   (over ~⅓ of its stack), and min-raises now and then with a pair or better. Some randomness so it
   isn't fully predictable. Uses the evaluator for its made hand, no simulation.
-- [ ] Turn taking: when `startTurnTimer` lands on a bot, schedule its move after a short random delay
+- [x] Turn taking: when `startTurnTimer` lands on a bot, schedule its move after a short random delay
   (about 1-2s, a var so tests shorten it) tied to `turnSeq`, so a reset or turn change cancels it.
   The move checks the table isn't done and the bot is still the player to act.
-- [ ] Pull call/check/raise/fold out of the client handlers into `act(t, pn, kind, amount)`, shared by
+- [x] Pull call/check/raise/fold out of the client handlers into `act(t, pn, kind, amount)`, shared by
   clients, bots and `turnTimedOut`. If a bot's action is rejected, it checks or folds instead.
-- [ ] Protocol: inbound `add-bot {seatID, buyIn, name, level}` and `remove-bot {seatID}`; `update-game`
+- [x] Protocol: inbound `add-bot {seatID, buyIn, name, level}` and `remove-bot {seatID}`; `update-game`
   gets `bots: uuid[]`. Update `messages.go`, `actions.ts`, `interfaces/index.ts`; validate name and
   `level` in `validate.go` (only `easy` for now). Buy-in uses the same bounds as `take-seat`.
-- [ ] Share the seating steps (add player, name, buy in, ready, seat) between `handleTakeSeat` and
+- [x] Share the seating steps (add player, name, buy in, ready, seat) between `handleTakeSeat` and
   add-bot instead of copying them.
-- [ ] `start-game` is allowed for the host even without a seat, so a bots-only game can start.
-- [ ] Remove a bot like a leaving player: folded on its turn and removed after the hand.
-- [ ] Web: the host sees an "add bot" button on empty seats (seated or not, mid-game too) that opens the
+- [x] `start-game` is allowed for the host even without a seat, so a bots-only game can start.
+- [x] Remove a bot like a leaving player: folded on its turn and removed after the hand.
+- [x] Web: the host sees an "add bot" button on empty seats (seated or not, mid-game too) that opens the
   buy-in and name dialog. Bot seats show a "bot" badge, and the host gets a remove button on them.
   Bot names in `web/lib/bots.ts`. No level picker until there's a second level.
-- [ ] Tests: host-only add/remove, seat taken, bad buy-in, name taken or invalid, bot acts on its turn
+- [x] Tests: host-only add/remove, seat taken, bad buy-in, name taken or invalid, bot acts on its turn
   and the hand finishes, bot can't see hole cards, busted bot rebuys for its buy-in, host starts a
   bots-only game and it keeps dealing, table with only bots and no clients is deleted, level validation.
   `e2e/bots.mjs`: host sits, adds two bots, starts, and plays a hand to showdown.
+
+Differences from the plan:
+- Bots think 1-2s per move, so a heads-up hand of only bots takes about 15s.
+- "Bot can't see hole cards" is checked in `e2e/bots.mjs` (a spectating host sees no bot cards
+  mid-hand). On the server it holds because `bot.Decide` only gets `GeneratePlayerView(pn)`.
+- `bot.Decide` reduces the view to a small `spot` struct, since the engine's player type isn't
+  exported, so tests build spots directly.
 
 ### Later: medium bot
 
