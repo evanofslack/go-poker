@@ -82,8 +82,9 @@ check("and your own folded-against cards", (await cardsIn(bob, 1)) === 2);
 await bob.click('[aria-label="close table panel"]');
 await bob.click('button[aria-label^="chat"]');
 await bob.click('button:text-is("log")');
-check("a reload keeps the log", await has(bob, "text=alice folds"));
-check("without repeating lines", (await bob.locator("text=alice folds").count()) === 1);
+check("a reload keeps the log", await has(bob, "text=alice sits down with"));
+check("without repeating lines", (await bob.locator("text=alice sits down with").count()) === 1);
+check("and no poker actions", (await bob.locator("text=alice folds").count()) === 0);
 
 await alice.setViewportSize({ width: 360, height: 740 });
 await shot(alice, "history-phone");

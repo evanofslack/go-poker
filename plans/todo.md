@@ -479,6 +479,8 @@ Notes:
 - [x] Play style stats from totals the server keeps by name (`tally`): VPIP, PFR, 3-bet, AF,
   WTSD, W$SD and bb/100, plus each player's best hand shown. Shown once a player has 10 hands.
 - [x] Keep the last 200 log lines on the server so late joiners and reloads get them (`log-history`).
+- [x] The log keeps table events only (joins, sitting out, rebuys, host actions). Bets, folds, blinds
+  and winners are in the hands tab instead.
 
 # Stage 6: UI consistency and mobile
 

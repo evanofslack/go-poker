@@ -95,15 +95,20 @@ func TestHistoryShowsShowdown(t *testing.T) {
 	waitGame(t, sRecv.games, func(poker.GameView) bool { return true })
 
 	// a calls and b checks, then both check down; b acts first after the flop
+	turn := func(stage poker.GameStage, name string) {
+		t.Helper()
+		waitGame(t, aRecv.games, func(g poker.GameView) bool {
+			return g.Betting && g.Stage == stage && g.Players[g.ActionNum].Username == name
+		})
+	}
 	send(t, a, `{"action":"player-call"}`)
-	waitLog(t, aRecv, "a calls 10")
+	turn(poker.PreFlop, "b")
 	send(t, b, `{"action":"player-check"}`)
-	waitLog(t, aRecv, "b checks")
-	for range 3 {
+	for _, stage := range []poker.GameStage{poker.Flop, poker.Turn, poker.River} {
+		turn(stage, "b")
 		send(t, b, `{"action":"player-check"}`)
-		waitLog(t, aRecv, "b checks")
+		turn(stage, "a")
 		send(t, a, `{"action":"player-check"}`)
-		waitLog(t, aRecv, "a checks")
 	}
 
 	for name, recv := range map[string]received{"a": aRecv, "b": bRecv, "s": sRecv} {
