@@ -7,7 +7,7 @@
 | 3 | Upgrades | done |
 | 4 | Core play experience | done |
 | 5 | Host and table features | planned |
-| 6 | UI consistency and mobile | planned |
+| 6 | UI consistency and mobile | accessibility left |
 | 7 | Operator tooling | planned |
 | - | Backlog | unranked |
 
@@ -163,7 +163,7 @@ Consider the light token pass from 6.1 first so new components aren't restyled t
 
 Needs the host role from 2.2.
 
-- [ ] **Invite links:** a `/t/:name` route (or `?table=`) and a "copy invite link" button, instead of telling
+- [x] **Invite links:** a `/t/:name` route (or `?table=`) and a "copy invite link" button, instead of telling
   friends to type the same table name.
 - [ ] **Table settings** for the host: blinds, min/max buy-in, seat count, turn timer length,
   private/password tables. `GameConfig` is currently fixed at creation.
@@ -184,17 +184,17 @@ Needs the host role from 2.2.
 
 ## 6.2 Feedback states
 
-- [ ] Connection status indicator (connected / reconnecting / disconnected).
-- [ ] Toasts for server errors (reusing 2.3/2.7 plumbing).
-- [ ] Loading and empty states (new table shows six "Open" seats with no guidance).
+- [x] Connection status indicator (connected / reconnecting / disconnected).
+- [x] Toasts for server errors (reusing 2.3/2.7 plumbing).
+- [x] Loading and empty states (new table shows six "Open" seats with no guidance).
 
 ## 6.3 Layout and accessibility
 
-- [ ] Responsive layout. Today it's absolutely positioned corners, fixed `w-96` chat and `w-56` seats,
+- [x] Responsive layout. Today it's absolutely positioned corners, fixed `w-96` chat and `w-56` seats,
   and `GameInfo` hidden on small screens.
-- [ ] Compute seat positions around an oval from seat count instead of hand-placed `chipPosition`
+- [x] Compute seat positions around an oval from seat count instead of hand-placed `chipPosition`
   percentages (also unlocks 9-max tables from Stage 5 settings).
-- [ ] Simplify `Seat.tsx` (four render branches, duplicated markup).
+- [x] Simplify `Seat.tsx` (four render branches, duplicated markup).
 - [ ] Accessibility: labels for cards and buttons, turn state not conveyed only by glow/color,
   visible focus styles.
 
