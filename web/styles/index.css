@@ -15,7 +15,7 @@
   --color-fg: var(--color-zinc-100);
   --color-muted: var(--color-zinc-400);
   --color-subtle: var(--color-zinc-500);
-  --color-accent: var(--color-emerald-500);
+  --color-accent: var(--color-cyan-500);
   --color-danger: var(--color-rose-600);
   --color-highlight: var(--color-amber-200); /* winning seat */
 }

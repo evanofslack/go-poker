@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { leaveSeat, rebuy, sitOut } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
+import { useDismiss } from "../hooks/useDismiss";
 import { Game, Player } from "../interfaces/index";
 import BuyIn from "./BuyIn";
 
@@ -14,6 +15,12 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
     const socket = useSocket();
     const [open, setOpen] = useState(false);
     const [rebuying, setRebuying] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    const close = () => {
+        setOpen(false);
+        setRebuying(false);
+    };
+    useDismiss(ref, open, close);
 
     const betweenHands = !game.running || game.stage === 1;
 
@@ -21,10 +28,6 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
 
     const sittingOut = !player.ready && player.stack > 0;
     const room = game.config.maxBuy - player.stack;
-    const close = () => {
-        setOpen(false);
-        setRebuying(false);
-    };
 
     let sitLabel = "sit out";
     if (sittingOut) sitLabel = "sit in";
@@ -32,7 +35,7 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
 
     const item = "px-3 py-1.5 text-left text-sm hover:bg-raised";
     return (
-        <>
+        <div ref={ref}>
             <button
                 className="absolute top-1/2 right-1 z-20 -translate-y-1/2 px-1 text-lg leading-none opacity-60 hover:opacity-100"
                 title="seat options"
@@ -41,7 +44,7 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
                 ⋯
             </button>
             {open && (
-                <div className="absolute top-full right-0 z-30 mt-1 flex w-48 flex-col rounded-md border border-zinc-600 bg-panel py-1 text-fg shadow-xl">
+                <div className="absolute right-0 bottom-full z-30 mb-1 flex w-48 flex-col rounded-md border border-zinc-600 bg-panel py-1 text-fg shadow-xl">
                     {rebuying ? (
                         <div className="h-20">
                             <BuyIn
@@ -58,7 +61,8 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
                     ) : (
                         <>
                             {player.stack > 0 && (
-                                <button className={item}
+                                <button
+                                    className={item}
                                     onClick={() => {
                                         sitOut(socket);
                                         close();
@@ -72,7 +76,8 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
                                     rebuy
                                 </button>
                             )}
-                            <button className={item + " text-danger"}
+                            <button
+                                className={item + " text-danger"}
                                 onClick={() => {
                                     leaveSeat(socket);
                                     close();
@@ -84,6 +89,6 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
                     )}
                 </div>
             )}
-        </>
+        </div>
     );
 }

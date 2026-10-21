@@ -88,8 +88,9 @@ check(
 );
 
 // only the host sees reset
-check("host sees reset", (await alice.locator('button:text-is("reset")').count()) === 1);
-check("non-host doesn't see reset", (await bob.locator('button:text-is("reset")').count()) === 0);
+const hostMenu = 'button[aria-haspopup=menu]:has-text("host")';
+check("host sees the host menu", (await alice.locator(hostMenu).count()) === 1);
+check("non-host doesn't see it", (await bob.locator(hostMenu).count()) === 0);
 
 // alice (dealer, small blind) folds; the server logs it and deals the next hand once
 await alice.click('button:text-is("fold")');

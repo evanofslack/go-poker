@@ -1,3 +1,4 @@
+import classNames from "classnames";
 import { useContext } from "react";
 import { AppContext } from "../providers/AppStore";
 import { Game, Player } from "../interfaces";
@@ -75,7 +76,15 @@ export default function Table() {
                 </div>
             ))}
             {ids.map((id) => (
-                <div key={id} className="absolute z-20 -translate-1/2" style={at(angle(id))}>
+                <div
+                    key={id}
+                    // your seat goes on top, so its menu opens over the seats beside it
+                    className={classNames(
+                        "absolute -translate-1/2",
+                        id === own?.seatID ? "z-40" : "z-20"
+                    )}
+                    style={at(angle(id))}
+                >
                     <Seat id={id} player={bySeat.get(id) ?? null} />
                 </div>
             ))}

@@ -67,6 +67,7 @@ export type Game = {
     turnEndsIn: number; // ms until the player to act times out, 0 when not betting
     sitOutNext: boolean; // you asked to sit out once this hand ends
     seats: number; // seats at the table
+    watching: number; // clients at the table without a seat
 };
 
 export type Config = {

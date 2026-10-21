@@ -169,9 +169,12 @@ Needs the host role from 2.2.
   private/password tables. `GameConfig` is currently fixed at creation.
 - [ ] **Seat management:** kick a player, sit a player out, optionally approve buy-ins/rebuys.
 - [ ] **Pause/resume** the game.
-- [ ] **Confirm before reset** (reset is already host-only; it's still a faint top-left link that wipes the table).
+- [x] **Confirm before reset.** Reset now sits in a host menu and asks first.
+- [ ] **Public tables:** list open tables on the home page so anyone can pick one to join. Needs a hub
+  listing of tables (name, stakes, seats taken), and goes with private/password tables.
 - [ ] **End session with a ledger:** net result per player (buy-ins vs final stack), copyable.
-- [ ] **Spectator mode** made explicit in the UI ("watching", count of spectators).
+- [ ] **Spectator mode** made explicit in the UI. The header now counts spectators ("watching 2");
+  a list of who's watching is left.
 
 # Stage 6: UI consistency and mobile
 
