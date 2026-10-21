@@ -6,7 +6,7 @@
 | 2 | Game correctness and cheating | done |
 | 3 | Upgrades | done |
 | 4 | Core play experience | done |
-| 5 | Host and table features | done (hard bot later) |
+| 5 | Host and table features | done |
 | 6 | UI consistency and mobile | done |
 | 7 | Operator tooling | planned |
 | - | Backlog | unranked |
@@ -459,9 +459,8 @@ Notes:
 
 - [x] Players, stats and the host's session controls move out of the chat popover into a "table"
   drawer, top left. Chat keeps chat and log. The header host menu becomes a host-only tab.
-- [x] Show the table config (stakes, starting stack, seats, timer, password on/off) in one of the
-  panel's tabs, read-only for everyone. Later, maybe editable by the host. A "settings" tab; the
-  header drops "nl texas holdem" and the lock icon, which moved there. e2e: `settings.mjs`.
+- [ ] Show the table config (stakes, starting stack, seats, timer, password on/off) in one of the
+  panel's tabs, read-only for everyone. Later, maybe editable by the host.
 
 # Stage 6: UI consistency and mobile
 
