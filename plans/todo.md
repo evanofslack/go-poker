@@ -166,7 +166,7 @@ Needs the host role from 2.2.
 - [x] **Invite links:** a `/t/:name` route (or `?table=`) and a "copy invite link" button, instead of telling
   friends to type the same table name.
 - [ ] **Table settings** for the host: blinds, min/max buy-in, seat count, turn timer length,
-  private/password tables. `GameConfig` is currently fixed at creation.
+  private/password tables. See 5.1.
 - [ ] **Seat management:** kick a player, sit a player out, optionally approve buy-ins/rebuys.
 - [ ] **Pause/resume** the game.
 - [x] **Confirm before reset.** Reset now sits in a host menu and asks first.
@@ -175,6 +175,67 @@ Needs the host role from 2.2.
 - [ ] **End session with a ledger:** net result per player (buy-ins vs final stack), copyable.
 - [ ] **Spectator mode** made explicit in the UI. The header now counts spectators ("watching 2");
   a list of who's watching is left.
+
+## 5.1 Table settings
+
+The host picks settings in a dialog when creating a table. Settings are fixed once the table exists.
+
+Today: `poker.NewGame()` hard-codes 10/20 and a 10000 max buy-in with no minimum. `maxSeats`,
+`nextHandDelay` and `turnTimeout` are package constants in `backend/server/events.go`, and
+`web/components/Countdown.tsx` hard-codes 30s.
+
+| Setting | Default | Allowed | Form |
+|---|---|---|---|
+| Seats | 8 | 2-9 | presets 2 / 6 / 8 / 9 |
+| Stakes (SB/BB) | 10/20 | 1 ≤ SB ≤ BB | presets 1/2, 5/10, 10/20, 25/50, 100/200, or custom |
+| Min buy-in | 50 BB | ≥ 1 BB, ≤ max | in BB, chip amount shown beside it |
+| Max buy-in | 200 BB | ≤ 1000 BB | in BB, chip amount shown beside it |
+| Turn timer | 30s | off, 15, 30, 60, 120s | segmented control |
+| Next-hand delay | 5s | 2, 3, 5, 8, 10, 15s | segmented control |
+| Public | off | bool | toggle |
+| Password | none | ≤ 32 chars | optional text field |
+
+Decided:
+- One delay after every hand, used for showdowns and folds alike.
+- Public is stored and sent to clients but does nothing yet; the public table list (below) uses it later.
+- Buy-ins are entered in big blinds and stored in chips.
+- Seats cap at 9. Check the oval layout at 9 on mobile.
+- Turn timer off means an idle connected player can stall the hand. Fine, the host chose it.
+- No Mantine: native inputs, the existing `Button`, and a small segmented control component.
+
+### PR 1: add table settings (server + protocol)
+
+- [ ] `tableSettings` on `table` with the fields above. `poker.NewGame(cfg)` takes the engine config.
+  Per-table seats, turn timeout and next-hand delay replace the constants (tests still shorten them).
+- [ ] `create-table` takes an optional `settings` object; missing fields get defaults, so old clients
+  and the e2e scripts keep working. Bounds checks in `validate.go`.
+- [ ] Min buy-in enforced in `handleTakeSeat`, and on rebuy when busted (topping up a stack with chips
+  left can be any amount up to max).
+- [ ] Turn timer off: `startTurnTimer` does nothing, `turnEndsIn` stays 0 (the countdown already hides).
+- [ ] `update-game` sends the settings (`hasPassword`, never the password). `Countdown` reads the turn
+  length from it; seat `BuyIn` uses min/max from it.
+- [ ] Tests: validation bounds, defaults, seat count and min buy-in enforced, no auto-fold with timer off.
+
+### PR 2: add table passwords
+
+- [ ] `join-table` takes `password`. Compare in constant time; kept in memory only, never logged or sent.
+- [ ] A valid reconnect token skips the password, so a dropped player reclaims their seat.
+- [ ] Add a `code` to the `error` message (`password-required`, `wrong-password`) so the client can show
+  a password field without matching on text.
+- [ ] Invite links put the password in the fragment: `?table=foo#pw=…`. The fragment is never sent in
+  HTTP requests or `Referer`, so it stays out of server and proxy logs. The client reads it, strips it
+  from the address bar with `history.replaceState`, and sends it over the websocket (wss in prod).
+  Anyone with the link can join, which is the point; it stays in the sharer's clipboard and chat history.
+- [ ] Tests: no password, wrong password, right password, reconnect without password.
+
+### PR 3: add create table form
+
+- [ ] "create" on the join form opens a settings dialog (name and table already entered). Submitting
+  sends `create-table`; the table doesn't exist until then. Errors (name taken, invalid value) show in
+  the dialog and keep it open. On `joined-table` the host lands at the table as today.
+- [ ] Defaults work with no edits. Seats, timer and delay go under a collapsed "more" section.
+- [ ] `Dialog` gets a width option (fixed `w-72` today). Settings presets live in `web/lib/settings.ts`.
+- [ ] Update `e2e/forms.mjs` for the dialog; check the dialog and a 9-seat table at phone width.
 
 # Stage 6: UI consistency and mobile
 
