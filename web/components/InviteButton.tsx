@@ -10,7 +10,7 @@ export default function InviteButton() {
     return (
         <Button
             className="px-2 py-0.5 text-sm"
-            onClick={() => copyInvite(appState.table!, dispatch)}
+            onClick={() => copyInvite(appState.table!, appState.password, dispatch)}
         >
             copy invite link
         </Button>

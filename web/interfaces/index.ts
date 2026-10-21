@@ -24,8 +24,10 @@ export type AppState = {
     username: string | null;
     clientID: string | null;
     table: string | null;
+    password: string | null; // the table's, for invite links
     game: Game | null;
     error: string | null;
+    needPassword: boolean; // the last join was refused for a missing or wrong password
     connection: Connection;
     toasts: Toast[];
 };
@@ -67,6 +69,7 @@ export type Game = {
     turnEndsIn: number; // ms until the player to act times out, 0 when not betting
     sitOutNext: boolean; // you asked to sit out once this hand ends
     settings: Settings; // chosen by the host when creating the table
+    hasPassword: boolean;
     watching: number; // clients at the table without a seat
 };
 

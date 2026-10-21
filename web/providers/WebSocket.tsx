@@ -5,8 +5,8 @@ import { joinTable } from "../actions/actions";
 import { inviteLink } from "../lib/invite";
 
 // Session lets a tab rejoin its table, and reclaim its seat with the token,
-// after a dropped connection or a reload.
-type Session = { table: string; username: string; token?: string };
+// after a dropped connection or a reload. The password lets a spectator back in.
+type Session = { table: string; username: string; token?: string; password?: string };
 const sessionKey = "session";
 
 function loadSession(): Session | null {
@@ -79,7 +79,7 @@ export function SocketProvider(props: SocketProviderProps) {
                 const session = loadSession();
                 if (session) {
                     rejoining.current = true;
-                    joinTable(ws, session.table, session.username, session.token);
+                    joinTable(ws, session.table, session.username, session.token, session.password);
                 }
             };
             ws.onclose = () => {
@@ -146,6 +146,7 @@ export function SocketProvider(props: SocketProviderProps) {
                         turnEndsIn: event.turnEndsIn,
                         sitOutNext: event.sitOutNext,
                         settings: event.settings,
+                        hasPassword: event.hasPassword,
                         watching: event.watching,
                     };
                     dispatch({ type: "updateGame", payload: newGame });
@@ -158,6 +159,9 @@ export function SocketProvider(props: SocketProviderProps) {
                     };
                     dispatch({ type: "addLog", payload: errorLog });
                     dispatch({ type: "setError", payload: event.message });
+                    if (event.code === "password-required" || event.code === "wrong-password") {
+                        dispatch({ type: "setNeedPassword", payload: true });
+                    }
                     // the join form shows its own errors
                     if (appState.table) {
                         dispatch({ type: "addToast", payload: { message: event.message, kind: "error" } });
@@ -177,8 +181,11 @@ export function SocketProvider(props: SocketProviderProps) {
                         table: event.tablename,
                         username: event.username,
                         token: same ? prev?.token : undefined,
+                        password: event.password,
                     });
                     dispatch({ type: "setError", payload: null });
+                    dispatch({ type: "setNeedPassword", payload: false });
+                    dispatch({ type: "setPassword", payload: event.password ?? null });
                     dispatch({ type: "setTablename", payload: event.tablename });
                     // the address bar doubles as the invite link
                     window.history.replaceState(null, "", inviteLink(event.tablename));

@@ -7,8 +7,10 @@ const initialState: AppState = {
     username: null,
     clientID: null,
     table: null,
+    password: null,
     game: null,
     error: null,
+    needPassword: false,
     connection: "connecting",
     toasts: [],
 };
@@ -24,6 +26,8 @@ type ACTIONTYPE =
     | { type: "leftTable" }
     | { type: "updatePlayerID"; payload: string }
     | { type: "setTablename"; payload: string }
+    | { type: "setPassword"; payload: string | null }
+    | { type: "setNeedPassword"; payload: boolean }
     | { type: "setError"; payload: string | null }
     | { type: "setConnection"; payload: Connection }
     | { type: "addToast"; payload: Omit<Toast, "id"> }
@@ -51,6 +55,10 @@ function reducer(state: AppState, action: ACTIONTYPE) {
             return { ...state, clientID: action.payload };
         case "setTablename":
             return { ...state, table: action.payload };
+        case "setPassword":
+            return { ...state, password: action.payload };
+        case "setNeedPassword":
+            return { ...state, needPassword: action.payload };
         case "setError":
             return { ...state, error: action.payload };
         case "setConnection":
