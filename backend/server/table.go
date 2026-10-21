@@ -21,7 +21,7 @@ type tableSettings struct {
 	MaxBuy        uint `json:"maxBuy"`
 	TurnTime      uint `json:"turnTime"`      // time to act before checking or folding for you, 0 for no limit
 	NextHandDelay uint `json:"nextHandDelay"` // pause after a hand before dealing the next
-	Public        bool `json:"public"`        // not used yet, for listing tables later
+	Public        bool `json:"public"`        // listed on the home page
 	ApproveRebuys bool `json:"approveRebuys"` // rebuys, and sitting back down, wait for the host
 }
 
@@ -238,6 +238,35 @@ func (t *table) watchers() []string {
 	}
 	slices.Sort(names)
 	return names
+}
+
+// summary is what the home page shows of t. Caller holds t.mu.
+func (t *table) summary() tableSummary {
+	view := t.game.GenerateOmniView()
+	var players, bots uint
+	for _, p := range view.Players {
+		if p.Left {
+			continue
+		}
+		players++
+		if _, ok := t.bots[p.UUID]; ok {
+			bots++
+		}
+	}
+	return tableSummary{
+		Name:        t.name,
+		SmallBlind:  t.settings.SmallBlind,
+		BigBlind:    t.settings.BigBlind,
+		MinBuy:      t.settings.MinBuy,
+		MaxBuy:      t.settings.MaxBuy,
+		Seats:       t.settings.Seats,
+		Players:     players,
+		Bots:        bots,
+		Watchers:    uint(len(t.watchers())),
+		Running:     view.Running,
+		Paused:      t.paused,
+		HasPassword: t.password != "",
+	}
 }
 
 // disconnected are the names of seated players waiting out their reconnect

@@ -204,3 +204,8 @@ export function sessionAction(socket: WebSocket, action: "pause-game" | "resume-
         })
     );
 }
+
+// listTables asks for the public tables, answered with tables; works before joining
+export function listTables(socket: WebSocket) {
+    socket.send(JSON.stringify({ action: "list-tables" }));
+}

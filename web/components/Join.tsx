@@ -6,6 +6,8 @@ import { joinTable } from "../actions/actions";
 import Button from "./Button";
 import { invitedPassword, invitedTable } from "../lib/invite";
 import CreateTable from "./CreateTable";
+import PublicTables from "./PublicTables";
+import { TableSummary } from "../interfaces";
 
 function randomTableGen(length: number): string {
     let chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -52,6 +54,16 @@ export default function Join() {
         if (invalid) return;
         dispatch({ type: "setError", payload: null });
         setCreating(true);
+    };
+
+    // picking a listed table joins it once there's a name, unless it needs a password
+    const handlePick = (t: TableSummary) => {
+        setTablename(t.name);
+        dispatch({ type: "setError", payload: null });
+        dispatch({ type: "setNeedPassword", payload: t.hasPassword });
+        if (socket && connected && username != "" && !t.hasPassword) {
+            joinTable(socket, t.name, username);
+        }
     };
 
     const handleUsername = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,6 +143,7 @@ export default function Join() {
                     <p className="mt-2 px-4 text-center text-error">{appState.error}</p>
                 )}
                 {!connected && <p className="mt-2 text-subtle">connecting to server…</p>}
+                <PublicTables onPick={handlePick} />
                 {creating && (
                     <CreateTable
                         tablename={tablename}

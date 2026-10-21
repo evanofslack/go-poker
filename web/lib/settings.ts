@@ -34,7 +34,7 @@ export const defaultForm: SettingsForm = {
     seats: 8,
     turnTime: 30000,
     nextHandDelay: 5000,
-    public: false,
+    public: true,
     approveRebuys: false,
 };
 

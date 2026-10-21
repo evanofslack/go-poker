@@ -119,6 +119,9 @@ export function SocketProvider(props: SocketProviderProps) {
                     };
                     dispatch({ type: "addMessage", payload: newMessage });
                     return;
+                case "tables":
+                    dispatch({ type: "setTables", payload: event.tables ?? [] });
+                    return;
                 case "update-stats":
                     dispatch({ type: "addHands", payload: { hands: event.hands ?? [], full: event.full } });
                     return;
