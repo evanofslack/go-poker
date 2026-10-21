@@ -58,7 +58,7 @@ export default function Chat() {
             </div>
             <div className="flex w-full flex-row justify-between text-muted">
                 <input
-                    className="w-full bg-surface p-2 text-muted placeholder-zinc-600"
+                    className="w-full bg-surface p-2 text-muted placeholder-zinc-600 focus:outline-hidden"
                     id="input"
                     type="text"
                     maxLength={200}
