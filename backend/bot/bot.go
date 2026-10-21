@@ -11,7 +11,8 @@ import (
 
 // bot levels
 const (
-	Easy = "easy"
+	Easy   = "easy"
+	Medium = "medium"
 )
 
 // Kind is the kind of move a bot makes.
@@ -32,13 +33,17 @@ type Action struct {
 
 // Valid reports whether level is a bot level.
 func Valid(level string) bool {
-	return level == Easy
+	return level == Easy || level == Medium
 }
 
 // Decide picks a move for player pn, whose turn it is. view should be pn's own
 // player view, so the bot only knows what pn would.
 func Decide(level string, view *poker.GameView, pn uint, r *rand.Rand) Action {
-	return easy(spotOf(view, pn), r)
+	s := spotOf(view, pn)
+	if level == Medium {
+		return medium(s, r)
+	}
+	return easy(s, r)
 }
 
 // spot is what a bot looks at to decide.
@@ -50,6 +55,9 @@ type spot struct {
 	stack    uint
 	minRaise uint
 	called   bool // already acted, so it can't raise unless someone raised
+	pot      uint // every chip bet this hand, this street included
+	bb       uint // the big blind
+	others   int  // opponents still in the hand
 }
 
 func spotOf(view *poker.GameView, pn uint) spot {
@@ -61,9 +69,14 @@ func spotOf(view *poker.GameView, pn uint) spot {
 		stack:    p.Stack,
 		minRaise: view.MinRaise,
 		called:   p.Called,
+		bb:       view.Config.BigBlind,
 	}
-	for _, q := range view.Players {
+	for i, q := range view.Players {
 		s.top = max(s.top, q.Bet)
+		s.pot += q.TotalBet
+		if q.In && uint(i) != pn {
+			s.others++
+		}
 	}
 	return s
 }

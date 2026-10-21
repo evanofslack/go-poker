@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand/v2"
-	"slices"
 	"time"
 
 	"github.com/evanofslack/go-poker/bot"
@@ -73,7 +72,7 @@ func (t *table) scheduleBot(seq int) {
 		return
 	}
 	if _, ok := t.bots[view.Players[view.ActionNum].UUID]; ok {
-		time.AfterFunc(botDelay(), func() { botMove(t, seq) })
+		time.AfterFunc(t.botDelay(), func() { botMove(t, seq) })
 	}
 }
 
@@ -139,12 +138,11 @@ func rebuyBots(t *table) {
 	}
 }
 
-// botIDs are the uuids of the bots, sorted. Caller holds t.mu.
-func (t *table) botIDs() []string {
-	ids := make([]string, 0, len(t.bots))
-	for id := range t.bots {
-		ids = append(ids, id)
+// botLevels maps each bot's uuid to its level. Caller holds t.mu.
+func (t *table) botLevels() map[string]string {
+	levels := make(map[string]string, len(t.bots))
+	for id, seat := range t.bots {
+		levels[id] = seat.level
 	}
-	slices.Sort(ids)
-	return ids
+	return levels
 }

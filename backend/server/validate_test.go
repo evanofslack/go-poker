@@ -113,6 +113,7 @@ func TestValidBotLevel(t *testing.T) {
 		want bool
 	}{
 		{"easy", true},
+		{"medium", true},
 		{"", false},
 		{"Easy", false},
 		{"hard", false}, // not yet

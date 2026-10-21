@@ -175,7 +175,7 @@ Needs the host role from 2.2.
 - [ ] **End session with a ledger:** net result per player (buy-ins vs final stack), copyable.
 - [ ] **Spectator mode** made explicit in the UI. The header now counts spectators ("watching 2");
   a list of who's watching is left.
-- [x] **Bots** so one person can demo the app alone (easy level). See 5.2.
+- [x] **Bots** so one person can demo the app alone (easy and medium levels). See 5.2.
 
 ## 5.1 Table settings
 
@@ -307,16 +307,24 @@ Differences from the plan:
 - `bot.Decide` reduces the view to a small `spot` struct, since the engine's player type isn't
   exported, so tests build spots directly.
 
-### Later: medium bot
+### PR 2: add medium bot
 
-- [ ] **Equity:** Monte Carlo against random hands (a few thousand runouts, a few ms with the
+- [x] **Equity:** Monte Carlo against random hands (a few thousand runouts, a few ms with the
   evaluator), one random hand per opponent still in.
-- [ ] **Pot odds:** call when equity beats the price of calling, fold otherwise; raise for value when
+- [x] **Pot odds:** call when equity beats the price of calling, fold otherwise; raise for value when
   equity is well above it. Bet sizes of ½ to ¾ pot instead of min-raises.
-- [ ] **Preflop:** a starting hand chart (or the Chen formula) instead of equity against random hands,
+- [x] **Preflop:** a starting hand chart (or the Chen formula) instead of equity against random hands,
   which overrates junk at full tables.
-- [ ] Small bluff and slow-play rates so it isn't purely mechanical.
-- [ ] Level picker on "add bot" (easy / medium).
+- [x] Small bluff and slow-play rates so it isn't purely mechanical.
+- [x] Level picker on "add bot" (easy / medium).
+
+Differences from the plan:
+- Preflop uses the Chen formula (raise at 10+, call a raise at 7+, limp at 5+, two points looser heads
+  up). Postflop runs 1000 runouts against random hands, about 2.4ms against 8 opponents.
+- The add-bot dialog defaults to medium. `update-game` sends `bots` as `{uuid: level}` so seats read
+  "easy bot" or "medium bot".
+- `backend/bot/sim_test.go` plays bots against each other on the real engine (`BOTSIM=1`). Medium beats
+  easy by about +120 to +165 big blinds per 100 hands heads up.
 
 ### Later: hard bot
 
@@ -329,8 +337,7 @@ Differences from the plan:
 - [ ] **Light opponent modelling:** track each player's VPIP/aggression at the table and adjust (bluff
   tight players more, value bet loose ones).
 - [ ] Optional personalities on the same settings (tight-passive, loose-aggressive) for variety.
-- [ ] Check that hard beats medium and medium beats easy over many simulated hands (a headless test
-  harness that seats only bots).
+- [ ] Check that hard beats medium in `bot/sim_test.go` (`BOTSIM=1 go test ./bot -run Sim -v`).
 
 # Stage 6: UI consistency and mobile
 

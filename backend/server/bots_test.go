@@ -1,6 +1,7 @@
 package server
 
 import (
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -11,7 +12,11 @@ import (
 )
 
 func addBotMsg(seat int, name string) string {
-	return `{"action":"add-bot","seatID":` + strconv.Itoa(seat) + `,"buyIn":100,"name":"` + name + `","level":"easy"}`
+	return addLevelBotMsg(seat, name, "easy")
+}
+
+func addLevelBotMsg(seat int, name, level string) string {
+	return `{"action":"add-bot","seatID":` + strconv.Itoa(seat) + `,"buyIn":100,"name":"` + name + `","level":"` + level + `"}`
 }
 
 func removeBotMsg(seat int) string {
@@ -98,6 +103,47 @@ func TestBotsPlayAlone(t *testing.T) {
 	}
 }
 
+func TestMediumBotsPlay(t *testing.T) {
+	srv, hub := newTestServerHub(t)
+	host, r := createAndWait(t, srv, "t", "host")
+	send(t, host, addLevelBotMsg(1, "harper", "medium"), addLevelBotMsg(2, "eric", "medium"), addBotMsg(3, "gus"), `{"action":"start-game"}`)
+	eventually(t, func() bool { return isRunning(t, hub, "t") }, "game didn't start")
+
+	hands := 0
+	timeout := time.After(5 * time.Second)
+	for hands < 3 {
+		select {
+		case l := <-r.logs:
+			if strings.Contains(l, " wins ") || strings.Contains(l, " split ") {
+				hands++
+			}
+		case <-timeout:
+			t.Fatalf("bots finished %d hands, want 3", hands)
+		}
+	}
+}
+
+func TestBotLevelsSent(t *testing.T) {
+	srv := newTestServer(t)
+	host, _ := createAndWait(t, srv, "t", "host")
+	conn, r := dialRecv(t, srv)
+	send(t, conn, joinMsg("t", "guest"))
+	send(t, host, addLevelBotMsg(1, "harper", "medium"), addBotMsg(2, "gus"))
+
+	timeout := time.After(2 * time.Second)
+	for {
+		select {
+		case levels := <-r.bots:
+			got := slices.Sorted(maps.Values(levels))
+			if slices.Equal(got, []string{"easy", "medium"}) {
+				return
+			}
+		case <-timeout:
+			t.Fatal("bot levels not sent")
+		}
+	}
+}
+
 func TestBotOnlyTableDeleted(t *testing.T) {
 	srv, hub := newTestServerHub(t)
 	host, _ := createAndWait(t, srv, "t", "host")
@@ -132,11 +178,8 @@ func TestBotPlaysPerson(t *testing.T) {
 // TestBustedBotRebuys plays all-in hands between two bots until one busts,
 // then checks it bought back in.
 func TestBustedBotRebuys(t *testing.T) {
-	old := botDelay
-	botDelay = func() time.Duration { return time.Hour } // this test moves for the bots
-	t.Cleanup(func() { botDelay = old })
-
 	tbl := newTable("t", defaultSettings)
+	tbl.botDelay = func() time.Duration { return time.Hour } // this test moves for the bots
 	go tbl.run()
 	t.Cleanup(func() { close(tbl.done) })
 	tbl.mu.Lock()

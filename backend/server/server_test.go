@@ -333,8 +333,9 @@ type received struct {
 	locked chan bool   // hasPassword of each game update
 	joined chan string // password of each joined-table
 	logs   chan string
-	tokens chan string // session tokens from taking a seat
-	chat   chan string // chat messages, as "name: message"
+	tokens chan string            // session tokens from taking a seat
+	chat   chan string            // chat messages, as "name: message"
+	bots   chan map[string]string // bots of each game update
 }
 
 // dialRecv is dial, but also collects the game views and errors the client receives.
@@ -359,6 +360,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 		logs:   make(chan string, 256),
 		tokens: make(chan string, 256),
 		chat:   make(chan string, 256),
+		bots:   make(chan map[string]string, 256),
 	}
 	go func() {
 		for {
@@ -367,19 +369,20 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				return
 			}
 			var u struct {
-				Action  string         `json:"action"`
-				Game    poker.GameView `json:"game"`
-				Message string         `json:"message"`
-				Host    string         `json:"host"`
-				Token   string         `json:"token"`
-				Ends    int64          `json:"turnEndsIn"`
-				SitOut  bool           `json:"sitOutNext"`
-				Watch   uint           `json:"watching"`
-				Name    string         `json:"username"`
-				Sets    tableSettings  `json:"settings"`
-				Code    string         `json:"code"`
-				Locked  bool           `json:"hasPassword"`
-				Pass    string         `json:"password"`
+				Action  string            `json:"action"`
+				Game    poker.GameView    `json:"game"`
+				Message string            `json:"message"`
+				Host    string            `json:"host"`
+				Token   string            `json:"token"`
+				Ends    int64             `json:"turnEndsIn"`
+				SitOut  bool              `json:"sitOutNext"`
+				Watch   uint              `json:"watching"`
+				Name    string            `json:"username"`
+				Sets    tableSettings     `json:"settings"`
+				Code    string            `json:"code"`
+				Locked  bool              `json:"hasPassword"`
+				Pass    string            `json:"password"`
+				Bots    map[string]string `json:"bots"`
 			}
 			if json.Unmarshal(msg, &u) != nil {
 				continue
@@ -412,6 +415,10 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				}
 				select {
 				case r.locked <- u.Locked:
+				default:
+				}
+				select {
+				case r.bots <- u.Bots:
 				default:
 				}
 			case actionError:
