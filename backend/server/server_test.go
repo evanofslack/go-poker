@@ -328,6 +328,7 @@ type received struct {
 	sitOut chan bool          // sitOutNext of each game update
 	watch  chan []string      // watchers of each game update
 	ledger chan ledgerView    // ledger of each game update
+	away   chan []string      // disconnected of each game update
 	sets   chan tableSettings // settings of each game update
 	errors chan string
 	codes  chan string // code of each error
@@ -354,6 +355,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 		sitOut: make(chan bool, 256),
 		watch:  make(chan []string, 256),
 		ledger: make(chan ledgerView, 256),
+		away:   make(chan []string, 256),
 		sets:   make(chan tableSettings, 256),
 		errors: make(chan string, 256),
 		codes:  make(chan string, 256),
@@ -380,6 +382,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				SitOut  bool              `json:"sitOutNext"`
 				Watch   []string          `json:"watchers"`
 				Ledger  ledgerView        `json:"ledger"`
+				Away    []string          `json:"disconnected"`
 				Name    string            `json:"username"`
 				Sets    tableSettings     `json:"settings"`
 				Code    string            `json:"code"`
@@ -414,6 +417,10 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				}
 				select {
 				case r.ledger <- u.Ledger:
+				default:
+				}
+				select {
+				case r.away <- u.Away:
 				default:
 				}
 				select {
@@ -1496,4 +1503,35 @@ func waitChat(t *testing.T, r received, msg string) {
 			t.Fatalf("timed out waiting for chat %q", msg)
 		}
 	}
+}
+
+// waitAway waits for a game update whose disconnected players are names.
+func waitAway(t *testing.T, r received, names ...string) {
+	t.Helper()
+	timeout := time.After(2 * time.Second)
+	for {
+		select {
+		case a := <-r.away:
+			if slices.Equal(a, names) || len(a) == 0 && len(names) == 0 {
+				return
+			}
+		case <-timeout:
+			t.Fatalf("timed out waiting for disconnected %q", names)
+		}
+	}
+}
+
+func TestDisconnectedPlayers(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	send(t, a, seatMsg(1))
+	b, bRecv := dialRecv(t, srv)
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	token := waitToken(t, bRecv)
+
+	b.Close()
+	waitAway(t, aRecv, "b")
+	b2 := dial(t, srv)
+	send(t, b2, `{"action":"join-table","tablename":"t","username":"b","token":"`+token+`"}`)
+	waitAway(t, aRecv)
 }

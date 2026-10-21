@@ -205,6 +205,19 @@ func (t *table) watchers() []string {
 	return names
 }
 
+// disconnected are the names of seated players waiting out their reconnect
+// grace period, sorted. Caller holds t.mu.
+func (t *table) disconnected() []string {
+	names := []string{}
+	for _, p := range t.game.GenerateOmniView().Players {
+		if _, ok := t.grace[p.UUID]; ok {
+			names = append(names, p.Username)
+		}
+	}
+	slices.Sort(names)
+	return names
+}
+
 // hostID is the host's uuid, or empty if there is none. Caller holds t.mu.
 func (t *table) hostID() string {
 	if t.host == nil {

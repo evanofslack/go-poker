@@ -157,6 +157,9 @@ type updateGame struct {
 	// names of the clients at the table without a seat
 	Watchers []string `json:"watchers"`
 
+	// names of seated players who dropped and may still reconnect
+	Disconnected []string `json:"disconnected"`
+
 	Bots map[string]string `json:"bots"` // level of each bot, by uuid
 
 	Ledger ledgerView `json:"ledger"`

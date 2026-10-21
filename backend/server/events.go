@@ -735,16 +735,17 @@ func createGameView(c *Client) []byte {
 // createUpdatedGame wraps one recipient's view of the game. Caller holds t.mu.
 func createUpdatedGame(t *table, view *poker.GameView, sitOutNext bool) []byte {
 	game := updateGame{
-		base:        base{actionUpdateGame},
-		Game:        view,
-		Host:        t.hostID(),
-		TurnEndsIn:  t.turnEndsIn(view),
-		SitOutNext:  sitOutNext,
-		Settings:    t.settings,
-		HasPassword: t.password != "",
-		Watchers:    t.watchers(),
-		Bots:        t.botLevels(),
-		Ledger:      t.ledgerView(),
+		base:         base{actionUpdateGame},
+		Game:         view,
+		Host:         t.hostID(),
+		TurnEndsIn:   t.turnEndsIn(view),
+		SitOutNext:   sitOutNext,
+		Settings:     t.settings,
+		HasPassword:  t.password != "",
+		Watchers:     t.watchers(),
+		Disconnected: t.disconnected(),
+		Ledger:       t.ledgerView(),
+		Bots:         t.botLevels(),
 	}
 
 	resp, err := json.Marshal(game)
