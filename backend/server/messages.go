@@ -22,6 +22,8 @@ const (
 	actionLeaveSeat   string = "leave-seat"
 	actionSitOut      string = "sit-out"
 	actionRebuy       string = "rebuy"
+	actionAddBot      string = "add-bot"
+	actionRemoveBot   string = "remove-bot"
 )
 
 type base struct {
@@ -98,6 +100,21 @@ type rebuy struct {
 	Amount uint `json:"amount"`
 }
 
+// addBot is the host sitting a bot down
+type addBot struct {
+	base          // actionAddBot
+	SeatID uint   `json:"seatID"`
+	BuyIn  uint   `json:"buyIn"`
+	Name   string `json:"name"`
+	Level  string `json:"level"`
+}
+
+// removeBot is the host taking the bot in a seat out of the game
+type removeBot struct {
+	base        // actionRemoveBot
+	SeatID uint `json:"seatID"`
+}
+
 // outbound (server) actions
 const (
 	actionNewMessage       string = "new-message"
@@ -139,6 +156,8 @@ type updateGame struct {
 
 	// clients at the table without a seat
 	Watching uint `json:"watching"`
+
+	Bots []string `json:"bots"` // uuids of the players that are bots
 }
 
 // joinedTable confirms a create-table or join-table

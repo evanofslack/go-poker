@@ -307,6 +307,33 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		handleRebuy(c, r.Amount)
 		return nil
 
+	case actionAddBot:
+		var b addBot
+		err := json.Unmarshal(rawMessage, &b)
+		if err != nil {
+			return err
+		}
+		name := strings.TrimSpace(b.Name)
+		if !validUsername(name) {
+			sendError(c, "invalid bot name")
+			return errors.New("invalid bot name")
+		}
+		if !validBotLevel(b.Level) {
+			sendError(c, "invalid bot level")
+			return errors.New("invalid bot level")
+		}
+		handleAddBot(c, b.SeatID, b.BuyIn, name, b.Level)
+		return nil
+
+	case actionRemoveBot:
+		var b removeBot
+		err := json.Unmarshal(rawMessage, &b)
+		if err != nil {
+			return err
+		}
+		handleRemoveBot(c, b.SeatID)
+		return nil
+
 	default:
 		return errors.New("unexpected message action")
 	}

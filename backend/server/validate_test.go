@@ -106,3 +106,20 @@ func TestValidPassword(t *testing.T) {
 		}
 	}
 }
+
+func TestValidBotLevel(t *testing.T) {
+	tests := []struct {
+		s    string
+		want bool
+	}{
+		{"easy", true},
+		{"", false},
+		{"Easy", false},
+		{"hard", false}, // not yet
+	}
+	for _, tt := range tests {
+		if got := validBotLevel(tt.s); got != tt.want {
+			t.Errorf("validBotLevel(%q) = %v, want %v", tt.s, got, tt.want)
+		}
+	}
+}

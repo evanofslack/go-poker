@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/subtle"
+	"math/rand/v2"
 	"strings"
 	"sync"
 	"time"
@@ -71,6 +72,9 @@ type table struct {
 	// Both guarded by mu.
 	tokens map[string]string      // session token to player uuid
 	grace  map[string]*time.Timer // player uuid to the timer that removes them
+
+	bots map[string]botSeat // bot players by uuid, guarded by mu
+	rng  *rand.Rand         // for bot moves, guarded by mu
 }
 
 // newTable creates a new table
@@ -94,6 +98,8 @@ func newTable(name string, settings tableSettings) *table {
 		sitOutNext: make(map[string]bool),
 		tokens:     make(map[string]string),
 		grace:      make(map[string]*time.Timer),
+		bots:       make(map[string]botSeat),
+		rng:        rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())),
 	}
 }
 
