@@ -167,14 +167,14 @@ Needs the host role from 2.2.
   friends to type the same table name.
 - [x] **Table settings** for the host: blinds, min/max buy-in, seat count, turn timer length,
   private/password tables. See 5.1.
-- [ ] **Seat management:** kick a player, sit a player out, optionally approve buy-ins/rebuys. See 5.3.
-- [ ] **Pause/resume** the game. See 5.3.
+- [x] **Seat management:** kick a player, sit a player out, optionally approve buy-ins/rebuys. See 5.3.
+- [x] **Pause/resume** the game. See 5.3.
 - [x] **Confirm before reset.** Reset now sits in a host menu and asks first. 5.3 removes reset.
 - [ ] **Public tables:** list open tables on the home page so anyone can pick one to join. Needs a hub
   listing of tables (name, stakes, seats taken), and goes with private/password tables.
-- [ ] **End session with a ledger:** net result per player (buy-ins vs final stack), copyable. See 5.3.
-- [ ] **Spectator mode** made explicit in the UI. The header now counts spectators ("watching 2");
-  a list of who's watching is left. The 5.3 players panel lists them.
+- [x] **End session with a ledger:** net result per player (buy-ins vs final stack), copyable. See 5.3.
+- [x] **Spectator mode** made explicit in the UI. The header counts spectators ("watching 2") and the
+  5.3 players panel lists them.
 - [x] **Bots** so one person can demo the app alone (easy and medium levels). See 5.2.
 
 ## 5.1 Table settings
