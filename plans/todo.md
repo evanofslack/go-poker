@@ -495,6 +495,10 @@ Matters once the public demo gets real traffic.
 
 # Backlog (unranked)
 
+- e2e cleanup: move the timing helpers each script reinvents into `e2e/lib.mjs` (act on a control
+  once it's enabled, retrying when the turn moves on; wait for a state rather than any update), trim
+  checks that pin exact text or pixels, and consider a non-blocking CI job so the suite protects
+  main. See the guidance in `e2e/README.md`.
 - Hand history / review last hand
 - Pre-action buttons (check/fold, call any) and keyboard shortcuts
 - Run it twice, straddles, antes, show/muck at showdown

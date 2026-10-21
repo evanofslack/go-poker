@@ -9,6 +9,9 @@ Realtime multiplayer poker: Go websocket server (`backend/`) + Next.js client (`
   - Backend (run from `backend/`): `gofmt -l .` (must be empty), `go vet ./...`, `go test -race ./...`
   - Web (run from `web/`): `npm run type-check`, `npm run build`. No test suite.
 - Run the checks for whichever side you touched before calling it done.
+- `just e2e [scripts...]` runs the browser tests (not in CI). Run the scripts for the area you
+  touched while working, and all of them once before a PR that changes the web app. For visual
+  changes, look at screenshots too (`SHOTS=<dir>`). See `e2e/README.md`.
 
 ## Architecture
 - `backend/poker/`: game engine, forked from riverboat. Keep its license header.
