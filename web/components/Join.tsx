@@ -2,9 +2,10 @@ import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import Footer from "./Footer";
-import { createTable, joinTable } from "../actions/actions";
+import { joinTable } from "../actions/actions";
 import Button from "./Button";
-import { invitedTable } from "../lib/invite";
+import { invitedPassword, invitedTable } from "../lib/invite";
+import CreateTable from "./CreateTable";
 
 function randomTableGen(length: number): string {
     let chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -20,20 +21,37 @@ export default function Join() {
     const { appState, dispatch } = useContext(AppContext);
     const [username, setUsername] = useState("");
     const [tablename, setTablename] = useState("");
+    const [password, setPassword] = useState("");
+    const [invitedWithPassword, setInvitedWithPassword] = useState(false);
+    const [creating, setCreating] = useState(false);
     const connected = appState.connection === "open";
     let invalid = username == "" || tablename == "" || !connected;
+    const showPassword = appState.needPassword || invitedWithPassword;
 
-    // an invite link fills in the table, so only a name is needed
+    // an invite link fills in the table and any password, so only a name is needed
     useEffect(() => {
         setTablename(invitedTable());
+        // the first call takes the password out of the address bar, so ignore later empty ones
+        const invited = invitedPassword();
+        if (invited) {
+            setPassword(invited);
+            setInvitedWithPassword(true);
+        }
     }, []);
 
     // the table shows once the server confirms with joined-table
-    const handleSubmit = (e: React.FormEvent, create = false) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (socket && !invalid) {
-            (create ? createTable : joinTable)(socket, tablename, username);
+            joinTable(socket, tablename, username, undefined, password || undefined);
         }
+    };
+
+    // creating asks for the table's settings first
+    const handleCreate = () => {
+        if (invalid) return;
+        dispatch({ type: "setError", payload: null });
+        setCreating(true);
     };
 
     const handleUsername = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,12 +101,25 @@ export default function Join() {
                             random
                         </Button>
                     </div>
+                    {showPassword && (
+                        <input
+                            autoFocus={appState.needPassword}
+                            className="rounded-md bg-raised py-2 pl-4 text-white focus:outline-hidden sm:my-2 sm:mr-2 sm:w-32"
+                            id="password"
+                            type="password"
+                            maxLength={32}
+                            value={password}
+                            placeholder="password"
+                            aria-label="table password"
+                            onChange={(e) => setPassword(e.target.value)}
+                        />
+                    )}
                     <Button
                         type="button"
                         variant="primary"
                         className="sm:my-2 sm:mr-2"
                         disabled={invalid}
-                        onClick={(e) => handleSubmit(e, true)}
+                        onClick={handleCreate}
                     >
                         create
                     </Button>
@@ -100,6 +131,13 @@ export default function Join() {
                     <p className="mt-2 px-4 text-center text-rose-400">{appState.error}</p>
                 )}
                 {!connected && <p className="mt-2 text-subtle">connecting to server…</p>}
+                {creating && (
+                    <CreateTable
+                        tablename={tablename}
+                        username={username}
+                        onClose={() => setCreating(false)}
+                    />
+                )}
             </div>
             <Footer />
         </div>

@@ -401,27 +401,14 @@ func (g *Game) updateRoundInfo() {
 
 //Exported functions related to game management (not "Actions")
 
-// NewGame is a factory method that returns a pointer to an initialized game.
-// This freshly created game will have the following default values:
-//
-//	Players: []
-//	GameStage: PreDeal
-//	Betting: False
-//	Config: {
-//		BigBlind:	20
-//		SmallBlind:	10
-//		MaxBuy:		10000
-//	}
-func NewGame() *Game {
+// NewGame is a factory method that returns a pointer to an initialized game
+// with the given config, no players, at PreDeal and not betting.
+func NewGame(config GameConfig) *Game {
 	newGame := Game{}
 
 	newGame.setStageAndBetting(PreDeal, false)
 	newGame.deck = DefaultDeck
-	newGame.config = GameConfig{
-		BigBlind:   20,
-		SmallBlind: 10,
-		MaxBuy:     10000,
-	}
+	newGame.config = config
 	newGame.communityCards = make([]Card, 5)
 
 	return &newGame

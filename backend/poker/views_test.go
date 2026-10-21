@@ -253,7 +253,7 @@ func TestGame_GenerateOmniViewChangedVals(t *testing.T) {
 }
 
 func TestShowdownRevealsWinners(t *testing.T) {
-	g := NewGame()
+	g := NewGame(testConfig)
 	seatPlayers(t, g, 100, 100)
 	observer := g.AddPlayer()
 	if err := SetSeatID(g, observer, 9); err != nil {
@@ -307,7 +307,7 @@ func (g *Game) String() string {
 }
 
 func TestPlayerViewRevealsShowdownHands(t *testing.T) {
-	g := NewGame()
+	g := NewGame(testConfig)
 	for i := uint(0); i < 3; i++ {
 		pn := g.AddPlayer()
 		_ = BuyIn(g, pn, 1000)
@@ -343,7 +343,7 @@ func TestPlayerViewRevealsShowdownHands(t *testing.T) {
 }
 
 func TestPlayerViewHidesOtherHands(t *testing.T) {
-	g := NewGame()
+	g := NewGame(testConfig)
 	for i := uint(0); i < 2; i++ {
 		pn := g.AddPlayer()
 		_ = BuyIn(g, pn, 1000)
@@ -366,7 +366,7 @@ func TestPlayerViewHidesOtherHands(t *testing.T) {
 }
 
 func TestPlayerViewShowsOwnCardsAfterFold(t *testing.T) {
-	g := NewGame()
+	g := NewGame(testConfig)
 	for i := uint(0); i < 3; i++ {
 		pn := g.AddPlayer()
 		_ = BuyIn(g, pn, 1000)

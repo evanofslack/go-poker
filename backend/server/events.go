@@ -11,22 +11,15 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	gameAdminName string = "system"
-	maxSeats      uint   = 8 // seats per table, sent to clients in each game update
-)
+const gameAdminName string = "system"
 
-// Vars so tests can shorten them.
-var (
-	nextHandDelay  = 5 * time.Second  // pause after a hand before dealing the next
-	turnTimeout    = 30 * time.Second // time to act before checking or folding for you
-	reconnectGrace = 60 * time.Second // how long a disconnected player keeps their seat
-)
+// how long a disconnected player keeps their seat, a var so tests can shorten it
+var reconnectGrace = 60 * time.Second
 
-func handleJoinTable(c *Client, tablename string, username string, token string, create bool) {
-	reconnected, err := c.hub.joinTable(c, tablename, username, token, create)
+func handleJoinTable(c *Client, tablename, username, token, password string, create bool, settings tableSettings) {
+	reconnected, err := c.hub.joinTable(c, tablename, username, token, password, create, settings)
 	if err != nil {
-		sendError(c, err.Error())
+		sendErrorCode(c, errorCodes[err], err.Error())
 		return
 	}
 	c.table.mu.Lock()
@@ -63,13 +56,13 @@ func handleTakeSeat(c *Client, seatID uint, buyIn uint) {
 		sendError(c, "you already have a seat")
 		return
 	}
-	maxBuy := c.table.game.GenerateOmniView().Config.MaxBuy
-	if seatID < 1 || seatID > maxSeats {
+	s := c.table.settings
+	if seatID < 1 || seatID > s.Seats {
 		sendError(c, "invalid seat")
 		return
 	}
-	if buyIn == 0 || buyIn > maxBuy {
-		sendError(c, fmt.Sprintf("buy-in must be between 1 and %d", maxBuy))
+	if buyIn < s.MinBuy || buyIn > s.MaxBuy {
+		sendError(c, fmt.Sprintf("buy-in must be between %d and %d", s.MinBuy, s.MaxBuy))
 		return
 	}
 	for _, p := range c.table.game.GenerateOmniView().Players {
@@ -333,6 +326,11 @@ func handleRebuy(c *Client, amount uint) {
 		sendError(c, "can't rebuy during a hand")
 		return
 	}
+	// topping up can be any amount, but a busted player buys back in
+	if p.Stack == 0 && amount < t.settings.MinBuy {
+		sendError(c, fmt.Sprintf("rebuy must be at least %d", t.settings.MinBuy))
+		return
+	}
 	if err := poker.BuyIn(t.game, pn, amount); err != nil {
 		sendError(c, fmt.Sprintf("rebuy can't take your stack above %d", view.Config.MaxBuy))
 		return
@@ -374,24 +372,30 @@ func (t *table) scheduleDeal() {
 	if t.dealTimer != nil {
 		t.dealTimer.Stop()
 	}
-	t.dealTimer = time.AfterFunc(nextHandDelay, func() { dealNextHand(t) })
+	delay := time.Duration(t.settings.NextHandDelay) * time.Millisecond
+	t.dealTimer = time.AfterFunc(delay, func() { dealNextHand(t) })
 }
 
-// startTurnTimer gives the player to act turnTimeout to do so. Caller holds t.mu.
+// startTurnTimer gives the player to act the table's turn time to do so,
+// unless it has none. Caller holds t.mu.
 func (t *table) startTurnTimer() {
 	t.turnSeq++
 	seq := t.turnSeq
 	if t.turnTimer != nil {
 		t.turnTimer.Stop()
 	}
-	t.turnDeadline = time.Now().Add(turnTimeout)
-	t.turnTimer = time.AfterFunc(turnTimeout, func() { turnTimedOut(t, seq) })
+	if t.settings.TurnTime == 0 {
+		return
+	}
+	timeout := time.Duration(t.settings.TurnTime) * time.Millisecond
+	t.turnDeadline = time.Now().Add(timeout)
+	t.turnTimer = time.AfterFunc(timeout, func() { turnTimedOut(t, seq) })
 }
 
 // turnEndsIn is how many milliseconds the player to act has left, or 0 when
-// nobody is betting. Caller holds t.mu.
+// nobody is betting or there's no turn timer. Caller holds t.mu.
 func (t *table) turnEndsIn(view *poker.GameView) int64 {
-	if !view.Betting {
+	if !view.Betting || t.settings.TurnTime == 0 {
 		return 0
 	}
 	return max(time.Until(t.turnDeadline).Milliseconds(), 0)
@@ -574,7 +578,12 @@ func actingPlayer(c *Client) (uint, bool) {
 // sendError tells c its action was rejected. It never blocks, so it is safe
 // while holding c.table.mu.
 func sendError(c *Client, message string) {
-	resp, err := json.Marshal(errorMessage{base{actionError}, message, currentTime()})
+	sendErrorCode(c, "", message)
+}
+
+// sendErrorCode is sendError with a code the client can act on.
+func sendErrorCode(c *Client, code, message string) {
+	resp, err := json.Marshal(errorMessage{base{actionError}, code, message, currentTime()})
 	if err != nil {
 		slog.Default().Warn("Marshal error", "error", err)
 		return
@@ -667,13 +676,14 @@ func createGameView(c *Client) []byte {
 // createUpdatedGame wraps one recipient's view of the game. Caller holds t.mu.
 func createUpdatedGame(t *table, view *poker.GameView, sitOutNext bool) []byte {
 	game := updateGame{
-		base:       base{actionUpdateGame},
-		Game:       view,
-		Host:       t.hostID(),
-		TurnEndsIn: t.turnEndsIn(view),
-		SitOutNext: sitOutNext,
-		Seats:      maxSeats,
-		Watching:   t.watching(),
+		base:        base{actionUpdateGame},
+		Game:        view,
+		Host:        t.hostID(),
+		TurnEndsIn:  t.turnEndsIn(view),
+		SitOutNext:  sitOutNext,
+		Settings:    t.settings,
+		HasPassword: t.password != "",
+		Watching:    t.watching(),
 	}
 
 	resp, err := json.Marshal(game)
@@ -689,6 +699,7 @@ func createJoinedTable(c *Client) []byte {
 		c.table.name,
 		c.username,
 		c.id(),
+		c.table.password,
 	}
 	resp, err := json.Marshal(joined)
 	if err != nil {

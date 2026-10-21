@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { FiCopy } from "react-icons/fi";
+import { FiCopy, FiLock } from "react-icons/fi";
 import classNames from "classnames";
 import { AppContext } from "../providers/AppStore";
 import { copyInvite } from "../lib/invite";
@@ -41,12 +41,15 @@ export default function GameInfo() {
                 <span className="truncate">
                     table <span className="text-muted">{table}</span>
                 </span>
+                {appState.game?.hasPassword && (
+                    <FiLock className="shrink-0" title="needs a password" aria-label="needs a password" />
+                )}
                 {table && (
                     <button
                         className="p-1 hover:text-fg"
                         title="copy invite link"
                         aria-label="copy invite link"
-                        onClick={() => copyInvite(table, dispatch)}
+                        onClick={() => copyInvite(table, appState.password, dispatch)}
                     >
                         <FiCopy />
                     </button>

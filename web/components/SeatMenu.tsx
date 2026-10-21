@@ -27,7 +27,9 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
     if (!socket) return null;
 
     const sittingOut = !player.ready && player.stack > 0;
-    const room = game.config.maxBuy - player.stack;
+    const room = game.settings.maxBuy - player.stack;
+    // topping up can be any amount, but a busted player buys back in
+    const minRebuy = player.stack === 0 ? game.settings.minBuy : 1;
 
     let sitLabel = "sit out";
     if (sittingOut) sitLabel = "sit in";
@@ -54,6 +56,7 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
                     {rebuying ? (
                         <div className="h-20">
                             <BuyIn
+                                min={minRebuy}
                                 max={room}
                                 initial={room}
                                 label="rebuy"
@@ -78,7 +81,7 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
                                     {sitLabel}
                                 </button>
                             )}
-                            {betweenHands && room > 0 && (
+                            {betweenHands && room >= minRebuy && (
                                 <button
                                     role="menuitem"
                                     className={item}

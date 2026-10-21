@@ -16,9 +16,17 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func TestMain(m *testing.M) {
+// short timers so tests run fast
+const (
 	nextHandDelay = 50 * time.Millisecond
-	turnTimeout = 500 * time.Millisecond
+	turnTimeout   = 500 * time.Millisecond
+)
+
+func TestMain(m *testing.M) {
+	defaultSettings.NextHandDelay = uint(nextHandDelay.Milliseconds())
+	defaultSettings.TurnTime = uint(turnTimeout.Milliseconds())
+	defaultSettings.MinBuy = 100
+	defaultSettings.MaxBuy = 10000
 	reconnectGrace = 300 * time.Millisecond
 	os.Exit(m.Run())
 }
@@ -314,11 +322,15 @@ func TestSpectatorCannotStart(t *testing.T) {
 // received collects what the server sends one client.
 type received struct {
 	games  chan poker.GameView
-	hosts  chan string // host of each game update
-	ends   chan int64  // turnEndsIn of each game update
-	sitOut chan bool   // sitOutNext of each game update
-	watch  chan uint   // watching of each game update
+	hosts  chan string        // host of each game update
+	ends   chan int64         // turnEndsIn of each game update
+	sitOut chan bool          // sitOutNext of each game update
+	watch  chan uint          // watching of each game update
+	sets   chan tableSettings // settings of each game update
 	errors chan string
+	codes  chan string // code of each error
+	locked chan bool   // hasPassword of each game update
+	joined chan string // password of each joined-table
 	logs   chan string
 	tokens chan string // session tokens from taking a seat
 	chat   chan string // chat messages, as "name: message"
@@ -338,7 +350,11 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 		ends:   make(chan int64, 256),
 		sitOut: make(chan bool, 256),
 		watch:  make(chan uint, 256),
+		sets:   make(chan tableSettings, 256),
 		errors: make(chan string, 256),
+		codes:  make(chan string, 256),
+		locked: make(chan bool, 256),
+		joined: make(chan string, 256),
 		logs:   make(chan string, 256),
 		tokens: make(chan string, 256),
 		chat:   make(chan string, 256),
@@ -359,6 +375,10 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				SitOut  bool           `json:"sitOutNext"`
 				Watch   uint           `json:"watching"`
 				Name    string         `json:"username"`
+				Sets    tableSettings  `json:"settings"`
+				Code    string         `json:"code"`
+				Locked  bool           `json:"hasPassword"`
+				Pass    string         `json:"password"`
 			}
 			if json.Unmarshal(msg, &u) != nil {
 				continue
@@ -385,9 +405,26 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				case r.watch <- u.Watch:
 				default:
 				}
+				select {
+				case r.sets <- u.Sets:
+				default:
+				}
+				select {
+				case r.locked <- u.Locked:
+				default:
+				}
 			case actionError:
 				select {
 				case r.errors <- u.Message:
+				default:
+				}
+				select {
+				case r.codes <- u.Code:
+				default:
+				}
+			case actionJoinedTable:
+				select {
+				case r.joined <- u.Pass:
 				default:
 				}
 			case actionUpdatePlayerUUID:
@@ -1097,8 +1134,9 @@ func TestRebuyMidHand(t *testing.T) {
 
 func TestRebuyDealsBustedPlayerIn(t *testing.T) {
 	srv := newTestServer(t)
-	a, aRecv, b, _ := seatTwo(t, srv)
+	a, aRecv, b, bRecv := seatTwo(t, srv)
 	conns := map[string]*websocket.Conn{"a": a, "b": b}
+	recvs := map[string]received{"a": aRecv, "b": bRecv}
 
 	// go all in each hand until someone busts; a split pot just deals again.
 	// a (player 0) acts first, with 90 left after the small blind.
@@ -1122,10 +1160,186 @@ func TestRebuyDealsBustedPlayerIn(t *testing.T) {
 		pusher, stack = g.Players[first].Username, g.Players[first].Stack
 	}
 
+	send(t, conns[busted], `{"action":"rebuy","amount":99}`)
+	if msg := waitError(t, recvs[busted]); msg != "rebuy must be at least 100" {
+		t.Errorf("busted rebuy below min: got %q", msg)
+	}
 	send(t, conns[busted], `{"action":"rebuy","amount":100}`)
 	waitLog(t, aRecv, busted+" rebuys for 100")
 	waitGame(t, aRecv.games, func(g poker.GameView) bool {
 		in, _ := byName(t, g, busted)
 		return g.Betting && in
 	})
+}
+
+// customSettings is a heads-up table with no turn timer.
+const customSettings = `{"seats":2,"sb":25,"bb":50,"minBuy":1000,"maxBuy":2000,"turnTime":0,"nextHandDelay":2000}`
+
+func createWithSettings(table, name, settings string) string {
+	return `{"action":"create-table","tablename":"` + table + `","username":"` + name + `","settings":` + settings + `}`
+}
+
+func TestCreateWithSettings(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := dialRecv(t, srv)
+	send(t, a, createWithSettings("t", "a", customSettings))
+	g := waitGame(t, aRecv.games, func(poker.GameView) bool { return true })
+	want := tableSettings{Seats: 2, SmallBlind: 25, BigBlind: 50, MinBuy: 1000, MaxBuy: 2000, NextHandDelay: 2000}
+	if got := <-aRecv.sets; got != want {
+		t.Errorf("settings = %+v, want %+v", got, want)
+	}
+	if g.Config.BigBlind != 50 || g.Config.SmallBlind != 25 || g.Config.MaxBuy != 2000 {
+		t.Errorf("game config = %+v, want blinds 25/50 and max buy 2000", g.Config)
+	}
+
+	send(t, a, `{"action":"take-seat","seatID":3,"buyIn":1000}`)
+	if msg := waitError(t, aRecv); msg != "invalid seat" {
+		t.Errorf("seat past the last: got %q", msg)
+	}
+	send(t, a, `{"action":"take-seat","seatID":1,"buyIn":999}`)
+	if msg := waitError(t, aRecv); msg != "buy-in must be between 1000 and 2000" {
+		t.Errorf("buy-in below min: got %q", msg)
+	}
+	send(t, a, `{"action":"take-seat","seatID":2,"buyIn":1000}`)
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
+}
+
+func TestDefaultSettings(t *testing.T) {
+	srv := newTestServer(t)
+	_, aRecv := createAndWait(t, srv, "t", "a")
+	if got := <-aRecv.sets; got != defaultSettings {
+		t.Errorf("settings = %+v, want the defaults %+v", got, defaultSettings)
+	}
+}
+
+func TestInvalidSettingsRejected(t *testing.T) {
+	srv := newTestServer(t)
+	tests := []struct {
+		settings string
+		want     string
+	}{
+		{`{"seats":10}`, "seats must be between 2 and 9"},
+		{`{"bb":5}`, "small blind must be between 1 and the big blind"},
+		{`"lots"`, "invalid settings"},
+	}
+	for _, tt := range tests {
+		conn, r := dialRecv(t, srv)
+		send(t, conn, createWithSettings("t", "a", tt.settings))
+		if got := waitError(t, r); got != tt.want {
+			t.Errorf("%s: got error %q, want %q", tt.settings, got, tt.want)
+		}
+	}
+	// none of them made the table
+	conn, r := dialRecv(t, srv)
+	send(t, conn, joinMsg("t", "b"))
+	if got := waitError(t, r); got != errNoTable.Error() {
+		t.Errorf("joining after rejected creates: got %q, want %q", got, errNoTable.Error())
+	}
+}
+
+func TestNoTurnTimer(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := dialRecv(t, srv)
+	send(t, a, createWithSettings("t", "a", customSettings), `{"action":"take-seat","seatID":1,"buyIn":1000}`)
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
+	b, _ := dialRecv(t, srv)
+	send(t, b, joinMsg("t", "b"), `{"action":"take-seat","seatID":2,"buyIn":1000}`)
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
+	send(t, a, `{"action":"start-game"}`)
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Betting })
+	if ends := <-aRecv.ends; ends != 0 {
+		t.Errorf("turnEndsIn = %d with no turn timer, want 0", ends)
+	}
+
+	for _, l := range collectLogs(aRecv, turnTimeout+300*time.Millisecond) {
+		if strings.HasSuffix(l, "(out of time)") {
+			t.Errorf("acted for a player with no turn timer: %q", l)
+		}
+	}
+}
+
+func createWithPassword(table, name, password string) string {
+	return `{"action":"create-table","tablename":"` + table + `","username":"` + name + `","password":"` + password + `"}`
+}
+
+func joinWithPassword(table, name, password string) string {
+	return `{"action":"join-table","tablename":"` + table + `","username":"` + name + `","password":"` + password + `"}`
+}
+
+func TestTablePassword(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := dialRecv(t, srv)
+	send(t, a, createWithPassword("t", "a", "secret"))
+	waitGame(t, aRecv.games, func(poker.GameView) bool { return true })
+	if !<-aRecv.locked {
+		t.Error("hasPassword = false on a table with a password")
+	}
+	if pw := <-aRecv.joined; pw != "secret" {
+		t.Errorf("host joined with password %q, want %q", pw, "secret")
+	}
+
+	tests := []struct {
+		msg  string
+		code string
+	}{
+		{joinMsg("t", "b"), "password-required"},
+		{joinWithPassword("t", "b", "Secret"), "wrong-password"},
+		{joinWithPassword("t", "a", "nope"), "wrong-password"}, // not name taken, which would leak names
+	}
+	for _, tt := range tests {
+		conn, r := dialRecv(t, srv)
+		send(t, conn, tt.msg)
+		waitError(t, r)
+		if code := <-r.codes; code != tt.code {
+			t.Errorf("%s: got code %q, want %q", tt.msg, code, tt.code)
+		}
+	}
+
+	b, bRecv := dialRecv(t, srv)
+	send(t, b, joinWithPassword("t", "b", "secret"))
+	waitGame(t, bRecv.games, func(poker.GameView) bool { return true })
+	if pw := <-bRecv.joined; pw != "secret" {
+		t.Errorf("b joined with password %q, want %q", pw, "secret")
+	}
+}
+
+func TestNoPasswordByDefault(t *testing.T) {
+	srv := newTestServer(t)
+	_, aRecv := createAndWait(t, srv, "t", "a")
+	if <-aRecv.locked {
+		t.Error("hasPassword = true on a table without one")
+	}
+	b, bRecv := dialRecv(t, srv)
+	send(t, b, joinWithPassword("t", "b", "anything"))
+	waitGame(t, bRecv.games, func(poker.GameView) bool { return true })
+}
+
+func TestInvalidPasswordRejected(t *testing.T) {
+	srv := newTestServer(t)
+	conn, r := dialRecv(t, srv)
+	send(t, conn, createWithPassword("t", "a", strings.Repeat("a", maxPasswordLen+1)))
+	if got := waitError(t, r); got != "invalid password" {
+		t.Errorf("long password: got %q", got)
+	}
+}
+
+func TestReconnectSkipsPassword(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := dialRecv(t, srv)
+	send(t, a, createWithPassword("t", "a", "secret"))
+	waitGame(t, aRecv.games, func(poker.GameView) bool { return true })
+	b, bRecv := dialRecv(t, srv)
+	send(t, b, joinWithPassword("t", "b", "secret"), seatMsg(2))
+	token := waitToken(t, bRecv)
+
+	b.Close()
+	b2, b2Recv := dialRecv(t, srv)
+	send(t, b2, `{"action":"join-table","tablename":"t","username":"b","token":"`+token+`"}`)
+	g := waitGame(t, b2Recv.games, func(poker.GameView) bool { return true })
+	if len(g.Players) != 1 || g.Players[0].Username != "b" {
+		t.Errorf("players = %+v, want b reseated", g.Players)
+	}
+	if pw := <-b2Recv.joined; pw != "secret" {
+		t.Errorf("reconnected b got password %q, want %q", pw, "secret")
+	}
 }

@@ -1,20 +1,38 @@
-export function createTable(socket: WebSocket, tablename: string, username: string) {
+import { Settings } from "../interfaces/index";
+
+// createTable makes a new table; the server uses its defaults without settings
+export function createTable(
+    socket: WebSocket,
+    tablename: string,
+    username: string,
+    settings?: Settings,
+    password?: string
+) {
     socket.send(
         JSON.stringify({
             action: "create-table",
             tablename: tablename,
             username: username,
+            settings: settings,
+            password: password,
         })
     );
 }
 
-export function joinTable(socket: WebSocket, tablename: string, username: string, token?: string) {
+export function joinTable(
+    socket: WebSocket,
+    tablename: string,
+    username: string,
+    token?: string,
+    password?: string
+) {
     socket.send(
         JSON.stringify({
             action: "join-table",
             tablename: tablename,
             username: username,
             token: token,
+            password: password,
         })
     );
 }

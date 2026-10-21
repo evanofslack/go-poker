@@ -1,5 +1,5 @@
 // Two-player session: hidden cards, host, next hand, reload, turn timer and grace period.
-import { URL, check, finish, launch, shot } from "./lib.mjs";
+import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -34,6 +34,7 @@ async function enter(page, name, table, button) {
     await page.fill("#username", name);
     await page.fill("#tablename", table);
     await page.click(`button:text-is("${button}")`);
+    if (button === "create") await confirmCreate(page);
 }
 
 async function sit(page, seat) {

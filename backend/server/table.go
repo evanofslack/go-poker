@@ -1,12 +1,38 @@
 package server
 
 import (
+	"crypto/subtle"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/evanofslack/go-poker/poker"
 )
+
+// tableSettings are picked by the host when creating a table, and fixed after.
+// Buy-ins are in chips, times in milliseconds.
+type tableSettings struct {
+	Seats         uint `json:"seats"`
+	SmallBlind    uint `json:"sb"`
+	BigBlind      uint `json:"bb"`
+	MinBuy        uint `json:"minBuy"`
+	MaxBuy        uint `json:"maxBuy"`
+	TurnTime      uint `json:"turnTime"`      // time to act before checking or folding for you, 0 for no limit
+	NextHandDelay uint `json:"nextHandDelay"` // pause after a hand before dealing the next
+	Public        bool `json:"public"`        // not used yet, for listing tables later
+}
+
+// defaultSettings are used when create-table sends none. A var so tests can
+// shorten the timers.
+var defaultSettings = tableSettings{
+	Seats:         8,
+	SmallBlind:    10,
+	BigBlind:      20,
+	MinBuy:        1000,
+	MaxBuy:        4000,
+	TurnTime:      30000,
+	NextHandDelay: 5000,
+}
 
 // stateUpdate is a game update with one view per player, since each player
 // may only see their own cards. Clients without a seat get the spectator view.
@@ -24,6 +50,8 @@ type table struct {
 	broadcast  chan []byte
 	updates    chan stateUpdate
 	game       *poker.Game
+	settings   tableSettings // fixed after creation
+	password   string        // empty for none, fixed after creation
 	done       chan struct{} // closed when the table is deleted
 	members    int           // clients at this table, guarded by Hub.mu
 
@@ -46,7 +74,7 @@ type table struct {
 }
 
 // newTable creates a new table
-func newTable(name string) *table {
+func newTable(name string, settings tableSettings) *table {
 	return &table{
 		name:       name,
 		clients:    make(map[*Client]bool),
@@ -54,7 +82,12 @@ func newTable(name string) *table {
 		unregister: make(chan *Client),
 		broadcast:  make(chan []byte),
 		updates:    make(chan stateUpdate),
-		game:       poker.NewGame(),
+		game: poker.NewGame(poker.GameConfig{
+			MaxBuy:     settings.MaxBuy,
+			BigBlind:   settings.BigBlind,
+			SmallBlind: settings.SmallBlind,
+		}),
+		settings:   settings,
 		done:       make(chan struct{}),
 		users:      make(map[*Client]bool),
 		leaving:    make(map[string]bool),
@@ -96,6 +129,19 @@ func (t *table) nameTaken(name string) bool {
 		}
 	}
 	return false
+}
+
+// checkPassword reports why password doesn't let someone join, if it doesn't.
+func (t *table) checkPassword(password string) error {
+	switch {
+	case t.password == "":
+		return nil
+	case password == "":
+		return errNeedPassword
+	case subtle.ConstantTimeCompare([]byte(password), []byte(t.password)) != 1:
+		return errWrongPassword
+	}
+	return nil
 }
 
 // reclaim returns the uuid and name of the player that token belongs to, if

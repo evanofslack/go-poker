@@ -2,6 +2,7 @@ import { useState } from "react";
 import Button from "./Button";
 
 type buyInProps = {
+    min: number;
     max: number;
     initial: number;
     label: string;
@@ -10,10 +11,10 @@ type buyInProps = {
 };
 
 // BuyIn asks for an amount of chips, for taking a seat or rebuying
-export default function BuyIn({ max, initial, label, onSubmit, onCancel }: buyInProps) {
-    const [text, setText] = useState(String(Math.min(initial, max)));
+export default function BuyIn({ min, max, initial, label, onSubmit, onCancel }: buyInProps) {
+    const [text, setText] = useState(String(Math.max(min, Math.min(initial, max))));
     const amount = parseInt(text);
-    const valid = amount >= 1 && amount <= max;
+    const valid = amount >= Math.max(min, 1) && amount <= max;
 
     return (
         <form
@@ -51,7 +52,7 @@ export default function BuyIn({ max, initial, label, onSubmit, onCancel }: buyIn
                 </Button>
             </div>
             <span className={"mt-1 text-xs " + (valid ? "text-subtle" : "text-rose-400")}>
-                max {max}
+                {min > 1 ? `${min} to ${max}` : `max ${max}`}
             </span>
         </form>
     );

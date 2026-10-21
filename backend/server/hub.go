@@ -57,12 +57,22 @@ var (
 	errNoTable       = errors.New("table not found")
 	errNameTaken     = errors.New("name already taken at this table")
 	errAtTable       = errors.New("already at a table")
+	errNeedPassword  = errors.New("this table needs a password")
+	errWrongPassword = errors.New("wrong password")
 )
 
+// errorCodes lets the client tell apart the errors it handles
+var errorCodes = map[error]string{
+	errNeedPassword:  "password-required",
+	errWrongPassword: "wrong-password",
+}
+
 // joinTable adds c to the named table as username. With create, the table
-// must not exist yet and c becomes its host; otherwise it must exist. A valid
-// token reclaims a disconnected player's seat, and their name, and reports so.
-func (h *Hub) joinTable(c *Client, name string, username string, token string, create bool) (bool, error) {
+// must not exist yet, is made with settings and password, and c becomes its
+// host; otherwise it must exist and password must match. A valid token
+// reclaims a disconnected player's seat, and their name, without the
+// password, and reports so.
+func (h *Hub) joinTable(c *Client, name, username, token, password string, create bool, settings tableSettings) (bool, error) {
 	if c.table != nil {
 		return false, errAtTable
 	}
@@ -81,7 +91,8 @@ func (h *Hub) joinTable(c *Client, name string, username string, token string, c
 
 	// lock order is hub.mu, then table.mu
 	if create {
-		t = newTable(name)
+		t = newTable(name, settings)
+		t.password = password
 	}
 	t.mu.Lock()
 	uuid, seatName, reconnected := t.reclaim(token)
@@ -101,6 +112,9 @@ func (h *Hub) joinTable(c *Client, name string, username string, token string, c
 		c.uuid.Store(uuid)
 		username = seatName
 		t.send(createNewLog(fmt.Sprintf("%s reconnected", seatName)))
+	} else if err := t.checkPassword(password); err != nil {
+		t.mu.Unlock()
+		return false, err
 	} else if t.nameTaken(username) {
 		t.mu.Unlock()
 		return false, errNameTaken

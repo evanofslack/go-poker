@@ -1,15 +1,17 @@
 import { ReactNode, useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
+import classNames from "classnames";
 
 type dialogProps = {
     title: string;
     onClose: () => void;
     children: ReactNode;
+    wide?: boolean; // for forms; scrolls when taller than the screen
 };
 
 // Dialog is a modal over the page. It's a portal, since a seat's transform would
 // otherwise contain the fixed overlay. Escape or a click outside closes it.
-export default function Dialog({ title, onClose, children }: dialogProps) {
+export default function Dialog({ title, onClose, children, wide }: dialogProps) {
     const id = useId();
     const ref = useRef<HTMLDivElement>(null);
     // callers pass onClose inline; a ref keeps game updates from re-running the effect
@@ -40,7 +42,10 @@ export default function Dialog({ title, onClose, children }: dialogProps) {
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={id}
-                className="w-72 rounded-xl bg-panel p-4 text-fg shadow-xl"
+                className={classNames(
+                    "rounded-xl bg-panel p-4 text-fg shadow-xl",
+                    wide ? "max-h-full w-full max-w-sm overflow-y-auto" : "w-72"
+                )}
             >
                 <p id={id} className="mb-2 font-semibold">
                     {title}
