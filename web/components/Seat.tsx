@@ -70,7 +70,7 @@ function PlayerSeat({ player, game, own }: { player: Player; game: Game; own: bo
                 )}
                 {own && <SeatMenu player={player} game={game} />}
                 {game.betting && game.action === player.position && game.turnEndsIn > 0 && (
-                    <Countdown endsIn={game.turnEndsIn} />
+                    <Countdown endsIn={game.turnEndsIn} total={game.settings.turnTime} />
                 )}
             </div>
         </div>
@@ -98,8 +98,9 @@ function OpenSeat({ id, game }: { id: number; game: Game }) {
             {sitDown && (
                 <Dialog title={`sit in seat ${id}`} onClose={() => setSitDown(false)}>
                     <BuyIn
-                        max={game.config.maxBuy}
-                        initial={100 * game.config.bb}
+                        min={game.settings.minBuy}
+                        max={game.settings.maxBuy}
+                        initial={100 * game.settings.bb}
                         label="sit down"
                         onSubmit={(amount) => {
                             if (socket && appState.username) {

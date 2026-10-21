@@ -30,7 +30,7 @@ await alice.click('button:text-is("sit in")');
 check("sit in clears the label", await bob.waitForSelector("text=sitting out", { state: "detached", timeout: 3000 }).then(() => true).catch(() => false));
 
 await menu(alice, "rebuy");
-check("rebuy form is capped at max minus stack", (await alice.inputValue("#buyIn")) === "8000", await alice.inputValue("#buyIn"));
+check("rebuy form is capped at max minus stack", (await alice.inputValue("#buyIn")) === "2000", await alice.inputValue("#buyIn"));
 await alice.fill("#buyIn", "500");
 await alice.press("#buyIn", "Enter");
 check("rebuy adds to the stack", await has(bob, "text=2500"));

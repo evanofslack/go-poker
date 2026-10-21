@@ -12,7 +12,7 @@ check("enter joins (no such table yet)", !!(await p.waitForSelector("text=/no ta
 await p.click('button:text-is("create")');
 await p.waitForSelector("text=Open");
 await p.locator("button", { hasText: "Open" }).filter({ hasText: "3" }).click();
-check("buy-in shows max", (await p.locator("text=max 10000").count()) === 1);
+check("buy-in shows min and max", (await p.locator("text=1000 to 4000").count()) === 1);
 await p.fill("#buyIn", "20000");
 check("over-max disables sit down", await p.locator('button:text-is("sit down")').isDisabled());
 await p.press("#buyIn", "Escape");

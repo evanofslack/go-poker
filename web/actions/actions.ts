@@ -1,9 +1,13 @@
-export function createTable(socket: WebSocket, tablename: string, username: string) {
+import { Settings } from "../interfaces/index";
+
+// createTable makes a new table; the server uses its defaults without settings
+export function createTable(socket: WebSocket, tablename: string, username: string, settings?: Settings) {
     socket.send(
         JSON.stringify({
             action: "create-table",
             tablename: tablename,
             username: username,
+            settings: settings,
         })
     );
 }

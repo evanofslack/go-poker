@@ -145,7 +145,7 @@ export function SocketProvider(props: SocketProviderProps) {
                         host: event.host,
                         turnEndsIn: event.turnEndsIn,
                         sitOutNext: event.sitOutNext,
-                        seats: event.seats,
+                        settings: event.settings,
                         watching: event.watching,
                     };
                     dispatch({ type: "updateGame", payload: newGame });

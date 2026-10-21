@@ -66,8 +66,20 @@ export type Game = {
     host: string;
     turnEndsIn: number; // ms until the player to act times out, 0 when not betting
     sitOutNext: boolean; // you asked to sit out once this hand ends
-    seats: number; // seats at the table
+    settings: Settings; // chosen by the host when creating the table
     watching: number; // clients at the table without a seat
+};
+
+// Settings are fixed once the table exists. Buy-ins are in chips, times in ms.
+export type Settings = {
+    seats: number;
+    sb: number;
+    bb: number;
+    minBuy: number;
+    maxBuy: number;
+    turnTime: number; // 0 for no turn timer
+    nextHandDelay: number;
+    public: boolean;
 };
 
 export type Config = {

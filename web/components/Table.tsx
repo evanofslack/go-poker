@@ -52,7 +52,7 @@ export default function Table() {
     const game = appState.game;
     if (!game) return null;
 
-    const seats = game.seats || 8;
+    const seats = game.settings.seats;
     const own = game.players.find((p) => p.uuid === appState.clientID);
     const bySeat = new Map(game.players.map((p) => [p.seatID, p]));
     const ids = Array.from({ length: seats }, (_, i) => i + 1);
