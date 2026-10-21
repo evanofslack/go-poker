@@ -63,6 +63,7 @@ func TestHostKeptOnReconnect(t *testing.T) {
 	token := waitToken(t, aRecv)
 	b, bRecv := dialRecv(t, srv)
 	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
 	a.Close()
 	waitLog(t, bRecv, "a disconnected")
 	a2, a2Recv := dialRecv(t, srv)
