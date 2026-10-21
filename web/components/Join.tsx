@@ -2,9 +2,10 @@ import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import Footer from "./Footer";
-import { createTable, joinTable } from "../actions/actions";
+import { joinTable } from "../actions/actions";
 import Button from "./Button";
 import { invitedPassword, invitedTable } from "../lib/invite";
+import CreateTable from "./CreateTable";
 
 function randomTableGen(length: number): string {
     let chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -22,6 +23,7 @@ export default function Join() {
     const [tablename, setTablename] = useState("");
     const [password, setPassword] = useState("");
     const [invitedWithPassword, setInvitedWithPassword] = useState(false);
+    const [creating, setCreating] = useState(false);
     const connected = appState.connection === "open";
     let invalid = username == "" || tablename == "" || !connected;
     const showPassword = appState.needPassword || invitedWithPassword;
@@ -38,14 +40,18 @@ export default function Join() {
     }, []);
 
     // the table shows once the server confirms with joined-table
-    const handleSubmit = (e: React.FormEvent, create = false) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!socket || invalid) return;
-        if (create) {
-            createTable(socket, tablename, username);
-        } else {
+        if (socket && !invalid) {
             joinTable(socket, tablename, username, undefined, password || undefined);
         }
+    };
+
+    // creating asks for the table's settings first
+    const handleCreate = () => {
+        if (invalid) return;
+        dispatch({ type: "setError", payload: null });
+        setCreating(true);
     };
 
     const handleUsername = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,7 +119,7 @@ export default function Join() {
                         variant="primary"
                         className="sm:my-2 sm:mr-2"
                         disabled={invalid}
-                        onClick={(e) => handleSubmit(e, true)}
+                        onClick={handleCreate}
                     >
                         create
                     </Button>
@@ -125,6 +131,13 @@ export default function Join() {
                     <p className="mt-2 px-4 text-center text-rose-400">{appState.error}</p>
                 )}
                 {!connected && <p className="mt-2 text-subtle">connecting to server…</p>}
+                {creating && (
+                    <CreateTable
+                        tablename={tablename}
+                        username={username}
+                        onClose={() => setCreating(false)}
+                    />
+                )}
             </div>
             <Footer />
         </div>
