@@ -58,7 +58,7 @@ export default function Stats() {
                 </tbody>
             </table>
             {style.length > 0 && (
-                <div className="overflow-x-auto">
+                <div className="shrink-0 overflow-x-auto">
                     <table className="w-full text-left text-xs" aria-label="play style">
                         <thead className="text-subtle">
                             <tr>
