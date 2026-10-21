@@ -58,7 +58,7 @@ export default function Stats() {
                 </tbody>
             </table>
             {style.length > 0 && (
-                <div className="overflow-x-auto">
+                <div className="shrink-0 overflow-x-auto">
                     <table className="w-full text-left text-xs" aria-label="play style">
                         <thead className="text-subtle">
                             <tr>
@@ -114,7 +114,6 @@ export default function Stats() {
             <p className="text-xs text-subtle">
                 {hands.length === 1 ? "1 hand" : `${hands.length} hands`}
                 {hands[0].hand > 1 && ` · from hand ${hands[0].hand}`}
-                {style.some((s) => s.hands < fewHands) && ` · play style shows after ${fewHands} hands`}
             </p>
         </div>
     );
