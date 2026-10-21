@@ -56,23 +56,31 @@ function getSuitChar(letter: string) {
     }
 }
 
+// cardSize scales cards down on small screens
+export const cardSize = {
+    h: "h-14 sm:h-[4.5rem] lg:h-24 short:h-10",
+    box: "w-10 h-14 sm:w-12 sm:h-[4.5rem] lg:w-16 lg:h-24 short:w-7 short:h-10",
+};
+const rank = "text-lg sm:text-xl lg:text-3xl short:text-sm";
+
 function color(card: CardType, highlight = false) {
     return classNames(
         {
-            "ring-4 ring-amber-300": highlight,
+            "ring-2 ring-amber-300 lg:ring-4": highlight,
             "text-red-700": card[1] == "H",
             "text-blue-700": card[1] == "D",
             "text-green-700": card[1] == "C",
             "text-black": card[1] == "S",
         },
-        "rounded-md border border-zinc-100 shadow-2xl bg-white pt-1 px-2.5 text-5xl font-normal w-16 h-24 flex items-center justify-start flex-col"
+        "rounded-md border border-zinc-100 shadow-2xl bg-white pt-0.5 px-1 text-2xl sm:text-3xl lg:pt-1 lg:px-2.5 lg:text-5xl short:text-base short:px-0.5 short:pt-0 font-normal flex items-center justify-start flex-col",
+        cardSize.box
     );
 }
 
 export default function Card({ card, placeholder, folded, hidden, highlight }: cardProps) {
     if (placeholder) {
         return (
-            <div className="flex h-24 w-16 items-center justify-center rounded-md bg-green-900 opacity-20"></div>
+            <div className={classNames(cardSize.box, "rounded-md bg-green-900 opacity-20")}></div>
         );
     }
 
@@ -84,13 +92,14 @@ export default function Card({ card, placeholder, folded, hidden, highlight }: c
     }
     if (hidden) {
         if (folded) {
-            return <div className={"flex h-24 w-16  "}></div>;
+            return <div className={cardSize.box}></div>;
         }
         return (
             <div
-                className={
-                    "flex h-24 w-16 items-center justify-center rounded-md border-4 border-white bg-red-900"
-                }
+                className={classNames(
+                    cardSize.box,
+                    "rounded-md border-2 border-white bg-red-900 lg:border-4"
+                )}
             ></div>
         );
     }
@@ -98,9 +107,10 @@ export default function Card({ card, placeholder, folded, hidden, highlight }: c
         return (
             <div className={color(c)}>
                 <div
-                    className={
-                        "flex w-full items-start justify-start text-3xl font-semibold opacity-40"
-                    }
+                    className={classNames(
+                        "flex w-full items-start justify-start font-semibold opacity-40",
+                        rank
+                    )}
                 >
                     {c[0]}
                 </div>
@@ -110,7 +120,9 @@ export default function Card({ card, placeholder, folded, hidden, highlight }: c
     }
     return (
         <div className={color(c, highlight)}>
-            <div className={"flex w-full items-start justify-start text-3xl font-semibold"}>
+            <div
+                className={classNames("flex w-full items-start justify-start font-semibold", rank)}
+            >
                 {c[0]}
             </div>
             <div>{getSuitChar(c[1])}</div>

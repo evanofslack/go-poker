@@ -1,76 +1,84 @@
-import Seat from "./Seat";
-import Felt from "./Felt";
-import { Player } from "../interfaces";
+import { useContext } from "react";
 import { AppContext } from "../providers/AppStore";
-import React, { useContext, useEffect } from "react";
+import { Game, Player } from "../interfaces";
+import { at, seatAngle } from "../lib/seats";
+import Seat from "./Seat";
+import Pot from "./Pot";
+import CommunityCards from "./CommunityCards";
+import TableHint from "./TableHint";
 
-type tableProps = {
-    players: (Player | null)[];
-    setPlayers: React.Dispatch<React.SetStateAction<(Player | null)[]>>;
-};
+// half a seat's size at each breakpoint, which keeps the seat ring inside the table area.
+// Short screens, like a phone on its side, get the small seats.
+const seatSize =
+    "[--seat-hw:3rem] [--seat-hh:2.75rem] sm:[--seat-hw:4rem] sm:[--seat-hh:3.4rem] lg:[--seat-hw:5rem] lg:[--seat-hh:4.4rem] short:[--seat-hw:4.6rem] short:[--seat-hh:1.4rem]";
 
-export default function Table({ players, setPlayers }: tableProps) {
+// blind labels the small and big blind seats for the current hand
+function blind(game: Game, position: number) {
+    if (game.stage === 1) return "";
+    if (game.sb === position) return "SB";
+    if (game.bb === position) return "BB";
+    return "";
+}
+
+// Markers are the dealer button, blind labels, and bet in front of a seat
+function Markers({ game, player }: { game: Game; player: Player }) {
+    const dealer = game.running && game.dealer === player.position;
+    const label = game.running ? blind(game, player.position) : "";
+    if (!dealer && !label && !player.bet) return null;
+    return (
+        <div className="flex items-center gap-1">
+            {dealer && (
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm font-bold text-purple-800 lg:h-7 lg:w-7 lg:text-base">
+                    D
+                </span>
+            )}
+            {label && (
+                <span className="flex h-6 items-center rounded-full bg-zinc-300 px-1.5 text-xs font-bold text-zinc-800">
+                    {label}
+                </span>
+            )}
+            {player.bet !== 0 && (
+                <span className="flex h-6 min-w-10 items-center justify-center rounded-full bg-amber-300 px-2 text-sm font-semibold text-zinc-900 lg:h-8 lg:text-lg">
+                    {player.bet}
+                </span>
+            )}
+        </div>
+    );
+}
+
+export default function Table() {
     const { appState } = useContext(AppContext);
     const game = appState.game;
+    if (!game) return null;
 
-    // map game players to their visual seats
-    useEffect(() => {
-        // start empty so seats of players who left are cleared
-        let updatedPlayers: (Player | null)[] = players.map(() => null);
-        if (game?.players == null) {
-            return;
-        }
-        for (let i = 0; i < game.players.length; i++) {
-            updatedPlayers[game.players[i].seatID - 1] = game.players[i];
-        }
-        setPlayers(updatedPlayers);
-    }, [game?.players]);
+    const seats = game.seats || 8;
+    const own = game.players.find((p) => p.uuid === appState.clientID);
+    const bySeat = new Map(game.players.map((p) => [p.seatID, p]));
+    const ids = Array.from({ length: seats }, (_, i) => i + 1);
+    const angle = (id: number) => seatAngle(id, seats, own?.seatID ?? 1);
 
     return (
-        <div className="mt-2 grid h-3/4 w-full max-w-(--breakpoint-xl) grid-cols-5 grid-rows-5 sm:mt-28 sm:h-3/5">
-            <div></div>
-            <Seat
-                key={3}
-                player={players[3]}
-                id={4}
-            />
-            <div></div>
-            <Seat
-                key={4}
-                player={players[4]}
-                id={5}
-            />
-            <div></div>
-            <div></div>
-            <div className="col-span-3 row-span-3 flex items-center justify-center">
-                <Felt />
+        <div className={"absolute inset-0 " + seatSize}>
+            <div className="absolute top-1/2 left-1/2 h-[calc(0.8*(100%-2*var(--seat-hh)))] w-[calc(0.84*(100%-2*var(--seat-hw)))] -translate-1/2 rounded-full border-8 border-teal-900 bg-emerald-700" />
+            <div className="pointer-events-none absolute top-1/2 left-1/2 z-30 flex w-[calc(0.66*(100%-2*var(--seat-hw)))] -translate-1/2 flex-col items-center gap-2 portrait:top-[40%] short:top-[53%]">
+                <Pot />
+                <CommunityCards />
+                <TableHint />
             </div>
-            <div></div>
-            <Seat
-                key={2}
-                player={players[2]}
-                id={3}
-            />
-            <Seat
-                key={5}
-                player={players[5]}
-                id={6}
-            />
-            <div></div>
-            <div></div>
-            <div></div>
-            <Seat
-                key={1}
-                player={players[1]}
-                id={2}
-            />
-            <div></div>
-            <Seat
-                key={0}
-                player={players[0]}
-                id={1}
-            />
-            <div></div>
+            {game.players.map((p) => (
+                <div
+                    key={p.uuid}
+                    className="absolute z-10 -translate-1/2"
+                    style={at(angle(p.seatID), 0.6)}
+                >
+                    <Markers game={game} player={p} />
+                </div>
+            ))}
+            {ids.map((id) => (
+                <div key={id} className="absolute z-20 -translate-1/2" style={at(angle(id))}>
+                    <Seat id={id} player={bySeat.get(id) ?? null} />
+                </div>
+            ))}
         </div>
     );
 }

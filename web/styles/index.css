@@ -5,6 +5,9 @@
   pick shades ad hoc. Radius scale: rounded-md for controls, rounded-xl for
   seats and panels, rounded-full for chips and pills.
 */
+/* short screens, like a phone on its side; listed last so it wins over sm: and lg: */
+@custom-variant short (@media (max-height: 500px));
+
 @theme {
   --color-surface: var(--color-zinc-800); /* page background */
   --color-panel: var(--color-zinc-900); /* seats */

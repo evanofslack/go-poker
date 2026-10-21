@@ -1,61 +1,61 @@
-import React, { useState } from "react";
-import { MdExpandLess } from "react-icons/md";
-import { MdExpandMore } from "react-icons/md";
+import { useContext, useEffect, useState } from "react";
 import classNames from "classnames";
+import { AppContext } from "../../providers/AppStore";
 import Chat from "./Chat";
 import Log from "./Log";
 
+// ChatLog is a toggle that opens the chat and game log above the footer
 export default function ChatLog() {
-    const [expand, setExpand] = useState(false);
-    const [showChat, setShowChat] = useState(true);
+    const { appState } = useContext(AppContext);
+    const [open, setOpen] = useState(false);
+    const [tab, setTab] = useState<"chat" | "log">("chat");
+    const [seen, setSeen] = useState(0);
 
-    function chatHeight(expand: boolean) {
-        return classNames(
-            {
-                "h-96": expand,
-                "h-36": !expand,
-            },
-            "relative flex w-96 flex-col items-start justify-between rounded-tr-lg bg-raised p-3 text-muted"
-        );
-    }
+    const count = appState.messages.length;
+    useEffect(() => {
+        if (open) setSeen(count);
+    }, [open, count]);
+    const unread = open ? 0 : count - seen;
 
-    function tabStyle(active: boolean) {
-        return classNames(
-            {
-                "opacity-100": active,
-                "opacity-50": !active,
-            },
-            " text-subtle border border-raised border-2 px-4 py-1 bg-raised"
+    const tabStyle = (t: string) =>
+        classNames(
+            "rounded-md px-3 py-1 text-sm",
+            tab === t ? "bg-surface text-fg" : "text-subtle"
         );
-    }
 
     return (
-        <div>
-            <button className={tabStyle(showChat)} onClick={() => setShowChat(true)}>
+        <>
+            <button
+                className="relative shrink-0 rounded-md bg-raised px-3 py-2 text-sm text-muted hover:text-fg"
+                onClick={() => setOpen(!open)}
+            >
                 chat
-            </button>
-            <button className={tabStyle(!showChat)} onClick={() => setShowChat(false)}>
-                log
-            </button>
-            <div className={chatHeight(expand)}>
-                {showChat && <Chat />}
-                {!showChat && <Log />}
-                {expand ? (
-                    <button
-                        className="absolute top-0 right-0 pt-3 pr-7"
-                        onClick={() => setExpand(!expand)}
-                    >
-                        <MdExpandMore size="1.7rem" />
-                    </button>
-                ) : (
-                    <button
-                        className="absolute top-0 right-0 pt-3 pr-7"
-                        onClick={() => setExpand(!expand)}
-                    >
-                        <MdExpandLess size="1.7rem" />
-                    </button>
+                {unread > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 rounded-full bg-accent px-1.5 text-xs text-zinc-900">
+                        {unread}
+                    </span>
                 )}
-            </div>
-        </div>
+            </button>
+            {open && (
+                <div className="absolute right-2 bottom-full left-2 z-40 flex h-72 flex-col rounded-xl bg-raised p-2 text-muted shadow-xl sm:right-auto sm:left-4 sm:w-96">
+                    <div className="mb-2 flex items-center gap-1">
+                        <button className={tabStyle("chat")} onClick={() => setTab("chat")}>
+                            chat
+                        </button>
+                        <button className={tabStyle("log")} onClick={() => setTab("log")}>
+                            log
+                        </button>
+                        <button
+                            className="ml-auto px-2 text-subtle hover:text-fg"
+                            title="close"
+                            onClick={() => setOpen(false)}
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    <div className="min-h-0 flex-1">{tab === "chat" ? <Chat /> : <Log />}</div>
+                </div>
+            )}
+        </>
     );
 }

@@ -1,30 +1,30 @@
-import React, { useContext, useState, useEffect } from "react";
+import { useContext } from "react";
+import classNames from "classnames";
 import { AppContext } from "../providers/AppStore";
 import TurnAlert from "./TurnAlert";
 import InviteButton from "./InviteButton";
-import classNames from "classnames";
 
 export default function GameInfo() {
-    const { appState, dispatch } = useContext(AppContext);
+    const { appState } = useContext(AppContext);
+    const config = appState.game?.config;
+    const open = appState.connection === "open";
 
     return (
-        <div className="invisible p-4 text-right text-subtle sm:visible">
-            {appState.game && (
-                <p>
-                    {appState.game.config.sb}/{appState.game.config.bb} nl texas holdem
-                </p>
-            )}
+        <div className="ml-auto min-w-0 text-right text-xs text-subtle sm:text-sm">
             <p className="flex items-center justify-end gap-2">
                 <span
                     className={classNames(
-                        "h-2 w-2 rounded-full",
-                        appState.connection === "open" ? "bg-accent" : "animate-pulse bg-amber-400"
+                        "h-2 w-2 shrink-0 rounded-full",
+                        open ? "bg-accent" : "animate-pulse bg-amber-400"
                     )}
-                    title={appState.connection === "open" ? "connected" : "reconnecting"}
+                    title={open ? "connected" : "reconnecting"}
                 />
-                table: {appState.table}
+                <span className="truncate">
+                    {config && `${config.sb}/${config.bb}`}
+                    <span className="hidden sm:inline"> nl texas holdem</span> · {appState.table}
+                </span>
             </p>
-            <div className="mt-1 flex items-center justify-end gap-2">
+            <div className="flex items-center justify-end gap-1">
                 <InviteButton compact />
                 <TurnAlert />
             </div>

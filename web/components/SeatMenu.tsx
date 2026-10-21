@@ -34,7 +34,7 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
     return (
         <>
             <button
-                className="absolute top-0 right-2 z-20 text-lg leading-none opacity-60 hover:opacity-100"
+                className="absolute top-1/2 right-1 z-20 -translate-y-1/2 px-1 text-lg leading-none opacity-60 hover:opacity-100"
                 title="seat options"
                 onClick={() => (open ? close() : setOpen(true))}
             >

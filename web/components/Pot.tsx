@@ -2,7 +2,7 @@ import { useContext } from "react";
 import { AppContext } from "../providers/AppStore";
 import { potLabel, settledPots } from "../lib/hands";
 
-const chip = "flex h-10 items-center justify-center rounded-full bg-green-900 px-5 text-white";
+const chip = "flex h-10 items-center justify-center rounded-full bg-green-900 px-5 text-white short:h-7 short:px-3";
 
 export default function Pot() {
     const { appState } = useContext(AppContext);
@@ -27,5 +27,5 @@ export default function Pot() {
 
     // every chip committed this hand, including the current street
     const total = game.players.reduce((sum, p) => sum + p.totalBet, 0);
-    return <p className={chip + " min-w-24 text-2xl font-semibold"}>{total}</p>;
+    return <p className={chip + " min-w-24 text-2xl font-semibold short:min-w-16 short:text-base"}>{total}</p>;
 }

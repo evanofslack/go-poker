@@ -25,7 +25,7 @@ export default function TableHint() {
     if (!text) return null;
 
     return (
-        <div className="flex items-center gap-3 rounded-full bg-panel/80 px-4 py-1.5 text-sm text-muted">
+        <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2 rounded-xl bg-panel/80 px-3 py-1.5 text-center text-xs text-muted sm:text-sm">
             <span>{text}</span>
             {ready < 2 && <InviteButton />}
         </div>
