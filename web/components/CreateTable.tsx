@@ -163,7 +163,7 @@ export default function CreateTable({ tablename, username, onClose }: createTabl
                                 checked={form.public}
                                 onChange={(e) => set({ public: e.target.checked })}
                             />
-                            public <span className="text-xs text-subtle">(not listed anywhere yet)</span>
+                            public <span className="text-xs text-subtle">(listed on the home page)</span>
                         </label>
                         <label className="flex items-center gap-2 text-sm">
                             <input

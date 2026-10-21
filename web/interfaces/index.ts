@@ -31,6 +31,23 @@ export type AppState = {
     connection: Connection;
     toasts: Toast[];
     hands: HandStats[]; // the last hands played, oldest first
+    tables: TableSummary[]; // public tables for the home page, best to join first
+};
+
+// TableSummary is what the home page shows of a public table
+export type TableSummary = {
+    name: string;
+    sb: number;
+    bb: number;
+    minBuy: number;
+    maxBuy: number;
+    seats: number;
+    players: number; // seated, bots included
+    bots: number;
+    watchers: number; // connected without a seat
+    running: boolean;
+    paused: boolean;
+    hasPassword: boolean;
 };
 
 // HandStats is a snapshot taken as a hand ends.

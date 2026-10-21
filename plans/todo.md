@@ -170,8 +170,8 @@ Needs the host role from 2.2.
 - [x] **Seat management:** kick a player, sit a player out, optionally approve buy-ins/rebuys. See 5.3.
 - [x] **Pause/resume** the game. See 5.3.
 - [x] **Confirm before reset.** Reset now sits in a host menu and asks first. 5.3 removes reset.
-- [ ] **Public tables:** list open tables on the home page so anyone can pick one to join. Needs a hub
-  listing of tables (name, stakes, seats taken), and goes with private/password tables.
+- [x] **Public tables:** list open tables on the home page so anyone can pick one to join. The join form
+  polls `list-tables` every 5s; password tables show a lock, most players first, full tables last.
 - [x] **End session with a ledger:** net result per player (buy-ins vs final stack), copyable. See 5.3.
 - [x] **Spectator mode** made explicit in the UI. The header counts spectators ("watching 2") and the
   5.3 players panel lists them.
@@ -198,7 +198,8 @@ Today: `poker.NewGame()` hard-codes 10/20 and a 10000 max buy-in with no minimum
 
 Decided:
 - One delay after every hand, used for showdowns and folds alike.
-- Public is stored and sent to clients but does nothing yet; the public table list (below) uses it later.
+- Public tables are listed on the home page. The create form defaults to public; a create-table without
+  settings stays private.
 - Buy-ins are entered in big blinds and stored in chips.
 - Seats cap at 9. Check the oval layout at 9 on mobile.
 - Turn timer off means an idle connected player can stall the hand. Fine, the host chose it.

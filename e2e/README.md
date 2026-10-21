@@ -20,6 +20,7 @@ protect what you run them on.
 | `ux.mjs` | toasts, reconnecting, the header, leaving |
 | `layout.mjs` | nine seats on desktop, laptop, tablet and phone screens |
 | `bots.mjs` | adding, playing with and removing bots |
+| `lobby.mjs` | public tables on the home page: listing, order, lock, joining from the list |
 
 ## Setup
 
