@@ -1,4 +1,4 @@
-// Two-player session: hidden cards, host, next hand, reload, turn timer and grace period.
+// Two-player session: hidden cards, next hand, reload, turn timer and grace period.
 import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -87,11 +87,6 @@ check(
     "bob never receives alice's cards mid-hand",
     preShowdown(bRec).every((g) => !cardsShown(g, "alice")) && cardsShown(lastGame(bRec), "bob"),
 );
-
-// only the host sees reset
-const hostMenu = 'button[aria-haspopup=menu]:has-text("host")';
-check("host sees the host menu", (await alice.locator(hostMenu).count()) === 1);
-check("non-host doesn't see it", (await bob.locator(hostMenu).count()) === 0);
 
 // alice (dealer, small blind) folds; the server logs it and deals the next hand once
 await alice.click('button:text-is("fold")');

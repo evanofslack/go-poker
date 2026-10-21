@@ -65,7 +65,7 @@ export type Game = {
     pots: Pot[];
     minRaise: number;
     readyCount: number;
-    host: string;
+    host: string; // name of the host
     turnEndsIn: number; // ms until the player to act times out, 0 when not betting
     sitOutNext: boolean; // you asked to sit out once this hand ends
     settings: Settings; // chosen by the host when creating the table

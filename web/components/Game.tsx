@@ -1,6 +1,5 @@
 import ChatLog from "./ChatLog";
 import Home from "./Home";
-import HostMenu from "./HostMenu";
 import GameInfo from "./GameInfo";
 import Start from "./Start";
 import Input from "./Input";
@@ -10,10 +9,7 @@ export default function Game() {
     return (
         <div className="flex h-dvh flex-col overflow-hidden">
             <header className="flex items-start justify-between gap-2 px-2 pt-1 sm:px-4 sm:pt-2">
-                <div className="flex items-center gap-1 sm:gap-2">
-                    <Home />
-                    <HostMenu />
-                </div>
+                <Home />
                 <GameInfo />
             </header>
             <div className="relative min-h-0 flex-1">

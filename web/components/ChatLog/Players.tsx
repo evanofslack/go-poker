@@ -1,17 +1,21 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import classNames from "classnames";
 import { AppContext } from "../../providers/AppStore";
 import { ledgerText, playerLines, settleLine, signed } from "../../lib/ledger";
 import Button from "../Button";
+import ManagePlayer from "./ManagePlayer";
 
 // Players lists everyone at the table with their chips in and out, and how
 // each settles up with the banker
 export default function Players() {
     const { appState, dispatch } = useContext(AppContext);
     const game = appState.game;
+    const [managing, setManaging] = useState<string | null>(null);
     if (!game) return null;
     const { banker, balance } = game.ledger;
     const lines = playerLines(game);
+    const host = game.host === appState.username;
+    const managed = lines.find((l) => l.name === managing);
 
     const copy = async () => {
         const text = ledgerText(appState.table ?? "", game);
@@ -32,6 +36,7 @@ export default function Players() {
                             <span className="truncate font-semibold text-fg">{name}</span>
                             {name === appState.username && <span className="text-xs text-subtle">you</span>}
                             {bot && <span className="text-xs text-subtle">{bot} bot</span>}
+                            {name === game.host && <span className="text-xs text-accent">host</span>}
                             <span className="text-xs text-subtle">
                                 {status}
                                 {seat !== null && ` · seat ${seat}`}
@@ -46,6 +51,16 @@ export default function Players() {
                                 >
                                     {signed(row.net)}
                                 </span>
+                            )}
+                            {host && (
+                                <button
+                                    className={classNames("px-1 leading-none text-subtle hover:text-fg", !row && "ml-auto")}
+                                    title={`manage ${name}`}
+                                    aria-label={`manage ${name}`}
+                                    onClick={() => setManaging(name)}
+                                >
+                                    ⋯
+                                </button>
                             )}
                         </div>
                         {row && (
@@ -70,6 +85,7 @@ export default function Players() {
                     copy ledger
                 </Button>
             </div>
+            {managed && <ManagePlayer line={managed} onClose={() => setManaging(null)} />}
         </div>
     );
 }

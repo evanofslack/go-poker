@@ -1,7 +1,7 @@
 import { createContext, ReactNode, useEffect, useState, useContext, useRef } from "react";
 import { AppContext } from "../providers/AppStore";
 import { Message, Game, Log } from "../interfaces";
-import { joinTable } from "../actions/actions";
+import { joinTable, leaveTable } from "../actions/actions";
 import { inviteLink } from "../lib/invite";
 
 // Session lets a tab rejoin its table, and reclaim its seat with the token,
@@ -162,6 +162,16 @@ export function SocketProvider(props: SocketProviderProps) {
                     };
                     dispatch({ type: "addLog", payload: errorLog });
                     dispatch({ type: "setError", payload: event.message });
+                    if (event.code === "removed") {
+                        // the host removed us: leave, and don't rejoin on reconnect
+                        if (appState.table) leaveTable(socket, appState.table);
+                        saveSession(null);
+                        window.history.replaceState(null, "", window.location.pathname);
+                        dispatch({ type: "leftTable" });
+                        // the join form shows why
+                        dispatch({ type: "setError", payload: event.message });
+                        return;
+                    }
                     if (event.code === "password-required" || event.code === "wrong-password") {
                         dispatch({ type: "setNeedPassword", payload: true });
                     }

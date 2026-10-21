@@ -392,19 +392,27 @@ Decided:
 
 ### PR 3: add host controls
 
-- [ ] Host is a name on the table. It passes on only when the host leaves for good: leaves the table,
+- [x] Host is a name on the table. It passes on only when the host leaves for good: leaves the table,
   is removed, or their reconnect grace runs out. Reconnecting within grace keeps it. A spectator host
   has no seat to hold, so it passes on when they disconnect.
-- [ ] Host actions, each host-only, validated in `validate.go`, logged to the table, and tested:
+- [x] Host actions, each host-only, validated in `validate.go`, logged to the table, and tested:
   - make another player host
   - pick the banker
   - move a player to spectator, or remove them from the table (mid-hand they're folded on their turn,
     like leaving). No bans.
   - sit a player out (mid-hand it applies after the hand)
   - add or remove chips, between hands only, recorded as a host add or host remove with a reason
-- [ ] Per-player host actions live in a menu on each row of the players panel.
-- [ ] Remove reset: `reset-game`, `handleResetGame`, the host menu item, its tests and the e2e uses
+- [x] Per-player host actions live in a menu on each row of the players panel.
+- [x] Remove reset: `reset-game`, `handleResetGame`, the host menu item, its tests and the e2e uses
   (`ux.mjs`, `session.mjs`, `betting.mjs`).
+
+Notes:
+- `update-game` sends the host's name instead of a uuid.
+- Removing tells the player's client to leave (error code `removed`); it leaves, forgets its session and
+  shows why on the join form. The seat is taken server-side either way.
+- Host chip adds still respect the max buy-in. The host can't remove themselves.
+- The host menu went with reset, since reset was its only item. PR 4 brings it back for pause and
+  end session. e2e: `host.mjs`.
 
 ### PR 4: add session controls
 

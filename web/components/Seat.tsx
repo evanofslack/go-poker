@@ -184,7 +184,7 @@ export default function Seat({ player, id }: { player: Player | null; id: number
     const { appState } = useContext(AppContext);
     const game = appState.game;
     if (!game) return null;
-    const host = game.host === appState.clientID;
+    const host = game.host === appState.username;
 
     if (player) {
         // the server only sends cards this client may see
