@@ -1,5 +1,5 @@
 // Invite links, table hints, error toasts, connection status, header and leaving.
-import { URL, check, finish, launch, shot } from "./lib.mjs";
+import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
 const has = (p, sel, ms = 3000) => p.waitForSelector(sel, { timeout: ms }).then(() => true).catch(() => false);
 
 const browser = await launch();
@@ -20,6 +20,7 @@ check("join waits for the connection", await has(alice, "text=connecting to serv
 await alice.fill("#username", "alice");
 await alice.fill("#tablename", table);
 await alice.click('button:text-is("create")');
+await confirmCreate(alice);
 await alice.waitForSelector("text=Open");
 check("url becomes the invite link", alice.url().endsWith(`?table=${table}`), alice.url());
 check("empty table hint", await has(alice, "text=pick a seat to start"));

@@ -2,7 +2,7 @@
 
 Browser tests that drive real players through the static build: hidden cards, host controls, next hand,
 reload and reconnect, turn timer (`session.mjs`), betting controls, showdown display, turn countdown,
-seat menu, the join and buy-in forms, password tables, invite links, toasts, reconnecting, the header, leaving and the host menu (`ux.mjs`), and eight
+seat menu, the join and buy-in forms, password tables, invite links, toasts, reconnecting, the header, leaving and the host menu (`ux.mjs`), and nine
 seats on desktop, tablet and phone screens (`layout.mjs`). They aren't run in CI.
 
 - `cd e2e && npm install`

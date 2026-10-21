@@ -1,15 +1,18 @@
 // Password tables: the join form asks for the password, invite links carry it, reloads keep it.
 import { URL, check, finish, launch, shot } from "./lib.mjs";
 const table = "pw" + Date.now();
-
-// the host stays connected from node to keep the table; the form to create one comes later
-const host = new WebSocket(URL.replace("http", "ws") + "/ws");
-await new Promise((resolve) => (host.onopen = resolve));
-const joined = new Promise((resolve) => (host.onmessage = (e) => JSON.parse(e.data).action === "joined-table" && resolve()));
-host.send(JSON.stringify({ action: "create-table", tablename: table, username: "host", password: "s3cret" }));
-await joined;
-
 const browser = await launch();
+
+// the host sets the password when creating the table
+const host = await (await browser.newContext()).newPage();
+await host.goto(URL);
+await host.fill("#username", "host");
+await host.fill("#tablename", table);
+await host.click('button:text-is("create")');
+await host.fill("#tablePassword", "s3cret");
+await host.click('button:text-is("create table")');
+await host.waitForSelector("text=Open");
+
 const p = await (await browser.newContext()).newPage();
 await p.goto(`${URL}/?table=${table}`);
 check("no password field before it's needed", (await p.locator("#password").count()) === 0);
@@ -42,6 +45,5 @@ await q.click('button[title="copy invite link"]');
 const copied = await q.evaluate(() => navigator.clipboard.readText());
 check("copied invite carries the password", copied.endsWith(`?table=${table}#pw=s3cret`), copied);
 
-host.close();
 await browser.close();
 finish();

@@ -18,6 +18,11 @@ export function check(name, ok, detail = "") {
     console.log(`${ok ? "PASS" : "FAIL"} ${name}${detail ? " — " + detail : ""}`);
 }
 
+// confirmCreate creates the table from the settings dialog, with its defaults
+export async function confirmCreate(page) {
+    await page.click('button:text-is("create table")');
+}
+
 // shot saves a screenshot when SHOTS names a directory
 export async function shot(page, name) {
     if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/${name}.png` });

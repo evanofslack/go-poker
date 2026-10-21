@@ -1,5 +1,5 @@
-// Eight players on desktop, tablet and phone viewports.
-import { URL, check, finish, launch, shot } from "./lib.mjs";
+// A full nine-seat table on desktop, tablet and phone viewports.
+import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
 
 const views = {
     desktop: { viewport: { width: 1280, height: 720 } },
@@ -17,23 +17,28 @@ const footerGap = (p, name) =>
         return Math.min(...controls) - plate.getBoundingClientRect().bottom;
     }, name);
 
-const names = ["alice", "bob", "carol", "dave", "erin", "frank", "grace", "heidi"];
-const kinds = ["desktop", "phone", "tablet", "landscape", "small", "laptop", "desktop", "desktop"];
+const names = ["alice", "bob", "carol", "dave", "erin", "frank", "grace", "heidi", "ivan"];
+const kinds = ["desktop", "phone", "tablet", "landscape", "small", "laptop", "desktop", "desktop", "phone"];
 
 const browser = await launch();
 const table = "lay" + Date.now();
 const pages = [];
-for (let i = 0; i < 8; i++) {
+for (let i = 0; i < 9; i++) {
     const p = await (await browser.newContext(views[kinds[i]])).newPage();
     await p.goto(URL);
     await p.fill("#username", names[i]);
     await p.fill("#tablename", table);
     await p.click(`button:text-is("${i === 0 ? "create" : "join"}")`);
+    if (i === 0) {
+        await p.click("text=more settings");
+        await p.click('fieldset:has-text("seats") label:has-text("9")');
+        await confirmCreate(p);
+    }
     await p.waitForSelector("text=Open");
     if (i === 0) await shot(p, `lay-0-empty-desktop`);
     if (i === 1) await shot(p, `lay-0-empty-phone`);
     // seats are taken out of order, so seat order isn't join order
-    const seat = [3, 1, 6, 8, 2, 5, 7, 4][i];
+    const seat = [3, 1, 6, 8, 2, 5, 7, 4, 9][i];
     await p.locator("button", { hasText: "Open" }).filter({ hasText: String(seat) }).click();
     if (i === 1) await shot(p, `lay-0-buyin-phone`);
     await p.locator("#buyIn ~ button").first().click();
@@ -57,7 +62,13 @@ for (const { p, kind, name } of pages) {
     const lowest = Math.max(...boxes.map((b) => b.y));
     const vw = await p.evaluate(() => window.innerWidth);
     check(`${kind}: own seat at the bottom`, mine && mine.y === lowest && Math.abs(mine.x - vw / 2) < vw * 0.1, JSON.stringify(mine));
-    check(`${kind}: all 8 seats on screen`, boxes.length === 8 && boxes.every((b) => b.l >= 0 && b.r <= vw), `${boxes.length}`);
+    check(`${kind}: all 9 seats on screen`, boxes.length === 9 && boxes.every((b) => b.l >= 0 && b.r <= vw), `${boxes.length}`);
+    const overlaps = await p.evaluate(() => {
+        const plates = [...document.querySelectorAll("p.truncate")].map((e) => [e.textContent, e.parentElement.getBoundingClientRect()]);
+        const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+        return plates.flatMap(([n, a], i) => plates.slice(i + 1).filter(([, b]) => hit(a, b)).map(([m]) => `${n}/${m}`));
+    });
+    check(`${kind}: seats don't overlap`, overlaps.length === 0, overlaps.join(", "));
     const gap = await footerGap(p, name);
     check(`${kind}: own seat clear of the footer`, gap >= 0, `${gap}px`);
     await shot(p, `lay-1-${kind}-${name}`);

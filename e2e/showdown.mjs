@@ -1,5 +1,5 @@
 // Play a hand to showdown and check the result display.
-import { URL, check, finish, launch, shot } from "./lib.mjs";
+import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
 
 
 const browser = await launch();
@@ -11,6 +11,7 @@ for (const [p, name, btn, seat] of [[alice, "alice", "create", 1], [bob, "bob", 
     await p.fill("#username", name);
     await p.fill("#tablename", table);
     await p.click(`button:text-is("${btn}")`);
+    if (btn === "create") await confirmCreate(p);
     await p.waitForSelector("text=Open");
     await p.locator("button", { hasText: "Open" }).filter({ hasText: String(seat) }).click();
     await p.locator("#buyIn ~ button").first().click();
