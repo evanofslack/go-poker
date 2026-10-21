@@ -129,6 +129,7 @@ export function SocketProvider(props: SocketProviderProps) {
                         readyCount: event.game.readyCount,
                         host: event.host,
                         turnEndsIn: event.turnEndsIn,
+                        sitOutNext: event.sitOutNext,
                     };
                     dispatch({ type: "updateGame", payload: newGame });
                     return;

@@ -54,6 +54,7 @@ export type Game = {
     readyCount: number;
     host: string;
     turnEndsIn: number; // ms until the player to act times out, 0 when not betting
+    sitOutNext: boolean; // you asked to sit out once this hand ends
 };
 
 export type Config = {

@@ -642,9 +642,9 @@ func broadcastGame(t *table) {
 	host := t.hostID()
 	endsIn := t.turnEndsIn(view)
 	for i, p := range view.Players {
-		u.byUUID[p.UUID] = createUpdatedGame(t.game.GeneratePlayerView(uint(i)), host, endsIn)
+		u.byUUID[p.UUID] = createUpdatedGame(t.game.GeneratePlayerView(uint(i)), host, endsIn, t.sitOutNext[p.UUID])
 	}
-	u.spectator = createUpdatedGame(t.game.GeneratePlayerView(uint(len(view.Players))), host, endsIn)
+	u.spectator = createUpdatedGame(t.game.GeneratePlayerView(uint(len(view.Players))), host, endsIn, false)
 	select {
 	case t.updates <- u:
 	case <-t.done:
@@ -658,15 +658,16 @@ func createGameView(c *Client) []byte {
 		pn = uint(len(c.table.game.GenerateOmniView().Players))
 	}
 	view := c.table.game.GeneratePlayerView(pn)
-	return createUpdatedGame(view, c.table.hostID(), c.table.turnEndsIn(view))
+	return createUpdatedGame(view, c.table.hostID(), c.table.turnEndsIn(view), ok && c.table.sitOutNext[c.id()])
 }
 
-func createUpdatedGame(view *poker.GameView, host string, turnEndsIn int64) []byte {
+func createUpdatedGame(view *poker.GameView, host string, turnEndsIn int64, sitOutNext bool) []byte {
 	game := updateGame{
 		base{actionUpdateGame},
 		view,
 		host,
 		turnEndsIn,
+		sitOutNext,
 	}
 
 	resp, err := json.Marshal(game)

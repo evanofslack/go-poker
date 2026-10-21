@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { leaveSeat, rebuy, sitOut } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { Game, Player } from "../interfaces/index";
@@ -14,13 +14,8 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
     const socket = useSocket();
     const [open, setOpen] = useState(false);
     const [rebuying, setRebuying] = useState(false);
-    // a sit-out sent mid-hand applies when the hand ends; the server doesn't echo it back
-    const [pending, setPending] = useState(false);
 
     const betweenHands = !game.running || game.stage === 1;
-    useEffect(() => {
-        if (betweenHands) setPending(false);
-    }, [betweenHands]);
 
     if (!socket) return null;
 
@@ -33,7 +28,7 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
 
     let sitLabel = "sit out";
     if (sittingOut) sitLabel = "sit in";
-    else if (!betweenHands) sitLabel = pending ? "play next hand" : "sit out next hand";
+    else if (!betweenHands) sitLabel = game.sitOutNext ? "play next hand" : "sit out next hand";
 
     const item = "px-3 py-1.5 text-left text-sm hover:bg-raised";
     return (
@@ -66,7 +61,6 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
                                 <button className={item}
                                     onClick={() => {
                                         sitOut(socket);
-                                        if (!sittingOut && !betweenHands) setPending(!pending);
                                         close();
                                     }}
                                 >
