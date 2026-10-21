@@ -149,8 +149,6 @@ Consider the light token pass from 6.1 first so new components aren't restyled t
   show split and side pots and each pot's winner. `winningHand`/`winningScore` are already sent;
   `getWinner` only reads `winningPlayerNums[0]` of the last pot.
   Done with the category only ("two pair"); naming the ranks would need the server to send them.
-  Pot labels look winners up by player index, so they can misname a winner if a lower seat
-  leaves as the hand ends.
 - [x] **Table markers:** SB/BB chips next to the dealer button.
 - [x] **Turn notification:** sound and/or tab title flash when it's your turn; show the 2.4 turn timer
   as a countdown on the active seat. The server doesn't send the turn deadline yet; add it to `update-game`.
@@ -159,6 +157,7 @@ Consider the light token pass from 6.1 first so new components aren't restyled t
 - [x] **Leave seat / sit out / rebuy** buttons (uses 2.4 engine work).
 - [x] **Join form** (`web/components/Join.tsx`): one `autoFocus`, use a real `<form onSubmit>` instead of a
   document-wide `keydown` listener. (Create/join buttons and disabling are done.)
+- The dealer button passing on when the dealer sits out is the engine's intended behavior; left as is.
 
 # Stage 5: host and table features
 
