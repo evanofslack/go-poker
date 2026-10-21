@@ -1,8 +1,8 @@
 # e2e
 
-Browser tests that drive real players through the static build: hidden cards, host controls, ending a session, rebuy approval, next hand,
+Browser tests that drive real players through the static build: hidden cards, host controls, ending a session, rebuy approval, stats, next hand,
 reload and reconnect, turn timer (`session.mjs`), betting controls, showdown display, turn countdown,
-seat menu, the join and buy-in forms, password tables, the players panel, host controls, ending a session, rebuy approval, invite links, toasts, reconnecting, the header, leaving and the host menu (`ux.mjs`), nine
+seat menu, the join and buy-in forms, password tables, the players panel, host controls, ending a session, rebuy approval, stats, invite links, toasts, reconnecting, the header, leaving and the host menu (`ux.mjs`), nine
 seats on desktop, tablet and phone screens (`layout.mjs`), and playing with bots (`bots.mjs`). They aren't run in CI.
 
 - `cd e2e && npm install`

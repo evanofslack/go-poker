@@ -27,3 +27,17 @@
   --color-danger: var(--color-rose-600);
   --color-highlight: var(--color-amber-200); /* winning seat */
 }
+
+/* chart series, in this fixed order. Checked with the dataviz palette
+   validator against panel (#18181b): colorblind-safe for neighbours. On
+   :root, not @theme, since no utility uses them and @theme drops those. */
+:root {
+  --color-series-1: #3987e5;
+  --color-series-2: #d95926;
+  --color-series-3: #199e70;
+  --color-series-4: #c98500;
+  --color-series-5: #d55181;
+  --color-series-6: #008300;
+  --color-series-7: #9085e9;
+  --color-series-8: #e66767;
+}

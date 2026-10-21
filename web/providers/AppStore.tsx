@@ -1,5 +1,8 @@
 import { createContext, useReducer, ReactNode } from "react";
-import { AppState, Message, Game, Log, Connection, Toast } from "../interfaces";
+import { AppState, Message, Game, Log, Connection, Toast, HandStats } from "../interfaces";
+
+// maxHands matches the server's cap
+const maxHands = 1000;
 
 const initialState: AppState = {
     messages: [],
@@ -13,6 +16,7 @@ const initialState: AppState = {
     needPassword: false,
     connection: "connecting",
     toasts: [],
+    hands: [],
 };
 
 let nextToastID = 0;
@@ -31,7 +35,8 @@ type ACTIONTYPE =
     | { type: "setError"; payload: string | null }
     | { type: "setConnection"; payload: Connection }
     | { type: "addToast"; payload: Omit<Toast, "id"> }
-    | { type: "removeToast"; payload: number };
+    | { type: "removeToast"; payload: number }
+    | { type: "addHands"; payload: { hands: HandStats[]; full: boolean } };
 
 function reducer(state: AppState, action: ACTIONTYPE) {
     switch (action.type) {
@@ -43,6 +48,10 @@ function reducer(state: AppState, action: ACTIONTYPE) {
             return { ...state, username: action.payload };
         case "updateGame":
             return { ...state, game: action.payload };
+        case "addHands": {
+            const { hands, full } = action.payload;
+            return { ...state, hands: (full ? hands : [...state.hands, ...hands]).slice(-maxHands) };
+        }
         case "resetGame":
             return { ...state, clientID: null, username: null, game: null };
         case "leftTable":

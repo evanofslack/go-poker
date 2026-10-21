@@ -439,10 +439,20 @@ Notes:
 
 ### PR 5: add stats panel
 
-- [ ] Snapshot every player's stack at the end of each hand, bounded (e.g. last 1000 hands).
-- [ ] From the snapshots: chips over time per player, hands played and won, biggest pot won.
-- [ ] Chart colors come from the design tokens in `web/styles/index.css`.
+- [x] Snapshot every player's stack at the end of each hand, bounded (last 1000 hands).
+- [x] From the snapshots: chips over time per player, hands played and won, biggest pot won.
+- [x] Chart colors come from the design tokens in `web/styles/index.css`.
 - [ ] Detailed stats (how often each player puts money in, etc.) need hand history; see the backlog.
+
+Notes:
+- Snapshots go out in their own `update-stats` message: everything kept on joining, then one per hand
+  as it ends. They don't ride on `update-game`.
+- A snapshot has the stacks after the hand, who was dealt in, and the pots each winner took (their own
+  chips included, matching the "wins N" log). Split pots share evenly; odd chips aren't tracked.
+- The stats tab: a line per player of their stack by hand, with a legend, end labels for up to 4
+  players, and a crosshair tooltip; then a table of hands, wins, win rate, biggest pot and stack.
+  Series colors are the dataviz reference's dark palette, validated against `panel`. Past 8 players,
+  lines go gray. e2e: `stats.mjs`.
 
 # Stage 6: UI consistency and mobile
 
