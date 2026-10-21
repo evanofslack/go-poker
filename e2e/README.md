@@ -12,11 +12,11 @@ protect what you run them on.
 | `seat.mjs` | seat menu: sit out and in, rebuy, sit out next hand, leave |
 | `forms.mjs` | join, create table and buy-in forms |
 | `password.mjs` | password tables and invite links |
-| `players.mjs` | players panel and ledger |
+| `players.mjs` | table panel: players and ledger |
 | `host.mjs` | host controls: manage a player, chips, banker, remove, hand over host |
-| `endsession.mjs` | pause, end session, settle-up |
+| `endsession.mjs` | host tab: pause, end session, settle-up |
 | `approval.mjs` | rebuy approval |
-| `stats.mjs` | stats tab |
+| `stats.mjs` | table panel: stats tab |
 | `ux.mjs` | toasts, reconnecting, the header, leaving |
 | `layout.mjs` | nine seats on desktop, laptop, tablet and phone screens |
 | `bots.mjs` | adding, playing with and removing bots |

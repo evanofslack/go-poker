@@ -1,7 +1,7 @@
 import { useState } from "react";
+import { FiChevronDown } from "react-icons/fi";
 import ChatLog from "./ChatLog";
 import Home from "./Home";
-import HostMenu from "./HostMenu";
 import SessionEnded from "./SessionEnded";
 import GameInfo from "./GameInfo";
 import Start from "./Start";
@@ -17,13 +17,12 @@ export default function Game() {
                 <div className="flex items-center gap-1 sm:gap-2">
                     <Home />
                     <button
-                        className="rounded-md px-2 py-1 text-sm text-subtle hover:text-fg"
+                        className="flex items-center gap-1 rounded-md px-2 py-1 text-sm text-subtle hover:text-fg"
                         aria-expanded={tableOpen}
                         onClick={() => setTableOpen(!tableOpen)}
                     >
-                        table
+                        table <FiChevronDown />
                     </button>
-                    <HostMenu />
                 </div>
                 <GameInfo />
             </header>

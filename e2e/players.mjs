@@ -17,8 +17,8 @@ const rowHas = async (p, name, text, ms = 3000) => {
     return false;
 };
 const openPlayers = async (p) => {
-    await p.click('button[aria-label^="chat"]');
-    await p.click('button:text-is("players")');
+    await p.click('header button:has-text("table")');
+    await p.click('[aria-label="table"] button:text-is("players")');
 };
 
 const browser = await launch();

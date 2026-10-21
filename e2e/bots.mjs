@@ -102,15 +102,15 @@ await shot(phone, "bots-phone");
 await phone.context().close();
 
 // the players panel badges bots, with their buy-in in the ledger
-await alice.click('button[aria-label^="chat"]');
-await alice.click('button:text-is("players")');
+await alice.click('header button:has-text("table")');
+await alice.click('[aria-label="table"] button:text-is("players")');
 const harperRow = await alice.locator('ul[aria-label="players"] li').filter({ hasText: "harper" }).innerText();
 check("players panel badges bots, with their buy-in", harperRow.includes("medium bot") && /in \d+/.test(harperRow), harperRow);
 await alice.click('button[aria-label="manage harper"]');
 const offered = await alice.locator("[role=dialog] button").allInnerTexts();
 check("bots can't be made host, banker or a watcher", !offered.some((t) => /make host|make banker|move to watching/.test(t)), offered.join(", "));
 await alice.keyboard.press("Escape");
-await alice.click('button[aria-label="close chat"]');
+await alice.click('button[aria-label="close table panel"]');
 
 // alice checks or calls on her turns until a hand finishes
 await alice.click('button:text-is("start")');
