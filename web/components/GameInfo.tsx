@@ -9,7 +9,7 @@ import TurnAlert from "./TurnAlert";
 export default function GameInfo() {
     const { appState, dispatch } = useContext(AppContext);
     const config = appState.game?.config;
-    const watching = appState.game?.watching ?? 0;
+    const watching = appState.game?.watchers.length ?? 0;
     const open = appState.connection === "open";
     const table = appState.table;
 

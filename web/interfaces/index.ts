@@ -70,8 +70,9 @@ export type Game = {
     sitOutNext: boolean; // you asked to sit out once this hand ends
     settings: Settings; // chosen by the host when creating the table
     hasPassword: boolean;
-    watching: number; // clients at the table without a seat
+    watchers: string[]; // names of the clients at the table without a seat
     bots: Record<string, string>; // level of each bot, by uuid
+    ledger: Ledger;
 };
 
 // Settings are fixed once the table exists. Buy-ins are in chips, times in ms.
@@ -84,6 +85,22 @@ export type Settings = {
     turnTime: number; // 0 for no turn timer
     nextHandDelay: number;
     public: boolean;
+};
+
+// LedgerRow is one name's chips in and out. Someone who leaves and comes back
+// under the same name continues their row.
+export type LedgerRow = {
+    name: string;
+    boughtIn: number;
+    cashedOut: number;
+    stack: number; // chips at the table now, counting this hand's bets
+    net: number; // stack + cashedOut - boughtIn
+};
+
+export type Ledger = {
+    rows: LedgerRow[];
+    banker: string; // everyone settles up with the banker
+    balance: number; // sum of nets, 0 when every chip is accounted for
 };
 
 export type Config = {

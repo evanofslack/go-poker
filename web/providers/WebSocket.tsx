@@ -147,8 +147,9 @@ export function SocketProvider(props: SocketProviderProps) {
                         sitOutNext: event.sitOutNext,
                         settings: event.settings,
                         hasPassword: event.hasPassword,
-                        watching: event.watching,
+                        watchers: event.watchers,
                         bots: event.bots ?? {},
+                        ledger: event.ledger,
                     };
                     dispatch({ type: "updateGame", payload: newGame });
                     return;

@@ -364,19 +364,22 @@ Decided:
 
 ### PR 1: add ledger (server)
 
-- [ ] Per-table ledger entries: time, name, kind (buy-in, rebuy, cash-out, host add, host remove),
-  amount, and who did it. Totals come from the entries.
-- [ ] Record entries where chips enter or leave: `handleTakeSeat` (buy-in), `handleRebuy`, and
+- [x] Per-table ledger entries: time, name, kind (buy-in, rebuy, cash-out; host add and remove come
+  with PR 3), amount, and who did it. Totals come from the entries.
+- [x] Record entries where chips enter or leave: `handleTakeSeat` (buy-in), `handleRebuy`, and
   `removeLeavers` for cash-outs (leaving a seat, leaving the table and grace expiry all end there).
-- [ ] Rows per name: bought in, cashed out, current stack, net. Mid-hand, chips bet this hand still
-  count as the player's, so net is live during a hand.
-- [ ] Banker: a name on the table, the host by default. Each row gets its banker line.
-- [ ] Balance check: nets sum to zero between hands. Send the difference so the panel can show
-  "balanced" or "off by N".
-- [ ] Snapshot every player's stack at the end of each hand, bounded (e.g. last 1000 hands), for stats.
-- [ ] `update-game` sends the rows, the banker, the balance and the names of spectators.
-- [ ] Tests: rebuys, leaving and coming back by name, cash-out on leave, disconnect and grace expiry,
-  balance stays zero across hands and split pots.
+  Until PR 3 removes it, reset cashes everyone out, counting this hand's bets.
+- [x] Rows per name: bought in, cashed out, current stack, net. Mid-hand, chips bet this hand still
+  count as the player's, so net is live during a hand (and the balance stays zero mid-hand too).
+- [x] Banker: the host until PR 3 lets the host pick. The client works out each banker line from the
+  row's net, so it isn't sent.
+- [x] Balance check: the sum of nets, sent so the panel can show "balanced" or "off by N".
+- [x] `update-game` sends the rows, the banker, the balance and the names of spectators (`watchers`
+  replaces the `watching` count).
+- [x] Tests: buy-ins, rebuys, cash-out on leaving a seat, leaving and coming back by name, grace expiry,
+  live nets mid-hand, reset. Split pots aren't tested separately; the engine already gives odd chips out.
+- Moved to PR 5: stack snapshots per hand. State is in memory and a deploy restarts the server, so
+  recording before the chart ships keeps nothing.
 
 ### PR 2: add players panel
 
@@ -414,7 +417,8 @@ Decided:
 
 ### PR 5: add stats panel
 
-- [ ] From the stack snapshots: chips over time per player, hands played and won, biggest pot won.
+- [ ] Snapshot every player's stack at the end of each hand, bounded (e.g. last 1000 hands).
+- [ ] From the snapshots: chips over time per player, hands played and won, biggest pot won.
 - [ ] Chart colors come from the design tokens in `web/styles/index.css`.
 - [ ] Detailed stats (how often each player puts money in, etc.) need hand history; see the backlog.
 
