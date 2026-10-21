@@ -148,6 +148,7 @@ export function SocketProvider(props: SocketProviderProps) {
                         settings: event.settings,
                         hasPassword: event.hasPassword,
                         watching: event.watching,
+                        bots: event.bots ?? [],
                     };
                     dispatch({ type: "updateGame", payload: newGame });
                     return;

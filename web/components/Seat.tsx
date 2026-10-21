@@ -1,11 +1,12 @@
 import { useState, useContext } from "react";
 import { AppContext } from "../providers/AppStore";
-import { takeSeat } from "../actions/actions";
+import { removeBot, takeSeat } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { Game, Player } from "../interfaces/index";
 import Card, { cardSize } from "./Card";
 import BuyIn from "./BuyIn";
 import Dialog from "./Dialog";
+import AddBot from "./AddBot";
 import Countdown from "./Countdown";
 import SeatMenu from "./SeatMenu";
 import { isWinner, winningCards } from "../lib/hands";
@@ -31,7 +32,16 @@ function plateStyle(player: Player, game: Game) {
     });
 }
 
-function PlayerSeat({ player, game, own }: { player: Player; game: Game; own: boolean }) {
+type playerSeatProps = {
+    player: Player;
+    game: Game;
+    own: boolean;
+    bot: boolean;
+    host: boolean; // the viewer is the host
+};
+
+function PlayerSeat({ player, game, own, bot, host }: playerSeatProps) {
+    const socket = useSocket();
     const winning = winningCards(game);
     return (
         <div className="flex flex-col items-center short:flex-row">
@@ -56,6 +66,11 @@ function PlayerSeat({ player, game, own }: { player: Player; game: Game; own: bo
             <div className={plateStyle(player, game)}>
                 <p className="truncate text-sm leading-tight sm:text-base short:text-xs">
                     {player.username}
+                    {bot && (
+                        <span className="ml-1 rounded-full bg-zinc-600 px-1.5 align-middle text-xs text-fg">
+                            bot
+                        </span>
+                    )}
                 </p>
                 <p className="text-sm leading-tight font-semibold sm:text-lg short:text-sm">
                     {player.stack}
@@ -69,6 +84,16 @@ function PlayerSeat({ player, game, own }: { player: Player; game: Game; own: bo
                     </span>
                 )}
                 {own && <SeatMenu player={player} game={game} />}
+                {bot && host && socket && (
+                    <button
+                        className="absolute top-1/2 right-1 z-20 -translate-y-1/2 px-1 text-lg leading-none opacity-60 hover:opacity-100"
+                        title="remove bot"
+                        aria-label={`remove ${player.username}`}
+                        onClick={() => removeBot(socket, player.seatID)}
+                    >
+                        ×
+                    </button>
+                )}
                 {game.betting && game.action === player.position && game.turnEndsIn > 0 && (
                     <Countdown endsIn={game.turnEndsIn} total={game.settings.turnTime} />
                 )}
@@ -77,11 +102,13 @@ function PlayerSeat({ player, game, own }: { player: Player; game: Game; own: bo
     );
 }
 
-// OpenSeat lets someone without a seat sit down, after choosing a buy-in
-function OpenSeat({ id, game }: { id: number; game: Game }) {
+// OpenSeat lets someone without a seat sit down, after choosing a buy-in. The
+// host can sit a bot there instead.
+function OpenSeat({ id, game, host }: { id: number; game: Game; host: boolean }) {
     const socket = useSocket();
     const { appState } = useContext(AppContext);
-    const [sitDown, setSitDown] = useState(false);
+    const [open, setOpen] = useState<"sit" | "bot" | null>(null);
+    const close = () => setOpen(null);
 
     return (
         <>
@@ -90,13 +117,13 @@ function OpenSeat({ id, game }: { id: number; game: Game }) {
                     plate,
                     "border-2 border-dashed border-zinc-600 bg-raised/60 text-fg hover:bg-raised"
                 )}
-                onClick={() => setSitDown(true)}
+                onClick={() => setOpen("sit")}
             >
                 <span className="text-lg sm:text-2xl">{id}</span>
                 <span className="block text-xs opacity-70 sm:text-sm">Open</span>
             </button>
-            {sitDown && (
-                <Dialog title={`sit in seat ${id}`} onClose={() => setSitDown(false)}>
+            {open === "sit" && (
+                <Dialog title={`sit in seat ${id}`} onClose={close}>
                     <BuyIn
                         min={game.settings.minBuy}
                         max={game.settings.maxBuy}
@@ -106,10 +133,47 @@ function OpenSeat({ id, game }: { id: number; game: Game }) {
                             if (socket && appState.username) {
                                 takeSeat(socket, appState.username, id, amount);
                             }
-                            setSitDown(false);
+                            close();
                         }}
-                        onCancel={() => setSitDown(false)}
+                        onCancel={close}
                     />
+                    {host && (
+                        <button
+                            className="mt-2 px-3 text-sm text-subtle underline hover:text-fg"
+                            onClick={() => setOpen("bot")}
+                        >
+                            add a bot here instead
+                        </button>
+                    )}
+                </Dialog>
+            )}
+            {open === "bot" && (
+                <Dialog title={`add a bot to seat ${id}`} onClose={close}>
+                    <AddBot seat={id} game={game} onDone={close} />
+                </Dialog>
+            )}
+        </>
+    );
+}
+
+// BotSeat is an empty seat as the seated host sees it, for adding a bot
+function BotSeat({ id, game }: { id: number; game: Game }) {
+    const [open, setOpen] = useState(false);
+    return (
+        <>
+            <button
+                className={classNames(
+                    plate,
+                    "border-2 border-dashed border-zinc-700 bg-raised/40 text-muted hover:bg-raised hover:text-fg"
+                )}
+                onClick={() => setOpen(true)}
+            >
+                <span className="text-lg sm:text-2xl">{id}</span>
+                <span className="block text-xs opacity-70 sm:text-sm">+ bot</span>
+            </button>
+            {open && (
+                <Dialog title={`add a bot to seat ${id}`} onClose={() => setOpen(false)}>
+                    <AddBot seat={id} game={game} onDone={() => setOpen(false)} />
                 </Dialog>
             )}
         </>
@@ -120,14 +184,26 @@ export default function Seat({ player, id }: { player: Player | null; id: number
     const { appState } = useContext(AppContext);
     const game = appState.game;
     if (!game) return null;
+    const host = game.host === appState.clientID;
 
     if (player) {
         // the server only sends cards this client may see
-        return <PlayerSeat player={player} game={game} own={player.uuid === appState.clientID} />;
+        return (
+            <PlayerSeat
+                player={player}
+                game={game}
+                own={player.uuid === appState.clientID}
+                bot={game.bots.includes(player.uuid)}
+                host={host}
+            />
+        );
     }
     const seated = game.players.some((p) => p.uuid === appState.clientID);
     if (!seated) {
-        return <OpenSeat id={id} game={game} />;
+        return <OpenSeat id={id} game={game} host={host} />;
+    }
+    if (host) {
+        return <BotSeat id={id} game={game} />;
     }
     // seated players see empty seats faintly until the game starts
     if (game.running) return null;
