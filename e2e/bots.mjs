@@ -62,7 +62,7 @@ check("bot name is suggested from the list", names.includes(suggested), suggeste
 await alice.fill('input[maxlength="20"]', "harper");
 await shot(alice, "bots-1-dialog");
 await alice.click('button:text-is("add bot")');
-check("bots default to medium, with a badge", await alice.waitForSelector('p:has-text("harper") >> text=medium bot', { timeout: 3000 }).then(() => true).catch(() => false));
+check("bots default to medium, with an icon", await alice.waitForSelector('p:has-text("harper") >> [data-bot-badge][title="medium bot"]', { timeout: 3000 }).then(() => true).catch(() => false));
 
 await alice.locator("button", { hasText: "+ bot" }).filter({ hasText: "3" }).click();
 const second = await alice.inputValue('input[maxlength="20"]');
@@ -71,7 +71,8 @@ await alice.click('label:has-text("easy")');
 await alice.click('button:text-is("add bot")');
 await waitFor(() => lastGame(aRec)?.players.length === 3, 3000, "second bot");
 check("server sends each bot's level", JSON.stringify(Object.values(aRec.bots).sort()) === '["easy","medium"]', JSON.stringify(aRec.bots));
-check("easy bot shows its level", await alice.locator("text=easy bot").count() === 1);
+check("easy bot shows its level on hover", await alice.locator('[data-seat] [title="easy bot"]').count() === 1);
+check("seats don't spell out bot levels", await alice.locator("[data-seat] >> text=/(easy|medium|hard) bot/").count() === 0);
 
 // the host's remove buttons sit clear of the badges
 const clash = await alice.evaluate(() => {
@@ -81,7 +82,7 @@ const clash = await alice.evaluate(() => {
 });
 check("remove buttons don't cover the badges", !clash);
 
-// on a phone the badge is just "bot", whole, with the level on hover
+// on a phone the icon is whole, with the level on hover
 const phone = await (await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })).newPage();
 await phone.goto(URL);
 await phone.fill("#username", "pat");
@@ -96,8 +97,8 @@ const badges = await phone.evaluate(() =>
     }))
 );
 check(
-    "phone bot badges are short and whole",
-    badges.length === 2 && badges.every((b) => b.text === "bot" && b.whole && / bot$/.test(b.title)),
+    "phone bot icons are whole",
+    badges.length === 2 && badges.every((b) => b.text === "" && b.whole && / bot$/.test(b.title)),
     JSON.stringify(badges)
 );
 await shot(phone, "bots-phone");
@@ -116,7 +117,7 @@ await alice.click('button[aria-label="close table panel"]');
 
 // alice checks or calls on her turns until a hand finishes
 await alice.click('button:text-is("start")');
-const end = Date.now() + 20000;
+const end = Date.now() + 30000;
 while (handsWon(aRec) < 1 && Date.now() < end) {
     const call = alice.locator('button:text-matches("^(check|call \\\\d+|all in \\\\d+)$")');
     if (await call.count()) await call.first().click().catch(() => {});
@@ -144,8 +145,8 @@ for (const seat of ["1", "2"]) {
     await sleep(300);
 }
 await bob.click('button:text-is("start")');
-// bots think 1-2s per move and hands are 5s apart, so two hands take up to a minute
-check("bots-only game plays hands", await waitFor(() => handsWon(bRec) >= 2, 60000, "two bot hands"));
+// bots think 1-2s per move, streets pause 1s and hands are 5s apart, so two hands take over a minute
+check("bots-only game plays hands", await waitFor(() => handsWon(bRec) >= 2, 90000, "two bot hands"));
 check("spectating host sees no bot cards mid-hand", bRec.games.filter((g) => g.betting && g.stage > 1).every((g) => g.players.every((p) => p.cards[0] === 0) || g.players.every((p) => !p.in || p.stack === 0)));
 await shot(bob, "bots-3-alone");
 

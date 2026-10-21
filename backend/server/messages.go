@@ -213,6 +213,9 @@ type updateGame struct {
 	PotHands []string `json:"potHands"`
 
 	Ledger ledgerView `json:"ledger"`
+
+	// each player's action this street, and folds this hand, by uuid
+	Acts map[string]string `json:"acts"`
 }
 
 // joinedTable confirms a create-table or join-table

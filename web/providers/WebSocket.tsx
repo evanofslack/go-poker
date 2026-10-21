@@ -182,6 +182,7 @@ export function SocketProvider(props: SocketProviderProps) {
                         disconnected: event.disconnected,
                         bots: event.bots ?? {},
                         ledger: event.ledger,
+                        acts: event.acts ?? {},
                     };
                     dispatch({ type: "updateGame", payload: newGame });
                     return;

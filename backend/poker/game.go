@@ -58,6 +58,10 @@ type GameConfig struct {
 	MaxBuy     uint `json:"maxBuy"`
 	BigBlind   uint `json:"bb"`
 	SmallBlind uint `json:"sb"`
+
+	// PauseStreets stops betting when a street's betting closes, rather than
+	// dealing the next street, so the caller can show it before calling Deal.
+	PauseStreets bool `json:"-"`
 }
 
 // Game represents a game of poker. It internally keeps track of state, can be mutated by actions,
@@ -395,7 +399,9 @@ func (g *Game) updateRoundInfo() {
 		// otherwise, just set betting to false so the dealer can deal the next part of the hand
 	} else {
 		g.setBetting(false)
-		deal(g, g.dealerNum, 0)
+		if !g.config.PauseStreets {
+			deal(g, g.dealerNum, 0)
+		}
 	}
 }
 

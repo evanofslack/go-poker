@@ -23,13 +23,27 @@ function blind(game: Game, position: number) {
     return "";
 }
 
-// Markers are the dealer button, blind labels, and bet in front of a seat
-function Markers({ game, player }: { game: Game; player: Player }) {
+// actStyle colors a player's last action by what it was
+function actStyle(act: string) {
+    if (act === "fold") return "bg-zinc-600 text-zinc-300";
+    if (act === "all in") return "bg-rose-600 text-white";
+    if (act.startsWith("bet") || act.startsWith("raise")) return "bg-orange-400 text-zinc-900";
+    if (act.startsWith("call")) return "bg-emerald-500 text-zinc-900";
+    return "bg-sky-400 text-zinc-900"; // check
+}
+
+// Markers are the dealer button, blind labels and bet in front of a seat, with
+// the last action under them, or above them for seats below the table's middle
+function Markers({ game, player, above }: { game: Game; player: Player; above: boolean }) {
     const dealer = game.running && game.dealer === player.position;
     const label = game.running ? blind(game, player.position) : "";
-    if (!dealer && !label && !player.bet) return null;
+    // the player to act is choosing again, and the bet chip shows any amount
+    const turn = game.betting && game.action === player.position;
+    const act = turn ? "" : (game.acts[player.uuid] ?? "");
+    const shown = player.bet ? act.replace(/ (to )?\d+$/, "") : act;
+    if (!dealer && !label && !act && !player.bet) return null;
     return (
-        <div className="flex items-center gap-1" data-markers>
+        <div className="relative flex items-center gap-1" data-markers>
             {dealer && (
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm font-bold text-purple-800 lg:h-7 lg:w-7 lg:text-base">
                     D
@@ -43,6 +57,20 @@ function Markers({ game, player }: { game: Game; player: Player }) {
             {player.bet !== 0 && (
                 <span className="flex h-6 min-w-10 items-center justify-center rounded-full bg-amber-300 px-2 text-sm font-semibold text-zinc-900 lg:h-8 lg:text-lg">
                     {player.bet}
+                </span>
+            )}
+            {/* off the row, so the row stays put */}
+            {shown && (
+                <span
+                    key={act}
+                    className={classNames(
+                        above ? "bottom-full mb-1" : "top-full mt-1",
+                        "absolute left-1/2 flex h-6 -translate-x-1/2 animate-pop items-center rounded-full px-2 text-xs font-bold whitespace-nowrap shadow-md lg:text-sm",
+                        actStyle(act)
+                    )}
+                    data-act
+                >
+                    {shown}
                 </span>
             )}
         </div>
@@ -75,7 +103,8 @@ export default function Table() {
                     className="absolute z-10 -translate-1/2"
                     style={markerAt(angle(p.seatID))}
                 >
-                    <Markers game={game} player={p} />
+                    {/* the action goes on the side away from the seat */}
+                    <Markers game={game} player={p} above={Math.sin(angle(p.seatID)) > 0.1} />
                 </div>
             ))}
             {ids.map((id) => (

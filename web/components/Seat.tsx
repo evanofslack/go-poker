@@ -9,7 +9,7 @@ import Dialog from "./Dialog";
 import AddBot from "./AddBot";
 import Countdown from "./Countdown";
 import SeatMenu from "./SeatMenu";
-import { isWinner, winningCards } from "../lib/hands";
+import { isWinner, madeHand, winningCards, winningHand, winnings } from "../lib/hands";
 import classNames from "classnames";
 
 const plate =
@@ -25,11 +25,66 @@ function plateStyle(player: Player, game: Game) {
         "bg-panel text-fg": !action && !winner,
         // sitting out or out of chips
         "opacity-50": !player.ready && !action && !winner,
+        // folded this hand
+        "opacity-60": player.ready && !player.in && game.stage !== 1,
         // clear the cards that overlap the top of the plate
         "pt-2.5 short:py-0.5 short:pl-3": true,
         // room for the countdown along the bottom
         "pb-2.5 short:pb-2 lg:pb-3": counting,
     });
+}
+
+const tag =
+    "absolute -bottom-3 left-1/2 z-20 -translate-x-1/2 animate-pop rounded-full px-2 text-xs font-semibold whitespace-nowrap shadow-md sm:text-sm short:-bottom-2 short:text-xs";
+
+// ResultTag shows what a player won and with what once the hand is over, and
+// on your own seat, your best hand while you're in one
+function ResultTag({ player, game, own }: { player: Player; game: Game; own: boolean }) {
+    const won = winnings(game, player.position);
+    if (won) {
+        const hand = winningHand(game, player.position);
+        return (
+            <span className={classNames(tag, "bg-amber-400 text-zinc-900")} data-won>
+                won {won}
+                {hand && (
+                    <>
+                        {" · "}
+                        {/* just the kind of hand, like "full house", with the rest on hover */}
+                        <span data-hand title={hand}>
+                            {hand.replace(/^an? /, "").split(",")[0]}
+                        </span>
+                    </>
+                )}
+            </span>
+        );
+    }
+    const made = own && player.in && game.stage !== 1 ? madeHand([...player.cards, ...(game.communityCards ?? [])]) : "";
+    if (!made) return null;
+    return (
+        <span key={made} className={classNames(tag, "border border-line bg-panel font-normal text-fg")} data-made-hand>
+            {made}
+        </span>
+    );
+}
+
+// BotIcon marks a bot's seat, with its level on hover
+function BotIcon({ level }: { level: string }) {
+    return (
+        <span
+            className="ml-1 inline-flex shrink-0 opacity-70"
+            title={`${level} bot`}
+            role="img"
+            aria-label={`${level} bot`}
+            data-bot-badge
+        >
+            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden>
+                <path d="M8 1v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <rect x="2.25" y="4.25" width="11.5" height="9.5" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                <circle cx="6" cy="9" r="1.25" fill="currentColor" />
+                <circle cx="10" cy="9" r="1.25" fill="currentColor" />
+            </svg>
+        </span>
+    );
 }
 
 type playerSeatProps = {
@@ -70,19 +125,11 @@ function PlayerSeat({ player, game, own, bot, host }: playerSeatProps) {
                         bot && "flex items-center justify-center"
                     )}
                 >
-                    {/* a bot's long name gives way to its badge */}
+                    {/* a bot's long name gives way to its icon */}
                     {bot ? <span className="truncate">{player.username}</span> : player.username}
-                    {bot && (
-                        // just "bot" on small plates, so it isn't cut off
-                        <span
-                            className="ml-1 shrink-0 rounded-full bg-badge px-1.5 text-xs text-fg"
-                            title={`${bot} bot`}
-                            data-bot-badge
-                        >
-                            <span className="hidden sm:inline">{bot} </span>bot
-                        </span>
-                    )}
+                    {bot && <BotIcon level={bot} />}
                 </p>
+
                 <p className="text-sm leading-tight font-semibold sm:text-lg short:text-sm">
                     {player.stack}
                 </p>
@@ -94,11 +141,12 @@ function PlayerSeat({ player, game, own, bot, host }: playerSeatProps) {
                         {player.stack > 0 ? "sitting out" : "out of chips"}
                     </span>
                 )}
+                <ResultTag player={player} game={game} own={own} />
                 {own && <SeatMenu player={player} game={game} />}
                 {bot && host && socket && !game.ended && (
-                    // on the corner, clear of the name and badge
+                    // on the top corner, clear of the name, icon and result tag
                     <button
-                        className="absolute -right-2 -bottom-2 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-raised text-sm leading-none text-muted hover:text-fg"
+                        className="absolute -top-2 -right-2 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-raised text-sm leading-none text-muted hover:text-fg"
                         title="remove bot"
                         aria-label={`remove ${player.username}`}
                         onClick={() => removeBot(socket, player.seatID)}

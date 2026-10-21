@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,6 +30,7 @@ func TestMain(m *testing.M) {
 	defaultSettings.MaxBuy = 10000
 	reconnectGrace = 300 * time.Millisecond
 	botDelay = func() time.Duration { return 10 * time.Millisecond }
+	streetDelay = 10 * time.Millisecond
 	endedTableTTL = 500 * time.Millisecond
 	os.Exit(m.Run())
 }
@@ -340,6 +342,7 @@ type received struct {
 	chat    chan string // chat messages, as "name: message"
 	stats   chan updateStats
 	bots    chan map[string]string // bots of each game update
+	acts    chan map[string]string // acts of each game update, by name
 	history chan handHistory
 	backlog chan []string // messages of each log-history
 }
@@ -371,6 +374,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 		tokens:  make(chan string, 256),
 		chat:    make(chan string, 256),
 		bots:    make(chan map[string]string, 256),
+		acts:    make(chan map[string]string, 256),
 		history: make(chan handHistory, 256),
 		backlog: make(chan []string, 256),
 	}
@@ -403,6 +407,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				Full    bool                    `json:"full"`
 				Totals  map[string]playerTotals `json:"totals"`
 				Bots    map[string]string       `json:"bots"`
+				Acts    map[string]string       `json:"acts"`
 			}
 			if json.Unmarshal(msg, &u) != nil {
 				continue
@@ -451,6 +456,17 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				}
 				select {
 				case r.bots <- u.Bots:
+				default:
+				}
+				// by name, which tests know
+				acts := map[string]string{}
+				for _, p := range u.Game.Players {
+					if a, ok := u.Acts[p.UUID]; ok {
+						acts[p.Username] = a
+					}
+				}
+				select {
+				case r.acts <- acts:
 				default:
 				}
 			case actionError:
@@ -1585,4 +1601,50 @@ func TestLogBacklogCapped(t *testing.T) {
 	if len(tbl.logs) != maxLogs || tbl.logs[len(tbl.logs)-1].Message != strconv.Itoa(maxLogs+49) {
 		t.Errorf("kept %d lines ending %q, want the last %d", len(tbl.logs), tbl.logs[len(tbl.logs)-1].Message, maxLogs)
 	}
+}
+
+// waitActs waits for a game update whose acts are want
+func waitActs(t *testing.T, r received, want map[string]string) {
+	t.Helper()
+	timeout := time.After(2 * time.Second)
+	var last map[string]string
+	for {
+		select {
+		case last = <-r.acts:
+			if maps.Equal(last, want) {
+				return
+			}
+		case <-timeout:
+			t.Fatalf("acts %v, want %v", last, want)
+		}
+	}
+}
+
+func TestActsShown(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv, b, _ := seatTwo(t, srv)
+
+	send(t, a, `{"action":"player-call"}`)
+	waitActs(t, aRecv, map[string]string{"a": "call 10"})
+	// b closes preflop, so the flop starts with nothing shown
+	send(t, b, `{"action":"player-check"}`)
+	waitActs(t, aRecv, map[string]string{})
+	send(t, b, `{"action":"player-check"}`)
+	waitActs(t, aRecv, map[string]string{"b": "check"})
+	// a fold ends the hand, and the last street's actions stay up
+	send(t, a, `{"action":"player-fold"}`)
+	waitActs(t, aRecv, map[string]string{"a": "fold", "b": "check"})
+}
+
+func TestPauseBetweenStreets(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv, b, _ := seatTwo(t, srv)
+
+	send(t, a, `{"action":"player-call"}`)
+	send(t, b, `{"action":"player-check"}`)
+	g := waitGame(t, aRecv.games, func(g poker.GameView) bool { return !g.Betting })
+	if g.Stage != poker.PreFlop || g.CommunityCards[0] != 0 {
+		t.Errorf("flop dealt without a pause: stage %d, board %v", g.Stage, g.CommunityCards)
+	}
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Stage == poker.Flop && g.Betting })
 }

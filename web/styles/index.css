@@ -35,6 +35,14 @@
   --color-gain: var(--color-green-400); /* chips won */
   --color-loss: var(--color-rose-400); /* chips lost */
   --color-highlight: var(--color-amber-200); /* winning seat */
+
+  --animate-pop: pop 150ms ease-out; /* a badge appearing */
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+  }
 }
 
 /* chart series, in this fixed order. Checked with the dataviz palette

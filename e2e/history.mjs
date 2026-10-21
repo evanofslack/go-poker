@@ -39,7 +39,9 @@ check("the hand shows up", await has(alice, 'button[aria-label="hand 1"]'));
 
 // hand 2: check or call down to showdown
 await Promise.any([alice, bob].map((p) => p.waitForSelector('button:text-matches("^call \\\\d+$")', { timeout: 15000 })));
-for (let i = 0; i < 16 && !(await alice.locator('button[aria-label="hand 2"]').count()); i++) {
+// streets are dealt a second after betting closes
+for (let i = 0; i < 40 && !(await alice.locator('button[aria-label="hand 2"]').count()); i++) {
+    await alice.waitForTimeout(150);
     for (const p of [alice, bob]) {
         const b = p.locator('button:text-matches("^(check|call \\\\d+)$"):enabled');
         if (await b.count()) {

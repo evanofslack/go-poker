@@ -165,6 +165,7 @@ export type Game = {
     disconnected: string[]; // names of seated players who dropped and may still reconnect
     bots: Record<string, string>; // level of each bot, by uuid
     ledger: Ledger;
+    acts: Record<string, string>; // each player's action this street, and folds this hand, by uuid
 };
 
 // BuyRequest is a rebuy, or a returning player sitting back down, waiting for

@@ -7,7 +7,7 @@ protect what you run them on.
 | --- | --- |
 | `session.mjs` | hidden cards, next hand, reload and reconnect, turn timer and grace period |
 | `betting.mjs` | betting controls: labels, presets, raise, the waiting line |
-| `showdown.mjs` | showdown display |
+| `showdown.mjs` | action tags and the showdown display |
 | `turn.mjs` | turn countdown |
 | `seat.mjs` | seat menu: sit out and in, rebuy, sit out next hand, leave |
 | `forms.mjs` | join, create table and buy-in forms |
