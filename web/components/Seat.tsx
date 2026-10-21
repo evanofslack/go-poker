@@ -46,7 +46,15 @@ function ResultTag({ player, game, own }: { player: Player; game: Game; own: boo
         return (
             <span className={classNames(tag, "bg-amber-400 text-zinc-900")} data-won>
                 won {won}
-                {hand && <> · <span data-hand>{hand}</span></>}
+                {hand && (
+                    <>
+                        {" · "}
+                        {/* just the kind of hand, like "full house", with the rest on hover */}
+                        <span data-hand title={hand}>
+                            {hand.replace(/^an? /, "").split(",")[0]}
+                        </span>
+                    </>
+                )}
             </span>
         );
     }

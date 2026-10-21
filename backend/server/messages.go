@@ -24,6 +24,7 @@ const (
 	actionAddBot      string = "add-bot"
 	actionRemoveBot   string = "remove-bot"
 	actionListTables  string = "list-tables" // works before joining a table
+	actionGetHands    string = "get-hands"
 
 	// host only
 	actionMakeHost        string = "make-host"
@@ -154,6 +155,8 @@ const (
 	actionJoinedTable      string = "joined-table"
 	actionUpdateStats      string = "update-stats"
 	actionTables           string = "tables"
+	actionHandHistory      string = "hand-history"
+	actionLogHistory       string = "log-history"
 )
 
 type newMessage struct {
@@ -169,6 +172,12 @@ type newLog struct {
 	Id        string `json:"uuid"`
 	Message   string `json:"message"`
 	Timestamp string `json:"timestamp"`
+}
+
+// logHistory carries the log lines a table has kept, sent on joining
+type logHistory struct {
+	base          // actionLogHistory
+	Logs []newLog `json:"logs"`
 }
 
 type updateGame struct {
@@ -198,6 +207,10 @@ type updateGame struct {
 	Disconnected []string `json:"disconnected"`
 
 	Bots map[string]string `json:"bots"` // level of each bot, by uuid
+
+	// the hand that won each pot, like "two pair, kings and sevens", by
+	// game.pots index; empty for a pot won without a showdown
+	PotHands []string `json:"potHands"`
 
 	Ledger ledgerView `json:"ledger"`
 
@@ -232,8 +245,25 @@ type updatePlayerUUID struct {
 // joining), else the hand that just ended.
 type updateStats struct {
 	base
-	Hands []handStats `json:"hands"`
-	Full  bool        `json:"full"`
+	Hands  []handStats             `json:"hands"`
+	Full   bool                    `json:"full"`
+	Totals map[string]playerTotals `json:"totals"` // everyone's, every time
+}
+
+// getHands asks for the hands played before hand number Before
+type getHands struct {
+	base       // actionGetHands
+	Before int `json:"before"`
+}
+
+// handHistory carries hands, oldest first: the latest when Full (sent on
+// joining, replacing what the client has), else ones to add. More says the
+// table keeps hands older than the first.
+type handHistory struct {
+	base
+	Hands []handRecord `json:"hands"`
+	Full  bool         `json:"full"`
+	More  bool         `json:"more"`
 }
 
 // tableSummary is what the home page shows of a public table

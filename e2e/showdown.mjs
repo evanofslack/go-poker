@@ -50,6 +50,8 @@ const text = (await label.allInnerTexts()).join(" | ");
 check("winning seats say what they won", /^won (40|20)( · [a-z ]+)?( \| won 20( · [a-z ]+)?)?$/.test(text), text);
 const hands = (await alice.locator("[data-hand]").allInnerTexts()).join(" | ");
 check("winning seats name the hand", /^[a-z ]+( \| [a-z ]+)?$/.test(hands) && !/^an? /.test(hands), hands);
+const full = await alice.locator("[data-hand]").first().getAttribute("title");
+check("with its ranks on hover", /^(an? )?[a-z ,]+(s|high|royal flush)$/.test(full ?? ""), full);
 check("a winning seat is highlighted", (await alice.locator(".bg-amber-200").count()) >= 1);
 check("winning cards are ringed", (await alice.locator(".ring-amber-300").count()) >= 5, String(await alice.locator(".ring-amber-300").count()));
 check("both players see the same result", hands === (await bob.locator("[data-hand]").allInnerTexts()).join(" | "));

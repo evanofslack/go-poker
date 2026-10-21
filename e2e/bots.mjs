@@ -6,7 +6,7 @@ import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
 const names = ["harper", "eric", "yasmin", "robert", "gus", "rishi", "venetia", "kenny", "daria", "sweetpea", "henry", "jesse"];
 
 function record(page) {
-    const rec = { games: [], logs: [], errors: [], bots: {} };
+    const rec = { games: [], logs: [], errors: [], bots: {}, hands: [] };
     page.on("websocket", (ws) => {
         ws.on("framereceived", ({ payload }) => {
             try {
@@ -17,6 +17,8 @@ function record(page) {
                 }
                 if (m.action === "new-log") rec.logs.push(m.message);
                 if (m.action === "error") rec.errors.push(m.message);
+                // hands as they end; the backlog on joining is full
+                if (m.action === "hand-history" && !m.full) rec.hands.push(...m.hands);
             } catch {}
         });
     });
@@ -43,7 +45,7 @@ async function create(page, name, table) {
 }
 
 const lastGame = (rec) => rec.games[rec.games.length - 1];
-const handsWon = (rec) => rec.logs.filter((l) => / (wins|split) /.test(l)).length;
+const handsWon = (rec) => rec.hands.length;
 const browser = await launch();
 
 // a seated host adds two bots from the empty seats
@@ -121,8 +123,11 @@ while (handsWon(aRec) < 1 && Date.now() < end) {
     if (await call.count()) await call.first().click().catch(() => {});
     await sleep(200);
 }
-check("a hand against bots finishes", handsWon(aRec) >= 1, JSON.stringify(aRec.logs.slice(-8)));
-check("bots act on their own", aRec.logs.some((l) => /^harper (checks|calls|raises|bets|folds)/.test(l)));
+check("a hand against bots finishes", handsWon(aRec) >= 1, JSON.stringify(aRec.hands.at(-1)?.actions));
+check(
+    "bots act on their own",
+    aRec.hands.some((h) => h.actions.some((a) => a.name === "harper" && !a.kind.endsWith("blind"))),
+);
 await shot(alice, "bots-2-hand");
 
 await alice.click('button[aria-label="remove harper"]');

@@ -17,6 +17,7 @@ protect what you run them on.
 | `endsession.mjs` | host tab: pause, end session, settle-up |
 | `approval.mjs` | rebuy approval |
 | `stats.mjs` | table panel: stats tab |
+| `history.mjs` | table panel: hands tab, hidden and shown cards, late joiners and reloads |
 | `settings.mjs` | table panel: settings tab, for the host and a player |
 | `ux.mjs` | toasts, reconnecting, the header, leaving |
 | `layout.mjs` | nine seats on desktop, laptop, tablet and phone screens |

@@ -4,7 +4,6 @@ import (
 	"maps"
 	"slices"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -93,8 +92,8 @@ func TestBotsPlayAlone(t *testing.T) {
 	timeout := time.After(5 * time.Second)
 	for hands < 3 {
 		select {
-		case l := <-r.logs:
-			if strings.Contains(l, " wins ") || strings.Contains(l, " split ") {
+		case h := <-r.history:
+			if !h.Full {
 				hands++
 			}
 		case <-timeout:
@@ -113,8 +112,8 @@ func TestMediumBotsPlay(t *testing.T) {
 	timeout := time.After(5 * time.Second)
 	for hands < 3 {
 		select {
-		case l := <-r.logs:
-			if strings.Contains(l, " wins ") || strings.Contains(l, " split ") {
+		case h := <-r.history:
+			if !h.Full {
 				hands++
 			}
 		case <-timeout:

@@ -3,6 +3,8 @@ package server
 import (
 	"testing"
 	"time"
+
+	"github.com/evanofslack/go-poker/poker"
 )
 
 // session is the session state of a game update.
@@ -26,17 +28,6 @@ func waitSession(t *testing.T, r received, want session) {
 	}
 }
 
-// hands counts the hands dealt in logs.
-func hands(logs []string) int {
-	n := 0
-	for _, l := range logs {
-		if l == "starting new hand" {
-			n++
-		}
-	}
-	return n
-}
-
 func TestOnlyHostPausesAndEnds(t *testing.T) {
 	_, b, _, bRecv := seatedPair(t)
 	for _, msg := range []string{`{"action":"pause-game"}`, `{"action":"resume-game"}`, `{"action":"end-session"}`} {
@@ -56,7 +47,8 @@ func TestPauseAfterHand(t *testing.T) {
 
 	// the hand plays out, and no new one is dealt
 	send(t, a, `{"action":"player-fold"}`)
-	if n := hands(collectLogs(aRecv, 5*nextHandDelay)); n != 0 {
+	newHand(t, aRecv)
+	if n := deals(aRecv, 5*nextHandDelay); n != 0 {
 		t.Errorf("dealt %d hands while paused", n)
 	}
 	send(t, a, `{"action":"pause-game"}`)
@@ -66,7 +58,7 @@ func TestPauseAfterHand(t *testing.T) {
 
 	send(t, a, `{"action":"resume-game"}`)
 	waitLog(t, aRecv, "a resumed the game")
-	waitLog(t, aRecv, "starting new hand")
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Betting })
 }
 
 func TestStartBlockedWhilePaused(t *testing.T) {
@@ -87,7 +79,7 @@ func TestEndSessionAfterHand(t *testing.T) {
 	send(t, a, `{"action":"player-fold"}`)
 	waitLog(t, aRecv, "the session has ended, the ledger is final")
 	waitSession(t, aRecv, session{ended: true})
-	if n := hands(collectLogs(aRecv, 5*nextHandDelay)); n != 0 {
+	if n := deals(aRecv, 5*nextHandDelay); n != 0 {
 		t.Errorf("dealt %d hands after the session ended", n)
 	}
 

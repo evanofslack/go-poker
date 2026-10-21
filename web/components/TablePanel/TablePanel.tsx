@@ -1,12 +1,14 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import classNames from "classnames";
 import { AppContext } from "../../providers/AppStore";
+import History from "./History";
 import Host from "./Host";
 import Players from "./Players";
 import Settings from "./Settings";
 import Stats from "./Stats";
 
-type tab = "players" | "stats" | "settings" | "host";
+type tab = "players" | "hands" | "stats" | "settings" | "host";
+const tabs: tab[] = ["players", "hands", "stats", "settings", "host"];
 const tabKey = "tablePanelTab";
 
 // savedTab is the last tab opened. The host starts on the host tab.
@@ -15,7 +17,7 @@ function savedTab(host: boolean): tab {
     try {
         saved = localStorage.getItem(tabKey);
     } catch {}
-    if (saved === "players" || saved === "stats" || saved === "settings" || saved === "host") return saved;
+    if (tabs.includes(saved as tab)) return saved as tab;
     return host ? "host" : "players";
 }
 
@@ -49,7 +51,7 @@ export default function TablePanel({ onClose }: { onClose: () => void }) {
     };
 
     const tabStyle = (t: tab) =>
-        classNames("rounded-md px-3 py-1 text-sm", tab === t ? "bg-surface text-fg" : "text-subtle");
+        classNames("shrink-0 rounded-md px-2 py-1 text-sm sm:px-3", tab === t ? "bg-surface text-fg" : "text-subtle");
 
     return (
         <div
@@ -58,22 +60,27 @@ export default function TablePanel({ onClose }: { onClose: () => void }) {
             className="absolute inset-y-2 right-2 left-2 z-40 flex flex-col rounded-xl bg-raised p-2 text-muted shadow-xl sm:right-auto sm:w-[28rem]"
         >
             <div className="mb-2 flex items-center gap-1">
-                <button className={tabStyle("players")} onClick={() => pick("players")}>
-                    players
-                </button>
-                <button className={tabStyle("stats")} onClick={() => pick("stats")}>
-                    stats
-                </button>
-                <button className={tabStyle("settings")} onClick={() => pick("settings")}>
-                    settings
-                </button>
-                {host && (
-                    <button className={tabStyle("host")} onClick={() => pick("host")}>
-                        host
+                <div className="flex min-w-0 gap-1 overflow-x-auto">
+                    <button className={tabStyle("players")} onClick={() => pick("players")}>
+                        players
                     </button>
-                )}
+                    <button className={tabStyle("hands")} onClick={() => pick("hands")}>
+                        hands
+                    </button>
+                    <button className={tabStyle("stats")} onClick={() => pick("stats")}>
+                        stats
+                    </button>
+                    <button className={tabStyle("settings")} onClick={() => pick("settings")}>
+                        settings
+                    </button>
+                    {host && (
+                        <button className={tabStyle("host")} onClick={() => pick("host")}>
+                            host
+                        </button>
+                    )}
+                </div>
                 <button
-                    className="ml-auto px-2 text-subtle hover:text-fg"
+                    className="ml-auto shrink-0 px-2 text-subtle hover:text-fg"
                     title="close"
                     aria-label="close table panel"
                     onClick={onClose}
@@ -83,6 +90,7 @@ export default function TablePanel({ onClose }: { onClose: () => void }) {
             </div>
             <div className="min-h-0 flex-1">
                 {tab === "players" && <Players />}
+                {tab === "hands" && <History />}
                 {tab === "stats" && <Stats />}
                 {tab === "settings" && <Settings />}
                 {tab === "host" && <Host />}

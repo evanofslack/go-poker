@@ -73,6 +73,11 @@ func validAdjust(n int64) bool {
 	return n != 0 && n >= -maxChipChange && n <= maxChipChange
 }
 
+// validHandNumber reports whether n can name a hand. Hands count from 1.
+func validHandNumber(n int) bool {
+	return n > 0
+}
+
 // validReason reports whether s can be the reason for a chip change. It's optional.
 func validReason(s string) bool {
 	return utf8.RuneCountInString(s) <= maxReasonLen

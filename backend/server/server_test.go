@@ -343,6 +343,8 @@ type received struct {
 	stats   chan updateStats
 	bots    chan map[string]string // bots of each game update
 	acts    chan map[string]string // acts of each game update, by name
+	history chan handHistory
+	backlog chan []string // messages of each log-history
 }
 
 // dialRecv is dial, but also collects the game views and errors the client receives.
@@ -373,6 +375,8 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 		chat:    make(chan string, 256),
 		bots:    make(chan map[string]string, 256),
 		acts:    make(chan map[string]string, 256),
+		history: make(chan handHistory, 256),
+		backlog: make(chan []string, 256),
 	}
 	go func() {
 		for {
@@ -381,28 +385,29 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				return
 			}
 			var u struct {
-				Action  string            `json:"action"`
-				Game    poker.GameView    `json:"game"`
-				Message string            `json:"message"`
-				Host    string            `json:"host"`
-				Token   string            `json:"token"`
-				Ends    int64             `json:"turnEndsIn"`
-				SitOut  bool              `json:"sitOutNext"`
-				Watch   []string          `json:"watchers"`
-				Ledger  ledgerView        `json:"ledger"`
-				Away    []string          `json:"disconnected"`
-				Name    string            `json:"username"`
-				Sets    tableSettings     `json:"settings"`
-				Code    string            `json:"code"`
-				Locked  bool              `json:"hasPassword"`
-				Pass    string            `json:"password"`
-				Paused  bool              `json:"paused"`
-				Ending  bool              `json:"ending"`
-				Ended   bool              `json:"ended"`
-				Hands   []handStats       `json:"hands"`
-				Full    bool              `json:"full"`
-				Bots    map[string]string `json:"bots"`
-				Acts    map[string]string `json:"acts"`
+				Action  string                  `json:"action"`
+				Game    poker.GameView          `json:"game"`
+				Message string                  `json:"message"`
+				Host    string                  `json:"host"`
+				Token   string                  `json:"token"`
+				Ends    int64                   `json:"turnEndsIn"`
+				SitOut  bool                    `json:"sitOutNext"`
+				Watch   []string                `json:"watchers"`
+				Ledger  ledgerView              `json:"ledger"`
+				Away    []string                `json:"disconnected"`
+				Name    string                  `json:"username"`
+				Sets    tableSettings           `json:"settings"`
+				Code    string                  `json:"code"`
+				Locked  bool                    `json:"hasPassword"`
+				Pass    string                  `json:"password"`
+				Paused  bool                    `json:"paused"`
+				Ending  bool                    `json:"ending"`
+				Ended   bool                    `json:"ended"`
+				Hands   []handStats             `json:"hands"`
+				Full    bool                    `json:"full"`
+				Totals  map[string]playerTotals `json:"totals"`
+				Bots    map[string]string       `json:"bots"`
+				Acts    map[string]string       `json:"acts"`
 			}
 			if json.Unmarshal(msg, &u) != nil {
 				continue
@@ -475,7 +480,7 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				}
 			case actionUpdateStats:
 				select {
-				case r.stats <- updateStats{Hands: u.Hands, Full: u.Full}:
+				case r.stats <- updateStats{Hands: u.Hands, Full: u.Full, Totals: u.Totals}:
 				default:
 				}
 			case actionJoinedTable:
@@ -487,6 +492,26 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				select {
 				case r.tokens <- u.Token:
 				default:
+				}
+			case actionHandHistory:
+				var h handHistory
+				if json.Unmarshal(msg, &h) == nil {
+					select {
+					case r.history <- h:
+					default:
+					}
+				}
+			case actionLogHistory:
+				var h logHistory
+				if json.Unmarshal(msg, &h) == nil {
+					var lines []string
+					for _, l := range h.Logs {
+						lines = append(lines, l.Message)
+					}
+					select {
+					case r.backlog <- lines:
+					default:
+					}
 				}
 			case actionNewLog:
 				select {
@@ -638,37 +663,47 @@ func TestServerDealsNextHand(t *testing.T) {
 
 	// heads up, a acts first; folding ends the hand
 	send(t, a, `{"action":"player-fold"}`)
-	time.Sleep(5 * nextHandDelay)
-
-	var logs []string
-	for len(aRecv.logs) > 0 {
-		logs = append(logs, <-aRecv.logs)
+	r := newHand(t, aRecv)
+	if got, want := actions(r), []string{"a small blind", "b big blind", "a fold"}; !slices.Equal(got, want) {
+		t.Errorf("actions = %q, want %q", got, want)
 	}
-	count := func(prefix string) int {
-		n := 0
-		for _, l := range logs {
-			if strings.HasPrefix(l, prefix) {
-				n++
-			}
-		}
-		return n
+	if len(r.Pots) != 1 || r.Pots[0].Amount != 30 || !slices.Equal(r.Pots[0].Winners, []string{"b"}) {
+		t.Errorf("pots = %+v, want 30 to b", r.Pots)
 	}
-	if n := count("a folds"); n != 1 {
-		t.Errorf("fold logged %d times, logs: %q", n, logs)
+	if n := deals(aRecv, 5*nextHandDelay); n != 1 {
+		t.Errorf("%d hands dealt after the first, want 1", n)
 	}
-	if n := count("b wins 30"); n != 1 {
-		t.Errorf("win logged %d times, logs: %q", n, logs)
-	}
-	if n := count("starting new hand"); n != 2 {
-		t.Errorf("%d hands dealt, want 2 (start and next), logs: %q", n, logs)
+	if n := len(aRecv.history); n != 0 {
+		t.Errorf("%d more hands ended, want none", n)
 	}
 }
 
-func TestHandName(t *testing.T) {
-	tests := map[int]string{1: "a straight flush", 166: "four of a kind", 3000: "two pair", 7462: "high card", 8000: ""}
-	for score, want := range tests {
-		if got := handName(score); got != want {
-			t.Errorf("handName(%d) = %q, want %q", score, got, want)
+// actions describes a hand's actions, like "a fold".
+func actions(r handRecord) []string {
+	var got []string
+	for _, a := range r.Actions {
+		got = append(got, a.Name+" "+a.Kind)
+	}
+	return got
+}
+
+// deals counts the hands r sees dealt over d, from game updates where betting
+// starts. Updates already received are skipped.
+func deals(r received, d time.Duration) int {
+	for len(r.games) > 0 {
+		<-r.games
+	}
+	n, betting := 0, false
+	timeout := time.After(d)
+	for {
+		select {
+		case g := <-r.games:
+			if g.Betting && !betting {
+				n++
+			}
+			betting = g.Betting
+		case <-timeout:
+			return n
 		}
 	}
 }
@@ -710,9 +745,10 @@ func TestTurnTimeout(t *testing.T) {
 	_, aRecv, _, _ := seatTwo(t, srv)
 
 	// a is small blind facing the big blind, so is folded
-	logs := collectLogs(aRecv, turnTimeout+300*time.Millisecond)
-	if !slices.Contains(logs, "a folds (out of time)") {
-		t.Errorf("a was not folded, logs: %q", logs)
+	r := waitHistory(t, aRecv, func(h handHistory) bool { return !h.Full })
+	last := r.Hands[0].Actions[len(r.Hands[0].Actions)-1]
+	if last.Name != "a" || last.Kind != "fold" || !last.Timeout {
+		t.Errorf("last action = %+v, want a folded by the turn timer", last)
 	}
 }
 
@@ -728,11 +764,15 @@ func TestDisconnectFoldsAndRemoves(t *testing.T) {
 	if g.Players[0].Username != "a" {
 		t.Errorf("wrong player removed: %+v", g.Players)
 	}
-	logs := collectLogs(aRecv, 100*time.Millisecond)
-	for _, want := range []string{"b folds", "a wins 40", "b left the table"} {
-		if !slices.Contains(logs, want) {
-			t.Errorf("missing log %q, logs: %q", want, logs)
-		}
+	r := newHand(t, aRecv)
+	if got := actions(r); got[len(got)-1] != "b fold" {
+		t.Errorf("actions = %q, want b folded last", got)
+	}
+	if len(r.Pots) != 1 || r.Pots[0].Amount != 40 || !slices.Equal(r.Pots[0].Winners, []string{"a"}) {
+		t.Errorf("pots = %+v, want 40 to a", r.Pots)
+	}
+	if logs := collectLogs(aRecv, 100*time.Millisecond); !slices.Contains(logs, "b left the table") {
+		t.Errorf("leaving not logged, logs: %q", logs)
 	}
 }
 
@@ -998,15 +1038,16 @@ func TestLeaveSeatOnTurnFolds(t *testing.T) {
 
 	send(t, a, `{"action":"leave-seat"}`)
 	waitGame(t, bRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
-	logs := collectLogs(bRecv, 100*time.Millisecond)
-	count := map[string]int{}
-	for _, l := range logs {
-		count[l]++
+	r := newHand(t, bRecv)
+	if got, want := actions(r), []string{"a small blind", "b big blind", "a fold"}; !slices.Equal(got, want) {
+		t.Errorf("actions = %q, want %q", got, want)
 	}
-	for _, want := range []string{"a folds", "b wins 30", "a left the table"} {
-		if count[want] != 1 {
-			t.Errorf("log %q seen %d times, logs: %q", want, count[want], logs)
-		}
+	if len(r.Pots) != 1 || r.Pots[0].Amount != 30 || !slices.Equal(r.Pots[0].Winners, []string{"b"}) {
+		t.Errorf("pots = %+v, want 30 to b", r.Pots)
+	}
+	logs := collectLogs(bRecv, 100*time.Millisecond)
+	if n := len(slices.DeleteFunc(slices.Clone(logs), func(l string) bool { return l != "a left the table" })); n != 1 {
+		t.Errorf("leaving logged %d times, logs: %q", n, logs)
 	}
 	g := waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 1 })
 	if g.Players[0].Username != "b" {
@@ -1275,9 +1316,16 @@ func TestNoTurnTimer(t *testing.T) {
 		t.Errorf("turnEndsIn = %d with no turn timer, want 0", ends)
 	}
 
-	for _, l := range collectLogs(aRecv, turnTimeout+300*time.Millisecond) {
-		if strings.HasSuffix(l, "(out of time)") {
-			t.Errorf("acted for a player with no turn timer: %q", l)
+	// with no timer nobody acts for a, so the hand doesn't end
+	timeout := time.After(turnTimeout + 300*time.Millisecond)
+	for done := false; !done; {
+		select {
+		case h := <-aRecv.history:
+			if !h.Full {
+				t.Errorf("a hand ended with no turn timer: %+v", h.Hands)
+			}
+		case <-timeout:
+			done = true
 		}
 	}
 }
@@ -1524,6 +1572,35 @@ func TestDisconnectedPlayers(t *testing.T) {
 	b2 := dial(t, srv)
 	send(t, b2, `{"action":"join-table","tablename":"t","username":"b","token":"`+token+`"}`)
 	waitAway(t, aRecv)
+}
+
+func TestLogBacklog(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv, _, _ := seatTwo(t, srv)
+	send(t, a, `{"action":"player-fold"}`)
+	newHand(t, aRecv)
+
+	c, cRecv := dialRecv(t, srv)
+	send(t, c, joinMsg("t", "c"))
+	select {
+	case lines := <-cRecv.backlog:
+		if want := []string{"a sits down with 100", "b sits down with 100"}; !slices.Equal(lines, want) {
+			t.Errorf("late joiner's log = %q, want only %q", lines, want)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for the log backlog")
+	}
+}
+
+func TestLogBacklogCapped(t *testing.T) {
+	tbl := newTable("t", defaultSettings)
+	close(tbl.done) // nobody to send to
+	for i := range maxLogs + 50 {
+		tbl.log(strconv.Itoa(i))
+	}
+	if len(tbl.logs) != maxLogs || tbl.logs[len(tbl.logs)-1].Message != strconv.Itoa(maxLogs+49) {
+		t.Errorf("kept %d lines ending %q, want the last %d", len(tbl.logs), tbl.logs[len(tbl.logs)-1].Message, maxLogs)
+	}
 }
 
 // waitActs waits for a game update whose acts are want

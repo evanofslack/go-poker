@@ -121,7 +121,7 @@ func (h *Hub) joinTable(c *Client, name, username, token, password string, creat
 		}
 		c.uuid.Store(uuid)
 		username = seatName
-		t.send(createNewLog(fmt.Sprintf("%s reconnected", seatName)))
+		t.log(fmt.Sprintf("%s reconnected", seatName))
 	} else if err := t.checkPassword(password); err != nil {
 		t.mu.Unlock()
 		return false, err
@@ -164,7 +164,7 @@ func (h *Hub) leaveTable(c *Client, disconnected bool) {
 	// a seated player who dropped keeps their seat, and the host role, for a while
 	grace := disconnected && isSeatedUUID(t, uuid)
 	if grace {
-		t.send(createNewLog(fmt.Sprintf("%s disconnected", c.username)))
+		t.log(fmt.Sprintf("%s disconnected", c.username))
 		t.grace[uuid] = time.AfterFunc(reconnectGrace, func() { h.graceExpired(t, uuid) })
 	} else {
 		leaveSeat(t, uuid)
