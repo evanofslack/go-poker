@@ -12,6 +12,7 @@ const (
 	maxTablenameLen = 32
 	maxUsernameLen  = 20
 	maxMessageLen   = 200
+	maxPasswordLen  = 32
 )
 
 // table settings limits, mirrored by the create table form
@@ -55,6 +56,11 @@ func validUsername(s string) bool {
 func validLength(s string, max int) bool {
 	n := utf8.RuneCountInString(s)
 	return strings.TrimSpace(s) != "" && n <= max
+}
+
+// validPassword reports whether s can be a table's password. Empty means none.
+func validPassword(s string) bool {
+	return utf8.RuneCountInString(s) <= maxPasswordLen
 }
 
 // validAmount reports whether n is a usable chip amount, like a rebuy.

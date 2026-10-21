@@ -209,6 +209,10 @@ func (c *Client) processEvents(rawMessage []byte) error {
 			return errors.New("invalid username")
 		}
 		create := baseMessage.Action == actionCreateTable
+		if create && !validPassword(table.Password) {
+			sendError(c, "invalid password")
+			return errors.New("invalid password")
+		}
 		settings := defaultSettings
 		if create && table.Settings != nil {
 			if err := json.Unmarshal(table.Settings, &settings); err != nil {
@@ -220,7 +224,7 @@ func (c *Client) processEvents(rawMessage []byte) error {
 				return err
 			}
 		}
-		handleJoinTable(c, table.Tablename, username, table.Token, create, settings)
+		handleJoinTable(c, table.Tablename, username, table.Token, table.Password, create, settings)
 		return nil
 
 	case actionLeaveTable:

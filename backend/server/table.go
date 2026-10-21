@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/subtle"
 	"strings"
 	"sync"
 	"time"
@@ -50,6 +51,7 @@ type table struct {
 	updates    chan stateUpdate
 	game       *poker.Game
 	settings   tableSettings // fixed after creation
+	password   string        // empty for none, fixed after creation
 	done       chan struct{} // closed when the table is deleted
 	members    int           // clients at this table, guarded by Hub.mu
 
@@ -127,6 +129,19 @@ func (t *table) nameTaken(name string) bool {
 		}
 	}
 	return false
+}
+
+// checkPassword reports why password doesn't let someone join, if it doesn't.
+func (t *table) checkPassword(password string) error {
+	switch {
+	case t.password == "":
+		return nil
+	case password == "":
+		return errNeedPassword
+	case subtle.ConstantTimeCompare([]byte(password), []byte(t.password)) != 1:
+		return errWrongPassword
+	}
+	return nil
 }
 
 // reclaim returns the uuid and name of the player that token belongs to, if

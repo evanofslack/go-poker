@@ -328,6 +328,9 @@ type received struct {
 	watch  chan uint          // watching of each game update
 	sets   chan tableSettings // settings of each game update
 	errors chan string
+	codes  chan string // code of each error
+	locked chan bool   // hasPassword of each game update
+	joined chan string // password of each joined-table
 	logs   chan string
 	tokens chan string // session tokens from taking a seat
 	chat   chan string // chat messages, as "name: message"
@@ -349,6 +352,9 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 		watch:  make(chan uint, 256),
 		sets:   make(chan tableSettings, 256),
 		errors: make(chan string, 256),
+		codes:  make(chan string, 256),
+		locked: make(chan bool, 256),
+		joined: make(chan string, 256),
 		logs:   make(chan string, 256),
 		tokens: make(chan string, 256),
 		chat:   make(chan string, 256),
@@ -370,6 +376,9 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				Watch   uint           `json:"watching"`
 				Name    string         `json:"username"`
 				Sets    tableSettings  `json:"settings"`
+				Code    string         `json:"code"`
+				Locked  bool           `json:"hasPassword"`
+				Pass    string         `json:"password"`
 			}
 			if json.Unmarshal(msg, &u) != nil {
 				continue
@@ -400,9 +409,22 @@ func dialRecv(t *testing.T, srv *httptest.Server) (*websocket.Conn, received) {
 				case r.sets <- u.Sets:
 				default:
 				}
+				select {
+				case r.locked <- u.Locked:
+				default:
+				}
 			case actionError:
 				select {
 				case r.errors <- u.Message:
+				default:
+				}
+				select {
+				case r.codes <- u.Code:
+				default:
+				}
+			case actionJoinedTable:
+				select {
+				case r.joined <- u.Pass:
 				default:
 				}
 			case actionUpdatePlayerUUID:
@@ -1233,5 +1255,91 @@ func TestNoTurnTimer(t *testing.T) {
 		if strings.HasSuffix(l, "(out of time)") {
 			t.Errorf("acted for a player with no turn timer: %q", l)
 		}
+	}
+}
+
+func createWithPassword(table, name, password string) string {
+	return `{"action":"create-table","tablename":"` + table + `","username":"` + name + `","password":"` + password + `"}`
+}
+
+func joinWithPassword(table, name, password string) string {
+	return `{"action":"join-table","tablename":"` + table + `","username":"` + name + `","password":"` + password + `"}`
+}
+
+func TestTablePassword(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := dialRecv(t, srv)
+	send(t, a, createWithPassword("t", "a", "secret"))
+	waitGame(t, aRecv.games, func(poker.GameView) bool { return true })
+	if !<-aRecv.locked {
+		t.Error("hasPassword = false on a table with a password")
+	}
+	if pw := <-aRecv.joined; pw != "secret" {
+		t.Errorf("host joined with password %q, want %q", pw, "secret")
+	}
+
+	tests := []struct {
+		msg  string
+		code string
+	}{
+		{joinMsg("t", "b"), "password-required"},
+		{joinWithPassword("t", "b", "Secret"), "wrong-password"},
+		{joinWithPassword("t", "a", "nope"), "wrong-password"}, // not name taken, which would leak names
+	}
+	for _, tt := range tests {
+		conn, r := dialRecv(t, srv)
+		send(t, conn, tt.msg)
+		waitError(t, r)
+		if code := <-r.codes; code != tt.code {
+			t.Errorf("%s: got code %q, want %q", tt.msg, code, tt.code)
+		}
+	}
+
+	b, bRecv := dialRecv(t, srv)
+	send(t, b, joinWithPassword("t", "b", "secret"))
+	waitGame(t, bRecv.games, func(poker.GameView) bool { return true })
+	if pw := <-bRecv.joined; pw != "secret" {
+		t.Errorf("b joined with password %q, want %q", pw, "secret")
+	}
+}
+
+func TestNoPasswordByDefault(t *testing.T) {
+	srv := newTestServer(t)
+	_, aRecv := createAndWait(t, srv, "t", "a")
+	if <-aRecv.locked {
+		t.Error("hasPassword = true on a table without one")
+	}
+	b, bRecv := dialRecv(t, srv)
+	send(t, b, joinWithPassword("t", "b", "anything"))
+	waitGame(t, bRecv.games, func(poker.GameView) bool { return true })
+}
+
+func TestInvalidPasswordRejected(t *testing.T) {
+	srv := newTestServer(t)
+	conn, r := dialRecv(t, srv)
+	send(t, conn, createWithPassword("t", "a", strings.Repeat("a", maxPasswordLen+1)))
+	if got := waitError(t, r); got != "invalid password" {
+		t.Errorf("long password: got %q", got)
+	}
+}
+
+func TestReconnectSkipsPassword(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := dialRecv(t, srv)
+	send(t, a, createWithPassword("t", "a", "secret"))
+	waitGame(t, aRecv.games, func(poker.GameView) bool { return true })
+	b, bRecv := dialRecv(t, srv)
+	send(t, b, joinWithPassword("t", "b", "secret"), seatMsg(2))
+	token := waitToken(t, bRecv)
+
+	b.Close()
+	b2, b2Recv := dialRecv(t, srv)
+	send(t, b2, `{"action":"join-table","tablename":"t","username":"b","token":"`+token+`"}`)
+	g := waitGame(t, b2Recv.games, func(poker.GameView) bool { return true })
+	if len(g.Players) != 1 || g.Players[0].Username != "b" {
+		t.Errorf("players = %+v, want b reseated", g.Players)
+	}
+	if pw := <-b2Recv.joined; pw != "secret" {
+		t.Errorf("reconnected b got password %q, want %q", pw, "secret")
 	}
 }

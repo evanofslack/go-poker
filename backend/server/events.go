@@ -16,10 +16,10 @@ const gameAdminName string = "system"
 // how long a disconnected player keeps their seat, a var so tests can shorten it
 var reconnectGrace = 60 * time.Second
 
-func handleJoinTable(c *Client, tablename string, username string, token string, create bool, settings tableSettings) {
-	reconnected, err := c.hub.joinTable(c, tablename, username, token, create, settings)
+func handleJoinTable(c *Client, tablename, username, token, password string, create bool, settings tableSettings) {
+	reconnected, err := c.hub.joinTable(c, tablename, username, token, password, create, settings)
 	if err != nil {
-		sendError(c, err.Error())
+		sendErrorCode(c, errorCodes[err], err.Error())
 		return
 	}
 	c.table.mu.Lock()
@@ -578,7 +578,12 @@ func actingPlayer(c *Client) (uint, bool) {
 // sendError tells c its action was rejected. It never blocks, so it is safe
 // while holding c.table.mu.
 func sendError(c *Client, message string) {
-	resp, err := json.Marshal(errorMessage{base{actionError}, message, currentTime()})
+	sendErrorCode(c, "", message)
+}
+
+// sendErrorCode is sendError with a code the client can act on.
+func sendErrorCode(c *Client, code, message string) {
+	resp, err := json.Marshal(errorMessage{base{actionError}, code, message, currentTime()})
 	if err != nil {
 		slog.Default().Warn("Marshal error", "error", err)
 		return
@@ -671,13 +676,14 @@ func createGameView(c *Client) []byte {
 // createUpdatedGame wraps one recipient's view of the game. Caller holds t.mu.
 func createUpdatedGame(t *table, view *poker.GameView, sitOutNext bool) []byte {
 	game := updateGame{
-		base:       base{actionUpdateGame},
-		Game:       view,
-		Host:       t.hostID(),
-		TurnEndsIn: t.turnEndsIn(view),
-		SitOutNext: sitOutNext,
-		Settings:   t.settings,
-		Watching:   t.watching(),
+		base:        base{actionUpdateGame},
+		Game:        view,
+		Host:        t.hostID(),
+		TurnEndsIn:  t.turnEndsIn(view),
+		SitOutNext:  sitOutNext,
+		Settings:    t.settings,
+		HasPassword: t.password != "",
+		Watching:    t.watching(),
 	}
 
 	resp, err := json.Marshal(game)
@@ -693,6 +699,7 @@ func createJoinedTable(c *Client) []byte {
 		c.table.name,
 		c.username,
 		c.id(),
+		c.table.password,
 	}
 	resp, err := json.Marshal(joined)
 	if err != nil {

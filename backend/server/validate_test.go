@@ -89,3 +89,20 @@ func TestValidSettings(t *testing.T) {
 		}
 	}
 }
+
+func TestValidPassword(t *testing.T) {
+	tests := []struct {
+		s    string
+		want bool
+	}{
+		{"", true}, // no password
+		{"hunter2", true},
+		{strings.Repeat("é", maxPasswordLen), true},
+		{strings.Repeat("a", maxPasswordLen+1), false},
+	}
+	for _, tt := range tests {
+		if got := validPassword(tt.s); got != tt.want {
+			t.Errorf("validPassword(%q) = %v, want %v", tt.s, got, tt.want)
+		}
+	}
+}
