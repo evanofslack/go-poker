@@ -167,14 +167,14 @@ Needs the host role from 2.2.
   friends to type the same table name.
 - [x] **Table settings** for the host: blinds, min/max buy-in, seat count, turn timer length,
   private/password tables. See 5.1.
-- [ ] **Seat management:** kick a player, sit a player out, optionally approve buy-ins/rebuys.
-- [ ] **Pause/resume** the game.
-- [x] **Confirm before reset.** Reset now sits in a host menu and asks first.
+- [ ] **Seat management:** kick a player, sit a player out, optionally approve buy-ins/rebuys. See 5.3.
+- [ ] **Pause/resume** the game. See 5.3.
+- [x] **Confirm before reset.** Reset now sits in a host menu and asks first. 5.3 removes reset.
 - [ ] **Public tables:** list open tables on the home page so anyone can pick one to join. Needs a hub
   listing of tables (name, stakes, seats taken), and goes with private/password tables.
-- [ ] **End session with a ledger:** net result per player (buy-ins vs final stack), copyable.
+- [ ] **End session with a ledger:** net result per player (buy-ins vs final stack), copyable. See 5.3.
 - [ ] **Spectator mode** made explicit in the UI. The header now counts spectators ("watching 2");
-  a list of who's watching is left.
+  a list of who's watching is left. The 5.3 players panel lists them.
 - [x] **Bots** so one person can demo the app alone (easy and medium levels). See 5.2.
 
 ## 5.1 Table settings
@@ -338,6 +338,85 @@ Differences from the plan:
   tight players more, value bet loose ones).
 - [ ] Optional personalities on the same settings (tight-passive, loose-aggressive) for variety.
 - [ ] Check that hard beats medium in `bot/sim_test.go` (`BOTSIM=1 go test ./bot -run Sim -v`).
+
+## 5.3 Ledger, players panel and host controls
+
+A ledger of who bought in and cashed out, settled through a banker; a players panel everyone can see;
+and host controls to run a home game without a reset button.
+
+Today: the only chip history is the engine's `TotalBuyIn`, which is lost when a player leaves their seat
+(`RemovePlayer` deletes them) or the host resets. A table is deleted as soon as it's empty. The host is a
+connection (`t.host *Client`), so a dropped connection hands it to someone else right away, even though
+the host's seat is kept for the reconnect grace period. Reset is the host menu's only item.
+
+Decided:
+- Chips only, no money conversion.
+- Everyone at the table sees the ledger, spectators included.
+- Ledger rows are by name. Someone who leaves and comes back under the same name continues their row,
+  and so would anyone else who takes that name later. Accepted for friends' tables; log "bob rejoined".
+- Settle up through a banker the host picks (the host by default, changeable any time). Each player's
+  line is against the banker: up means "request X from the banker", down means "send X to the banker".
+- The host role belongs to a player, not a connection, and the host can hand it to another player.
+- Remove reset. Kick, chip edits, end session and making a new table cover every use of it.
+- Rebuy approval is a table setting, off by default.
+- End session only takes effect after the current hand.
+- An ended table stays readable for 1 hour after it ends, so the invite link still shows the ledger.
+
+### PR 1: add ledger (server)
+
+- [ ] Per-table ledger entries: time, name, kind (buy-in, rebuy, cash-out, host add, host remove),
+  amount, and who did it. Totals come from the entries.
+- [ ] Record entries where chips enter or leave: `handleTakeSeat` (buy-in), `handleRebuy`, and
+  `removeLeavers` for cash-outs (leaving a seat, leaving the table and grace expiry all end there).
+- [ ] Rows per name: bought in, cashed out, current stack, net. Mid-hand, chips bet this hand still
+  count as the player's, so net is live during a hand.
+- [ ] Banker: a name on the table, the host by default. Each row gets its banker line.
+- [ ] Balance check: nets sum to zero between hands. Send the difference so the panel can show
+  "balanced" or "off by N".
+- [ ] Snapshot every player's stack at the end of each hand, bounded (e.g. last 1000 hands), for stats.
+- [ ] `update-game` sends the rows, the banker, the balance and the names of spectators.
+- [ ] Tests: rebuys, leaving and coming back by name, cash-out on leave, disconnect and grace expiry,
+  balance stays zero across hands and split pots.
+
+### PR 2: add players panel
+
+- [ ] A "players" tab beside chat and log: every name with status (playing, sitting out,
+  disconnected, left, watching), seat, stack, bought in, net, and their banker line.
+- [ ] Shows the banker, the balance check, and a "copy ledger" button with plain text for a group chat.
+- [ ] e2e: rows update on buy-in, rebuy and leaving; copy text; phone layout.
+
+### PR 3: add host controls
+
+- [ ] Host is a name on the table. It passes on only when the host leaves for good: leaves the table,
+  is removed, or their reconnect grace runs out. Reconnecting within grace keeps it. A spectator host
+  has no seat to hold, so it passes on when they disconnect.
+- [ ] Host actions, each host-only, validated in `validate.go`, logged to the table, and tested:
+  - make another player host
+  - pick the banker
+  - move a player to spectator, or remove them from the table (mid-hand they're folded on their turn,
+    like leaving). No bans.
+  - sit a player out (mid-hand it applies after the hand)
+  - add or remove chips, between hands only, recorded as a host add or host remove with a reason
+- [ ] Per-player host actions live in a menu on each row of the players panel.
+- [ ] Remove reset: `reset-game`, `handleResetGame`, the host menu item, its tests and the e2e uses
+  (`ux.mjs`, `session.mjs`, `betting.mjs`).
+
+### PR 4: add session controls
+
+- [ ] Pause and resume. Pausing mid-hand takes effect after the hand; no new hand is dealt while
+  paused. Logged.
+- [ ] End session, after the current hand. Dealing stops, seats and rebuys close, the ledger is final,
+  and everyone sees the final settle-up. The table is deleted 1 hour after it ends, empty or not;
+  until then joining it (with its password) shows the final ledger.
+- [ ] Rebuy approval setting (`approveRebuys`, off by default) in `tableSettings` and the create form.
+  When on, a rebuy waits for the host to approve or deny it. Sitting back down under a name that
+  already has ledger entries counts as a rebuy, so leaving and rejoining can't skip approval.
+
+### PR 5: add stats panel
+
+- [ ] From the stack snapshots: chips over time per player, hands played and won, biggest pot won.
+- [ ] Chart colors come from the design tokens in `web/styles/index.css`.
+- [ ] Detailed stats (how often each player puts money in, etc.) need hand history; see the backlog.
 
 # Stage 6: UI consistency and mobile
 
