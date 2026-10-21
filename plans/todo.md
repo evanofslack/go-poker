@@ -271,6 +271,10 @@ Decided:
 
 ### PR 1: add easy bots
 
+Built off main alongside #62 (ledger) and #63 (players panel). After those merge: record bot buy-ins
+and auto-rebuys in the ledger, and show the bot badge in the players panel.
+
+
 - [ ] `backend/bot/`: `Decide(level, view, pn, rng) Action` (check/call/raise/fold plus amount), pure
   and table-free so levels are unit tested on their own.
 - [ ] **Easy** (calling station): checks when free, calls most bets, folds weak hands to big bets
