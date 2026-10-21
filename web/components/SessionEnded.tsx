@@ -6,7 +6,7 @@ import Button from "./Button";
 import Dialog from "./Dialog";
 
 // SessionEnded shows everyone the final settle-up once the session ends. The
-// players panel keeps it after this is closed.
+// table panel keeps it after this is closed.
 export default function SessionEnded() {
     const { appState, dispatch } = useContext(AppContext);
     const [closed, setClosed] = useState(false);

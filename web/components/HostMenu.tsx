@@ -7,7 +7,7 @@ import { AppContext } from "../providers/AppStore";
 import Confirm from "./Confirm";
 
 // HostMenu holds the host's controls for the whole session. Controls for one
-// player are on their row in the players panel.
+// player are on their row in the table panel.
 export default function HostMenu() {
     const socket = useSocket();
     const { appState } = useContext(AppContext);
