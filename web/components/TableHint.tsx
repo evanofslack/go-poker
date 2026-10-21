@@ -33,7 +33,9 @@ export default function TableHint() {
 
     const seated = game.players.some((p) => p.uuid === appState.clientID);
     const ready = game.players.filter((p) => p.ready).length;
-    const session = sessionHint(game);
+    const mine = game.buyRequests.find((r) => r.name === appState.username);
+    const session =
+        sessionHint(game) || (mine ? `waiting for the host to ok your buy-in of ${mine.amount}` : "");
     const text = session || hint(seated, game.players.length, ready, game.running);
     if (!text) return null;
 

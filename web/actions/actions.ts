@@ -156,7 +156,14 @@ export function addBot(
 }
 
 // host only: actions on the player called name
-export type HostAction = "make-host" | "set-banker" | "move-to-spectator" | "remove-player" | "sit-out-player";
+export type HostAction =
+    | "make-host"
+    | "set-banker"
+    | "move-to-spectator"
+    | "remove-player"
+    | "sit-out-player"
+    | "approve-buy-in"
+    | "deny-buy-in";
 
 export function hostAction(socket: WebSocket, action: HostAction, name: string) {
     socket?.send(

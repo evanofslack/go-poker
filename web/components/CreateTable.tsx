@@ -165,6 +165,17 @@ export default function CreateTable({ tablename, username, onClose }: createTabl
                             />
                             public <span className="text-xs text-subtle">(not listed anywhere yet)</span>
                         </label>
+                        <label className="flex items-center gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                className="accent-cyan-500"
+                                id="approveRebuys"
+                                checked={form.approveRebuys}
+                                onChange={(e) => set({ approveRebuys: e.target.checked })}
+                            />
+                            approve rebuys{" "}
+                            <span className="text-xs text-subtle">(you ok each rebuy and return to the table)</span>
+                        </label>
                     </div>
                 </details>
                 {(invalid || appState.error) && (

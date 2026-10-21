@@ -146,6 +146,7 @@ export function SocketProvider(props: SocketProviderProps) {
                         turnEndsIn: event.turnEndsIn,
                         sitOutNext: event.sitOutNext,
                         settings: event.settings,
+                        buyRequests: event.buyRequests ?? [],
                         hasPassword: event.hasPassword,
                         paused: event.paused,
                         ending: event.ending,

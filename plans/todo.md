@@ -421,10 +421,13 @@ Notes:
 - [x] End session, after the current hand. Dealing stops, seats and rebuys close, the ledger is final,
   and everyone sees the final settle-up. The table is deleted 1 hour after it ends, empty or not;
   until then joining it (with its password) shows the final ledger.
-- [ ] Rebuy approval setting (`approveRebuys`, off by default) in `tableSettings` and the create form.
+- [x] Rebuy approval setting (`approveRebuys`, off by default) in `tableSettings` and the create form.
   When on, a rebuy waits for the host to approve or deny it. Sitting back down under a name that
   already has ledger entries counts as a rebuy, so leaving and rejoining can't skip approval.
-  Split into its own PR (4b), stacked on this one.
+  Split into its own PR (4b), stacked on this one. The host's own rebuys skip approval. A new request
+  replaces the player's last one; leaving the table or ending the session drops it. Approving checks
+  again, so a seat that got taken or a rebuy that no longer fits is dropped with a note to the host.
+  Requests show to the host above the table, and the player sees they're waiting. e2e: `approval.mjs`.
 
 Notes:
 - Both live in the host menu, which is back. End session asks first. Between hands it ends right away.

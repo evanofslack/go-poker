@@ -7,6 +7,7 @@ import Seat from "./Seat";
 import Pot from "./Pot";
 import CommunityCards from "./CommunityCards";
 import TableHint from "./TableHint";
+import BuyRequests from "./BuyRequests";
 
 // half a seat's size at each breakpoint, which keeps the seat ring inside the table area.
 // Short screens, like a phone on its side, get the small seats.
@@ -65,6 +66,7 @@ export default function Table() {
                 <Pot />
                 <CommunityCards />
                 <TableHint />
+                <BuyRequests />
             </div>
             {game.players.map((p) => (
                 <div

@@ -21,6 +21,7 @@ export type SettingsForm = {
     turnTime: number;
     nextHandDelay: number;
     public: boolean;
+    approveRebuys: boolean;
 };
 
 // the server's defaults
@@ -34,6 +35,7 @@ export const defaultForm: SettingsForm = {
     turnTime: 30000,
     nextHandDelay: 5000,
     public: false,
+    approveRebuys: false,
 };
 
 // blinds are the form's small and big blind
@@ -66,5 +68,6 @@ export function toSettings(f: SettingsForm): Settings {
         turnTime: f.turnTime,
         nextHandDelay: f.nextHandDelay,
         public: f.public,
+        approveRebuys: f.approveRebuys,
     };
 }

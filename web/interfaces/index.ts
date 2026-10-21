@@ -74,10 +74,19 @@ export type Game = {
     ending: boolean; // the session ends after this hand
     ended: boolean; // the session is over and the ledger final
     closesIn: number; // ms until an ended table closes
+    buyRequests: BuyRequest[]; // waiting for the host, oldest first
     watchers: string[]; // names of the clients at the table without a seat
     disconnected: string[]; // names of seated players who dropped and may still reconnect
     bots: Record<string, string>; // level of each bot, by uuid
     ledger: Ledger;
+};
+
+// BuyRequest is a rebuy, or a returning player sitting back down, waiting for
+// the host. seat is 0 for a rebuy.
+export type BuyRequest = {
+    name: string;
+    amount: number;
+    seat: number;
 };
 
 // Settings are fixed once the table exists. Buy-ins are in chips, times in ms.
@@ -90,6 +99,7 @@ export type Settings = {
     turnTime: number; // 0 for no turn timer
     nextHandDelay: number;
     public: boolean;
+    approveRebuys: boolean; // rebuys, and sitting back down, wait for the host
 };
 
 // LedgerRow is one name's chips in and out. Someone who leaves and comes back
