@@ -105,9 +105,10 @@ func newTable(name string, settings tableSettings) *table {
 		broadcast:  make(chan []byte),
 		updates:    make(chan stateUpdate),
 		game: poker.NewGame(poker.GameConfig{
-			MaxBuy:     settings.MaxBuy,
-			BigBlind:   settings.BigBlind,
-			SmallBlind: settings.SmallBlind,
+			MaxBuy:       settings.MaxBuy,
+			BigBlind:     settings.BigBlind,
+			SmallBlind:   settings.SmallBlind,
+			PauseStreets: true,
 		}),
 		settings:   settings,
 		done:       make(chan struct{}),

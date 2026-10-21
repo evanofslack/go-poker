@@ -30,6 +30,7 @@ func TestMain(m *testing.M) {
 	defaultSettings.MaxBuy = 10000
 	reconnectGrace = 300 * time.Millisecond
 	botDelay = func() time.Duration { return 10 * time.Millisecond }
+	streetDelay = 10 * time.Millisecond
 	endedTableTTL = 500 * time.Millisecond
 	os.Exit(m.Run())
 }
@@ -1556,4 +1557,17 @@ func TestActsShown(t *testing.T) {
 	// a fold ends the hand, and the last street's actions stay up
 	send(t, a, `{"action":"player-fold"}`)
 	waitActs(t, aRecv, map[string]string{"a": "fold", "b": "check"})
+}
+
+func TestPauseBetweenStreets(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv, b, _ := seatTwo(t, srv)
+
+	send(t, a, `{"action":"player-call"}`)
+	send(t, b, `{"action":"player-check"}`)
+	g := waitGame(t, aRecv.games, func(g poker.GameView) bool { return !g.Betting })
+	if g.Stage != poker.PreFlop || g.CommunityCards[0] != 0 {
+		t.Errorf("flop dealt without a pause: stage %d, board %v", g.Stage, g.CommunityCards)
+	}
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Stage == poker.Flop && g.Betting })
 }

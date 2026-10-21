@@ -29,12 +29,14 @@ check("you see your own best hand on your turn", ["high card", "pair"].includes(
 check("others don't see it", (await bob.locator("[data-made-hand]").count()) === 1);
 await alice.click('button:text-is("call 10")');
 await alice.locator('button:text-is("call 10")').waitFor({ state: "detached", timeout: 2000 }).catch(() => null);
-const tagged = await bob.locator('[data-seat] [data-act]', { hasText: /^call 10$/ }).waitFor({ timeout: 2000 }).then(() => true).catch(() => false);
-check("others see a player's action by their seat", tagged);
+const tagged = await bob.locator('[data-markers] [data-act]', { hasText: /^call$/ }).waitFor({ timeout: 2000 }).then(() => true).catch(() => false);
+check("others see a player's action by their bet", tagged);
 
 // check or call down to showdown
-const label = alice.locator("[data-act]", { hasText: /^won \d+/ });
-for (let i = 0; i < 12 && !(await label.count()); i++) {
+const label = alice.locator("[data-won]");
+// streets are dealt a second after betting closes
+for (let i = 0; i < 40 && !(await label.count()); i++) {
+    await alice.waitForTimeout(150);
     for (const p of [alice, bob]) {
         const b = p.locator('button:text-matches("^(check|call \\\\d+)$")');
         if (await b.count()) {

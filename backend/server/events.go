@@ -454,7 +454,11 @@ func finishAction(t *table, msg string) {
 	}
 	foldLeavers(t)
 	view := t.game.GenerateOmniView()
-	if view.Stage == poker.PreDeal {
+	if !view.Betting && view.Stage != poker.PreDeal {
+		// a street closed: show its last action before dealing the next
+		t.turnSeq++ // cancel the turn timer
+		time.AfterFunc(streetDelay, func() { dealStreet(t) })
+	} else if view.Stage == poker.PreDeal {
 		logWinners(t, view)
 		recordHand(t, view)
 		removeLeavers(t)
@@ -601,6 +605,30 @@ func removeLeavers(t *table) {
 }
 
 // dealNextHand deals a new hand, unless the table was reset or deleted.
+// streetDelay is the pause between a street's last action and dealing the
+// next, a var so tests can shorten it.
+var streetDelay = time.Second
+
+// dealStreet deals the next street once betting on the last has closed.
+func dealStreet(t *table) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	select {
+	case <-t.done:
+		return
+	default:
+	}
+	view := t.game.GenerateOmniView()
+	if view.Betting || view.Stage == poker.PreDeal {
+		return
+	}
+	if err := poker.Deal(t.game, view.DealerNum, 0); err != nil {
+		slog.Default().Warn("Deal street", "error", err)
+		return
+	}
+	finishAction(t, "")
+}
+
 func dealNextHand(t *table) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
