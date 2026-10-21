@@ -58,9 +58,10 @@ type table struct {
 	done       chan struct{} // closed when the table is deleted
 	members    int           // clients at this table, guarded by Hub.mu
 
-	mu    sync.Mutex       // serializes game actions from client goroutines
-	users map[*Client]bool // clients at this table, guarded by mu
-	host  *Client          // guarded by mu
+	mu     sync.Mutex       // serializes game actions from client goroutines
+	users  map[*Client]bool // clients at this table, guarded by mu
+	host   string           // name of the host, guarded by mu
+	banker string           // name everyone settles up with, empty for the host; guarded by mu
 
 	dealTimer *time.Timer     // deals the next hand, guarded by mu
 	turnTimer *time.Timer     // acts for an idle player, guarded by mu
@@ -170,26 +171,31 @@ func (t *table) reclaim(token string) (uuid string, name string, ok bool) {
 	return "", "", false
 }
 
-// removeUser takes c out of the table's users, passing the host role on if c
-// had it: to a seated user first, else anyone. Caller holds t.mu.
-func (t *table) removeUser(c *Client) {
-	delete(t.users, c)
-	if t.host != c {
-		return
-	}
-	t.host = nil
+// passHost gives the host role to a connected seated player, else to whoever
+// is at the table first by name, else nobody. Caller holds t.mu.
+func (t *table) passHost() {
+	t.host = ""
 	for _, p := range t.game.GenerateOmniView().Players {
-		for u := range t.users {
-			if u.id() == p.UUID {
-				t.host = u
-				return
-			}
+		if t.connected(p.Username) && !t.leaving[p.UUID] {
+			t.host = p.Username
+			return
 		}
 	}
 	for u := range t.users {
-		t.host = u
-		return
+		if t.host == "" || u.username < t.host {
+			t.host = u.username
+		}
 	}
+}
+
+// connected reports whether a client named name is at the table. Caller holds t.mu.
+func (t *table) connected(name string) bool {
+	for u := range t.users {
+		if u.username == name {
+			return true
+		}
+	}
+	return false
 }
 
 // watchers are the names of the clients at the table without a seat, sorted.
@@ -216,14 +222,6 @@ func (t *table) disconnected() []string {
 	}
 	slices.Sort(names)
 	return names
-}
-
-// hostID is the host's uuid, or empty if there is none. Caller holds t.mu.
-func (t *table) hostID() string {
-	if t.host == nil {
-		return ""
-	}
-	return t.host.id()
 }
 
 // send queues message for every client, unless the table has been deleted.

@@ -26,7 +26,7 @@ func handleAddBot(c *Client, seatID, buyIn uint, name, level string) {
 	t := c.table
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if t.host != c {
+	if t.host != c.username {
 		sendError(c, "only the host can add bots")
 		return
 	}
@@ -49,7 +49,7 @@ func handleRemoveBot(c *Client, seatID uint) {
 	t := c.table
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if t.host != c {
+	if t.host != c.username {
 		sendError(c, "only the host can remove bots")
 		return
 	}
@@ -134,7 +134,7 @@ func rebuyBots(t *table) {
 				slog.Default().Warn("Toggle ready after bot rebuy", "error", err)
 			}
 		}
-		t.record(p.Username, entryRebuy, seat.buyIn, p.Username)
+		t.record(p.Username, entryRebuy, seat.buyIn, p.Username, "")
 		t.send(createNewLog(fmt.Sprintf("%s rebuys for %d", p.Username, seat.buyIn)))
 	}
 }

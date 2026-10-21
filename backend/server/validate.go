@@ -15,6 +15,8 @@ const (
 	maxUsernameLen  = 20
 	maxMessageLen   = 200
 	maxPasswordLen  = 32
+	maxReasonLen    = 60
+	maxChipChange   = 1_000_000_000
 )
 
 // table settings limits, mirrored by the create table form
@@ -63,6 +65,17 @@ func validLength(s string, max int) bool {
 // validPassword reports whether s can be a table's password. Empty means none.
 func validPassword(s string) bool {
 	return utf8.RuneCountInString(s) <= maxPasswordLen
+}
+
+// validAdjust reports whether n is a usable host chip change: not zero, and
+// not absurdly large either way.
+func validAdjust(n int64) bool {
+	return n != 0 && n >= -maxChipChange && n <= maxChipChange
+}
+
+// validReason reports whether s can be the reason for a chip change. It's optional.
+func validReason(s string) bool {
+	return utf8.RuneCountInString(s) <= maxReasonLen
 }
 
 // validAmount reports whether n is a usable chip amount, like a rebuy.

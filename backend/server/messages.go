@@ -14,7 +14,6 @@ const (
 	actionSendMessage string = "send-message"
 	actionTakeSeat    string = "take-seat"
 	actionStartGame   string = "start-game"
-	actionResetGame   string = "reset-game"
 	actionPlayerCall  string = "player-call"
 	actionPlayerCheck string = "player-check"
 	actionPlayerRaise string = "player-raise"
@@ -24,6 +23,14 @@ const (
 	actionRebuy       string = "rebuy"
 	actionAddBot      string = "add-bot"
 	actionRemoveBot   string = "remove-bot"
+
+	// host only
+	actionMakeHost        string = "make-host"
+	actionSetBanker       string = "set-banker"
+	actionMoveToSpectator string = "move-to-spectator"
+	actionRemovePlayer    string = "remove-player"
+	actionSitOutPlayer    string = "sit-out-player"
+	actionAdjustChips     string = "adjust-chips"
 )
 
 type base struct {
@@ -63,10 +70,6 @@ type takeSeat struct {
 
 type startGame struct {
 	base // actionStartGame
-}
-
-type resetGame struct {
-	base // actionResetGame
 }
 
 type playerCall struct {
@@ -115,6 +118,20 @@ type removeBot struct {
 	SeatID uint `json:"seatID"`
 }
 
+// playerTarget names who a host action is for: actionMakeHost,
+// actionSetBanker, actionMoveToSpectator, actionRemovePlayer, actionSitOutPlayer
+type playerTarget struct {
+	base
+	Name string `json:"name"`
+}
+
+type adjustChips struct {
+	base          // actionAdjustChips
+	Name   string `json:"name"`
+	Amount int64  `json:"amount"` // chips to add, or take away when negative
+	Reason string `json:"reason"` // optional, shown in the log
+}
+
 // outbound (server) actions
 const (
 	actionNewMessage       string = "new-message"
@@ -143,7 +160,7 @@ type newLog struct {
 type updateGame struct {
 	base                 // actionUpdateGame
 	Game *poker.GameView `json:"game"`
-	Host string          `json:"host"` // uuid of the host client
+	Host string          `json:"host"` // name of the host
 
 	// milliseconds until the player to act times out, 0 when nobody is betting
 	TurnEndsIn int64 `json:"turnEndsIn"`

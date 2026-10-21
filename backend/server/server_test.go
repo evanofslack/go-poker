@@ -133,7 +133,6 @@ func TestMalformedMessagesDoNotCrash(t *testing.T) {
 		`{"action":"start-game"}`,
 		`{"action":"player-fold"}`,
 		`{"action":"player-call"}`,
-		`{"action":"reset-game"}`,
 		// bad seats
 		`{"action":"take-seat","username":"a","seatID":0,"buyIn":100}`,
 		`{"action":"take-seat","username":"a","seatID":99,"buyIn":100}`,
@@ -323,7 +322,7 @@ func TestSpectatorCannotStart(t *testing.T) {
 // received collects what the server sends one client.
 type received struct {
 	games  chan poker.GameView
-	hosts  chan string        // host of each game update
+	hosts  chan string        // host name of each game update
 	ends   chan int64         // turnEndsIn of each game update
 	sitOut chan bool          // sitOutNext of each game update
 	watch  chan []string      // watchers of each game update
@@ -596,38 +595,6 @@ func TestCreateAndJoinErrors(t *testing.T) {
 			t.Errorf("%s: got error %q, want %q", tt.msg, got, tt.want)
 		}
 	}
-}
-
-func TestOnlyHostResets(t *testing.T) {
-	srv, hub := newTestServerHub(t)
-	host, hostRecv := createAndWait(t, srv, "t", "host")
-	b, bRecv := dialRecv(t, srv)
-	send(t, host, seatMsg(1))
-	send(t, b, joinMsg("t", "b"), seatMsg(2))
-	g := waitGame(t, hostRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
-	send(t, b, `{"action":"start-game"}`)
-	eventually(t, func() bool { return isRunning(t, hub, "t") }, "game did not start")
-
-	send(t, b, `{"action":"reset-game"}`)
-	if msg := waitError(t, bRecv); msg != "only the host can reset the table" {
-		t.Errorf("b got error %q", msg)
-	}
-	if !isRunning(t, hub, "t") {
-		t.Fatal("non-host reset the table")
-	}
-
-	// the host leaves, so b (the only one left) becomes host
-	host.Close()
-	timeout := time.After(2 * time.Second)
-	for h := ""; h != g.Players[1].UUID; {
-		select {
-		case h = <-bRecv.hosts:
-		case <-timeout:
-			t.Fatal("b never became host")
-		}
-	}
-	send(t, b, `{"action":"reset-game"}`)
-	eventually(t, func() bool { return !isRunning(t, hub, "t") }, "new host could not reset")
 }
 
 func TestServerDealsNextHand(t *testing.T) {
@@ -1474,18 +1441,6 @@ func TestLedgerCashOutAfterGrace(t *testing.T) {
 	l := waitLedger(t, aRecv, func(l ledgerView) bool { return row(l, "b").CashedOut == 100 })
 	if l.Balance != 0 {
 		t.Errorf("balance = %d after grace, want 0", l.Balance)
-	}
-}
-
-func TestLedgerResetCashesOut(t *testing.T) {
-	srv := newTestServer(t)
-	a, aRecv, _, _ := seatTwo(t, srv)
-	send(t, a, `{"action":"reset-game"}`)
-	l := waitLedger(t, aRecv, func(l ledgerView) bool { return row(l, "a").CashedOut > 0 })
-	for _, r := range l.Rows {
-		if r.CashedOut != 100 || r.Stack != 0 || r.Net != 0 {
-			t.Errorf("%s after reset = %+v, want cashed out 100 with net 0", r.Name, r)
-		}
 	}
 }
 

@@ -261,10 +261,6 @@ func (c *Client) processEvents(rawMessage []byte) error {
 		handleStartGame(c)
 		return nil
 
-	case actionResetGame:
-		handleResetGame(c)
-		return nil
-
 	case actionPlayerCall:
 		handleCall(c)
 		return nil
@@ -332,6 +328,32 @@ func (c *Client) processEvents(rawMessage []byte) error {
 			return err
 		}
 		handleRemoveBot(c, b.SeatID)
+		return nil
+
+	case actionMakeHost, actionSetBanker, actionMoveToSpectator, actionRemovePlayer, actionSitOutPlayer:
+		var target playerTarget
+		err := json.Unmarshal(rawMessage, &target)
+		if err != nil {
+			return err
+		}
+		if !validLength(target.Name, maxUsernameLen) {
+			sendError(c, "invalid name")
+			return errors.New("invalid host action name")
+		}
+		hostActions[baseMessage.Action](c, target.Name)
+		return nil
+
+	case actionAdjustChips:
+		var adjust adjustChips
+		err := json.Unmarshal(rawMessage, &adjust)
+		if err != nil {
+			return err
+		}
+		if !validLength(adjust.Name, maxUsernameLen) || !validAdjust(adjust.Amount) || !validReason(adjust.Reason) {
+			sendError(c, "invalid chip change")
+			return errors.New("invalid chip change")
+		}
+		handleAdjustChips(c, adjust.Name, adjust.Amount, adjust.Reason)
 		return nil
 
 	default:

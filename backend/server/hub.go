@@ -67,6 +67,9 @@ var errorCodes = map[error]string{
 	errWrongPassword: "wrong-password",
 }
 
+// codeRemoved tells a client the host removed it, so it leaves the table
+const codeRemoved = "removed"
+
 // joinTable adds c to the named table as username. With create, the table
 // must not exist yet, is made with settings and password, and c becomes its
 // host; otherwise it must exist and password must match. A valid token
@@ -121,8 +124,8 @@ func (h *Hub) joinTable(c *Client, name, username, token, password string, creat
 	}
 	c.username = username
 	t.users[c] = true
-	if create {
-		t.host = c
+	if create || t.host == "" {
+		t.host = username
 	}
 	t.mu.Unlock()
 
@@ -148,16 +151,19 @@ func (h *Hub) leaveTable(c *Client, disconnected bool) {
 
 	t.mu.Lock()
 	uuid := c.id()
-	if disconnected && isSeatedUUID(t, uuid) {
+	// a seated player who dropped keeps their seat, and the host role, for a while
+	grace := disconnected && isSeatedUUID(t, uuid)
+	if grace {
 		t.send(createNewLog(fmt.Sprintf("%s disconnected", c.username)))
 		t.grace[uuid] = time.AfterFunc(reconnectGrace, func() { h.graceExpired(t, uuid) })
 	} else {
 		leaveSeat(t, uuid)
 	}
-	t.removeUser(c)
-	if t.host != nil {
-		broadcastGame(t) // the host may have changed
+	delete(t.users, c)
+	if t.host == c.username && !grace {
+		t.passHost()
 	}
+	broadcastGame(t)
 	t.mu.Unlock()
 
 	h.mu.Lock()
@@ -171,7 +177,12 @@ func (h *Hub) graceExpired(t *table, uuid string) {
 	t.mu.Lock()
 	if _, ok := t.grace[uuid]; ok {
 		delete(t.grace, uuid)
+		name := playerName(t, uuid)
 		leaveSeat(t, uuid)
+		if name == t.host {
+			t.passHost()
+			broadcastGame(t)
+		}
 	}
 	t.mu.Unlock()
 	h.deleteIfEmpty(t)

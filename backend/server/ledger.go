@@ -7,6 +7,8 @@ const (
 	entryBuyIn   = "buy-in"
 	entryRebuy   = "rebuy"
 	entryCashOut = "cash-out"
+	entryAdd     = "host-add"
+	entryRemove  = "host-remove"
 )
 
 // ledgerEntry is chips coming to or leaving the table for one name.
@@ -15,7 +17,8 @@ type ledgerEntry struct {
 	Name   string
 	Kind   string
 	Amount uint
-	By     string // who made the change: the player, or the host once hosts can edit chips
+	By     string // who made the change: the player, or the host
+	Note   string // the host's reason for a chip edit
 }
 
 // ledgerRow is one name's totals. Rows are by name, so someone who leaves and
@@ -36,8 +39,8 @@ type ledgerView struct {
 }
 
 // record adds a ledger entry. Caller holds t.mu.
-func (t *table) record(name, kind string, amount uint, by string) {
-	t.ledger = append(t.ledger, ledgerEntry{time.Now(), name, kind, amount, by})
+func (t *table) record(name, kind string, amount uint, by, note string) {
+	t.ledger = append(t.ledger, ledgerEntry{time.Now(), name, kind, amount, by, note})
 }
 
 // inLedger reports whether name has any ledger entries. Caller holds t.mu.
@@ -50,12 +53,13 @@ func (t *table) inLedger(name string) bool {
 	return false
 }
 
-// bankerName is who everyone settles up with: the host. Caller holds t.mu.
+// bankerName is who everyone settles up with: the host unless the host picked
+// someone. Caller holds t.mu.
 func (t *table) bankerName() string {
-	if t.host == nil {
-		return ""
+	if t.banker != "" {
+		return t.banker
 	}
-	return t.host.username
+	return t.host
 }
 
 // ledgerView totals the ledger, in the order names first bought in. Caller
@@ -70,7 +74,7 @@ func (t *table) ledgerView() ledgerView {
 			index[e.Name] = i
 			view.Rows = append(view.Rows, ledgerRow{Name: e.Name})
 		}
-		if e.Kind == entryCashOut {
+		if e.Kind == entryCashOut || e.Kind == entryRemove {
 			view.Rows[i].CashedOut += e.Amount
 		} else {
 			view.Rows[i].BoughtIn += e.Amount

@@ -116,7 +116,7 @@ func seatPlayer(t *table, name string, seatID uint, buyIn uint) string {
 	if err != nil {
 		slog.Default().Warn("Set seat id", "error", err)
 	}
-	t.record(name, entryBuyIn, buyIn, name)
+	t.record(name, entryBuyIn, buyIn, name, "")
 	t.send(createNewLog(fmt.Sprintf("%s sits down with %d", name, buyIn)))
 
 	// a running game may be waiting for players
@@ -132,7 +132,7 @@ func seatPlayer(t *table, name string, seatID uint, buyIn uint) string {
 func handleStartGame(c *Client) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
-	if !isSeated(c) && c.table.host != c {
+	if !isSeated(c) && c.table.host != c.username {
 		sendError(c, "take a seat first")
 		return
 	}
@@ -144,28 +144,6 @@ func handleStartGame(c *Client) {
 	}
 	logDeal(c.table)
 	c.table.startTurnTimer()
-	broadcastGame(c.table)
-}
-
-func handleResetGame(c *Client) {
-	c.table.mu.Lock()
-	defer c.table.mu.Unlock()
-	if c.table.host != c {
-		sendError(c, "only the host can reset the table")
-		return
-	}
-
-	if c.table.dealTimer != nil {
-		c.table.dealTimer.Stop()
-	}
-	c.table.turnSeq++ // cancel the turn timer
-	// everyone leaves with their chips, including any bet this hand
-	for _, p := range c.table.game.GenerateOmniView().Players {
-		c.table.record(p.Username, entryCashOut, p.Stack+p.TotalBet, c.username)
-	}
-	c.table.game.Reset()
-	clear(c.table.sitOutNext)
-	c.table.send(createNewLog(fmt.Sprintf("%s reset the table", c.username)))
 	broadcastGame(c.table)
 }
 
@@ -289,17 +267,31 @@ func handleLeaveSeat(c *Client) {
 		sendError(c, "you don't have a seat")
 		return
 	}
-	old := c.id()
-	leaveSeat(t, old)
+	unseat(t, c.id())
+	broadcastGame(t)
+}
+
+// unseat gives up the seat of the player with uuid, keeping any client of
+// theirs at the table as a spectator. Mid-hand they're folded on their turn
+// and removed after the hand. Caller holds t.mu.
+func unseat(t *table, uuid string) {
+	if timer, ok := t.grace[uuid]; ok {
+		timer.Stop()
+		delete(t.grace, uuid)
+	}
+	leaveSeat(t, uuid)
 	for token, u := range t.tokens {
-		if u == old {
+		if u == uuid {
 			delete(t.tokens, token)
 		}
 	}
-	// a fresh uuid makes c a spectator, even while its old player finishes the hand
-	c.uuid.Store(newUUID())
-	c.send <- createUpdatedPlayerUUID(c, "")
-	broadcastGame(t)
+	for u := range t.users {
+		if u.id() == uuid {
+			// a fresh uuid makes u a spectator, even while its old player finishes the hand
+			u.uuid.Store(newUUID())
+			trySend(u, createUpdatedPlayerUUID(u, ""))
+		}
+	}
 }
 
 // handleSitOut toggles c sitting out. Between hands it takes effect right
@@ -394,7 +386,7 @@ func handleRebuy(c *Client, amount uint) {
 			slog.Default().Warn("Toggle ready after rebuy", "error", err)
 		}
 	}
-	t.record(p.Username, entryRebuy, amount, p.Username)
+	t.record(p.Username, entryRebuy, amount, p.Username, "")
 	t.send(createNewLog(fmt.Sprintf("%s rebuys for %d", p.Username, amount)))
 	if view.Running && view.Stage == poker.PreDeal {
 		t.scheduleDeal()
@@ -535,7 +527,7 @@ func removeLeavers(t *table) {
 			if err := poker.RemovePlayer(t.game, uint(pn), 0); err != nil {
 				return // mid-hand, try again after it
 			}
-			t.record(p.Username, entryCashOut, p.Stack, p.Username)
+			t.record(p.Username, entryCashOut, p.Stack, p.Username, "")
 			t.send(createNewLog(fmt.Sprintf("%s left the table", p.Username)))
 		}
 		delete(t.leaving, uuid)
@@ -634,6 +626,14 @@ func actingPlayer(c *Client) (uint, bool) {
 	return pn, true
 }
 
+// trySend queues message for c without blocking, dropping it if c is backed up.
+func trySend(c *Client, message []byte) {
+	select {
+	case c.send <- message:
+	default:
+	}
+}
+
 // sendError tells c its action was rejected. It never blocks, so it is safe
 // while holding c.table.mu.
 func sendError(c *Client, message string) {
@@ -662,6 +662,26 @@ func playerNum(c *Client) (uint, bool) {
 		}
 	}
 	return 0, false
+}
+
+// playerByName finds the seated player called name. Caller holds t.mu.
+func playerByName(t *table, name string) (uint, bool) {
+	for i, p := range t.game.GenerateOmniView().Players {
+		if p.Username == name {
+			return uint(i), true
+		}
+	}
+	return 0, false
+}
+
+// playerName is the name of the seated player with uuid. Caller holds t.mu.
+func playerName(t *table, uuid string) string {
+	for _, p := range t.game.GenerateOmniView().Players {
+		if p.UUID == uuid {
+			return p.Username
+		}
+	}
+	return ""
 }
 
 // isSeated reports whether c has a seat at its table. Caller holds c.table.mu.
@@ -737,7 +757,7 @@ func createUpdatedGame(t *table, view *poker.GameView, sitOutNext bool) []byte {
 	game := updateGame{
 		base:         base{actionUpdateGame},
 		Game:         view,
-		Host:         t.hostID(),
+		Host:         t.host,
 		TurnEndsIn:   t.turnEndsIn(view),
 		SitOutNext:   sitOutNext,
 		Settings:     t.settings,
