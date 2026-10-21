@@ -144,7 +144,7 @@ export function rebuy(socket: WebSocket, amount: number) {
     );
 }
 
-// addBot has the host sit a bot down; level is "easy" for now
+// addBot has the host sit a bot down; level is "easy" or "medium"
 export function addBot(
     socket: WebSocket,
     seatID: number,

@@ -36,7 +36,7 @@ type playerSeatProps = {
     player: Player;
     game: Game;
     own: boolean;
-    bot: boolean;
+    bot?: string; // the bot's level, if it's a bot
     host: boolean; // the viewer is the host
 };
 
@@ -68,7 +68,7 @@ function PlayerSeat({ player, game, own, bot, host }: playerSeatProps) {
                     {player.username}
                     {bot && (
                         <span className="ml-1 rounded-full bg-zinc-600 px-1.5 align-middle text-xs text-fg">
-                            bot
+                            {bot} bot
                         </span>
                     )}
                 </p>
@@ -193,7 +193,7 @@ export default function Seat({ player, id }: { player: Player | null; id: number
                 player={player}
                 game={game}
                 own={player.uuid === appState.clientID}
-                bot={game.bots.includes(player.uuid)}
+                bot={game.bots[player.uuid]}
                 host={host}
             />
         );

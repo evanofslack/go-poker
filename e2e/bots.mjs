@@ -1,4 +1,4 @@
-// Bots: the host adds bots, plays a hand against them, removes one, and starts
+// Bots: the host adds bots of each level, plays a hand against them, removes one, and starts
 // a game of only bots without taking a seat.
 import { setTimeout as sleep } from "node:timers/promises";
 import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
@@ -6,7 +6,7 @@ import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
 const names = ["harper", "eric", "yasmin", "robert", "gus", "rishi", "venetia", "kenny", "daria", "sweetpea", "henry", "jesse"];
 
 function record(page) {
-    const rec = { games: [], logs: [], errors: [], bots: [] };
+    const rec = { games: [], logs: [], errors: [], bots: {} };
     page.on("websocket", (ws) => {
         ws.on("framereceived", ({ payload }) => {
             try {
@@ -60,14 +60,16 @@ check("bot name is suggested from the list", names.includes(suggested), suggeste
 await alice.fill('input[maxlength="20"]', "harper");
 await shot(alice, "bots-1-dialog");
 await alice.click('button:text-is("add bot")');
-check("bot sits down with a badge", await alice.waitForSelector('p:has-text("harper") >> text=bot', { timeout: 3000 }).then(() => true).catch(() => false));
+check("bots default to medium, with a badge", await alice.waitForSelector('p:has-text("harper") >> text=medium bot', { timeout: 3000 }).then(() => true).catch(() => false));
 
 await alice.locator("button", { hasText: "+ bot" }).filter({ hasText: "3" }).click();
 const second = await alice.inputValue('input[maxlength="20"]');
 check("suggested name skips taken ones", second !== "harper", second);
+await alice.click('label:has-text("easy")');
 await alice.click('button:text-is("add bot")');
 await waitFor(() => lastGame(aRec)?.players.length === 3, 3000, "second bot");
-check("server marks two bots", aRec.bots.length === 2, JSON.stringify(aRec.bots));
+check("server sends each bot's level", JSON.stringify(Object.values(aRec.bots).sort()) === '["easy","medium"]', JSON.stringify(aRec.bots));
+check("easy bot shows its level", await alice.locator("text=easy bot").count() === 1);
 
 // alice checks or calls on her turns until a hand finishes
 await alice.click('button:text-is("start")');
