@@ -210,3 +210,13 @@ func TestBustedBotRebuys(t *testing.T) {
 		return false
 	}, "busted bot didn't rebuy")
 }
+
+func TestBotBuyInInLedger(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	send(t, a, addBotMsg(2, "harper"))
+	l := waitLedger(t, aRecv, func(l ledgerView) bool { return row(l, "harper").BoughtIn == 100 })
+	if r := row(l, "harper"); r.Stack != 100 || r.Net != 0 || l.Balance != 0 {
+		t.Errorf("harper = %+v, balance %d; want 100 in and on the table", r, l.Balance)
+	}
+}

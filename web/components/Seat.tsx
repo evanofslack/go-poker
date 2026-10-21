@@ -84,7 +84,7 @@ function PlayerSeat({ player, game, own, bot, host }: playerSeatProps) {
                     </span>
                 )}
                 {own && <SeatMenu player={player} game={game} />}
-                {bot && host && socket && (
+                {bot && host && socket && !game.ended && (
                     <button
                         className="absolute top-1/2 right-1 z-20 -translate-y-1/2 px-1 text-lg leading-none opacity-60 hover:opacity-100"
                         title="remove bot"
@@ -184,7 +184,7 @@ export default function Seat({ player, id }: { player: Player | null; id: number
     const { appState } = useContext(AppContext);
     const game = appState.game;
     if (!game) return null;
-    const host = game.host === appState.clientID;
+    const host = game.host === appState.username;
 
     if (player) {
         // the server only sends cards this client may see
@@ -198,6 +198,8 @@ export default function Seat({ player, id }: { player: Player | null; id: number
             />
         );
     }
+    // nobody sits down, and no bots join, once the session has ended
+    if (game.ended) return null;
     const seated = game.players.some((p) => p.uuid === appState.clientID);
     if (!seated) {
         return <OpenSeat id={id} game={game} host={host} />;

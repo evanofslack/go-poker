@@ -14,7 +14,6 @@ const (
 	actionSendMessage string = "send-message"
 	actionTakeSeat    string = "take-seat"
 	actionStartGame   string = "start-game"
-	actionResetGame   string = "reset-game"
 	actionPlayerCall  string = "player-call"
 	actionPlayerCheck string = "player-check"
 	actionPlayerRaise string = "player-raise"
@@ -24,6 +23,19 @@ const (
 	actionRebuy       string = "rebuy"
 	actionAddBot      string = "add-bot"
 	actionRemoveBot   string = "remove-bot"
+
+	// host only
+	actionMakeHost        string = "make-host"
+	actionSetBanker       string = "set-banker"
+	actionMoveToSpectator string = "move-to-spectator"
+	actionRemovePlayer    string = "remove-player"
+	actionSitOutPlayer    string = "sit-out-player"
+	actionAdjustChips     string = "adjust-chips"
+	actionPauseGame       string = "pause-game"
+	actionResumeGame      string = "resume-game"
+	actionEndSession      string = "end-session"
+	actionApproveBuy      string = "approve-buy-in"
+	actionDenyBuy         string = "deny-buy-in"
 )
 
 type base struct {
@@ -63,10 +75,6 @@ type takeSeat struct {
 
 type startGame struct {
 	base // actionStartGame
-}
-
-type resetGame struct {
-	base // actionResetGame
 }
 
 type playerCall struct {
@@ -115,6 +123,26 @@ type removeBot struct {
 	SeatID uint `json:"seatID"`
 }
 
+// playerTarget names who a host action is for: actionMakeHost,
+// actionSetBanker, actionMoveToSpectator, actionRemovePlayer, actionSitOutPlayer
+type playerTarget struct {
+	base
+	Name string `json:"name"`
+}
+
+type adjustChips struct {
+	base          // actionAdjustChips
+	Name   string `json:"name"`
+	Amount int64  `json:"amount"` // chips to add, or take away when negative
+	Reason string `json:"reason"` // optional, shown in the log
+}
+
+// pauseGame, resumeGame and endSession carry nothing: actionPauseGame,
+// actionResumeGame, actionEndSession
+type sessionAction struct {
+	base
+}
+
 // outbound (server) actions
 const (
 	actionNewMessage       string = "new-message"
@@ -123,6 +151,7 @@ const (
 	actionUpdatePlayerUUID string = "update-player-uuid"
 	actionError            string = "error"
 	actionJoinedTable      string = "joined-table"
+	actionUpdateStats      string = "update-stats"
 )
 
 type newMessage struct {
@@ -143,7 +172,7 @@ type newLog struct {
 type updateGame struct {
 	base                 // actionUpdateGame
 	Game *poker.GameView `json:"game"`
-	Host string          `json:"host"` // uuid of the host client
+	Host string          `json:"host"` // name of the host
 
 	// milliseconds until the player to act times out, 0 when nobody is betting
 	TurnEndsIn int64 `json:"turnEndsIn"`
@@ -154,10 +183,21 @@ type updateGame struct {
 	Settings    tableSettings `json:"settings"`
 	HasPassword bool          `json:"hasPassword"` // never the password itself
 
-	// clients at the table without a seat
-	Watching uint `json:"watching"`
+	Paused   bool  `json:"paused"`   // no new hands are dealt
+	Ending   bool  `json:"ending"`   // the session ends after this hand
+	Ended    bool  `json:"ended"`    // the session is over and the ledger final
+	ClosesIn int64 `json:"closesIn"` // milliseconds until an ended table closes
+
+	// names of the clients at the table without a seat
+	BuyRequests []buyRequest `json:"buyRequests"` // waiting for the host, oldest first
+	Watchers    []string     `json:"watchers"`
+
+	// names of seated players who dropped and may still reconnect
+	Disconnected []string `json:"disconnected"`
 
 	Bots map[string]string `json:"bots"` // level of each bot, by uuid
+
+	Ledger ledgerView `json:"ledger"`
 }
 
 // joinedTable confirms a create-table or join-table
@@ -181,4 +221,12 @@ type updatePlayerUUID struct {
 	base         //actionUpdatePlayerUUID
 	Uuid  string `json:"uuid"`
 	Token string `json:"token"` // secret for reclaiming the seat, only sent to its player
+}
+
+// updateStats carries hand snapshots: all the table keeps when Full (sent on
+// joining), else the hand that just ended.
+type updateStats struct {
+	base
+	Hands []handStats `json:"hands"`
+	Full  bool        `json:"full"`
 }

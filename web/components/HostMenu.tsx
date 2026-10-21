@@ -1,12 +1,13 @@
 import { useContext, useRef, useState } from "react";
 import { FiChevronDown } from "react-icons/fi";
-import { resetGame } from "../actions/actions";
+import { sessionAction } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { useDismiss } from "../hooks/useDismiss";
 import { AppContext } from "../providers/AppStore";
 import Confirm from "./Confirm";
 
-// HostMenu holds the controls only the host has. Reset is the only one so far.
+// HostMenu holds the host's controls for the whole session. Controls for one
+// player are on their row in the players panel.
 export default function HostMenu() {
     const socket = useSocket();
     const { appState } = useContext(AppContext);
@@ -14,10 +15,13 @@ export default function HostMenu() {
     const [confirming, setConfirming] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
     useDismiss(ref, open, () => setOpen(false));
+    const game = appState.game;
 
-    if (!socket || appState.game?.host !== appState.clientID) {
+    if (!socket || !game || game.host !== appState.username || game.ended) {
         return null;
     }
+    const midHand = game.stage !== 1;
+    const item = "px-3 py-1.5 text-left text-sm hover:bg-raised";
     return (
         <div ref={ref} className="relative">
             <button
@@ -31,27 +35,42 @@ export default function HostMenu() {
             {open && (
                 <div
                     role="menu"
-                    className="absolute top-full left-0 z-40 mt-1 flex w-40 flex-col rounded-md border border-zinc-600 bg-panel py-1 text-fg shadow-xl"
+                    className="absolute top-full left-0 z-40 mt-1 flex w-44 flex-col rounded-md border border-zinc-600 bg-panel py-1 text-fg shadow-xl"
                 >
                     <button
                         role="menuitem"
-                        className="px-3 py-1.5 text-left text-sm text-danger hover:bg-raised"
+                        className={item}
                         onClick={() => {
                             setOpen(false);
-                            setConfirming(true);
+                            sessionAction(socket, game.paused ? "resume-game" : "pause-game");
                         }}
                     >
-                        reset table
+                        {game.paused ? "resume" : "pause"}
                     </button>
+                    {!game.ending && (
+                        <button
+                            role="menuitem"
+                            className={item + " text-danger"}
+                            onClick={() => {
+                                setOpen(false);
+                                setConfirming(true);
+                            }}
+                        >
+                            end session
+                        </button>
+                    )}
                 </div>
             )}
             {confirming && (
                 <Confirm
-                    title="reset the table?"
-                    message="everyone leaves their seat and the game stops."
-                    action="reset"
+                    title="end the session?"
+                    message={
+                        (midHand ? "after this hand, " : "") +
+                        "no more hands are dealt and the ledger is final. the table closes an hour later."
+                    }
+                    action="end session"
                     onConfirm={() => {
-                        resetGame(socket);
+                        sessionAction(socket, "end-session");
                         setConfirming(false);
                     }}
                     onCancel={() => setConfirming(false)}

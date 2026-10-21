@@ -67,6 +67,13 @@ var errorCodes = map[error]string{
 	errWrongPassword: "wrong-password",
 }
 
+// codes that tell a client to leave the table: the host removed it, or the
+// table closed an hour after its session ended
+const (
+	codeRemoved = "removed"
+	codeClosed  = "closed"
+)
+
 // joinTable adds c to the named table as username. With create, the table
 // must not exist yet, is made with settings and password, and c becomes its
 // host; otherwise it must exist and password must match. A valid token
@@ -93,6 +100,7 @@ func (h *Hub) joinTable(c *Client, name, username, token, password string, creat
 	if create {
 		t = newTable(name, settings)
 		t.password = password
+		t.hub = h
 	}
 	t.mu.Lock()
 	uuid, seatName, reconnected := t.reclaim(token)
@@ -121,8 +129,8 @@ func (h *Hub) joinTable(c *Client, name, username, token, password string, creat
 	}
 	c.username = username
 	t.users[c] = true
-	if create {
-		t.host = c
+	if create || t.host == "" {
+		t.host = username
 	}
 	t.mu.Unlock()
 
@@ -144,20 +152,29 @@ func (h *Hub) leaveTable(c *Client, disconnected bool) {
 		return
 	}
 	c.table = nil
-	t.unregister <- c
+	select {
+	case t.unregister <- c:
+	case <-t.done: // closed after its session ended
+	}
 
 	t.mu.Lock()
 	uuid := c.id()
-	if disconnected && isSeatedUUID(t, uuid) {
+	// a seated player who dropped keeps their seat, and the host role, for a while
+	grace := disconnected && isSeatedUUID(t, uuid)
+	if grace {
 		t.send(createNewLog(fmt.Sprintf("%s disconnected", c.username)))
 		t.grace[uuid] = time.AfterFunc(reconnectGrace, func() { h.graceExpired(t, uuid) })
 	} else {
 		leaveSeat(t, uuid)
 	}
-	t.removeUser(c)
-	if t.host != nil {
-		broadcastGame(t) // the host may have changed
+	delete(t.users, c)
+	if !grace {
+		delete(t.requests, c.username)
 	}
+	if t.host == c.username && !grace {
+		t.passHost()
+	}
+	broadcastGame(t)
 	t.mu.Unlock()
 
 	h.mu.Lock()
@@ -171,18 +188,24 @@ func (h *Hub) graceExpired(t *table, uuid string) {
 	t.mu.Lock()
 	if _, ok := t.grace[uuid]; ok {
 		delete(t.grace, uuid)
+		name := playerName(t, uuid)
 		leaveSeat(t, uuid)
+		if name == t.host {
+			t.passHost()
+			broadcastGame(t)
+		}
 	}
 	t.mu.Unlock()
 	h.deleteIfEmpty(t)
 }
 
 // deleteIfEmpty deletes t once nobody is connected and no seat is waiting
-// for a reconnect.
+// for a reconnect. A table whose session ended stays readable until
+// closeTable instead.
 func (h *Hub) deleteIfEmpty(t *table) {
 	h.mu.Lock()
 	t.mu.Lock()
-	empty := t.members == 0 && len(t.grace) == 0 && h.tables[t.name] == t
+	empty := t.members == 0 && len(t.grace) == 0 && h.tables[t.name] == t && t.endedAt.IsZero()
 	t.mu.Unlock()
 	if empty {
 		delete(h.tables, t.name)
@@ -192,4 +215,23 @@ func (h *Hub) deleteIfEmpty(t *table) {
 	if empty {
 		close(t.done)
 	}
+}
+
+// closeTable deletes a table whose session ended, telling anyone still there.
+func (h *Hub) closeTable(t *table) {
+	h.mu.Lock()
+	open := h.tables[t.name] == t
+	if open {
+		delete(h.tables, t.name)
+	}
+	h.mu.Unlock()
+	if !open {
+		return
+	}
+	t.mu.Lock()
+	for u := range t.users {
+		sendErrorCode(u, codeClosed, "the table has closed")
+	}
+	t.mu.Unlock()
+	close(t.done)
 }

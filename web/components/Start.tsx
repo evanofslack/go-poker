@@ -15,8 +15,15 @@ export default function Start() {
     const { appState, dispatch } = useContext(AppContext);
     const game = appState.game;
 
-    if (!game) {
+    if (!game || game.ended) {
         return null;
+    }
+    if (!game.running && game.paused) {
+        return (
+            <Button className="text-lg" title="the host paused the game" disabled>
+                start
+            </Button>
+        );
     }
 
     if (!game.running && game.players.length < 2) {

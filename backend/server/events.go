@@ -14,8 +14,11 @@ import (
 
 const gameAdminName string = "system"
 
-// how long a disconnected player keeps their seat, a var so tests can shorten it
-var reconnectGrace = 60 * time.Second
+// Vars so tests can shorten them.
+var (
+	reconnectGrace = 60 * time.Second // how long a disconnected player keeps their seat
+	endedTableTTL  = time.Hour        // how long a table stays readable after its session ends
+)
 
 func handleJoinTable(c *Client, tablename, username, token, password string, create bool, settings tableSettings) {
 	reconnected, err := c.hub.joinTable(c, tablename, username, token, password, create, settings)
@@ -28,9 +31,13 @@ func handleJoinTable(c *Client, tablename, username, token, password string, cre
 
 	c.send <- createJoinedTable(c)
 	c.send <- createGameView(c)
+	c.send <- createStats(c.table.hands, true)
 	broadcastGame(c.table) // the watching count may have changed
-	// a reconnect is already logged
-	if !reconnected {
+	switch {
+	case reconnected: // already logged
+	case c.table.inLedger(c.username):
+		c.table.send(createNewMessage(gameAdminName, fmt.Sprintf("%s rejoined, continuing their ledger", c.username)))
+	default:
 		c.table.send(createNewMessage(gameAdminName, fmt.Sprintf("%s has joined", c.username)))
 	}
 }
@@ -50,23 +57,35 @@ func handleSendMessage(c *Client, message string) {
 }
 
 func handleTakeSeat(c *Client, seatID uint, buyIn uint) {
-	c.table.mu.Lock()
-	defer c.table.mu.Unlock()
+	t := c.table
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
 	if isSeated(c) {
 		sendError(c, "you already have a seat")
 		return
 	}
-	if err := checkSeat(c.table, seatID, buyIn); err != nil {
+	if err := checkSeat(t, seatID, buyIn); err != nil {
 		sendError(c, err.Error())
 		return
 	}
-	uuid := seatPlayer(c.table, c.username, seatID, buyIn)
+	// sitting back down is a rebuy, so leaving can't skip approval
+	if needsApproval(t, c.username) && t.inLedger(c.username) {
+		requestBuy(t, buyRequest{Name: c.username, Amount: buyIn, Seat: seatID})
+		return
+	}
+	seatClient(t, c, seatID, buyIn)
+}
+
+// seatClient sits c down, after checkSeat, and gives it the seat's token.
+// Caller holds t.mu.
+func seatClient(t *table, c *Client, seatID uint, buyIn uint) {
+	uuid := seatPlayer(t, c.username, seatID, buyIn)
 	c.uuid.Store(uuid)
 	token := newUUID()
-	c.table.tokens[token] = uuid
-	c.send <- createUpdatedPlayerUUID(c, token)
-	broadcastGame(c.table)
+	t.tokens[token] = uuid
+	trySend(c, createUpdatedPlayerUUID(c, token))
+	broadcastGame(t)
 }
 
 // checkSeat returns why a new player can't sit in seatID with buyIn, if they
@@ -113,6 +132,7 @@ func seatPlayer(t *table, name string, seatID uint, buyIn uint) string {
 	if err != nil {
 		slog.Default().Warn("Set seat id", "error", err)
 	}
+	t.record(name, entryBuyIn, buyIn, name, "")
 	t.send(createNewLog(fmt.Sprintf("%s sits down with %d", name, buyIn)))
 
 	// a running game may be waiting for players
@@ -128,8 +148,12 @@ func seatPlayer(t *table, name string, seatID uint, buyIn uint) string {
 func handleStartGame(c *Client) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
-	if !isSeated(c) && c.table.host != c {
+	if !isSeated(c) && c.table.host != c.username {
 		sendError(c, "take a seat first")
+		return
+	}
+	if c.table.paused {
+		sendError(c, "the game is paused")
 		return
 	}
 
@@ -140,24 +164,6 @@ func handleStartGame(c *Client) {
 	}
 	logDeal(c.table)
 	c.table.startTurnTimer()
-	broadcastGame(c.table)
-}
-
-func handleResetGame(c *Client) {
-	c.table.mu.Lock()
-	defer c.table.mu.Unlock()
-	if c.table.host != c {
-		sendError(c, "only the host can reset the table")
-		return
-	}
-
-	if c.table.dealTimer != nil {
-		c.table.dealTimer.Stop()
-	}
-	c.table.turnSeq++ // cancel the turn timer
-	c.table.game.Reset()
-	clear(c.table.sitOutNext)
-	c.table.send(createNewLog(fmt.Sprintf("%s reset the table", c.username)))
 	broadcastGame(c.table)
 }
 
@@ -281,17 +287,31 @@ func handleLeaveSeat(c *Client) {
 		sendError(c, "you don't have a seat")
 		return
 	}
-	old := c.id()
-	leaveSeat(t, old)
+	unseat(t, c.id())
+	broadcastGame(t)
+}
+
+// unseat gives up the seat of the player with uuid, keeping any client of
+// theirs at the table as a spectator. Mid-hand they're folded on their turn
+// and removed after the hand. Caller holds t.mu.
+func unseat(t *table, uuid string) {
+	if timer, ok := t.grace[uuid]; ok {
+		timer.Stop()
+		delete(t.grace, uuid)
+	}
+	leaveSeat(t, uuid)
 	for token, u := range t.tokens {
-		if u == old {
+		if u == uuid {
 			delete(t.tokens, token)
 		}
 	}
-	// a fresh uuid makes c a spectator, even while its old player finishes the hand
-	c.uuid.Store(newUUID())
-	c.send <- createUpdatedPlayerUUID(c, "")
-	broadcastGame(t)
+	for u := range t.users {
+		if u.id() == uuid {
+			// a fresh uuid makes u a spectator, even while its old player finishes the hand
+			u.uuid.Store(newUUID())
+			trySend(u, createUpdatedPlayerUUID(u, ""))
+		}
+	}
 }
 
 // handleSitOut toggles c sitting out. Between hands it takes effect right
@@ -366,19 +386,42 @@ func handleRebuy(c *Client, amount uint) {
 		sendError(c, "take a seat first")
 		return
 	}
+	if msg := checkRebuy(t, pn, amount); msg != "" {
+		sendError(c, msg)
+		return
+	}
+	if needsApproval(t, c.username) {
+		requestBuy(t, buyRequest{Name: c.username, Amount: amount})
+		return
+	}
+	applyRebuy(t, pn, amount)
+}
+
+// checkRebuy says why player pn can't rebuy for amount, or "" if they can.
+// Caller holds t.mu.
+func checkRebuy(t *table, pn uint, amount uint) string {
 	view := t.game.GenerateOmniView()
 	p := view.Players[pn]
 	if p.In {
-		sendError(c, "can't rebuy during a hand")
-		return
+		return "can't rebuy during a hand"
 	}
 	// topping up can be any amount, but a busted player buys back in
 	if p.Stack == 0 && amount < t.settings.MinBuy {
-		sendError(c, fmt.Sprintf("rebuy must be at least %d", t.settings.MinBuy))
-		return
+		return fmt.Sprintf("rebuy must be at least %d", t.settings.MinBuy)
 	}
+	if p.Stack+amount > view.Config.MaxBuy {
+		return fmt.Sprintf("rebuy can't take your stack above %d", view.Config.MaxBuy)
+	}
+	return ""
+}
+
+// applyRebuy adds amount to player pn's stack, after checkRebuy. Caller holds
+// t.mu.
+func applyRebuy(t *table, pn uint, amount uint) {
+	view := t.game.GenerateOmniView()
+	p := view.Players[pn]
 	if err := poker.BuyIn(t.game, pn, amount); err != nil {
-		sendError(c, fmt.Sprintf("rebuy can't take your stack above %d", view.Config.MaxBuy))
+		slog.Default().Warn("Rebuy", "error", err)
 		return
 	}
 	if !p.Ready && p.Stack == 0 {
@@ -386,6 +429,7 @@ func handleRebuy(c *Client, amount uint) {
 			slog.Default().Warn("Toggle ready after rebuy", "error", err)
 		}
 	}
+	t.record(p.Username, entryRebuy, amount, p.Username, "")
 	t.send(createNewLog(fmt.Sprintf("%s rebuys for %d", p.Username, amount)))
 	if view.Running && view.Stage == poker.PreDeal {
 		t.scheduleDeal()
@@ -404,10 +448,15 @@ func finishAction(t *table, msg string) {
 	view := t.game.GenerateOmniView()
 	if view.Stage == poker.PreDeal {
 		logWinners(t, view)
+		recordHand(t, view)
 		removeLeavers(t)
 		applySitOuts(t)
-		rebuyBots(t)
-		t.scheduleDeal()
+		if t.ending {
+			endSession(t)
+		} else {
+			rebuyBots(t)
+			t.scheduleDeal()
+		}
 	} else {
 		t.startTurnTimer()
 	}
@@ -526,6 +575,7 @@ func removeLeavers(t *table) {
 			if err := poker.RemovePlayer(t.game, uint(pn), 0); err != nil {
 				return // mid-hand, try again after it
 			}
+			t.record(p.Username, entryCashOut, p.Stack, p.Username, "")
 			t.send(createNewLog(fmt.Sprintf("%s left the table", p.Username)))
 		}
 		delete(t.leaving, uuid)
@@ -549,7 +599,7 @@ func dealNextHand(t *table) {
 	default:
 	}
 	view := t.game.GenerateOmniView()
-	if !view.Running || view.Stage != poker.PreDeal {
+	if !view.Running || view.Stage != poker.PreDeal || t.paused || !t.endedAt.IsZero() {
 		return
 	}
 	if err := poker.Deal(t.game, view.DealerNum, 0); err != nil {
@@ -624,6 +674,14 @@ func actingPlayer(c *Client) (uint, bool) {
 	return pn, true
 }
 
+// trySend queues message for c without blocking, dropping it if c is backed up.
+func trySend(c *Client, message []byte) {
+	select {
+	case c.send <- message:
+	default:
+	}
+}
+
 // sendError tells c its action was rejected. It never blocks, so it is safe
 // while holding c.table.mu.
 func sendError(c *Client, message string) {
@@ -652,6 +710,26 @@ func playerNum(c *Client) (uint, bool) {
 		}
 	}
 	return 0, false
+}
+
+// playerByName finds the seated player called name. Caller holds t.mu.
+func playerByName(t *table, name string) (uint, bool) {
+	for i, p := range t.game.GenerateOmniView().Players {
+		if p.Username == name {
+			return uint(i), true
+		}
+	}
+	return 0, false
+}
+
+// playerName is the name of the seated player with uuid. Caller holds t.mu.
+func playerName(t *table, uuid string) string {
+	for _, p := range t.game.GenerateOmniView().Players {
+		if p.UUID == uuid {
+			return p.Username
+		}
+	}
+	return ""
 }
 
 // isSeated reports whether c has a seat at its table. Caller holds c.table.mu.
@@ -725,15 +803,22 @@ func createGameView(c *Client) []byte {
 // createUpdatedGame wraps one recipient's view of the game. Caller holds t.mu.
 func createUpdatedGame(t *table, view *poker.GameView, sitOutNext bool) []byte {
 	game := updateGame{
-		base:        base{actionUpdateGame},
-		Game:        view,
-		Host:        t.hostID(),
-		TurnEndsIn:  t.turnEndsIn(view),
-		SitOutNext:  sitOutNext,
-		Settings:    t.settings,
-		HasPassword: t.password != "",
-		Watching:    t.watching(),
-		Bots:        t.botLevels(),
+		base:         base{actionUpdateGame},
+		Game:         view,
+		Host:         t.host,
+		TurnEndsIn:   t.turnEndsIn(view),
+		SitOutNext:   sitOutNext,
+		Settings:     t.settings,
+		Paused:       t.paused,
+		Ending:       t.ending,
+		Ended:        !t.endedAt.IsZero(),
+		ClosesIn:     t.closesIn(),
+		HasPassword:  t.password != "",
+		Watchers:     t.watchers(),
+		BuyRequests:  t.buyRequests(),
+		Disconnected: t.disconnected(),
+		Ledger:       t.ledgerView(),
+		Bots:         t.botLevels(),
 	}
 
 	resp, err := json.Marshal(game)
@@ -777,6 +862,7 @@ func logDeal(t *table) {
 	if view.SBNum >= uint(len(view.Players)) || view.BBNum >= uint(len(view.Players)) {
 		return
 	}
+	recordDeal(t, view)
 	t.send(createNewLog("starting new hand"))
 	t.send(createNewLog(fmt.Sprintf("%s is small blind (%d)", view.Players[view.SBNum].Username, view.Config.SmallBlind)))
 	t.send(createNewLog(fmt.Sprintf("%s is big blind (%d)", view.Players[view.BBNum].Username, view.Config.BigBlind)))

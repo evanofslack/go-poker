@@ -124,3 +124,17 @@ func TestValidBotLevel(t *testing.T) {
 		}
 	}
 }
+
+func TestValidAdjust(t *testing.T) {
+	for n, want := range map[int64]bool{0: false, 1: true, -1: true, maxChipChange: true, -maxChipChange: true, maxChipChange + 1: false, -maxChipChange - 1: false} {
+		if got := validAdjust(n); got != want {
+			t.Errorf("validAdjust(%d) = %v, want %v", n, got, want)
+		}
+	}
+}
+
+func TestValidReason(t *testing.T) {
+	if !validReason("") || !validReason("miscount") || validReason(strings.Repeat("a", maxReasonLen+1)) {
+		t.Error("validReason allows empty and short reasons only")
+	}
+}

@@ -131,6 +131,19 @@ func buyIn(g *Game, pn uint, data uint) error {
 	return nil
 }
 
+// RemoveChips takes data chips from the player's stack. It returns an error if
+// the player is in the current round or has fewer chips than that.
+func RemoveChips(g *Game, pn uint, data uint) error {
+	g.mtx.Lock()
+	defer g.mtx.Unlock()
+	p := g.getPlayer(pn)
+	if p.In || data > p.Stack {
+		return ErrIllegalAction
+	}
+	p.Stack -= data
+	return nil
+}
+
 // SetUsername sets a player's username
 func SetUsername(g *Game, pn uint, data string) error {
 	g.mtx.Lock()

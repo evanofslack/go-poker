@@ -66,14 +66,6 @@ export function startGame(socket: WebSocket) {
     );
 }
 
-export function resetGame(socket: WebSocket) {
-    socket.send(
-        JSON.stringify({
-            action: "reset-game",
-        })
-    );
-}
-
 export function playerCall(socket: WebSocket) {
     socket?.send(
         JSON.stringify({
@@ -163,12 +155,52 @@ export function addBot(
     );
 }
 
+// host only: actions on the player called name
+export type HostAction =
+    | "make-host"
+    | "set-banker"
+    | "move-to-spectator"
+    | "remove-player"
+    | "sit-out-player"
+    | "approve-buy-in"
+    | "deny-buy-in";
+
+export function hostAction(socket: WebSocket, action: HostAction, name: string) {
+    socket?.send(
+        JSON.stringify({
+            action: action,
+            name: name,
+        })
+    );
+}
+
 // removeBot has the host take the bot in a seat out of the game
 export function removeBot(socket: WebSocket, seatID: number) {
     socket?.send(
         JSON.stringify({
             action: "remove-bot",
             seatID: seatID,
+        })
+    );
+}
+
+// adjustChips adds amount to name's stack, or takes it away when negative (host only)
+export function adjustChips(socket: WebSocket, name: string, amount: number, reason: string) {
+    socket?.send(
+        JSON.stringify({
+            action: "adjust-chips",
+            name: name,
+            amount: amount,
+            reason: reason,
+        })
+    );
+}
+
+// host only: stop dealing new hands, start again, or end the session for good
+export function sessionAction(socket: WebSocket, action: "pause-game" | "resume-game" | "end-session") {
+    socket?.send(
+        JSON.stringify({
+            action: action,
         })
     );
 }

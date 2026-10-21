@@ -3,6 +3,7 @@ package server
 import (
 	"crypto/subtle"
 	"math/rand/v2"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +22,7 @@ type tableSettings struct {
 	TurnTime      uint `json:"turnTime"`      // time to act before checking or folding for you, 0 for no limit
 	NextHandDelay uint `json:"nextHandDelay"` // pause after a hand before dealing the next
 	Public        bool `json:"public"`        // not used yet, for listing tables later
+	ApproveRebuys bool `json:"approveRebuys"` // rebuys, and sitting back down, wait for the host
 }
 
 // defaultSettings are used when create-table sends none. A var so tests can
@@ -53,12 +55,25 @@ type table struct {
 	game       *poker.Game
 	settings   tableSettings // fixed after creation
 	password   string        // empty for none, fixed after creation
-	done       chan struct{} // closed when the table is deleted
-	members    int           // clients at this table, guarded by Hub.mu
+	ledger     []ledgerEntry // chips in and out by name, guarded by mu
+	hub        *Hub          // closes the table once an ended session expires
 
-	mu    sync.Mutex       // serializes game actions from client goroutines
-	users map[*Client]bool // clients at this table, guarded by mu
-	host  *Client          // guarded by mu
+	hands     []handStats // the last maxHands hands, guarded by mu
+	handCount int         // hands played, guarded by mu
+	dealt     []string    // names dealt into this hand, guarded by mu
+
+	requests map[string]buyRequest // buy-ins waiting for the host, by name; guarded by mu
+
+	paused  bool          // no new hands are dealt, guarded by mu
+	ending  bool          // the session ends once this hand does, guarded by mu
+	endedAt time.Time     // when the session ended, zero until then; guarded by mu
+	done    chan struct{} // closed when the table is deleted
+	members int           // clients at this table, guarded by Hub.mu
+
+	mu     sync.Mutex       // serializes game actions from client goroutines
+	users  map[*Client]bool // clients at this table, guarded by mu
+	host   string           // name of the host, guarded by mu
+	banker string           // name everyone settles up with, empty for the host; guarded by mu
 
 	dealTimer *time.Timer     // deals the next hand, guarded by mu
 	turnTimer *time.Timer     // acts for an idle player, guarded by mu
@@ -103,6 +118,7 @@ func newTable(name string, settings tableSettings) *table {
 		bots:       make(map[string]botSeat),
 		rng:        rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())),
 		botDelay:   botDelay,
+		requests:   make(map[string]buyRequest),
 	}
 }
 
@@ -168,45 +184,73 @@ func (t *table) reclaim(token string) (uuid string, name string, ok bool) {
 	return "", "", false
 }
 
-// removeUser takes c out of the table's users, passing the host role on if c
-// had it: to a seated user first, else anyone. Caller holds t.mu.
-func (t *table) removeUser(c *Client) {
-	delete(t.users, c)
-	if t.host != c {
-		return
+// ended reports whether the session has ended. It takes t.mu.
+func (t *table) ended() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return !t.endedAt.IsZero()
+}
+
+// closesIn is how many milliseconds an ended table has left, or 0 if the
+// session hasn't ended. Caller holds t.mu.
+func (t *table) closesIn() int64 {
+	if t.endedAt.IsZero() {
+		return 0
 	}
-	t.host = nil
+	return max(time.Until(t.endedAt.Add(endedTableTTL)).Milliseconds(), 0)
+}
+
+// passHost gives the host role to a connected seated player, else to whoever
+// is at the table first by name, else nobody. Caller holds t.mu.
+func (t *table) passHost() {
+	t.host = ""
 	for _, p := range t.game.GenerateOmniView().Players {
-		for u := range t.users {
-			if u.id() == p.UUID {
-				t.host = u
-				return
-			}
+		if t.connected(p.Username) && !t.leaving[p.UUID] {
+			t.host = p.Username
+			return
 		}
 	}
 	for u := range t.users {
-		t.host = u
-		return
+		if t.host == "" || u.username < t.host {
+			t.host = u.username
+		}
 	}
 }
 
-// hostID is the host's uuid, or empty if there is none. Caller holds t.mu.
-// watching counts the clients at the table without a seat. Caller holds t.mu.
-func (t *table) watching() uint {
-	var n uint
+// connected reports whether a client named name is at the table. Caller holds t.mu.
+func (t *table) connected(name string) bool {
+	for u := range t.users {
+		if u.username == name {
+			return true
+		}
+	}
+	return false
+}
+
+// watchers are the names of the clients at the table without a seat, sorted.
+// Caller holds t.mu.
+func (t *table) watchers() []string {
+	names := []string{}
 	for u := range t.users {
 		if !isSeatedUUID(t, u.id()) {
-			n++
+			names = append(names, u.username)
 		}
 	}
-	return n
+	slices.Sort(names)
+	return names
 }
 
-func (t *table) hostID() string {
-	if t.host == nil {
-		return ""
+// disconnected are the names of seated players waiting out their reconnect
+// grace period, sorted. Caller holds t.mu.
+func (t *table) disconnected() []string {
+	names := []string{}
+	for _, p := range t.game.GenerateOmniView().Players {
+		if _, ok := t.grace[p.UUID]; ok {
+			names = append(names, p.Username)
+		}
 	}
-	return t.host.id()
+	slices.Sort(names)
+	return names
 }
 
 // send queues message for every client, unless the table has been deleted.

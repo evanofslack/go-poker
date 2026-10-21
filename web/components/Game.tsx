@@ -1,6 +1,7 @@
 import ChatLog from "./ChatLog";
 import Home from "./Home";
 import HostMenu from "./HostMenu";
+import SessionEnded from "./SessionEnded";
 import GameInfo from "./GameInfo";
 import Start from "./Start";
 import Input from "./Input";
@@ -26,6 +27,7 @@ export default function Game() {
                     <Start />
                 </div>
             </footer>
+            <SessionEnded />
         </div>
     );
 }
