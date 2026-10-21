@@ -1024,29 +1024,29 @@ func TestSitOutMidHand(t *testing.T) {
 }
 
 // nextSitOut returns the sitOutNext of the next game update r gets.
-func nextSitOut(t *testing.T, r received) bool {
+// waitSitOut waits for a game update with sitOutNext set to want. Earlier
+// updates may still be arriving, so it skips any that don't match.
+func waitSitOut(t *testing.T, r received, want bool, msg string) {
 	t.Helper()
-	select {
-	case v := <-r.sitOut:
-		return v
-	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for game update")
-		return false
+	timeout := time.After(2 * time.Second)
+	for {
+		select {
+		case v := <-r.sitOut:
+			if v == want {
+				return
+			}
+		case <-timeout:
+			t.Error(msg)
+			return
+		}
 	}
 }
 
 func TestSitOutNextConfirmed(t *testing.T) {
 	srv := newTestServer(t)
 	a, aRecv, _, bRecv := seatTwo(t, srv)
-	// a has had every update up to the deal, b may still be getting them
-	for len(aRecv.sitOut) > 0 {
-		<-aRecv.sitOut
-	}
-
 	send(t, a, `{"action":"sit-out"}`)
-	if !nextSitOut(t, aRecv) {
-		t.Error("a's update after sitting out mid-hand has sitOutNext false")
-	}
+	waitSitOut(t, aRecv, true, "a never got sitOutNext after sitting out mid-hand")
 	// b didn't ask, so none of b's updates say so
 	timeout := time.After(100 * time.Millisecond)
 	for done := false; !done; {
@@ -1062,9 +1062,7 @@ func TestSitOutNextConfirmed(t *testing.T) {
 
 	// cancelling clears it
 	send(t, a, `{"action":"sit-out"}`)
-	if nextSitOut(t, aRecv) {
-		t.Error("a's update after cancelling has sitOutNext true")
-	}
+	waitSitOut(t, aRecv, false, "a's sitOutNext stayed set after cancelling")
 }
 
 func TestRebuyErrors(t *testing.T) {
