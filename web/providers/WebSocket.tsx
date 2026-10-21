@@ -140,6 +140,7 @@ export function SocketProvider(props: SocketProviderProps) {
                         host: event.host,
                         turnEndsIn: event.turnEndsIn,
                         sitOutNext: event.sitOutNext,
+                        seats: event.seats,
                     };
                     dispatch({ type: "updateGame", payload: newGame });
                     return;

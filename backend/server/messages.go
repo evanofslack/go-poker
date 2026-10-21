@@ -127,6 +127,9 @@ type updateGame struct {
 
 	// whether this recipient asked to sit out once the current hand ends
 	SitOutNext bool `json:"sitOutNext"`
+
+	// number of seats at the table
+	Seats uint `json:"seats"`
 }
 
 // joinedTable confirms a create-table or join-table

@@ -13,7 +13,7 @@ import (
 
 const (
 	gameAdminName string = "system"
-	maxSeats      uint   = 6 // seats rendered by the frontend
+	maxSeats      uint   = 8 // seats per table, sent to clients in each game update
 )
 
 // Vars so tests can shorten them.
@@ -663,11 +663,12 @@ func createGameView(c *Client) []byte {
 
 func createUpdatedGame(view *poker.GameView, host string, turnEndsIn int64, sitOutNext bool) []byte {
 	game := updateGame{
-		base{actionUpdateGame},
-		view,
-		host,
-		turnEndsIn,
-		sitOutNext,
+		base:       base{actionUpdateGame},
+		Game:       view,
+		Host:       host,
+		TurnEndsIn: turnEndsIn,
+		SitOutNext: sitOutNext,
+		Seats:      maxSeats,
 	}
 
 	resp, err := json.Marshal(game)

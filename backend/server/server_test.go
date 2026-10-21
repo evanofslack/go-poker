@@ -490,10 +490,16 @@ func TestSeatErrors(t *testing.T) {
 	if msg := waitError(t, bRecv); msg != "seat taken" {
 		t.Errorf("taken seat: got %q", msg)
 	}
+	send(t, b, seatMsg(9))
+	if msg := waitError(t, bRecv); msg != "invalid seat" {
+		t.Errorf("seat past the last: got %q", msg)
+	}
 	send(t, b, `{"action":"take-seat","seatID":2,"buyIn":999999}`)
 	if msg := waitError(t, bRecv); !strings.HasPrefix(msg, "buy-in must be") {
 		t.Errorf("bad buy-in: got %q", msg)
 	}
+	send(t, b, seatMsg(8))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
 }
 
 func TestCreateAndJoinErrors(t *testing.T) {
