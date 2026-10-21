@@ -477,7 +477,7 @@ Notes:
 - [x] A "hands" tab: newest first and open, actions by street, a "hands I played" filter. e2e:
   `history.mjs`.
 - [x] Play style stats from totals the server keeps by name (`tally`): VPIP, PFR, 3-bet, AF,
-  WTSD, W$SD and bb/100, plus each player's best hand shown. Rows stay gray under 20 hands.
+  WTSD, W$SD and bb/100, plus each player's best hand shown. Shown once a player has 10 hands.
 - [ ] Keep the log on the server so late joiners and reloads get it (`log-history`).
 
 # Stage 6: UI consistency and mobile

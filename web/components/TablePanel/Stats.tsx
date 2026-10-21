@@ -1,6 +1,5 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { HandStats } from "../../interfaces/index";
-import classNames from "classnames";
 import { fewHands, names, playerStats, seriesColor, styleStats } from "../../lib/stats";
 import { AppContext } from "../../providers/AppStore";
 
@@ -74,22 +73,27 @@ export default function Stats() {
                             </tr>
                         </thead>
                         <tbody className="tabular-nums">
-                            {style.map((s) => (
-                                <tr
-                                    key={s.name}
-                                    className={classNames(s.hands < fewHands ? "text-subtle" : "text-fg")}
-                                    title={s.hands < fewHands ? `only ${s.hands} hands, too few to say much` : undefined}
-                                >
-                                    <td className="font-semibold">{s.name}</td>
-                                    <td className="text-right">{s.vpip}</td>
-                                    <td className="text-right">{s.pfr}</td>
-                                    <td className="text-right">{s.threeBet}</td>
-                                    <td className="text-right">{s.af}</td>
-                                    <td className="text-right">{s.wtsd}</td>
-                                    <td className="text-right">{s.wsd}</td>
-                                    <td className="text-right">{s.bb100}</td>
-                                </tr>
-                            ))}
+                            {style.map((s) =>
+                                s.hands < fewHands ? (
+                                    <tr key={s.name} className="text-subtle">
+                                        <td className="font-semibold">{s.name}</td>
+                                        <td colSpan={styleColumns.length} className="text-right">
+                                            {fewHands - s.hands === 1 ? "1 more hand" : `${fewHands - s.hands} more hands`}
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    <tr key={s.name} className="text-fg">
+                                        <td className="font-semibold">{s.name}</td>
+                                        <td className="text-right">{s.vpip}</td>
+                                        <td className="text-right">{s.pfr}</td>
+                                        <td className="text-right">{s.threeBet}</td>
+                                        <td className="text-right">{s.af}</td>
+                                        <td className="text-right">{s.wtsd}</td>
+                                        <td className="text-right">{s.wsd}</td>
+                                        <td className="text-right">{s.bb100}</td>
+                                    </tr>
+                                )
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -110,7 +114,7 @@ export default function Stats() {
             <p className="text-xs text-subtle">
                 {hands.length === 1 ? "1 hand" : `${hands.length} hands`}
                 {hands[0].hand > 1 && ` · from hand ${hands[0].hand}`}
-                {style.some((s) => s.hands < fewHands) && ` · play style is gray until ${fewHands} hands`}
+                {style.some((s) => s.hands < fewHands) && ` · play style shows after ${fewHands} hands`}
             </p>
         </div>
     );

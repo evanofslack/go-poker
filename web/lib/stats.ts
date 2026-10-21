@@ -43,8 +43,8 @@ export function playerStats(hands: HandStats[]): PlayerStats[] {
     });
 }
 
-// fewHands is how many hands a player needs before their style stats mean much
-export const fewHands = 20;
+// fewHands is how many hands a player needs before their style stats are shown
+export const fewHands = 10;
 
 export type StyleStats = {
     name: string;
