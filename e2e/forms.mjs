@@ -1,0 +1,25 @@
+// Join form and buy-in form keyboard behavior.
+import { URL, check, finish, launch } from "./lib.mjs";
+const browser = await launch();
+const p = await (await browser.newContext()).newPage();
+const table = "forms" + Date.now();
+await p.goto(URL);
+check("username has focus", await p.evaluate(() => document.activeElement?.id === "username"));
+await p.fill("#username", "carol");
+await p.fill("#tablename", table);
+await p.press("#tablename", "Enter");
+check("enter joins (no such table yet)", !!(await p.waitForSelector("text=/no table|not found|doesn't exist|does not exist/i", { timeout: 3000 }).catch(() => null)));
+await p.click('button:text-is("create")');
+await p.waitForSelector("text=Open");
+await p.locator("button", { hasText: "Open" }).filter({ hasText: "3" }).click();
+check("buy-in shows max", (await p.locator("text=max 10000").count()) === 1);
+await p.fill("#buyIn", "20000");
+check("over-max disables sit down", await p.locator('button:text-is("sit down")').isDisabled());
+await p.press("#buyIn", "Escape");
+check("escape cancels buy-in", (await p.locator("#buyIn").count()) === 0);
+await p.locator("button", { hasText: "Open" }).filter({ hasText: "3" }).click();
+await p.fill("#buyIn", "1500");
+await p.press("#buyIn", "Enter");
+check("enter sits down with the amount", !!(await p.waitForSelector("text=1500", { timeout: 3000 }).catch(() => null)));
+await browser.close();
+finish();
