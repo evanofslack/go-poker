@@ -32,8 +32,9 @@ fmt:
 test:
     cd backend && go test -race ./...
 
-# browser tests against a static build on :8099, see e2e/README.md
-e2e: install
+# browser tests against a static build on :8099: all, or the named scripts (just e2e host stats).
+# See e2e/README.md
+e2e *scripts: install
     #!/usr/bin/env bash
     set -euo pipefail
     ! curl -s localhost:8099 >/dev/null || { echo "port 8099 is already in use"; exit 1; }
@@ -46,7 +47,8 @@ e2e: install
     trap 'kill $server' EXIT
     for _ in $(seq 50); do curl -sf localhost:8099 >/dev/null && break; sleep 0.2; done
     failed=0
-    for t in session betting showdown turn seat forms password players host endsession approval stats ux layout bots; do
+    all="session betting showdown turn seat forms password players host endsession approval stats ux layout bots"
+    for t in {{ if scripts == "" { "$all" } else { scripts } }}; do
         echo "== $t"
         (cd e2e && node "$t.mjs") || failed=1
     done
