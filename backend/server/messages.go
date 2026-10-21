@@ -199,6 +199,10 @@ type updateGame struct {
 
 	Bots map[string]string `json:"bots"` // level of each bot, by uuid
 
+	// the hand that won each pot, like "two pair, kings and sevens", by
+	// game.pots index; empty for a pot won without a showdown
+	PotHands []string `json:"potHands"`
+
 	Ledger ledgerView `json:"ledger"`
 }
 

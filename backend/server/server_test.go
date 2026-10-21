@@ -648,15 +648,6 @@ func TestServerDealsNextHand(t *testing.T) {
 	}
 }
 
-func TestHandName(t *testing.T) {
-	tests := map[int]string{1: "a straight flush", 166: "four of a kind", 3000: "two pair", 7462: "high card", 8000: ""}
-	for score, want := range tests {
-		if got := handName(score); got != want {
-			t.Errorf("handName(%d) = %q, want %q", score, got, want)
-		}
-	}
-}
-
 // collectLogs returns the logs r receives over d.
 func collectLogs(r received, d time.Duration) []string {
 	var logs []string

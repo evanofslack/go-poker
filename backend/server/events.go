@@ -624,37 +624,10 @@ func logWinners(t *table, view *poker.GameView) {
 		if len(names) > 1 {
 			msg = fmt.Sprintf("%s split %d", strings.Join(names, " and "), pot.Amt)
 		}
-		if hand := handName(pot.WinningScore); hand != "" {
+		if hand := handName(pot.WinningScore, pot.WinningHand); hand != "" {
 			msg += " with " + hand
 		}
 		t.send(createNewLog(msg))
-	}
-}
-
-// handName names a hand from its score, where lower is better (Cactus Kev's
-// ranks). A hand won without a showdown scores 8000 and has no name.
-func handName(score int) string {
-	switch {
-	case score <= 0 || score > 7462:
-		return ""
-	case score <= 10:
-		return "a straight flush"
-	case score <= 166:
-		return "four of a kind"
-	case score <= 322:
-		return "a full house"
-	case score <= 1599:
-		return "a flush"
-	case score <= 1609:
-		return "a straight"
-	case score <= 2467:
-		return "three of a kind"
-	case score <= 3325:
-		return "two pair"
-	case score <= 6185:
-		return "a pair"
-	default:
-		return "high card"
 	}
 }
 
@@ -819,6 +792,7 @@ func createUpdatedGame(t *table, view *poker.GameView, sitOutNext bool) []byte {
 		Disconnected: t.disconnected(),
 		Ledger:       t.ledgerView(),
 		Bots:         t.botLevels(),
+		PotHands:     potHands(view.Pots),
 	}
 
 	resp, err := json.Marshal(game)

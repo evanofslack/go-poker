@@ -1,6 +1,6 @@
 import { createContext, ReactNode, useEffect, useState, useContext, useRef } from "react";
 import { AppContext } from "../providers/AppStore";
-import { Message, Game, Log } from "../interfaces";
+import { Message, Game, Log, Pot } from "../interfaces";
 import { joinTable, leaveTable } from "../actions/actions";
 import { inviteLink } from "../lib/invite";
 
@@ -145,7 +145,7 @@ export function SocketProvider(props: SocketProviderProps) {
                         betting: event.game.betting,
                         config: event.game.config,
                         players: event.game.players,
-                        pots: event.game.pots,
+                        pots: (event.game.pots ?? []).map((p: Pot, i: number) => ({ ...p, hand: event.potHands?.[i] ?? "" })),
                         minRaise: event.game.minRaise,
                         readyCount: event.game.readyCount,
                         host: event.host,

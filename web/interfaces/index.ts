@@ -157,4 +157,5 @@ export type Pot = {
     winningPlayerNums: number[];
     winningHand: Card[];
     winningScore: number;
+    hand: string; // named by the server, like "two pair, kings and sevens"; empty without a showdown
 };
