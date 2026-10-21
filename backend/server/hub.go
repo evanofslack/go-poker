@@ -1,8 +1,10 @@
 package server
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 )
@@ -234,4 +236,42 @@ func (h *Hub) closeTable(t *table) {
 	}
 	t.mu.Unlock()
 	close(t.done)
+}
+
+// publicTables summarizes the public tables whose session hasn't ended, with
+// the most players first and full tables last.
+func (h *Hub) publicTables() []tableSummary {
+	// settings are fixed after creation, so Public is read without t.mu
+	h.mu.Lock()
+	var public []*table
+	for _, t := range h.tables {
+		if t.settings.Public {
+			public = append(public, t)
+		}
+	}
+	h.mu.Unlock()
+
+	tables := []tableSummary{}
+	for _, t := range public {
+		t.mu.Lock()
+		if t.endedAt.IsZero() {
+			tables = append(tables, t.summary())
+		}
+		t.mu.Unlock()
+	}
+	slices.SortFunc(tables, func(a, b tableSummary) int {
+		return cmp.Or(
+			cmp.Compare(boolInt(a.Players >= a.Seats), boolInt(b.Players >= b.Seats)),
+			cmp.Compare(b.Players, a.Players),
+			cmp.Compare(a.Name, b.Name),
+		)
+	})
+	return tables
+}
+
+func boolInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

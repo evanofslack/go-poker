@@ -843,6 +843,14 @@ func createJoinedTable(c *Client) []byte {
 	return resp
 }
 
+func createTables(tables []tableSummary) []byte {
+	resp, err := json.Marshal(tablesMessage{base{actionTables}, tables})
+	if err != nil {
+		slog.Default().Warn("Marshal tables", "error", err)
+	}
+	return resp
+}
+
 func createUpdatedPlayerUUID(c *Client, token string) []byte {
 	uuid := updatePlayerUUID{
 		base{actionUpdatePlayerUUID},

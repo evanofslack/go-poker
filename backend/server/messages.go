@@ -23,6 +23,7 @@ const (
 	actionRebuy       string = "rebuy"
 	actionAddBot      string = "add-bot"
 	actionRemoveBot   string = "remove-bot"
+	actionListTables  string = "list-tables" // works before joining a table
 
 	// host only
 	actionMakeHost        string = "make-host"
@@ -152,6 +153,7 @@ const (
 	actionError            string = "error"
 	actionJoinedTable      string = "joined-table"
 	actionUpdateStats      string = "update-stats"
+	actionTables           string = "tables"
 )
 
 type newMessage struct {
@@ -229,4 +231,26 @@ type updateStats struct {
 	base
 	Hands []handStats `json:"hands"`
 	Full  bool        `json:"full"`
+}
+
+// tableSummary is what the home page shows of a public table
+type tableSummary struct {
+	Name        string `json:"name"`
+	SmallBlind  uint   `json:"sb"`
+	BigBlind    uint   `json:"bb"`
+	MinBuy      uint   `json:"minBuy"`
+	MaxBuy      uint   `json:"maxBuy"`
+	Seats       uint   `json:"seats"`
+	Players     uint   `json:"players"`  // seated, bots included
+	Bots        uint   `json:"bots"`     // seated bots
+	Watchers    uint   `json:"watchers"` // connected without a seat
+	Running     bool   `json:"running"`
+	Paused      bool   `json:"paused"`
+	HasPassword bool   `json:"hasPassword"`
+}
+
+// tablesMessage answers actionListTables
+type tablesMessage struct {
+	base                  // actionTables
+	Tables []tableSummary `json:"tables"`
 }

@@ -205,7 +205,7 @@ func (c *Client) processEvents(rawMessage []byte) error {
 	}
 
 	joining := baseMessage.Action == actionCreateTable || baseMessage.Action == actionJoinTable
-	if !joining && c.table == nil {
+	if !joining && baseMessage.Action != actionListTables && c.table == nil {
 		return errors.New("client has not joined a table")
 	}
 	if closedWhenEnded[baseMessage.Action] && c.table.ended() {
@@ -247,6 +247,11 @@ func (c *Client) processEvents(rawMessage []byte) error {
 			}
 		}
 		handleJoinTable(c, table.Tablename, username, table.Token, table.Password, create, settings)
+		return nil
+
+	case actionListTables:
+		// carries nothing to validate; readPump's rate limit covers polling
+		c.send <- createTables(c.hub.publicTables())
 		return nil
 
 	case actionLeaveTable:
