@@ -34,37 +34,19 @@ function plateStyle(player: Player, game: Game) {
     });
 }
 
-// actStyle colors a player's last action by what it was
-function actStyle(act: string) {
-    if (act === "fold") return "bg-zinc-600 text-zinc-300";
-    if (act === "all in") return "bg-rose-600 text-white";
-    if (act.startsWith("bet") || act.startsWith("raise")) return "bg-orange-400 text-zinc-900";
-    if (act.startsWith("call")) return "bg-emerald-500 text-zinc-900";
-    return "bg-sky-400 text-zinc-900"; // check
-}
-
 const tag =
     "absolute -bottom-3 left-1/2 z-20 -translate-x-1/2 animate-pop rounded-full px-2 text-xs font-semibold whitespace-nowrap shadow-md sm:text-sm short:-bottom-2 short:text-xs";
 
-// ActTag shows what a player last did, or what they won and with what once the
-// hand is over. Your own seat shows your best hand when there's nothing else.
-function ActTag({ player, game, own }: { player: Player; game: Game; own: boolean }) {
+// ResultTag shows what a player won and with what once the hand is over, and
+// on your own seat, your best hand while you're in one
+function ResultTag({ player, game, own }: { player: Player; game: Game; own: boolean }) {
     const won = winnings(game, player.position);
     if (won) {
         const hand = winningHand(game, player.position);
         return (
-            <span className={classNames(tag, "bg-amber-400 text-zinc-900")} data-act>
+            <span className={classNames(tag, "bg-amber-400 text-zinc-900")} data-won>
                 won {won}
                 {hand && <> · <span data-hand>{hand}</span></>}
-            </span>
-        );
-    }
-    const turn = game.betting && game.action === player.position;
-    const act = game.acts[player.uuid];
-    if (act && !turn) {
-        return (
-            <span key={act} className={classNames(tag, actStyle(act))} data-act>
-                {act}
             </span>
         );
     }
@@ -151,12 +133,12 @@ function PlayerSeat({ player, game, own, bot, host }: playerSeatProps) {
                         {player.stack > 0 ? "sitting out" : "out of chips"}
                     </span>
                 )}
-                <ActTag player={player} game={game} own={own} />
+                <ResultTag player={player} game={game} own={own} />
                 {own && <SeatMenu player={player} game={game} />}
                 {bot && host && socket && !game.ended && (
-                    // on the corner, clear of the name and badge
+                    // on the top corner, clear of the name, icon and result tag
                     <button
-                        className="absolute -right-2 -bottom-2 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-raised text-sm leading-none text-muted hover:text-fg"
+                        className="absolute -top-2 -right-2 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-raised text-sm leading-none text-muted hover:text-fg"
                         title="remove bot"
                         aria-label={`remove ${player.username}`}
                         onClick={() => removeBot(socket, player.seatID)}
