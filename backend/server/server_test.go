@@ -704,6 +704,22 @@ func TestReconnectKeepsSeat(t *testing.T) {
 	}
 }
 
+func TestReconnectLogged(t *testing.T) {
+	srv := newTestServer(t)
+	a, aRecv := createAndWait(t, srv, "t", "a")
+	b, bRecv := dialRecv(t, srv)
+	send(t, b, joinMsg("t", "b"), seatMsg(2))
+	token := waitToken(t, bRecv)
+	send(t, a, seatMsg(1))
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return len(g.Players) == 2 })
+
+	b.Close()
+	waitLog(t, aRecv, "b disconnected")
+	b2 := dial(t, srv)
+	send(t, b2, `{"action":"join-table","tablename":"t","username":"b","token":"`+token+`"}`)
+	waitLog(t, aRecv, "b reconnected")
+}
+
 func TestReconnectAfterGraceFails(t *testing.T) {
 	srv := newTestServer(t)
 	a, aRecv := createAndWait(t, srv, "t", "a")
