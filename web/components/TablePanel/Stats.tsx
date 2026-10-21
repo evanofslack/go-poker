@@ -114,7 +114,6 @@ export default function Stats() {
             <p className="text-xs text-subtle">
                 {hands.length === 1 ? "1 hand" : `${hands.length} hands`}
                 {hands[0].hand > 1 && ` · from hand ${hands[0].hand}`}
-                {style.some((s) => s.hands < fewHands) && ` · play style shows after ${fewHands} hands`}
             </p>
         </div>
     );
