@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -56,62 +57,78 @@ func handleTakeSeat(c *Client, seatID uint, buyIn uint) {
 		sendError(c, "you already have a seat")
 		return
 	}
-	s := c.table.settings
-	if seatID < 1 || seatID > s.Seats {
-		sendError(c, "invalid seat")
+	if err := checkSeat(c.table, seatID, buyIn); err != nil {
+		sendError(c, err.Error())
 		return
+	}
+	uuid := seatPlayer(c.table, c.username, seatID, buyIn)
+	c.uuid.Store(uuid)
+	token := newUUID()
+	c.table.tokens[token] = uuid
+	c.send <- createUpdatedPlayerUUID(c, token)
+	broadcastGame(c.table)
+}
+
+// checkSeat returns why a new player can't sit in seatID with buyIn, if they
+// can't. Caller holds t.mu.
+func checkSeat(t *table, seatID uint, buyIn uint) error {
+	s := t.settings
+	if seatID < 1 || seatID > s.Seats {
+		return errors.New("invalid seat")
 	}
 	if buyIn < s.MinBuy || buyIn > s.MaxBuy {
-		sendError(c, fmt.Sprintf("buy-in must be between %d and %d", s.MinBuy, s.MaxBuy))
-		return
+		return fmt.Errorf("buy-in must be between %d and %d", s.MinBuy, s.MaxBuy)
 	}
-	for _, p := range c.table.game.GenerateOmniView().Players {
+	for _, p := range t.game.GenerateOmniView().Players {
 		if p.SeatID == seatID {
-			sendError(c, "seat taken")
-			return
+			return errors.New("seat taken")
 		}
 	}
+	return nil
+}
 
-	position := c.table.game.AddPlayer()
-	c.uuid.Store(c.table.game.GenerateOmniView().Players[position].UUID)
-	token := newUUID()
-	c.table.tokens[token] = c.id()
-	c.send <- createUpdatedPlayerUUID(c, token)
-	err := poker.SetUsername(c.table.game, position, c.username)
+// seatPlayer sits a new player down, ready to play, and returns their uuid.
+// Caller holds t.mu and has checked the seat with checkSeat.
+func seatPlayer(t *table, name string, seatID uint, buyIn uint) string {
+	position := t.game.AddPlayer()
+	uuid := t.game.GenerateOmniView().Players[position].UUID
+	err := poker.SetUsername(t.game, position, name)
 	if err != nil {
 		slog.Default().Warn("Set username", "error", err)
 	}
 
-	err = poker.BuyIn(c.table.game, position, buyIn)
+	err = poker.BuyIn(t.game, position, buyIn)
 	if err != nil {
 		slog.Default().Warn("Buy in", "error", err)
 	}
 
 	// set player ready
 	// TODO make this a separate action
-	err = poker.ToggleReady(c.table.game, position, 0)
+	err = poker.ToggleReady(t.game, position, 0)
 	if err != nil {
 		slog.Default().Warn("Toggle ready", "error", err)
 	}
 
-	err = poker.SetSeatID(c.table.game, position, seatID)
+	err = poker.SetSeatID(t.game, position, seatID)
 	if err != nil {
 		slog.Default().Warn("Set seat id", "error", err)
 	}
-	c.table.send(createNewLog(fmt.Sprintf("%s sits down with %d", c.username, buyIn)))
+	t.send(createNewLog(fmt.Sprintf("%s sits down with %d", name, buyIn)))
 
 	// a running game may be waiting for players
-	view := c.table.game.GenerateOmniView()
+	view := t.game.GenerateOmniView()
 	if view.Running && view.Stage == poker.PreDeal {
-		c.table.scheduleDeal()
+		t.scheduleDeal()
 	}
-	broadcastGame(c.table)
+	return uuid
 }
 
+// handleStartGame starts the game. Any seated player can start it, and so can
+// the host without a seat, for a game of only bots.
 func handleStartGame(c *Client) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
-	if !isSeated(c) {
+	if !isSeated(c) && c.table.host != c {
 		sendError(c, "take a seat first")
 		return
 	}
@@ -152,24 +169,12 @@ func handleCall(c *Client) {
 	if !ok {
 		return
 	}
-	view := c.table.game.GenerateOmniView()
-	p := view.Players[pn]
-
-	// call this street's top bet, or go all in if that's more than the stack
-	var maxBet uint
-	for _, q := range view.Players {
-		maxBet = max(maxBet, q.Bet)
-	}
-	callAmount := min(maxBet-p.Bet, p.Stack)
-
-	if err := poker.Bet(c.table.game, pn, callAmount); err != nil {
+	if call(c.table, pn) != nil {
 		sendError(c, "can't call")
-		return
 	}
-	finishAction(c.table, fmt.Sprintf("%s calls %d", p.Username, callAmount))
 }
 
-func handleRaise(c *Client, raise uint) {
+func handleRaise(c *Client, amount uint) {
 	c.table.mu.Lock()
 	defer c.table.mu.Unlock()
 
@@ -177,22 +182,9 @@ func handleRaise(c *Client, raise uint) {
 	if !ok {
 		return
 	}
-	view := c.table.game.GenerateOmniView()
-	p := view.Players[pn]
-	var maxBet uint
-	for _, q := range view.Players {
-		maxBet = max(maxBet, q.Bet)
-	}
-
-	if err := poker.Bet(c.table.game, pn, raise); err != nil {
+	if raise(c.table, pn, amount) != nil {
 		sendError(c, "invalid bet")
-		return
 	}
-	msg := fmt.Sprintf("%s bets %d", p.Username, raise)
-	if maxBet > 0 {
-		msg = fmt.Sprintf("%s raises to %d", p.Username, p.Bet+raise)
-	}
-	finishAction(c.table, msg)
 }
 
 func handleCheck(c *Client) {
@@ -203,11 +195,9 @@ func handleCheck(c *Client) {
 	if !ok {
 		return
 	}
-	if err := poker.Bet(c.table.game, pn, 0); err != nil {
+	if check(c.table, pn) != nil {
 		sendError(c, "can't check")
-		return
 	}
-	finishAction(c.table, fmt.Sprintf("%s checks", c.username))
 }
 
 func handleFold(c *Client) {
@@ -218,11 +208,67 @@ func handleFold(c *Client) {
 	if !ok {
 		return
 	}
-	if err := poker.Fold(c.table.game, pn, 0); err != nil {
+	if fold(c.table, pn) != nil {
 		sendError(c, "can't fold")
-		return
 	}
-	finishAction(c.table, fmt.Sprintf("%s folds", c.username))
+}
+
+// call has pn call this street's top bet, or go all in if that's more than
+// their stack. Caller holds t.mu, and has checked it's pn's turn.
+func call(t *table, pn uint) error {
+	view := t.game.GenerateOmniView()
+	p := view.Players[pn]
+	var maxBet uint
+	for _, q := range view.Players {
+		maxBet = max(maxBet, q.Bet)
+	}
+	callAmount := min(maxBet-p.Bet, p.Stack)
+
+	if err := poker.Bet(t.game, pn, callAmount); err != nil {
+		return err
+	}
+	finishAction(t, fmt.Sprintf("%s calls %d", p.Username, callAmount))
+	return nil
+}
+
+// raise has pn put in amount more chips, as a bet or raise. Caller holds t.mu.
+func raise(t *table, pn uint, amount uint) error {
+	view := t.game.GenerateOmniView()
+	p := view.Players[pn]
+	var maxBet uint
+	for _, q := range view.Players {
+		maxBet = max(maxBet, q.Bet)
+	}
+
+	if err := poker.Bet(t.game, pn, amount); err != nil {
+		return err
+	}
+	msg := fmt.Sprintf("%s bets %d", p.Username, amount)
+	if maxBet > 0 {
+		msg = fmt.Sprintf("%s raises to %d", p.Username, p.Bet+amount)
+	}
+	finishAction(t, msg)
+	return nil
+}
+
+// check has pn check. Caller holds t.mu.
+func check(t *table, pn uint) error {
+	name := t.game.GenerateOmniView().Players[pn].Username
+	if err := poker.Bet(t.game, pn, 0); err != nil {
+		return err
+	}
+	finishAction(t, fmt.Sprintf("%s checks", name))
+	return nil
+}
+
+// fold has pn fold. Caller holds t.mu.
+func fold(t *table, pn uint) error {
+	name := t.game.GenerateOmniView().Players[pn].Username
+	if err := poker.Fold(t.game, pn, 0); err != nil {
+		return err
+	}
+	finishAction(t, fmt.Sprintf("%s folds", name))
+	return nil
 }
 
 // handleLeaveSeat gives up c's seat but keeps c at the table as a spectator.
@@ -360,6 +406,7 @@ func finishAction(t *table, msg string) {
 		logWinners(t, view)
 		removeLeavers(t)
 		applySitOuts(t)
+		rebuyBots(t)
 		t.scheduleDeal()
 	} else {
 		t.startTurnTimer()
@@ -384,6 +431,7 @@ func (t *table) startTurnTimer() {
 	if t.turnTimer != nil {
 		t.turnTimer.Stop()
 	}
+	t.scheduleBot(seq)
 	if t.settings.TurnTime == 0 {
 		return
 	}
@@ -482,6 +530,7 @@ func removeLeavers(t *table) {
 		}
 		delete(t.leaving, uuid)
 		delete(t.sitOutNext, uuid)
+		delete(t.bots, uuid)
 		for token, u := range t.tokens {
 			if u == uuid {
 				delete(t.tokens, token)
@@ -684,6 +733,7 @@ func createUpdatedGame(t *table, view *poker.GameView, sitOutNext bool) []byte {
 		Settings:    t.settings,
 		HasPassword: t.password != "",
 		Watching:    t.watching(),
+		Bots:        t.botIDs(),
 	}
 
 	resp, err := json.Marshal(game)

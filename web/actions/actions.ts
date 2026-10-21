@@ -143,3 +143,32 @@ export function rebuy(socket: WebSocket, amount: number) {
         })
     );
 }
+
+// addBot has the host sit a bot down; level is "easy" for now
+export function addBot(
+    socket: WebSocket,
+    seatID: number,
+    buyIn: number,
+    name: string,
+    level: string
+) {
+    socket?.send(
+        JSON.stringify({
+            action: "add-bot",
+            seatID: seatID,
+            buyIn: buyIn,
+            name: name,
+            level: level,
+        })
+    );
+}
+
+// removeBot has the host take the bot in a seat out of the game
+export function removeBot(socket: WebSocket, seatID: number) {
+    socket?.send(
+        JSON.stringify({
+            action: "remove-bot",
+            seatID: seatID,
+        })
+    );
+}

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/evanofslack/go-poker/bot"
 )
 
 // input length limits, mirrored by maxLength on the frontend inputs
@@ -66,4 +68,9 @@ func validPassword(s string) bool {
 // validAmount reports whether n is a usable chip amount, like a rebuy.
 func validAmount(n uint) bool {
 	return n > 0
+}
+
+// validBotLevel reports whether s is a level a bot can play at.
+func validBotLevel(s string) bool {
+	return bot.Valid(s)
 }

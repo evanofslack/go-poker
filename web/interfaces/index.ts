@@ -71,6 +71,7 @@ export type Game = {
     settings: Settings; // chosen by the host when creating the table
     hasPassword: boolean;
     watching: number; // clients at the table without a seat
+    bots: string[]; // uuids of the players that are bots
 };
 
 // Settings are fixed once the table exists. Buy-ins are in chips, times in ms.

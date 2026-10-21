@@ -28,6 +28,7 @@ func TestMain(m *testing.M) {
 	defaultSettings.MinBuy = 100
 	defaultSettings.MaxBuy = 10000
 	reconnectGrace = 300 * time.Millisecond
+	botDelay = func() time.Duration { return 10 * time.Millisecond }
 	os.Exit(m.Run())
 }
 

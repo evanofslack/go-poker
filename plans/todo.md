@@ -175,6 +175,7 @@ Needs the host role from 2.2.
 - [ ] **End session with a ledger:** net result per player (buy-ins vs final stack), copyable.
 - [ ] **Spectator mode** made explicit in the UI. The header now counts spectators ("watching 2");
   a list of who's watching is left.
+- [x] **Bots** so one person can demo the app alone (easy level). See 5.2.
 
 ## 5.1 Table settings
 
@@ -245,6 +246,91 @@ Done in #56, #57, #58. Differences from the plan:
 - `layout.mjs` now fills a 9-seat table on every viewport. On a 360px phone the SB marker is partly
   covered by the next seat's cards; seats themselves don't overlap.
 - Not done: a per-table limit on wrong password attempts (only the per-connection rate limit applies).
+
+## 5.2 Bots
+
+The host fills empty seats with computer players, so one person can play a full table. No off-the-shelf
+bot fits a Go server, so they're hand-written on top of the engine's evaluator (`riverboat/eval`).
+Levels share one decision function and differ in its inputs and settings, so they're cheap to add.
+
+Decided:
+- Bots are game players with no `Client`. The table keeps `bots map[string]string` (uuid to level),
+  guarded by `mu`. They don't count as members, so a table with only bots left is deleted as today.
+- Only the host adds or removes bots. Adding follows the same seat and timing rules as `take-seat`.
+- A bot decides from `GeneratePlayerView(pn)` only, so it never sees anyone else's cards.
+- "Add bot" opens a dialog like sitting down: buy-in (defaults to the same 100 BB as a player's,
+  within the table's min/max) and a name. Bots rebuy for that same amount when busted.
+- The name is prefilled with a random first name of a character from HBO's *Industry* that isn't
+  taken at the table (Harper, Eric, Yasmin, Robert, Gus, Rishi, Venetia, Kenny, Daria, Sweetpea,
+  Henry, Jesse), and the host can edit it. The list lives in the web client; the server only checks
+  the name like a username (length, reserved, not taken). The name is fixed once the bot sits.
+- The UI marks bots with a badge, separate from the name.
+- A game can run with only bots seated: the host can start it without a seat, and the server keeps
+  dealing. A table with no connected clients is still deleted, bots and all.
+- Bots keep playing while their table waits out a disconnected player's reconnect grace. Fine.
+
+### PR 1: add easy bots
+
+Built off main alongside #62 (ledger) and #63 (players panel). After those merge: record bot buy-ins
+and auto-rebuys in the ledger, and show the bot badge in the players panel.
+
+
+- [x] `backend/bot/`: `Decide(level, view, pn, rng) Action` (check/call/raise/fold plus amount), pure
+  and table-free so levels are unit tested on their own.
+- [x] **Easy** (calling station): checks when free, calls most bets, folds weak hands to big bets
+  (over ~⅓ of its stack), and min-raises now and then with a pair or better. Some randomness so it
+  isn't fully predictable. Uses the evaluator for its made hand, no simulation.
+- [x] Turn taking: when `startTurnTimer` lands on a bot, schedule its move after a short random delay
+  (about 1-2s, a var so tests shorten it) tied to `turnSeq`, so a reset or turn change cancels it.
+  The move checks the table isn't done and the bot is still the player to act.
+- [x] Pull call/check/raise/fold out of the client handlers into `act(t, pn, kind, amount)`, shared by
+  clients, bots and `turnTimedOut`. If a bot's action is rejected, it checks or folds instead.
+- [x] Protocol: inbound `add-bot {seatID, buyIn, name, level}` and `remove-bot {seatID}`; `update-game`
+  gets `bots: uuid[]`. Update `messages.go`, `actions.ts`, `interfaces/index.ts`; validate name and
+  `level` in `validate.go` (only `easy` for now). Buy-in uses the same bounds as `take-seat`.
+- [x] Share the seating steps (add player, name, buy in, ready, seat) between `handleTakeSeat` and
+  add-bot instead of copying them.
+- [x] `start-game` is allowed for the host even without a seat, so a bots-only game can start.
+- [x] Remove a bot like a leaving player: folded on its turn and removed after the hand.
+- [x] Web: the host sees an "add bot" button on empty seats (seated or not, mid-game too) that opens the
+  buy-in and name dialog. Bot seats show a "bot" badge, and the host gets a remove button on them.
+  Bot names in `web/lib/bots.ts`. No level picker until there's a second level.
+- [x] Tests: host-only add/remove, seat taken, bad buy-in, name taken or invalid, bot acts on its turn
+  and the hand finishes, bot can't see hole cards, busted bot rebuys for its buy-in, host starts a
+  bots-only game and it keeps dealing, table with only bots and no clients is deleted, level validation.
+  `e2e/bots.mjs`: host sits, adds two bots, starts, and plays a hand to showdown.
+
+Differences from the plan:
+- Bots think 1-2s per move, so a heads-up hand of only bots takes about 15s.
+- "Bot can't see hole cards" is checked in `e2e/bots.mjs` (a spectating host sees no bot cards
+  mid-hand). On the server it holds because `bot.Decide` only gets `GeneratePlayerView(pn)`.
+- `bot.Decide` reduces the view to a small `spot` struct, since the engine's player type isn't
+  exported, so tests build spots directly.
+
+### Later: medium bot
+
+- [ ] **Equity:** Monte Carlo against random hands (a few thousand runouts, a few ms with the
+  evaluator), one random hand per opponent still in.
+- [ ] **Pot odds:** call when equity beats the price of calling, fold otherwise; raise for value when
+  equity is well above it. Bet sizes of ½ to ¾ pot instead of min-raises.
+- [ ] **Preflop:** a starting hand chart (or the Chen formula) instead of equity against random hands,
+  which overrates junk at full tables.
+- [ ] Small bluff and slow-play rates so it isn't purely mechanical.
+- [ ] Level picker on "add bot" (easy / medium).
+
+### Later: hard bot
+
+- [ ] **Position:** tighter ranges early, wider on the button and in the blinds.
+- [ ] **Ranges, not random hands:** run equity against the hands an opponent likely holds given how they
+  bet this hand (raised preflop: strong range; called: medium).
+- [ ] **Sizing:** pick bet sizes by board texture and stack depth; shove short stacks preflop.
+- [ ] **Balanced bluffing:** bluff with draws and blockers at a frequency matched to bet size, so it's
+  hard to exploit by always calling or always folding.
+- [ ] **Light opponent modelling:** track each player's VPIP/aggression at the table and adjust (bluff
+  tight players more, value bet loose ones).
+- [ ] Optional personalities on the same settings (tight-passive, loose-aggressive) for variety.
+- [ ] Check that hard beats medium and medium beats easy over many simulated hands (a headless test
+  harness that seats only bots).
 
 # Stage 6: UI consistency and mobile
 
