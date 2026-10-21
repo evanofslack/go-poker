@@ -733,7 +733,7 @@ func createUpdatedGame(t *table, view *poker.GameView, sitOutNext bool) []byte {
 		Settings:    t.settings,
 		HasPassword: t.password != "",
 		Watching:    t.watching(),
-		Bots:        t.botIDs(),
+		Bots:        t.botLevels(),
 	}
 
 	resp, err := json.Marshal(game)

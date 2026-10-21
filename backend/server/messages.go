@@ -157,7 +157,7 @@ type updateGame struct {
 	// clients at the table without a seat
 	Watching uint `json:"watching"`
 
-	Bots []string `json:"bots"` // uuids of the players that are bots
+	Bots map[string]string `json:"bots"` // level of each bot, by uuid
 }
 
 // joinedTable confirms a create-table or join-table
