@@ -26,7 +26,11 @@ check("wrong password is refused", !!(await p.waitForSelector("text=wrong passwo
 await p.fill("#password", "s3cret");
 await p.press("#password", "Enter");
 check("right password joins", !!(await p.waitForSelector("text=Open", { timeout: 3000 }).catch(() => null)));
-check("header shows the table is locked", (await p.locator('[aria-label="needs a password"]').count()) === 1);
+await p.click('header button:has-text("table")');
+await p.click('[aria-label="table"] button:text-is("settings")');
+const locked = p.locator('[aria-label="table settings"] div:has(dt:text-is("password")) dd');
+check("settings show the table is locked", (await locked.innerText()) === "on");
+await p.click('[aria-label="close table panel"]');
 await shot(p, "password-table");
 await p.reload();
 check("reload rejoins without asking", !!(await p.waitForSelector("text=Open", { timeout: 5000 }).catch(() => null)));

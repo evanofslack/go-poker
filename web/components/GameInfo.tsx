@@ -1,11 +1,11 @@
 import { useContext } from "react";
-import { FiCopy, FiLock } from "react-icons/fi";
+import { FiCopy } from "react-icons/fi";
 import classNames from "classnames";
 import { AppContext } from "../providers/AppStore";
 import { copyInvite } from "../lib/invite";
 import TurnAlert from "./TurnAlert";
 
-// GameInfo shows the game, stakes, table and connection, and copies the invite link
+// GameInfo shows the stakes, table and connection, and copies the invite link
 export default function GameInfo() {
     const { appState, dispatch } = useContext(AppContext);
     const config = appState.game?.config;
@@ -25,25 +25,18 @@ export default function GameInfo() {
                     aria-label={open ? "connected" : "reconnecting"}
                     title={open ? "connected" : "reconnecting"}
                 />
-                <span className="truncate">
-                    nl <span className="hidden sm:inline">texas </span>holdem
-                    {config && (
-                        <>
-                            {" · "}
-                            <span className="hidden sm:inline">stakes </span>
-                            {config.sb}/{config.bb}
-                        </>
-                    )}
-                </span>
+                {config && (
+                    <span className="truncate">
+                        <span className="hidden sm:inline">stakes </span>
+                        {config.sb}/{config.bb}
+                    </span>
+                )}
             </p>
             <div className="flex items-center justify-end gap-1">
-                {watching > 0 && <span className="mr-1">watching {watching} ·</span>}
+                {watching > 0 && <span className="mr-1 shrink-0 whitespace-nowrap">watching {watching} ·</span>}
                 <span className="truncate">
                     table <span className="text-muted">{table}</span>
                 </span>
-                {appState.game?.hasPassword && (
-                    <FiLock className="shrink-0" title="needs a password" aria-label="needs a password" />
-                )}
                 {table && (
                     <button
                         className="p-1 hover:text-fg"
