@@ -71,6 +71,36 @@ await waitFor(() => lastGame(aRec)?.players.length === 3, 3000, "second bot");
 check("server sends each bot's level", JSON.stringify(Object.values(aRec.bots).sort()) === '["easy","medium"]', JSON.stringify(aRec.bots));
 check("easy bot shows its level", await alice.locator("text=easy bot").count() === 1);
 
+// the host's remove buttons sit clear of the badges
+const clash = await alice.evaluate(() => {
+    const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    const badges = [...document.querySelectorAll("[data-bot-badge]")].map((e) => e.getBoundingClientRect());
+    return [...document.querySelectorAll('button[title="remove bot"]')].some((x) => badges.some((b) => hit(x.getBoundingClientRect(), b)));
+});
+check("remove buttons don't cover the badges", !clash);
+
+// on a phone the badge is just "bot", whole, with the level on hover
+const phone = await (await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })).newPage();
+await phone.goto(URL);
+await phone.fill("#username", "pat");
+await phone.fill("#tablename", new globalThis.URL(alice.url()).searchParams.get("table"));
+await phone.click('button:text-is("join")');
+await phone.waitForSelector("[data-bot-badge]");
+const badges = await phone.evaluate(() =>
+    [...document.querySelectorAll("[data-bot-badge]")].map((e) => ({
+        text: e.innerText.trim(),
+        title: e.title,
+        whole: e.getBoundingClientRect().right <= e.parentElement.getBoundingClientRect().right + 1,
+    }))
+);
+check(
+    "phone bot badges are short and whole",
+    badges.length === 2 && badges.every((b) => b.text === "bot" && b.whole && / bot$/.test(b.title)),
+    JSON.stringify(badges)
+);
+await shot(phone, "bots-phone");
+await phone.context().close();
+
 // the players panel badges bots, with their buy-in in the ledger
 await alice.click('button[aria-label^="chat"]');
 await alice.click('button:text-is("players")');

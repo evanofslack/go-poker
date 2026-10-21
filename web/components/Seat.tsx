@@ -64,11 +64,22 @@ function PlayerSeat({ player, game, own, bot, host }: playerSeatProps) {
                 ))}
             </div>
             <div className={plateStyle(player, game)}>
-                <p className="truncate text-sm leading-tight sm:text-base short:text-xs">
-                    {player.username}
+                <p
+                    className={classNames(
+                        "truncate text-sm leading-tight sm:text-base short:text-xs",
+                        bot && "flex items-center justify-center"
+                    )}
+                >
+                    {/* a bot's long name gives way to its badge */}
+                    {bot ? <span className="truncate">{player.username}</span> : player.username}
                     {bot && (
-                        <span className="ml-1 rounded-full bg-zinc-600 px-1.5 align-middle text-xs text-fg">
-                            {bot} bot
+                        // just "bot" on small plates, so it isn't cut off
+                        <span
+                            className="ml-1 shrink-0 rounded-full bg-zinc-600 px-1.5 text-xs text-fg"
+                            title={`${bot} bot`}
+                            data-bot-badge
+                        >
+                            <span className="hidden sm:inline">{bot} </span>bot
                         </span>
                     )}
                 </p>
@@ -85,8 +96,9 @@ function PlayerSeat({ player, game, own, bot, host }: playerSeatProps) {
                 )}
                 {own && <SeatMenu player={player} game={game} />}
                 {bot && host && socket && !game.ended && (
+                    // on the corner, clear of the name and badge
                     <button
-                        className="absolute top-1/2 right-1 z-20 -translate-y-1/2 px-1 text-lg leading-none opacity-60 hover:opacity-100"
+                        className="absolute -right-2 -bottom-2 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-raised text-sm leading-none text-muted hover:text-fg"
                         title="remove bot"
                         aria-label={`remove ${player.username}`}
                         onClick={() => removeBot(socket, player.seatID)}
