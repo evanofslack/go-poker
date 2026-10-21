@@ -6,7 +6,7 @@
 | 2 | Game correctness and cheating | done |
 | 3 | Upgrades | done |
 | 4 | Core play experience | done |
-| 5 | Host and table features | planned |
+| 5 | Host and table features | done |
 | 6 | UI consistency and mobile | done |
 | 7 | Operator tooling | planned |
 | - | Backlog | unranked |
