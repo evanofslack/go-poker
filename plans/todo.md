@@ -537,15 +537,12 @@ the next seat's plate. That was already so on main and needs its own layout chan
 
 Matters once the public demo gets real traffic.
 
-- [ ] **Health/metrics:** proper health and readiness endpoints (`/ping` returns the JSON string
-  `"message: pong"`), Prometheus metrics (tables, clients, hands/min, dropped slow clients, rate-limit hits).
-- [ ] **Admin view:** a protected endpoint/page listing tables, player counts, connections, uptime; close a
-  table or kick a connection.
+- [ ] **Health:** proper health and readiness endpoints (`/ping` returns the JSON string `"message: pong"`).
 - [ ] **Lifecycle:** reap idle tables; on graceful shutdown, notify clients ("server restarting") before closing.
 - [ ] **Config:** move hard-coded limits (`maxTables`, `maxSeats`, rate limits, timers) to env vars and document
   them in `.env.example`.
-- [ ] **Audit log:** structured per-table logs of actions for debugging disputes.
-- [ ] Note in the UI and README that state is in-memory and lost on restart.
+- [ ] **Per-IP limits:** cap connections and tables per IP so one client can't use up the server.
+- [x] Note in the UI and README that state is in-memory and lost on restart.
 
 # Backlog (unranked)
 
@@ -558,3 +555,7 @@ Matters once the public demo gets real traffic.
 - Pot-limit Omaha
 - Sit-n-go / tournament mode with a blind schedule
 - Accounts and persistent stats (only if this should be more than a play-with-friends app)
+- Prometheus metrics: tables, clients, hands/min, dropped slow clients, rate-limit hits
+- Admin view: a protected page listing tables, player counts, connections, uptime; close a table or
+  kick a connection
+- Audit log: structured per-table logs of actions for debugging disputes

@@ -144,6 +144,9 @@ export default function Join() {
                 )}
                 {!connected && <p className="mt-2 text-subtle">connecting to server…</p>}
                 <PublicTables onPick={handlePick} />
+                <p className="mt-6 px-4 text-center text-xs text-subtle">
+                    games aren't saved: a server restart ends them
+                </p>
                 {creating && (
                     <CreateTable
                         tablename={tablename}

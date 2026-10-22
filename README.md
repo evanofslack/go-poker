@@ -26,6 +26,8 @@ services:
 
 ## deploying
 
+Tables, ledgers and hand history live in memory, so they're lost when the server restarts.
+
 Serve it over HTTPS so the websocket runs on `wss://`. The simplest option is [Caddy](https://caddyserver.com), which gets a certificate and proxies websockets automatically:
 
 ```
