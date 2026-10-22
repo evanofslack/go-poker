@@ -17,6 +17,10 @@ type Hub struct {
 
 	mu     sync.Mutex // guards tables, which client goroutines access directly
 	tables map[string]*table
+
+	connMu sync.Mutex     // guards conns and total, counted before the upgrade
+	conns  map[string]int // open connections by address
+	total  int
 }
 
 func newHub() *Hub {
@@ -25,6 +29,7 @@ func newHub() *Hub {
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		tables:     make(map[string]*table),
+		conns:      make(map[string]int),
 	}
 }
 
@@ -63,6 +68,9 @@ var (
 	errWrongPassword = errors.New("wrong password")
 )
 
+// errTooManyTablesIP caps tables per creator, so one person can't take them all.
+var errTooManyTablesIP = errors.New("you have too many open tables")
+
 // errorCodes lets the client tell apart the errors it handles
 var errorCodes = map[error]string{
 	errNeedPassword:  "password-required",
@@ -96,6 +104,8 @@ func (h *Hub) joinTable(c *Client, name, username, token, password string, creat
 		return false, errNoTable
 	case create && len(h.tables) >= maxTables:
 		return false, errTooManyTables
+	case create && h.tablesFrom(c.ip) >= maxTablesPerIP:
+		return false, errTooManyTablesIP
 	}
 
 	// lock order is hub.mu, then table.mu
@@ -103,6 +113,7 @@ func (h *Hub) joinTable(c *Client, name, username, token, password string, creat
 		t = newTable(name, settings)
 		t.password = password
 		t.hub = h
+		t.creatorIP = c.ip
 	}
 	t.mu.Lock()
 	uuid, seatName, reconnected := t.reclaim(token)
@@ -144,6 +155,39 @@ func (h *Hub) joinTable(c *Client, name, username, token, password string, creat
 	c.table = t
 	t.register <- c
 	return reconnected, nil
+}
+
+// tablesFrom counts the open tables created from ip. h.mu must be held.
+func (h *Hub) tablesFrom(ip string) int {
+	n := 0
+	for _, t := range h.tables {
+		if t.creatorIP == ip {
+			n++
+		}
+	}
+	return n
+}
+
+// reserveConn counts a connection from ip, unless that would go over a limit.
+func (h *Hub) reserveConn(ip string) bool {
+	h.connMu.Lock()
+	defer h.connMu.Unlock()
+	if h.total >= maxConns || h.conns[ip] >= maxConnsPerIP {
+		return false
+	}
+	h.total++
+	h.conns[ip]++
+	return true
+}
+
+// releaseConn frees a connection counted by reserveConn.
+func (h *Hub) releaseConn(ip string) {
+	h.connMu.Lock()
+	defer h.connMu.Unlock()
+	h.total--
+	if h.conns[ip]--; h.conns[ip] <= 0 {
+		delete(h.conns, ip)
+	}
 }
 
 // leaveTable removes c from its table, and deletes the table once empty. A
