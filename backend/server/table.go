@@ -74,6 +74,8 @@ type table struct {
 	done    chan struct{} // closed when the table is deleted
 	members int           // clients at this table, guarded by Hub.mu
 
+	lastActive time.Time // last join or message from a player, not a bot; guarded by mu
+
 	mu     sync.Mutex       // serializes game actions from client goroutines
 	users  map[*Client]bool // clients at this table, guarded by mu
 	host   string           // name of the host, guarded by mu
@@ -116,6 +118,7 @@ func newTable(name string, settings tableSettings) *table {
 		}),
 		settings:   settings,
 		done:       make(chan struct{}),
+		lastActive: time.Now(),
 		users:      make(map[*Client]bool),
 		leaving:    make(map[string]bool),
 		sitOutNext: make(map[string]bool),
