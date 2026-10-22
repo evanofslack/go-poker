@@ -26,9 +26,11 @@ const (
 )
 
 // Action is a bot's move. Amount is the chips it puts in, for Raise only.
+// Reason says why the bot chose it, for logs.
 type Action struct {
 	Kind   Kind
 	Amount uint
+	Reason string
 }
 
 // Valid reports whether level is a bot level.

@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"fmt"
 	"math"
 	"math/rand/v2"
 
@@ -23,20 +24,26 @@ func medium(s spot, r *rand.Rand) Action {
 
 	if owe == 0 {
 		switch {
-		case e > 0.6 && !slowPlay, e < 0.3 && r.Float64() < 0.1:
-			return s.size(s.pot * 2 / 3)
+		case e > 0.6 && !slowPlay:
+			return because(s.size(s.pot*2/3), "equity %.2f > 0.6, bet 2/3 pot", e)
+		case e < 0.3 && r.Float64() < 0.1:
+			return because(s.size(s.pot*2/3), "equity %.2f, bluff 2/3 pot", e)
+		case slowPlay:
+			return because(Action{Kind: Check}, "equity %.2f, slow-play", e)
 		}
-		return Action{Kind: Check}
+		return because(Action{Kind: Check}, "equity %.2f <= 0.6", e)
 	}
 	odds := float64(owe) / float64(s.pot+owe)
 	switch {
-	case e > 0.75 && !slowPlay, e <= odds && r.Float64() < 0.03:
+	case e > 0.75 && !slowPlay:
 		// a pot-sized raise: call, then raise by the pot after calling
-		return s.size(owe + s.pot + owe)
+		return because(s.size(owe+s.pot+owe), "equity %.2f > 0.75, raise pot", e)
+	case e <= odds && r.Float64() < 0.03:
+		return because(s.size(owe+s.pot+owe), "equity %.2f <= odds %.2f, bluff raise pot", e, odds)
 	case e > odds+0.05:
-		return Action{Kind: Call}
+		return because(Action{Kind: Call}, "equity %.2f > odds %.2f + 0.05", e, odds)
 	}
-	return Action{Kind: Fold}
+	return because(Action{Kind: Fold}, "equity %.2f <= odds %.2f + 0.05", e, odds)
 }
 
 func mediumPreflop(s spot, r *rand.Rand) Action {
@@ -48,15 +55,27 @@ func mediumPreflop(s spot, r *rand.Rand) Action {
 	big := owe*3 > s.stack
 	switch {
 	case c >= 10 && r.Float64() < 0.8:
-		return s.size(3*s.top - s.bet) // raise to three times the bet
+		return because(s.size(3*s.top-s.bet), "chen %v >= 10, raise to 3x", c) // raise to three times the bet
 	case owe == 0:
-		return Action{Kind: Check}
-	case big && c >= 9,
-		!big && c >= 7,
-		s.top <= s.bb && c >= 5: // limp along when nobody raised
-		return Action{Kind: Call}
+		return because(Action{Kind: Check}, "chen %v, free check", c)
+	case big && c >= 9:
+		return because(Action{Kind: Call}, "chen %v >= 9, call big bet", c)
+	case !big && c >= 7:
+		return because(Action{Kind: Call}, "chen %v >= 7, call", c)
+	case s.top <= s.bb && c >= 5: // limp along when nobody raised
+		return because(Action{Kind: Call}, "chen %v >= 5, limp", c)
 	}
-	return Action{Kind: Fold}
+	return because(Action{Kind: Fold}, "chen %v too weak", c)
+}
+
+// because adds why a bot chose a, before any reason a already has.
+func because(a Action, format string, args ...any) Action {
+	reason := fmt.Sprintf(format, args...)
+	if a.Reason != "" {
+		reason += ", " + a.Reason
+	}
+	a.Reason = reason
+	return a
 }
 
 // size turns a bet or raise of about add chips into a legal move: at least a
@@ -66,9 +85,9 @@ func (s spot) size(add uint) Action {
 	owe := s.top - s.bet
 	switch {
 	case s.called && owe == 0:
-		return Action{Kind: Check}
+		return Action{Kind: Check, Reason: "can't raise, check"}
 	case s.called, s.stack <= owe:
-		return Action{Kind: Call}
+		return Action{Kind: Call, Reason: "can't raise, call"}
 	}
 	add = max(add, owe+s.minRaise)
 	if add >= s.stack {
