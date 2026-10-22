@@ -97,6 +97,23 @@ func (r *handRecord) played() []string {
 	return names
 }
 
+// aggressor names who made the last bet or raise before street, "" if nobody
+// did. Actions are in order, so the first on street ends the search.
+func (r *handRecord) aggressor(street string) string {
+	name := ""
+	if r != nil {
+		for _, a := range r.Actions {
+			if a.Street == street {
+				break
+			}
+			if a.Kind == "bet" || a.Kind == "raise" {
+				name = a.Name
+			}
+		}
+	}
+	return name
+}
+
 // startRecord starts recording the hand just dealt, with its blinds. Caller
 // holds t.mu.
 func startRecord(t *table, view *poker.GameView) {

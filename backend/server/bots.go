@@ -95,8 +95,16 @@ func botMove(t *table, seq int) {
 		return
 	}
 
+	aggressor := -1
+	if name := t.current.aggressor(streets[view.Stage]); name != "" {
+		for i, p := range view.Players {
+			if p.Username == name {
+				aggressor = i
+			}
+		}
+	}
 	// the bot sees only what its player would
-	a := bot.Decide(seat.level, t.game.GeneratePlayerView(pn), pn, t.rng)
+	a := bot.Decide(seat.level, t.game.GeneratePlayerView(pn), pn, aggressor, t.rng)
 	var err error
 	switch a.Kind {
 	case bot.Raise:
