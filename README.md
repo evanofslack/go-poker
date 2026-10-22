@@ -24,38 +24,11 @@ services:
       - 8080:8080
 ```
 
-## deploying
-
-Tables, ledgers and hand history live in memory, so they're lost when the server restarts.
-
-Serve it over HTTPS so the websocket runs on `wss://`. The simplest option is [Caddy](https://caddyserver.com), which gets a certificate and proxies websockets automatically:
-
-```
-poker.example.com {
-    reverse_proxy localhost:8080
-}
-```
-
-Caddy sets `X-Forwarded-For`, so also set `TRUST_PROXY=true` for the per-address limits to see real client addresses (the limits are listed in `.env.example`).
-
-With nginx, forward the `Host` header (the server only accepts same-origin websockets), the client address and the upgrade headers, and set `TRUST_PROXY=true`:
-
-```nginx
-location / {
-    proxy_pass http://localhost:8080;
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-}
-```
-
-Set `ALLOWED_ORIGINS` (comma separated) to allow websockets from other origins, e.g. a frontend dev server.
+Tables, ledgers and hand history live in memory, so they're lost when the server restarts!
 
 ## metrics
 
-Prometheus metrics are served at `/metrics` on a separate port, `METRICS_ADDR` (default `:2112`; set it empty to turn them off), never on the public game port. Don't expose it publicly: firewall it, or bind a private address like `10.0.0.5:2112`.
+Prometheus metrics are served at `/metrics` on a separate port, `METRICS_ADDR` (default `:2112`, or set it empty to turn off).
 
 | metric | labels | |
 |---|---|---|
