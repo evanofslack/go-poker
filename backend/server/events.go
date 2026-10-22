@@ -912,6 +912,7 @@ func createUpdatedPlayerUUID(c *Client, token string) []byte {
 
 // recordDeal starts recording the hand just dealt. Caller holds t.mu.
 func recordDeal(t *table) {
+	handsTotal.Inc()
 	view := t.game.GenerateOmniView()
 	if view.SBNum >= uint(len(view.Players)) || view.BBNum >= uint(len(view.Players)) {
 		return

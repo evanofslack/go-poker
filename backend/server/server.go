@@ -28,6 +28,10 @@ type Server struct {
 	hub       *Hub
 	staticDir string
 	ready     atomic.Bool // false once shutdown starts
+
+	// serves /metrics on its own address, nil when metrics are off
+	metrics         *http.Server
+	metricsListener net.Listener
 }
 
 func New() (*Server, error) {
@@ -63,6 +67,16 @@ func New() (*Server, error) {
 	s.mountStatus()
 	s.mountStatic()
 
+	if metricsAddr != "" {
+		if s.metricsListener, err = net.Listen("tcp4", metricsAddr); err != nil {
+			ln.Close()
+			return nil, err
+		}
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", metricsHandler(hub))
+		s.metrics = &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+	}
+
 	return s, nil
 }
 
@@ -73,13 +87,21 @@ func (s *Server) Run() <-chan error {
 	go s.hub.reap()
 	slog.Default().Info("running websocket hub")
 
-	errc := make(chan error, 1)
+	errc := make(chan error, 2)
 	go func() {
 		if err := s.server.Serve(s.listener); !errors.Is(err, http.ErrServerClosed) {
 			errc <- err
 		}
 	}()
 	slog.Default().Info("starting http server")
+	if s.metrics != nil {
+		go func() {
+			if err := s.metrics.Serve(s.metricsListener); !errors.Is(err, http.ErrServerClosed) {
+				errc <- err
+			}
+		}()
+		slog.Default().Info("serving metrics", "addr", metricsAddr)
+	}
 	return errc
 }
 
@@ -89,6 +111,9 @@ func (s *Server) Run() <-chan error {
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.ready.Store(false)
 	s.hub.shutdown(ctx)
+	if s.metrics != nil {
+		s.metrics.Shutdown(ctx)
+	}
 	return s.server.Shutdown(ctx)
 }
 

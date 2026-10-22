@@ -24,34 +24,26 @@ services:
       - 8080:8080
 ```
 
-## deploying
+Tables, ledgers and hand history live in memory, so they're lost when the server restarts!
 
-Tables, ledgers and hand history live in memory, so they're lost when the server restarts.
+## metrics
 
-Serve it over HTTPS so the websocket runs on `wss://`. The simplest option is [Caddy](https://caddyserver.com), which gets a certificate and proxies websockets automatically:
+Prometheus metrics are served at `/metrics` on a separate port, `METRICS_ADDR` (default `:2112`, or set it empty to turn off).
 
-```
-poker.example.com {
-    reverse_proxy localhost:8080
-}
-```
+| metric | labels | |
+|---|---|---|
+| `poker_connections` | | open websockets |
+| `poker_tables` | `state`: active, ended | open tables |
+| `poker_players` | `kind`: human, bot | seated players |
+| `poker_limit` | `limit`: conns, conns_per_ip, tables, tables_per_ip, messages | configured limits |
+| `poker_limit_hits_total` | `limit` | connections, tables or messages refused by a limit |
+| `poker_hands_total` | | hands dealt |
+| `poker_tables_closed_total` | `reason`: empty, ended, idle, shutdown | tables closed |
+| `poker_seat_grace_total` | `outcome`: reconnected, expired | dropped players who came back or lost their seat |
+| `poker_slow_client_drops_total` | | clients dropped for falling behind |
+| `poker_panics_total` | | panics recovered while handling a message |
 
-Caddy sets `X-Forwarded-For`, so also set `TRUST_PROXY=true` for the per-address limits to see real client addresses (the limits are listed in `.env.example`).
-
-With nginx, forward the `Host` header (the server only accepts same-origin websockets), the client address and the upgrade headers, and set `TRUST_PROXY=true`:
-
-```nginx
-location / {
-    proxy_pass http://localhost:8080;
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-}
-```
-
-Set `ALLOWED_ORIGINS` (comma separated) to allow websockets from other origins, e.g. a frontend dev server.
+Plus the standard `go_*` and `process_*` metrics.
 
 ## development
 

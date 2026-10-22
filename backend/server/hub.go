@@ -119,8 +119,10 @@ func (h *Hub) joinTable(c *Client, name, username, token, password string, creat
 	case !create && !ok:
 		return false, errNoTable
 	case create && len(h.tables) >= maxTables:
+		limitHits.WithLabelValues("tables").Inc()
 		return false, errTooManyTables
 	case create && h.tablesFrom(c.ip) >= maxTablesPerIP:
+		limitHits.WithLabelValues("tables_per_ip").Inc()
 		return false, errTooManyTablesIP
 	}
 
@@ -144,6 +146,7 @@ func (h *Hub) joinTable(c *Client, name, username, token, password string, creat
 		}
 		if timer, ok := t.grace[uuid]; ok {
 			timer.Stop()
+			seatGrace.WithLabelValues("reconnected").Inc()
 			delete(t.grace, uuid)
 		}
 		c.uuid.Store(uuid)
@@ -185,16 +188,20 @@ func (h *Hub) tablesFrom(ip string) int {
 	return n
 }
 
-// reserveConn counts a connection from ip, unless that would go over a limit.
-func (h *Hub) reserveConn(ip string) bool {
+// reserveConn counts a connection from ip, unless that would go over a
+// limit, in which case it reports the limit.
+func (h *Hub) reserveConn(ip string) (ok bool, limit string) {
 	h.connMu.Lock()
 	defer h.connMu.Unlock()
-	if h.total >= maxConns || h.conns[ip] >= maxConnsPerIP {
-		return false
+	if h.total >= maxConns {
+		return false, "conns"
+	}
+	if h.conns[ip] >= maxConnsPerIP {
+		return false, "conns_per_ip"
 	}
 	h.total++
 	h.conns[ip]++
-	return true
+	return true, ""
 }
 
 // releaseConn frees a connection counted by reserveConn.
@@ -251,6 +258,7 @@ func (h *Hub) graceExpired(t *table, uuid string) {
 	t.mu.Lock()
 	if _, ok := t.grace[uuid]; ok {
 		delete(t.grace, uuid)
+		seatGrace.WithLabelValues("expired").Inc()
 		name := playerName(t, uuid)
 		leaveSeat(t, uuid)
 		if name == t.host {
@@ -276,12 +284,14 @@ func (h *Hub) deleteIfEmpty(t *table) {
 	h.mu.Unlock()
 
 	if empty {
+		tablesClosed.WithLabelValues("empty").Inc()
 		close(t.done)
 	}
 }
 
-// closeTable deletes a table, telling anyone still there why.
-func (h *Hub) closeTable(t *table, reason string) {
+// closeTable deletes a table, telling anyone still there why in msg. reason
+// labels the metric.
+func (h *Hub) closeTable(t *table, reason, msg string) {
 	h.mu.Lock()
 	open := h.tables[t.name] == t
 	if open {
@@ -293,9 +303,10 @@ func (h *Hub) closeTable(t *table, reason string) {
 	}
 	t.mu.Lock()
 	for u := range t.users {
-		sendErrorCode(u, codeClosed, reason)
+		sendErrorCode(u, codeClosed, msg)
 	}
 	t.mu.Unlock()
+	tablesClosed.WithLabelValues(reason).Inc()
 	close(t.done)
 }
 
@@ -307,7 +318,7 @@ func (h *Hub) shutdown(ctx context.Context) {
 	tables := slices.Collect(maps.Values(h.tables))
 	h.mu.Unlock()
 	for _, t := range tables {
-		h.closeTable(t, "the server is restarting")
+		h.closeTable(t, "shutdown", "the server is restarting")
 	}
 
 	reply := make(chan []*Client, 1)
@@ -342,7 +353,7 @@ func (h *Hub) closeIdle(idle time.Duration) {
 		stale := t.endedAt.IsZero() && time.Since(t.lastActive) > idle
 		t.mu.Unlock()
 		if stale {
-			h.closeTable(t, fmt.Sprintf("the table closed after %s idle", humanDuration(idle)))
+			h.closeTable(t, "idle", fmt.Sprintf("the table closed after %s idle", humanDuration(idle)))
 		}
 	}
 }

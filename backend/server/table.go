@@ -333,6 +333,7 @@ func (t *table) sendTo(client *Client, message []byte) {
 	default:
 		// slow client: drop it and let its readPump unregister it,
 		// the hub is the only one that closes client.send
+		slowClientDrops.Inc()
 		delete(t.clients, client)
 		client.conn.Close()
 	}

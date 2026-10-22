@@ -106,6 +106,7 @@ func (c *Client) readPump() {
 		count++
 		if count > maxMessagesPerSecond {
 			slog.Default().Warn("Websocket rate limit exceeded, closing", "uuid", c.id())
+			limitHits.WithLabelValues("messages").Inc()
 			break
 		}
 		if err = c.safeProcessEvents(message); err != nil {
@@ -173,7 +174,8 @@ func (c *Client) write(message []byte) error {
 // serveWs handles websocket requests from the peer.
 func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	ip := clientIP(r, trustProxy)
-	if !hub.reserveConn(ip) {
+	if ok, limit := hub.reserveConn(ip); !ok {
+		limitHits.WithLabelValues(limit).Inc()
 		http.Error(w, "too many connections", http.StatusTooManyRequests)
 		return
 	}
@@ -198,6 +200,7 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 func (c *Client) safeProcessEvents(rawMessage []byte) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
+			panicsTotal.Inc()
 			err = fmt.Errorf("panic processing message: %v", r)
 		}
 	}()

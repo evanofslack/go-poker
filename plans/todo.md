@@ -543,6 +543,7 @@ Matters once the public demo gets real traffic.
   them in `.env.example`.
 - [x] **Per-IP limits:** cap connections and tables per IP so one client can't use up the server.
 - [x] Note in the UI and README that state is in-memory and lost on restart.
+- [x] **Metrics:** Prometheus metrics on their own port (`METRICS_ADDR`).
 
 # Backlog (unranked)
 
@@ -555,7 +556,6 @@ Matters once the public demo gets real traffic.
 - Pot-limit Omaha
 - Sit-n-go / tournament mode with a blind schedule
 - Accounts and persistent stats (only if this should be more than a play-with-friends app)
-- Prometheus metrics: tables, clients, hands/min, dropped slow clients, rate-limit hits
 - Admin view: a protected page listing tables, player counts, connections, uptime; close a table or
   kick a connection
 - Audit log: structured per-table logs of actions for debugging disputes

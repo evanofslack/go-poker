@@ -14,6 +14,7 @@ var (
 	maxConnsPerIP    = 10               // websocket connections from one address
 	maxTablesPerIP   = 3                // open tables created from one address
 	trustProxy       = false            // take the client address from X-Forwarded-For
+	metricsAddr      = ":2112"          // where /metrics is served, empty for off; never the public port
 )
 
 // loadConfig overrides the limits from the environment. A value that doesn't
@@ -28,6 +29,9 @@ func loadConfig() {
 	envDuration("ENDED_TABLE_TTL", &endedTableTTL)
 	envDuration("IDLE_TABLE_TIMEOUT", &idleTableTimeout)
 	envBool("TRUST_PROXY", &trustProxy)
+	if s, ok := os.LookupEnv("METRICS_ADDR"); ok {
+		metricsAddr = s
+	}
 }
 
 func envInt(key string, v *int) {
