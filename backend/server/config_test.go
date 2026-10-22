@@ -5,24 +5,28 @@ import (
 	"time"
 )
 
-func TestLoadConfig(t *testing.T) {
-	tables, grace, proxy := maxTables, reconnectGrace, trustProxy
-	t.Cleanup(func() { maxTables, reconnectGrace, trustProxy = tables, grace, proxy })
+// reads into locals: live goroutines from other tests read the package vars
+func TestEnvParsing(t *testing.T) {
+	n, d, b := 1, time.Second, false
 
-	t.Setenv("MAX_TABLES", "7")
-	t.Setenv("RECONNECT_GRACE", "2m")
-	t.Setenv("TRUST_PROXY", "true")
-	loadConfig()
-	if maxTables != 7 || reconnectGrace != 2*time.Minute || !trustProxy {
-		t.Errorf("got maxTables=%d reconnectGrace=%v trustProxy=%v", maxTables, reconnectGrace, trustProxy)
+	t.Setenv("N", "7")
+	t.Setenv("D", "2m")
+	t.Setenv("B", "true")
+	envInt("N", &n)
+	envDuration("D", &d)
+	envBool("B", &b)
+	if n != 7 || d != 2*time.Minute || !b {
+		t.Errorf("got n=%d d=%v b=%v", n, d, b)
 	}
 
 	// bad values keep what was there
-	t.Setenv("MAX_TABLES", "lots")
-	t.Setenv("RECONNECT_GRACE", "-1s")
-	t.Setenv("TRUST_PROXY", "maybe")
-	loadConfig()
-	if maxTables != 7 || reconnectGrace != 2*time.Minute || !trustProxy {
-		t.Errorf("bad values changed config: maxTables=%d reconnectGrace=%v trustProxy=%v", maxTables, reconnectGrace, trustProxy)
+	t.Setenv("N", "lots")
+	t.Setenv("D", "-1s")
+	t.Setenv("B", "maybe")
+	envInt("N", &n)
+	envDuration("D", &d)
+	envBool("B", &b)
+	if n != 7 || d != 2*time.Minute || !b {
+		t.Errorf("bad values changed config: n=%d d=%v b=%v", n, d, b)
 	}
 }
