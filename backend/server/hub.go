@@ -51,7 +51,7 @@ func (h *Hub) unregisterClient(client *Client) {
 }
 
 // maxTables caps how many tables can exist at once.
-const maxTables = 100
+var maxTables = 100
 
 var (
 	errTooManyTables = errors.New("too many tables")
