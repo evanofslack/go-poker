@@ -20,10 +20,10 @@ const (
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 1024
-
-	// close connections that send more than this many messages per second
-	maxMessagesPerSecond = 20
 )
+
+// close connections that send more than this many messages per second
+var maxMessagesPerSecond = 20
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,

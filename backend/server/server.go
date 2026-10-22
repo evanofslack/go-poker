@@ -29,6 +29,7 @@ type Server struct {
 }
 
 func New() (*Server, error) {
+	loadConfig()
 	port := getPort()
 	addr := ":" + port
 
