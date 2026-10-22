@@ -32,6 +32,9 @@ func TestMain(m *testing.M) {
 	botDelay = func() time.Duration { return 10 * time.Millisecond }
 	streetDelay = 10 * time.Millisecond
 	endedTableTTL = 500 * time.Millisecond
+	// tests connect and create tables from one address
+	maxConnsPerIP = 1000
+	maxTablesPerIP = 1000
 	os.Exit(m.Run())
 }
 
@@ -290,6 +293,51 @@ func TestTableCap(t *testing.T) {
 	time.Sleep(100 * time.Millisecond) // give extra joins time to (wrongly) succeed
 	if n := len(tableNames(hub)); n != maxTables {
 		t.Errorf("tables = %d, want %d", n, maxTables)
+	}
+}
+
+func TestConnsPerIP(t *testing.T) {
+	n := maxConnsPerIP
+	t.Cleanup(func() { maxConnsPerIP = n }) // runs after the server closes
+	maxConnsPerIP = 2                       // before the server starts, so its goroutines see it
+	srv, _ := newTestServerHub(t)
+	first := dial(t, srv)
+	dial(t, srv)
+
+	url := "ws" + strings.TrimPrefix(srv.URL, "http")
+	_, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err == nil || resp == nil || resp.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("third dial: err = %v, resp = %v, want 429", err, resp)
+	}
+
+	first.Close()
+	eventually(t, func() bool {
+		conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+		if err == nil {
+			conn.Close()
+		}
+		return err == nil
+	}, "closing a connection never freed its slot")
+}
+
+func TestTablesPerIP(t *testing.T) {
+	defer func(n int) { maxTablesPerIP = n }(maxTablesPerIP)
+	maxTablesPerIP = 2
+	hub := newHub()
+	create := func(name, ip string) error {
+		_, err := hub.joinTable(newClient(nil, hub, ip), name, "p", "", "", true, defaultSettings)
+		return err
+	}
+	for _, name := range []string{"a", "b"} {
+		if err := create(name, "1.1.1.1"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := create("c", "1.1.1.1"); err != errTooManyTablesIP {
+		t.Errorf("third table: err = %v, want %v", err, errTooManyTablesIP)
+	}
+	if err := create("d", "2.2.2.2"); err != nil {
+		t.Errorf("other address: %v", err)
 	}
 }
 
@@ -1647,4 +1695,17 @@ func TestPauseBetweenStreets(t *testing.T) {
 		t.Errorf("flop dealt without a pause: stage %d, board %v", g.Stage, g.CommunityCards)
 	}
 	waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Stage == poker.Flop && g.Betting })
+}
+
+func TestClientIP(t *testing.T) {
+	r := httptest.NewRequest("GET", "/ws", nil)
+	r.RemoteAddr = "10.0.0.1:5000"
+	r.Header.Set("X-Forwarded-For", "6.6.6.6, 1.2.3.4")
+	r.Header.Set("X-Real-IP", "6.6.6.6")
+	if ip := clientIP(r, false); ip != "10.0.0.1" {
+		t.Errorf("untrusted: got %q, want the socket address", ip)
+	}
+	if ip := clientIP(r, true); ip != "1.2.3.4" {
+		t.Errorf("trusted: got %q, want the entry the proxy added", ip)
+	}
 }

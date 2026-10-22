@@ -279,5 +279,5 @@ func endSession(t *table) {
 	}
 	t.turnSeq++ // cancel the turn timer
 	t.log("the session has ended, the ledger is final")
-	time.AfterFunc(endedTableTTL, func() { t.hub.closeTable(t) })
+	time.AfterFunc(endedTableTTL, func() { t.hub.closeTable(t, "the table has closed") })
 }

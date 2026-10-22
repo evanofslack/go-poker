@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -26,6 +27,7 @@ type Server struct {
 	router    *chi.Mux
 	hub       *Hub
 	staticDir string
+	ready     atomic.Bool // false once shutdown starts
 }
 
 func New() (*Server, error) {
@@ -54,6 +56,7 @@ func New() (*Server, error) {
 		staticDir: getStaticDir(),
 	}
 
+	s.ready.Store(true)
 	s.server.Handler = s.router
 	s.mountMiddleware()
 	s.mountSocket()
@@ -79,8 +82,12 @@ func (s *Server) Run() <-chan error {
 	return errc
 }
 
-// Shutdown stops accepting connections and waits for in-flight requests.
+// Shutdown fails readiness, tells clients the server is restarting and closes
+// their websockets, then stops accepting connections and waits for in-flight
+// requests.
 func (s *Server) Shutdown(ctx context.Context) error {
+	s.ready.Store(false)
+	s.hub.shutdown(ctx)
 	return s.server.Shutdown(ctx)
 }
 
@@ -107,6 +114,24 @@ func (s *Server) mountMiddleware() {
 
 func (s *Server) mountStatus() {
 	s.router.Route("/ping", func(r chi.Router) { r.Get("/", s.ping) })
+	s.router.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		writeStatus(w, http.StatusOK, "ok")
+	})
+	s.router.Get("/readyz", func(w http.ResponseWriter, r *http.Request) {
+		if s.ready.Load() {
+			writeStatus(w, http.StatusOK, "ok")
+		} else {
+			writeStatus(w, http.StatusServiceUnavailable, "shutting down")
+		}
+	})
+}
+
+func writeStatus(w http.ResponseWriter, code int, status string) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(code)
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": status}); err != nil {
+		slog.Default().Error("encode status", "error", err)
+	}
 }
 
 func (s *Server) ping(w http.ResponseWriter, r *http.Request) {

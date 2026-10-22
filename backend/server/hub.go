@@ -2,8 +2,10 @@ package server
 
 import (
 	"cmp"
+	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"sync"
 	"time"
@@ -14,9 +16,15 @@ type Hub struct {
 	clients    map[*Client]bool
 	register   chan *Client
 	unregister chan *Client
+	stop       chan chan []*Client // shutdown asks run for the clients to close
+	stopping   bool                // owned by run, like clients
 
 	mu     sync.Mutex // guards tables, which client goroutines access directly
 	tables map[string]*table
+
+	connMu sync.Mutex     // guards conns and total, counted before the upgrade
+	conns  map[string]int // open connections by address
+	total  int
 }
 
 func newHub() *Hub {
@@ -24,7 +32,9 @@ func newHub() *Hub {
 		clients:    make(map[*Client]bool),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
+		stop:       make(chan chan []*Client),
 		tables:     make(map[string]*table),
+		conns:      make(map[string]int),
 	}
 }
 
@@ -35,12 +45,23 @@ func (h *Hub) run() {
 			h.registerClient(client)
 		case client := <-h.unregister:
 			h.unregisterClient(client)
+		case reply := <-h.stop:
+			h.stopping = true
+			var clients []*Client
+			for c := range h.clients {
+				close(c.quit)
+				clients = append(clients, c)
+			}
+			reply <- clients
 		}
 	}
 }
 
 func (h *Hub) registerClient(client *Client) {
 	h.clients[client] = true
+	if h.stopping {
+		close(client.quit)
+	}
 }
 
 func (h *Hub) unregisterClient(client *Client) {
@@ -62,6 +83,9 @@ var (
 	errNeedPassword  = errors.New("this table needs a password")
 	errWrongPassword = errors.New("wrong password")
 )
+
+// errTooManyTablesIP caps tables per creator, so one person can't take them all.
+var errTooManyTablesIP = errors.New("you have too many open tables")
 
 // errorCodes lets the client tell apart the errors it handles
 var errorCodes = map[error]string{
@@ -96,6 +120,8 @@ func (h *Hub) joinTable(c *Client, name, username, token, password string, creat
 		return false, errNoTable
 	case create && len(h.tables) >= maxTables:
 		return false, errTooManyTables
+	case create && h.tablesFrom(c.ip) >= maxTablesPerIP:
+		return false, errTooManyTablesIP
 	}
 
 	// lock order is hub.mu, then table.mu
@@ -103,6 +129,7 @@ func (h *Hub) joinTable(c *Client, name, username, token, password string, creat
 		t = newTable(name, settings)
 		t.password = password
 		t.hub = h
+		t.creatorIP = c.ip
 	}
 	t.mu.Lock()
 	uuid, seatName, reconnected := t.reclaim(token)
@@ -144,6 +171,39 @@ func (h *Hub) joinTable(c *Client, name, username, token, password string, creat
 	c.table = t
 	t.register <- c
 	return reconnected, nil
+}
+
+// tablesFrom counts the open tables created from ip. h.mu must be held.
+func (h *Hub) tablesFrom(ip string) int {
+	n := 0
+	for _, t := range h.tables {
+		if t.creatorIP == ip {
+			n++
+		}
+	}
+	return n
+}
+
+// reserveConn counts a connection from ip, unless that would go over a limit.
+func (h *Hub) reserveConn(ip string) bool {
+	h.connMu.Lock()
+	defer h.connMu.Unlock()
+	if h.total >= maxConns || h.conns[ip] >= maxConnsPerIP {
+		return false
+	}
+	h.total++
+	h.conns[ip]++
+	return true
+}
+
+// releaseConn frees a connection counted by reserveConn.
+func (h *Hub) releaseConn(ip string) {
+	h.connMu.Lock()
+	defer h.connMu.Unlock()
+	h.total--
+	if h.conns[ip]--; h.conns[ip] <= 0 {
+		delete(h.conns, ip)
+	}
 }
 
 // leaveTable removes c from its table, and deletes the table once empty. A
@@ -219,8 +279,8 @@ func (h *Hub) deleteIfEmpty(t *table) {
 	}
 }
 
-// closeTable deletes a table whose session ended, telling anyone still there.
-func (h *Hub) closeTable(t *table) {
+// closeTable deletes a table, telling anyone still there why.
+func (h *Hub) closeTable(t *table, reason string) {
 	h.mu.Lock()
 	open := h.tables[t.name] == t
 	if open {
@@ -232,10 +292,32 @@ func (h *Hub) closeTable(t *table) {
 	}
 	t.mu.Lock()
 	for u := range t.users {
-		sendErrorCode(u, codeClosed, "the table has closed")
+		sendErrorCode(u, codeClosed, reason)
 	}
 	t.mu.Unlock()
 	close(t.done)
+}
+
+// shutdown closes every table, telling its players the server is restarting,
+// then closes every connection once its pending messages are written, or ctx
+// is done.
+func (h *Hub) shutdown(ctx context.Context) {
+	h.mu.Lock()
+	tables := slices.Collect(maps.Values(h.tables))
+	h.mu.Unlock()
+	for _, t := range tables {
+		h.closeTable(t, "the server is restarting")
+	}
+
+	reply := make(chan []*Client, 1)
+	h.stop <- reply
+	for _, c := range <-reply {
+		select {
+		case <-c.done:
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 // publicTables summarizes the public tables whose session hasn't ended, with
