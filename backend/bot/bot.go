@@ -60,6 +60,9 @@ type spot struct {
 	pot      uint // every chip bet this hand, this street included
 	bb       uint // the big blind
 	others   int  // opponents still in the hand
+	behind   int  // opponents who act after the bot after the flop, 0 on the button
+	sb, bbs  bool // the bot is in the small or big blind
+	limpers  int  // opponents who just called the big blind preflop
 }
 
 func spotOf(view *poker.GameView, pn uint) spot {
@@ -78,6 +81,24 @@ func spotOf(view *poker.GameView, pn uint) spot {
 		s.pot += q.TotalBet
 		if q.In && uint(i) != pn {
 			s.others++
+		}
+	}
+	// after the flop the seat left of the dealer acts first, the dealer last
+	n := uint(len(view.Players))
+	for i := (pn + 1) % n; pn != view.DealerNum; i = (i + 1) % n {
+		if view.Players[i].In {
+			s.behind++
+		}
+		if i == view.DealerNum {
+			break
+		}
+	}
+	s.sb, s.bbs = pn == view.SBNum, pn == view.BBNum
+	if s.top == s.bb {
+		for i, q := range view.Players {
+			if q.In && q.Bet == s.bb && uint(i) != view.BBNum && uint(i) != pn {
+				s.limpers++
+			}
 		}
 	}
 	return s

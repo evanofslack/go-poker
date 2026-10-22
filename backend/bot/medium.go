@@ -46,26 +46,87 @@ func medium(s spot, r *rand.Rand) Action {
 	return because(Action{Kind: Fold}, "equity %.2f <= odds %.2f + 0.05", e, odds)
 }
 
+// mediumPreflop raises or folds when nobody has raised, with more hands the
+// later it acts, and reraises strong hands and a few bluffs.
 func mediumPreflop(s spot, r *rand.Rand) Action {
 	c := chen(s.hole)
-	if s.others == 1 {
-		c += 2 // heads up, more hands are worth playing
-	}
 	owe := s.top - s.bet
-	big := owe*3 > s.stack
 	switch {
-	case c >= 10 && r.Float64() < 0.8:
-		return because(s.size(3*s.top-s.bet), "chen %v >= 10, raise to 3x", c) // raise to three times the bet
-	case owe == 0:
-		return because(Action{Kind: Check}, "chen %v, free check", c)
-	case big && c >= 9:
-		return because(Action{Kind: Call}, "chen %v >= 9, call big bet", c)
-	case !big && c >= 7:
-		return because(Action{Kind: Call}, "chen %v >= 7, call", c)
-	case s.top <= s.bb && c >= 5: // limp along when nobody raised
-		return because(Action{Kind: Call}, "chen %v >= 5, limp", c)
+	case s.top <= s.bb: // unopened, maybe limped
+		if c >= openAt(s) {
+			// open to two and a half or three blinds, plus one for each limper
+			to := s.bb*5/2 + s.bb*uint(r.IntN(2))/2 + s.bb*uint(s.limpers)
+			return because(s.size(jitter(to, s.bb, r)-s.bet), "chen %v >= %v, open", c, openAt(s))
+		}
+		if owe == 0 {
+			return because(Action{Kind: Check}, "chen %v, free check", c)
+		}
+		return because(Action{Kind: Fold}, "chen %v < %v, fold unopened", c, openAt(s))
+	case s.top <= 6*s.bb: // one raise
+		bluff := suitedPlayable(s.hole) && r.Float64() < 0.25
+		if c >= 10 || s.others == 1 && c >= 8 || bluff {
+			// reraise to three times the raise in position, four out of it
+			mult := uint(3)
+			if s.behind > 0 {
+				mult = 4
+			}
+			return because(s.size(jitter(mult*s.top, s.bb, r)-s.bet), "chen %v, 3-bet (bluff %v)", c, bluff)
+		}
+		need := 8.0
+		switch {
+		case owe*3 > s.stack:
+			need = 10
+		case s.others == 1:
+			need = 5 // heads up, defend wide
+		case s.bbs:
+			need = 7 // the big blind is already part way in
+		case s.behind > 0:
+			need = 9
+		}
+		if c >= need {
+			return because(Action{Kind: Call}, "chen %v >= %v, call a raise", c, need)
+		}
+		return because(Action{Kind: Fold}, "chen %v < %v, fold to a raise", c, need)
 	}
-	return because(Action{Kind: Fold}, "chen %v too weak", c)
+	// a reraise or more
+	switch {
+	case c >= 13:
+		return because(s.size(jitter(s.top*9/4, s.bb, r)-s.bet), "chen %v >= 13, 4-bet", c)
+	case c >= 11:
+		return because(Action{Kind: Call}, "chen %v >= 11, call a 3-bet", c)
+	}
+	return because(Action{Kind: Fold}, "chen %v < 11, fold to a 3-bet", c)
+}
+
+// openAt is the chen score medium opens with: more hands closer to the
+// button, where fewer players are left to act after it.
+func openAt(s spot) float64 {
+	switch {
+	case s.others == 1:
+		return 3 // heads up, most hands
+	case s.sb:
+		return 5
+	case s.bbs:
+		return 9 // only raises limpers with good hands
+	}
+	return float64(4 + min(s.behind, 3))
+}
+
+// suitedPlayable is a suited ace or suited connector, a hand worth reraising
+// as a bluff now and then.
+func suitedPlayable(hole [2]eval.Card) bool {
+	if hole[0]&hole[1]&0xF000 == 0 {
+		return false
+	}
+	a, b := rank(hole[0]), rank(hole[1])
+	return max(a, b) == 12 || (a-b == 1 || b-a == 1) && min(a, b) >= 3
+}
+
+// jitter varies chips by up to a tenth either way, in whole big blinds, so
+// sizes don't give the hand away.
+func jitter(chips, bb uint, r *rand.Rand) uint {
+	c := float64(chips) * (0.9 + 0.2*r.Float64())
+	return max(uint(c/float64(bb)+0.5), 1) * bb
 }
 
 // because adds why a bot chose a, before any reason a already has.
