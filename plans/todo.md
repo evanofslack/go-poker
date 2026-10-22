@@ -8,7 +8,7 @@
 | 4 | Core play experience | done |
 | 5 | Host and table features | done |
 | 6 | UI consistency and mobile | done |
-| 7 | Operator tooling | planned |
+| 7 | Operator tooling | done |
 | - | Backlog | unranked |
 
 ## How items are ranked
@@ -537,11 +537,11 @@ the next seat's plate. That was already so on main and needs its own layout chan
 
 Matters once the public demo gets real traffic.
 
-- [ ] **Health:** proper health and readiness endpoints (`/ping` returns the JSON string `"message: pong"`).
-- [ ] **Lifecycle:** reap idle tables; on graceful shutdown, notify clients ("server restarting") before closing.
-- [ ] **Config:** move hard-coded limits (`maxTables`, `maxSeats`, rate limits, timers) to env vars and document
+- [x] **Health:** `/healthz`, and `/readyz`, which returns 503 once shutdown starts.
+- [x] **Lifecycle:** reap idle tables; on graceful shutdown, notify clients ("server restarting") before closing.
+- [x] **Config:** move hard-coded limits (`maxTables`, rate limits, timers; `maxSeats` stays fixed to match the form) to env vars and document
   them in `.env.example`.
-- [ ] **Per-IP limits:** cap connections and tables per IP so one client can't use up the server.
+- [x] **Per-IP limits:** cap connections and tables per IP so one client can't use up the server.
 - [x] Note in the UI and README that state is in-memory and lost on restart.
 
 # Backlog (unranked)
