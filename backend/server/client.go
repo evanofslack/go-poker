@@ -153,10 +153,7 @@ func (c *Client) writePump() {
 
 // serveWs handles websocket requests from the peer.
 func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		ip = r.RemoteAddr // RealIP sets a bare address
-	}
+	ip := clientIP(r, trustProxy)
 	if !hub.reserveConn(ip) {
 		http.Error(w, "too many connections", http.StatusTooManyRequests)
 		return
@@ -420,4 +417,23 @@ func (c *Client) processEvents(rawMessage []byte) error {
 	default:
 		return errors.New("unexpected message action")
 	}
+}
+
+// clientIP is the address the request came from. Behind a trusted proxy it is
+// the last X-Forwarded-For entry, the one the proxy added; earlier entries
+// come from the client and can be made up.
+func clientIP(r *http.Request, trustProxy bool) string {
+	if trustProxy {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			parts := strings.Split(xff, ",")
+			if ip := strings.TrimSpace(parts[len(parts)-1]); ip != "" {
+				return ip
+			}
+		}
+	}
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return ip
 }

@@ -1696,3 +1696,16 @@ func TestPauseBetweenStreets(t *testing.T) {
 	}
 	waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Stage == poker.Flop && g.Betting })
 }
+
+func TestClientIP(t *testing.T) {
+	r := httptest.NewRequest("GET", "/ws", nil)
+	r.RemoteAddr = "10.0.0.1:5000"
+	r.Header.Set("X-Forwarded-For", "6.6.6.6, 1.2.3.4")
+	r.Header.Set("X-Real-IP", "6.6.6.6")
+	if ip := clientIP(r, false); ip != "10.0.0.1" {
+		t.Errorf("untrusted: got %q, want the socket address", ip)
+	}
+	if ip := clientIP(r, true); ip != "1.2.3.4" {
+		t.Errorf("trusted: got %q, want the entry the proxy added", ip)
+	}
+}
