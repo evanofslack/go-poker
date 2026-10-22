@@ -3,7 +3,6 @@ package table
 import (
 	"fmt"
 	"slices"
-	"time"
 
 	"github.com/evanofslack/go-poker/bot"
 )
@@ -226,15 +225,6 @@ func (r *reducer) removeBot(p *Person, n int) error {
 	}
 	r.unseat(n)
 	return nil
-}
-
-// BuyRequest is a rebuy, or a returning player sitting back down, waiting for
-// the host on a table that approves rebuys.
-type BuyRequest struct {
-	Name   string    `json:"name"`
-	Amount uint      `json:"amount"`
-	Seat   int       `json:"seat"` // the seat asked for, 0 to rebuy at their seat
-	At     time.Time `json:"at"`   // when it was asked, for ordering
 }
 
 // needsApproval reports whether name's rebuys wait for the host. The host's

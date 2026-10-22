@@ -1,10 +1,10 @@
-import { Card, HandAction, HandRecord } from "../interfaces/index";
+import { HandAction, HandRecord } from "../interfaces/index";
 
 const streetNames = ["preflop", "flop", "turn", "river"] as const;
 
 export type Street = {
     name: (typeof streetNames)[number];
-    cards: Card[]; // dealt on this street
+    cards: string[]; // dealt on this street, like "Ks"
     actions: HandAction[];
 };
 
@@ -41,6 +41,8 @@ export function actionText(a: HandAction): string {
         case "fold":
             text = "folds";
             break;
+        default:
+            text = a.kind;
     }
     if (a.allIn) text += ", all in";
     if (a.timeout) text += " (out of time)";

@@ -3,12 +3,15 @@ package server
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
-	"fmt"
+	"log/slog"
 	"maps"
 	"slices"
 	"sync"
 	"time"
+
+	"github.com/evanofslack/go-poker/table"
 )
 
 // Hub maintains the set of active clients and tables.
@@ -19,22 +22,27 @@ type Hub struct {
 	stop       chan chan []*Client // shutdown asks run for the clients to close
 	stopping   bool                // owned by run, like clients
 
-	mu     sync.Mutex // guards tables, which client goroutines access directly
-	tables map[string]*table
+	mu     sync.Mutex // guards tables
+	tables map[string]*tableActor
 
 	connMu sync.Mutex     // guards conns and total, counted before the upgrade
 	conns  map[string]int // open connections by address
 	total  int
+
+	store  Store
+	timing table.Timing
 }
 
-func newHub() *Hub {
+func newHub(store Store) *Hub {
 	return &Hub{
 		clients:    make(map[*Client]bool),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		stop:       make(chan chan []*Client),
-		tables:     make(map[string]*table),
+		tables:     make(map[string]*tableActor),
 		conns:      make(map[string]int),
+		store:      store,
+		timing:     timing,
 	}
 }
 
@@ -75,117 +83,85 @@ func (h *Hub) unregisterClient(client *Client) {
 var maxTables = 100
 
 var (
-	errTooManyTables = errors.New("too many tables")
-	errTableExists   = errors.New("table already exists")
-	errNoTable       = errors.New("table not found")
-	errNameTaken     = errors.New("name already taken at this table")
-	errAtTable       = errors.New("already at a table")
-	errNeedPassword  = errors.New("this table needs a password")
-	errWrongPassword = errors.New("wrong password")
+	errTooManyTables   = errors.New("too many tables")
+	errTooManyTablesIP = errors.New("you have too many open tables")
+	errTableExists     = errors.New("table already exists")
+	errNoTable         = errors.New("table not found")
 )
 
-// errTooManyTablesIP caps tables per creator, so one person can't take them all.
-var errTooManyTablesIP = errors.New("you have too many open tables")
-
-// errorCodes lets the client tell apart the errors it handles
-var errorCodes = map[error]string{
-	errNeedPassword:  "password-required",
-	errWrongPassword: "wrong-password",
+// restore brings back the tables in the store, as after a restart.
+func (h *Hub) restore() error {
+	saved, err := h.store.Load()
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	for name, b := range saved {
+		var s table.State
+		if err := json.Unmarshal(b, &s); err != nil || s.Version != table.Version {
+			slog.Default().Warn("dropping saved table", "table", name, "error", err)
+			h.store.Delete(name)
+			continue
+		}
+		table.Restore(&s, now)
+		a := newTableActor(h, &s)
+		h.tables[name] = a
+		go a.run()
+	}
+	return nil
 }
 
-// codes that tell a client to leave the table: the host removed it, or the
-// table closed an hour after its session ended
-const (
-	codeRemoved = "removed"
-	codeClosed  = "closed"
-)
-
-// joinTable adds c to the named table as username. With create, the table
-// must not exist yet, is made with settings and password, and c becomes its
-// host; otherwise it must exist and password must match. A valid token
-// reclaims a disconnected player's seat, and their name, without the
-// password, and reports so.
-func (h *Hub) joinTable(c *Client, name, username, token, password string, create bool, settings tableSettings) (bool, error) {
-	if c.table != nil {
-		return false, errAtTable
-	}
-
+// createTable makes a table named name for the client at ip.
+func (h *Hub) createTable(name, ip, password string, settings table.Settings) (*tableActor, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	t, ok := h.tables[name]
 	switch {
-	case create && ok:
-		return false, errTableExists
-	case !create && !ok:
-		return false, errNoTable
-	case create && len(h.tables) >= maxTables:
+	case h.tables[name] != nil:
+		return nil, errTableExists
+	case len(h.tables) >= maxTables:
 		limitHits.WithLabelValues("tables").Inc()
-		return false, errTooManyTables
-	case create && h.tablesFrom(c.ip) >= maxTablesPerIP:
+		return nil, errTooManyTables
+	case h.tablesFrom(ip) >= maxTablesPerIP:
 		limitHits.WithLabelValues("tables_per_ip").Inc()
-		return false, errTooManyTablesIP
+		return nil, errTooManyTablesIP
 	}
+	a := newTableActor(h, table.New(name, settings, h.timing, password, ip, time.Now()))
+	h.tables[name] = a
+	go a.run()
+	return a, nil
+}
 
-	// lock order is hub.mu, then table.mu
-	if create {
-		t = newTable(name, settings)
-		t.password = password
-		t.hub = h
-		t.creatorIP = c.ip
-	}
-	t.mu.Lock()
-	uuid, seatName, reconnected := t.reclaim(token)
-	reconnected = reconnected && !create
-	if reconnected {
-		// another connection may still hold the seat, e.g. a stale tab
-		for u := range t.users {
-			if u.id() == uuid {
-				u.uuid.Store(newUUID())
-				u.conn.Close()
-			}
-		}
-		if timer, ok := t.grace[uuid]; ok {
-			timer.Stop()
-			seatGrace.WithLabelValues("reconnected").Inc()
-			delete(t.grace, uuid)
-		}
-		c.uuid.Store(uuid)
-		username = seatName
-		t.log(fmt.Sprintf("%s reconnected", seatName))
-	} else if err := t.checkPassword(password); err != nil {
-		t.mu.Unlock()
-		return false, err
-	} else if t.nameTaken(username) {
-		t.mu.Unlock()
-		return false, errNameTaken
-	}
-	c.username = username
-	t.users[c] = true
-	t.lastActive = time.Now()
-	if create || t.host == "" {
-		t.host = username
-	}
-	t.mu.Unlock()
+func (h *Hub) table(name string) *tableActor {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.tables[name]
+}
 
-	if create {
-		go t.run()
-		h.tables[name] = t
+// removeTable forgets a, which has closed.
+func (h *Hub) removeTable(a *tableActor, reason string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.tables[a.name] == a {
+		delete(h.tables, a.name)
+		tablesClosed.WithLabelValues(reason).Inc()
 	}
-	t.members++
-	c.table = t
-	t.register <- c
-	return reconnected, nil
 }
 
 // tablesFrom counts the open tables created from ip. h.mu must be held.
 func (h *Hub) tablesFrom(ip string) int {
 	n := 0
-	for _, t := range h.tables {
-		if t.creatorIP == ip {
+	for _, a := range h.tables {
+		if a.creatorIP == ip {
 			n++
 		}
 	}
 	return n
+}
+
+func (h *Hub) allTables() []*tableActor {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return slices.Collect(maps.Values(h.tables))
 }
 
 // reserveConn counts a connection from ip, unless that would go over a
@@ -214,111 +190,12 @@ func (h *Hub) releaseConn(ip string) {
 	}
 }
 
-// leaveTable removes c from its table, and deletes the table once empty. A
-// seated player who disconnected keeps their seat for reconnectGrace.
-func (h *Hub) leaveTable(c *Client, disconnected bool) {
-	t := c.table
-	if t == nil {
-		return
-	}
-	c.table = nil
-	select {
-	case t.unregister <- c:
-	case <-t.done: // closed after its session ended
-	}
-
-	t.mu.Lock()
-	uuid := c.id()
-	// a seated player who dropped keeps their seat, and the host role, for a while
-	grace := disconnected && isSeatedUUID(t, uuid)
-	if grace {
-		t.log(fmt.Sprintf("%s disconnected", c.username))
-		t.grace[uuid] = time.AfterFunc(reconnectGrace, func() { h.graceExpired(t, uuid) })
-	} else {
-		leaveSeat(t, uuid)
-	}
-	delete(t.users, c)
-	if !grace {
-		delete(t.requests, c.username)
-	}
-	if t.host == c.username && !grace {
-		t.passHost()
-	}
-	broadcastGame(t)
-	t.mu.Unlock()
-
-	h.mu.Lock()
-	t.members--
-	h.mu.Unlock()
-	h.deleteIfEmpty(t)
-}
-
-// graceExpired removes a disconnected player who didn't come back in time.
-func (h *Hub) graceExpired(t *table, uuid string) {
-	t.mu.Lock()
-	if _, ok := t.grace[uuid]; ok {
-		delete(t.grace, uuid)
-		seatGrace.WithLabelValues("expired").Inc()
-		name := playerName(t, uuid)
-		leaveSeat(t, uuid)
-		if name == t.host {
-			t.passHost()
-			broadcastGame(t)
-		}
-	}
-	t.mu.Unlock()
-	h.deleteIfEmpty(t)
-}
-
-// deleteIfEmpty deletes t once nobody is connected and no seat is waiting
-// for a reconnect. A table whose session ended stays readable until
-// closeTable instead.
-func (h *Hub) deleteIfEmpty(t *table) {
-	h.mu.Lock()
-	t.mu.Lock()
-	empty := t.members == 0 && len(t.grace) == 0 && h.tables[t.name] == t && t.endedAt.IsZero()
-	t.mu.Unlock()
-	if empty {
-		delete(h.tables, t.name)
-	}
-	h.mu.Unlock()
-
-	if empty {
-		tablesClosed.WithLabelValues("empty").Inc()
-		close(t.done)
-	}
-}
-
-// closeTable deletes a table, telling anyone still there why in msg. reason
-// labels the metric.
-func (h *Hub) closeTable(t *table, reason, msg string) {
-	h.mu.Lock()
-	open := h.tables[t.name] == t
-	if open {
-		delete(h.tables, t.name)
-	}
-	h.mu.Unlock()
-	if !open {
-		return
-	}
-	t.mu.Lock()
-	for u := range t.users {
-		sendErrorCode(u, codeClosed, msg)
-	}
-	t.mu.Unlock()
-	tablesClosed.WithLabelValues(reason).Inc()
-	close(t.done)
-}
-
 // shutdown closes every table, telling its players the server is restarting,
 // then closes every connection once its pending messages are written, or ctx
 // is done.
 func (h *Hub) shutdown(ctx context.Context) {
-	h.mu.Lock()
-	tables := slices.Collect(maps.Values(h.tables))
-	h.mu.Unlock()
-	for _, t := range tables {
-		h.closeTable(t, "shutdown", "the server is restarting")
+	for _, a := range h.allTables() {
+		a.shutdown()
 	}
 
 	reply := make(chan []*Client, 1)
@@ -332,70 +209,16 @@ func (h *Hub) shutdown(ctx context.Context) {
 	}
 }
 
-// reapInterval is how often idle tables are looked for, a var for tests.
-var reapInterval = time.Minute
-
-// reap closes idle tables every reapInterval.
-func (h *Hub) reap() {
-	for range time.Tick(reapInterval) {
-		h.closeIdle(idleTableTimeout)
-	}
-}
-
-// closeIdle closes the tables no player has acted at for longer than idle.
-// Ended sessions close on their own after endedTableTTL.
-func (h *Hub) closeIdle(idle time.Duration) {
-	h.mu.Lock()
-	tables := slices.Collect(maps.Values(h.tables))
-	h.mu.Unlock()
-	for _, t := range tables {
-		t.mu.Lock()
-		stale := t.endedAt.IsZero() && time.Since(t.lastActive) > idle
-		t.mu.Unlock()
-		if stale {
-			h.closeTable(t, "idle", fmt.Sprintf("the table closed after %s idle", humanDuration(idle)))
-		}
-	}
-}
-
-// humanDuration spells out whole hours or minutes, e.g. "30 minutes".
-func humanDuration(d time.Duration) string {
-	for _, u := range []struct {
-		d    time.Duration
-		name string
-	}{{time.Hour, "hour"}, {time.Minute, "minute"}} {
-		if n := d / u.d; n > 0 && d%u.d == 0 {
-			if n == 1 {
-				return "1 " + u.name
-			}
-			return fmt.Sprintf("%d %ss", n, u.name)
-		}
-	}
-	return d.String()
-}
-
 // publicTables summarizes the public tables whose session hasn't ended, with
 // the most players first and full tables last.
-func (h *Hub) publicTables() []tableSummary {
-	// settings are fixed after creation, so Public is read without t.mu
-	h.mu.Lock()
-	var public []*table
-	for _, t := range h.tables {
-		if t.settings.Public {
-			public = append(public, t)
+func (h *Hub) publicTables() []table.Summary {
+	tables := []table.Summary{}
+	for _, a := range h.allTables() {
+		if a.public && !a.ended.Load() {
+			tables = append(tables, *a.summary.Load())
 		}
 	}
-	h.mu.Unlock()
-
-	tables := []tableSummary{}
-	for _, t := range public {
-		t.mu.Lock()
-		if t.endedAt.IsZero() {
-			tables = append(tables, t.summary())
-		}
-		t.mu.Unlock()
-	}
-	slices.SortFunc(tables, func(a, b tableSummary) int {
+	slices.SortFunc(tables, func(a, b table.Summary) int {
 		return cmp.Or(
 			cmp.Compare(boolInt(a.Players >= a.Seats), boolInt(b.Players >= b.Seats)),
 			cmp.Compare(b.Players, a.Players),

@@ -10,8 +10,8 @@ export default function Home() {
     const socket = useSocket();
     const { appState, dispatch } = useContext(AppContext);
     const [confirming, setConfirming] = useState(false);
-    const game = appState.game;
-    const player = game?.players.find((p) => p.uuid === appState.clientID);
+    const game = appState.view;
+    const player = game?.players.find((p) => p.seat === game.you);
 
     const leave = () => {
         if (socket && appState.table) leaveTable(socket, appState.table);

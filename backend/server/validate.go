@@ -1,12 +1,11 @@
 package server
 
 import (
-	"errors"
-	"fmt"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/evanofslack/go-poker/bot"
+	"github.com/evanofslack/go-poker/table"
 )
 
 // input length limits, mirrored by maxLength on the frontend inputs
@@ -19,41 +18,9 @@ const (
 	maxChipChange   = 1_000_000_000
 )
 
-// table settings limits, mirrored by the create table form
-const (
-	maxSeats         = 9
-	maxBigBlind      = 1_000_000
-	maxBuyInBB       = 1000 // max buy-in, in big blinds
-	minTurnTime      = 10_000
-	maxTurnTime      = 300_000
-	minNextHandDelay = 2000
-	maxNextHandDelay = 15_000
-)
-
-// validSettings returns why s can't be used for a new table, if it can't.
-func validSettings(s tableSettings) error {
-	switch {
-	case s.Seats < 2 || s.Seats > maxSeats:
-		return fmt.Errorf("seats must be between 2 and %d", maxSeats)
-	case s.SmallBlind < 1 || s.SmallBlind > s.BigBlind:
-		return errors.New("small blind must be between 1 and the big blind")
-	case s.BigBlind > maxBigBlind:
-		return fmt.Errorf("big blind can't be more than %d", maxBigBlind)
-	case s.MinBuy < s.BigBlind || s.MinBuy > s.MaxBuy:
-		return errors.New("min buy-in must be between 1 big blind and the max buy-in")
-	case s.MaxBuy > maxBuyInBB*s.BigBlind:
-		return fmt.Errorf("max buy-in can't be more than %d big blinds", maxBuyInBB)
-	case s.TurnTime != 0 && (s.TurnTime < minTurnTime || s.TurnTime > maxTurnTime):
-		return fmt.Errorf("turn timer must be off or between %d and %d seconds", minTurnTime/1000, maxTurnTime/1000)
-	case s.NextHandDelay < minNextHandDelay || s.NextHandDelay > maxNextHandDelay:
-		return fmt.Errorf("next hand delay must be between %d and %d seconds", minNextHandDelay/1000, maxNextHandDelay/1000)
-	}
-	return nil
-}
-
 // validUsername reports whether s can be used as a player's name.
 func validUsername(s string) bool {
-	return validLength(s, maxUsernameLen) && !strings.EqualFold(strings.TrimSpace(s), gameAdminName)
+	return validLength(s, maxUsernameLen) && !strings.EqualFold(strings.TrimSpace(s), table.SystemName)
 }
 
 // validLength reports whether s is non-blank and at most max characters.
@@ -83,9 +50,9 @@ func validReason(s string) bool {
 	return utf8.RuneCountInString(s) <= maxReasonLen
 }
 
-// validAmount reports whether n is a usable chip amount, like a rebuy.
-func validAmount(n uint) bool {
-	return n > 0
+// validBuyIn reports whether n is a usable chip amount, like a rebuy.
+func validBuyIn(n int64) bool {
+	return n > 0 && n <= maxChipChange
 }
 
 // validBotLevel reports whether s is a level a bot can play at.

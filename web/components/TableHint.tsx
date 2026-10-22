@@ -1,16 +1,16 @@
 import { useContext } from "react";
 import { AppContext } from "../providers/AppStore";
-import { Game } from "../interfaces/index";
+import { View } from "../interfaces/index";
 import InviteButton from "./InviteButton";
 
 // sessionHint says what the host did to the session, which matters to everyone
-function sessionHint(game: Game) {
+function sessionHint(game: View) {
     if (game.ended) {
         const minutes = Math.max(1, Math.ceil(game.closesIn / 60000));
         return `the session is over · the ledger is final · table closes in ${minutes}m`;
     }
     if (game.ending) return "last hand · the session ends after it";
-    if (game.paused) return game.stage === 1 ? "paused by the host" : "the host pauses the game after this hand";
+    if (game.paused) return game.street === "" ? "paused by the host" : "the host pauses the game after this hand";
     return "";
 }
 
@@ -25,14 +25,14 @@ function hint(seated: boolean, players: number, ready: number, running: boolean)
 
 export default function TableHint() {
     const { appState } = useContext(AppContext);
-    const game = appState.game;
+    const game = appState.view;
     if (appState.connection !== "open") {
         return <p className="rounded-full bg-warn px-4 py-1 text-sm text-zinc-900">reconnecting…</p>;
     }
     if (!game) return null;
 
-    const seated = game.players.some((p) => p.uuid === appState.clientID);
-    const ready = game.players.filter((p) => p.ready).length;
+    const seated = game.you !== 0;
+    const ready = game.players.filter((p) => !p.sittingOut).length;
     const mine = game.buyRequests.find((r) => r.name === appState.username);
     const session =
         sessionHint(game) || (mine ? `waiting for the host to ok your buy-in of ${mine.amount}` : "");

@@ -8,8 +8,8 @@ import TurnAlert from "./TurnAlert";
 // GameInfo shows the stakes, table and connection, and copies the invite link
 export default function GameInfo() {
     const { appState, dispatch } = useContext(AppContext);
-    const config = appState.game?.config;
-    const watching = appState.game?.watchers.length ?? 0;
+    const config = appState.view?.settings;
+    const watching = appState.view?.watchers.length ?? 0;
     const open = appState.connection === "open";
     const table = appState.table;
 

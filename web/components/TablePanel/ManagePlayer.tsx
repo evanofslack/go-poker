@@ -18,13 +18,13 @@ export default function ManagePlayer({ line, onClose }: { line: PlayerLine; onCl
     const [mode, setMode] = useState<"add" | "take">("add");
     const [amount, setAmount] = useState("");
     const [reason, setReason] = useState("");
-    const game = appState.game;
+    const game = appState.view;
     if (!socket || !game) return null;
 
     const { name, status, seat, bot } = line;
     const self = name === appState.username;
     const here = status !== "left" && status !== "disconnected";
-    const player = game.players.find((p) => p.username === name);
+    const player = game.players.find((p) => p.name === name);
     const chips = parseInt(amount);
 
     const act = (action: HostAction) => {

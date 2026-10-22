@@ -2,7 +2,7 @@ import { useState, useContext } from "react";
 import { AppContext } from "../providers/AppStore";
 import { removeBot, takeSeat } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
-import { Game, Player } from "../interfaces/index";
+import { PlayerView, View } from "../interfaces/index";
 import Card, { cardSize } from "./Card";
 import BuyIn from "./BuyIn";
 import Dialog from "./Dialog";
@@ -15,18 +15,18 @@ import classNames from "classnames";
 const plate =
     "w-24 rounded-xl px-2 py-1 text-center sm:w-32 lg:w-40 lg:py-1.5 short:w-24 short:py-0.5";
 
-function plateStyle(player: Player, game: Game) {
-    const action = game.betting && player.position === game.action;
-    const counting = action && game.turnEndsIn > 0;
-    const winner = !game.betting && isWinner(game, player.position);
+function plateStyle(player: PlayerView, view: View) {
+    const action = view.betting && player.seat === view.toAct;
+    const counting = action && view.turnEndsIn > 0;
+    const winner = !view.betting && isWinner(view, player.seat);
     return classNames(plate, "relative", {
         "bg-zinc-100 text-zinc-900 shadow-[0_0_40px_2px_rgba(255,255,255,0.3)]": action,
         "bg-amber-200 text-zinc-900 shadow-[0_0_60px_20px_rgba(100,98,92,0.3)]": winner,
         "bg-panel text-fg": !action && !winner,
         // sitting out or out of chips
-        "opacity-50": !player.ready && !action && !winner,
+        "opacity-50": player.sittingOut && !action && !winner,
         // folded this hand
-        "opacity-60": player.ready && !player.in && game.stage !== 1,
+        "opacity-60": !player.sittingOut && !player.in && view.street !== "",
         // clear the cards that overlap the top of the plate
         "pt-2.5 short:py-0.5 short:pl-3": true,
         // room for the countdown along the bottom
@@ -39,10 +39,10 @@ const tag =
 
 // ResultTag shows what a player won and with what once the hand is over, and
 // on your own seat, your best hand while you're in one
-function ResultTag({ player, game, own }: { player: Player; game: Game; own: boolean }) {
-    const won = winnings(game, player.position);
+function ResultTag({ player, view, own }: { player: PlayerView; view: View; own: boolean }) {
+    const won = winnings(view, player.seat);
     if (won) {
-        const hand = winningHand(game, player.position);
+        const hand = winningHand(view, player.seat);
         return (
             <span className={classNames(tag, "bg-amber-400 text-zinc-900")} data-won>
                 won {won}
@@ -58,7 +58,7 @@ function ResultTag({ player, game, own }: { player: Player; game: Game; own: boo
             </span>
         );
     }
-    const made = own && player.in && game.stage !== 1 ? madeHand([...player.cards, ...(game.communityCards ?? [])]) : "";
+    const made = own && player.in && view.street !== "" ? madeHand([...player.cards, ...view.board]) : "";
     if (!made) return null;
     return (
         <span key={made} className={classNames(tag, "border border-line bg-panel font-normal text-fg")} data-made-hand>
@@ -88,16 +88,16 @@ function BotIcon({ level }: { level: string }) {
 }
 
 type playerSeatProps = {
-    player: Player;
-    game: Game;
+    player: PlayerView;
+    view: View;
     own: boolean;
-    bot?: string; // the bot's level, if it's a bot
     host: boolean; // the viewer is the host
 };
 
-function PlayerSeat({ player, game, own, bot, host }: playerSeatProps) {
+function PlayerSeat({ player, view, own, host }: playerSeatProps) {
     const socket = useSocket();
-    const winning = winningCards(game);
+    const winning = winningCards(view);
+    const bot = player.bot;
     return (
         <div className="flex flex-col items-center short:flex-row">
             <div
@@ -106,19 +106,20 @@ function PlayerSeat({ player, game, own, bot, host }: playerSeatProps) {
                     cardSize.h
                 )}
             >
-                {player.cards.map((c, i) => (
-                    <Card
-                        key={i}
-                        card={c}
-                        placeholder={false}
-                        // everyone is out between hands; cards shown then reached showdown
-                        folded={!player.in && !(game.stage === 1 && c)}
-                        hidden={!c}
-                        highlight={winning.has(String(c))}
-                    />
-                ))}
+                {player.dealt &&
+                    player.cards.map((c, i) => (
+                        <Card
+                            key={i}
+                            card={c}
+                            placeholder={false}
+                            // everyone is out between hands; cards shown then reached showdown
+                            folded={!player.in && !(view.street === "" && c)}
+                            hidden={!c}
+                            highlight={winning.has(c)}
+                        />
+                    ))}
             </div>
-            <div className={plateStyle(player, game)}>
+            <div className={plateStyle(player, view)}>
                 <p
                     className={classNames(
                         "truncate text-sm leading-tight sm:text-base short:text-xs",
@@ -126,36 +127,36 @@ function PlayerSeat({ player, game, own, bot, host }: playerSeatProps) {
                     )}
                 >
                     {/* a bot's long name gives way to its icon */}
-                    {bot ? <span className="truncate">{player.username}</span> : player.username}
+                    {bot ? <span className="truncate">{player.name}</span> : player.name}
                     {bot && <BotIcon level={bot} />}
                 </p>
 
                 <p className="text-sm leading-tight font-semibold sm:text-lg short:text-sm">
                     {player.stack}
                 </p>
-                {game.betting && game.action === player.position && (
+                {view.betting && view.toAct === player.seat && (
                     <span className="sr-only">to act</span>
                 )}
-                {!player.ready && (
+                {player.sittingOut && (
                     <span className="absolute -top-2.5 left-1/2 z-20 -translate-x-1/2 rounded-full bg-badge px-2 text-xs whitespace-nowrap text-fg">
                         {player.stack > 0 ? "sitting out" : "out of chips"}
                     </span>
                 )}
-                <ResultTag player={player} game={game} own={own} />
-                {own && <SeatMenu player={player} game={game} />}
-                {bot && host && socket && !game.ended && (
+                <ResultTag player={player} view={view} own={own} />
+                {own && <SeatMenu player={player} view={view} />}
+                {bot && host && socket && !view.ended && (
                     // on the top corner, clear of the name, icon and result tag
                     <button
                         className="absolute -top-2 -right-2 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-raised text-sm leading-none text-muted hover:text-fg"
                         title="remove bot"
-                        aria-label={`remove ${player.username}`}
-                        onClick={() => removeBot(socket, player.seatID)}
+                        aria-label={`remove ${player.name}`}
+                        onClick={() => removeBot(socket, player.seat)}
                     >
                         ×
                     </button>
                 )}
-                {game.betting && game.action === player.position && game.turnEndsIn > 0 && (
-                    <Countdown endsIn={game.turnEndsIn} total={game.settings.turnTime} />
+                {view.betting && view.toAct === player.seat && view.turnEndsIn > 0 && (
+                    <Countdown endsIn={view.turnEndsIn} total={view.settings.turnTime} />
                 )}
             </div>
         </div>
@@ -164,9 +165,8 @@ function PlayerSeat({ player, game, own, bot, host }: playerSeatProps) {
 
 // OpenSeat lets someone without a seat sit down, after choosing a buy-in. The
 // host can sit a bot there instead.
-function OpenSeat({ id, game, host }: { id: number; game: Game; host: boolean }) {
+function OpenSeat({ id, view, host }: { id: number; view: View; host: boolean }) {
     const socket = useSocket();
-    const { appState } = useContext(AppContext);
     const [open, setOpen] = useState<"sit" | "bot" | null>(null);
     const close = () => setOpen(null);
 
@@ -185,13 +185,13 @@ function OpenSeat({ id, game, host }: { id: number; game: Game; host: boolean })
             {open === "sit" && (
                 <Dialog title={`sit in seat ${id}`} onClose={close}>
                     <BuyIn
-                        min={game.settings.minBuy}
-                        max={game.settings.maxBuy}
-                        initial={100 * game.settings.bb}
+                        min={view.settings.minBuy}
+                        max={view.settings.maxBuy}
+                        initial={100 * view.settings.bb}
                         label="sit down"
                         onSubmit={(amount) => {
-                            if (socket && appState.username) {
-                                takeSeat(socket, appState.username, id, amount);
+                            if (socket) {
+                                takeSeat(socket, id, amount);
                             }
                             close();
                         }}
@@ -209,7 +209,7 @@ function OpenSeat({ id, game, host }: { id: number; game: Game; host: boolean })
             )}
             {open === "bot" && (
                 <Dialog title={`add a bot to seat ${id}`} onClose={close}>
-                    <AddBot seat={id} game={game} onDone={close} />
+                    <AddBot seat={id} view={view} onDone={close} />
                 </Dialog>
             )}
         </>
@@ -217,7 +217,7 @@ function OpenSeat({ id, game, host }: { id: number; game: Game; host: boolean })
 }
 
 // BotSeat is an empty seat as the seated host sees it, for adding a bot
-function BotSeat({ id, game }: { id: number; game: Game }) {
+function BotSeat({ id, view }: { id: number; view: View }) {
     const [open, setOpen] = useState(false);
     return (
         <>
@@ -233,42 +233,33 @@ function BotSeat({ id, game }: { id: number; game: Game }) {
             </button>
             {open && (
                 <Dialog title={`add a bot to seat ${id}`} onClose={() => setOpen(false)}>
-                    <AddBot seat={id} game={game} onDone={() => setOpen(false)} />
+                    <AddBot seat={id} view={view} onDone={() => setOpen(false)} />
                 </Dialog>
             )}
         </>
     );
 }
 
-export default function Seat({ player, id }: { player: Player | null; id: number }) {
+export default function Seat({ player, id }: { player: PlayerView | null; id: number }) {
     const { appState } = useContext(AppContext);
-    const game = appState.game;
-    if (!game) return null;
-    const host = game.host === appState.username;
+    const view = appState.view;
+    if (!view) return null;
+    const host = view.host === appState.username;
 
     if (player) {
         // the server only sends cards this client may see
-        return (
-            <PlayerSeat
-                player={player}
-                game={game}
-                own={player.uuid === appState.clientID}
-                bot={game.bots[player.uuid]}
-                host={host}
-            />
-        );
+        return <PlayerSeat player={player} view={view} own={player.seat === view.you} host={host} />;
     }
     // nobody sits down, and no bots join, once the session has ended
-    if (game.ended) return null;
-    const seated = game.players.some((p) => p.uuid === appState.clientID);
-    if (!seated) {
-        return <OpenSeat id={id} game={game} host={host} />;
+    if (view.ended) return null;
+    if (!view.you) {
+        return <OpenSeat id={id} view={view} host={host} />;
     }
     if (host) {
-        return <BotSeat id={id} game={game} />;
+        return <BotSeat id={id} view={view} />;
     }
     // seated players see empty seats faintly until the game starts
-    if (game.running) return null;
+    if (view.running) return null;
     return (
         <div className={classNames(plate, "bg-raised py-2 text-lg text-muted opacity-20")}>
             {id}

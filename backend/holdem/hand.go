@@ -58,7 +58,7 @@ func (s *State) StartHand() ([]Event, error) {
 	var dealt []Event
 	for i := range s.Players {
 		if p := &s.Players[i]; p.ready() {
-			p.In = true
+			p.In, p.Dealt = true, true
 			copy(p.Cards[:], s.draw(2))
 			started.Seats = append(started.Seats, p.Seat)
 			dealt = append(dealt, Dealt{p.Seat, p.Cards})

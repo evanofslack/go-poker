@@ -13,25 +13,24 @@ export default function Input() {
     const { appState } = useContext(AppContext);
     const [showRaise, setShowRaise] = useState(false);
 
-    const game = appState.game;
-    if (!socket || !game || !game.betting) return null;
+    const view = appState.view;
+    if (!socket || !view || !view.betting) return null;
 
     if (appState.connection !== "open") {
         return <p className="py-2 text-subtle sm:text-xl">reconnecting…</p>;
     }
 
-    const b = bettingInfo(game);
-    if (b.player.uuid !== appState.clientID) {
+    const b = bettingInfo(view);
+    if (!view.legal.turn) {
         return (
             <p aria-live="polite" className="py-2 text-subtle sm:text-xl">
-                waiting for {b.player.username}
+                waiting for {b.player.name}
             </p>
         );
     }
 
-    // the server takes the chips added, not the new total
     const raiseTo = (to: number) => {
-        playerRaise(socket, to - b.player.bet);
+        playerRaise(socket, to);
         setShowRaise(false);
     };
 

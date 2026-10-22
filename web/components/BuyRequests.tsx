@@ -8,7 +8,7 @@ import Button from "./Button";
 export default function BuyRequests() {
     const socket = useSocket();
     const { appState } = useContext(AppContext);
-    const game = appState.game;
+    const game = appState.view;
     if (!socket || !game || game.host !== appState.username || game.buyRequests.length === 0) {
         return null;
     }

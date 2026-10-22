@@ -48,6 +48,7 @@ type Player struct {
 	Stack      uint    `json:"stack"`
 	Bet        uint    `json:"bet"`        // this street
 	Committed  uint    `json:"committed"`  // this hand, Bet included
+	Dealt      bool    `json:"dealt"`      // dealt into the last or current hand
 	In         bool    `json:"in"`         // dealt in and not folded
 	SittingOut bool    `json:"sittingOut"` // not dealt in; busted players sit out
 	Acted      bool    `json:"acted"`      // since the last full raise, so a short all-in can't be re-raised

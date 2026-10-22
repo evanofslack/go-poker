@@ -9,7 +9,7 @@ const seconds = (ms: number) => `${ms / 1000}s`;
 // Settings shows how the host set up the table. They're fixed once it exists.
 export default function Settings() {
     const { appState, dispatch } = useContext(AppContext);
-    const game = appState.game;
+    const game = appState.view;
     const table = appState.table;
     if (!game || !table) return null;
     const s = game.settings;

@@ -428,3 +428,28 @@ func stacksOf(s *State) []uint {
 	}
 	return out
 }
+
+func TestRestore(t *testing.T) {
+	h := pair(t)
+	h.join("watcher")
+	h.ok(Start{Person: h.ids["a"]})
+	b, _ := json.Marshal(h.s)
+	var loaded State
+	json.Unmarshal(b, &loaded)
+	h.s = &loaded
+	h.now = h.now.Add(time.Hour)
+	Restore(h.s, h.now)
+	h.checkInvariants()
+	if len(h.s.People) != 2 || h.s.People[h.ids["a"]].Connected {
+		t.Fatal("seated people wait to reconnect, watchers are gone")
+	}
+	if until(h.s.Timers, TimerTurn, h.now) != 30000 {
+		t.Fatal("the player to act gets a fresh turn")
+	}
+	res := h.do(Join{ID: "new", Name: "x", Token: h.tokens["a"]})
+	if res.Joined == nil || res.Joined.ID != h.ids["a"] {
+		t.Fatal("a reclaims their seat after the restart")
+	}
+	h.play(holdem.Call{})
+	h.checkInvariants()
+}

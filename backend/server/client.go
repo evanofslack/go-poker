@@ -9,9 +9,10 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"sync/atomic"
 	"time"
 
+	"github.com/evanofslack/go-poker/holdem"
+	"github.com/evanofslack/go-poker/table"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
@@ -34,15 +35,17 @@ var upgrader = websocket.Upgrader{
 
 // Client is a middleman between the websocket connection and the hub.
 type Client struct {
-	hub      *Hub
-	conn     *websocket.Conn // Websocket connection
-	send     chan []byte     // Buffered channel of outbound bytes
-	quit     chan struct{}   // closed by the hub on shutdown
-	done     chan struct{}   // closed when writePump returns
-	uuid     atomic.Value    // string, read by the table goroutine; use id()
-	username string
-	table    *table // Player's table
-	ip       string // remote address, counted against the per-ip limits
+	hub  *Hub
+	conn *websocket.Conn // Websocket connection
+	send chan []byte     // Buffered channel of outbound bytes
+	quit chan struct{}   // closed by the hub on shutdown
+	done chan struct{}   // closed when writePump returns
+	ip   string          // remote address, counted against the per-ip limits
+
+	// owned by readPump
+	table  *tableActor // the table joined, nil before
+	person string      // who the client is at table
+
 }
 
 func newClient(conn *websocket.Conn, hub *Hub, ip string) *Client {
@@ -54,23 +57,15 @@ func newClient(conn *websocket.Conn, hub *Hub, ip string) *Client {
 		quit: make(chan struct{}),
 		done: make(chan struct{}),
 	}
-	c.uuid.Store(newUUID())
 	return c
-}
-
-func newUUID() string {
-	return uuid.New().String()
-}
-
-// id is the client's UUID, which becomes its player's UUID once seated.
-func (c *Client) id() string {
-	return c.uuid.Load().(string)
 }
 
 func (c *Client) disconnect() {
 	// leave the table before the hub closes c.send, so the table never
 	// sends on a closed channel
-	c.hub.leaveTable(c, true)
+	if c.table != nil {
+		c.table.ask(table.Disconnect{Person: c.person}, c)
+	}
 	c.hub.unregister <- c
 	c.conn.Close()
 	c.hub.releaseConn(c.ip)
@@ -105,7 +100,7 @@ func (c *Client) readPump() {
 		}
 		count++
 		if count > maxMessagesPerSecond {
-			slog.Default().Warn("Websocket rate limit exceeded, closing", "uuid", c.id())
+			slog.Default().Warn("Websocket rate limit exceeded, closing", "ip", c.ip)
 			limitHits.WithLabelValues("messages").Inc()
 			break
 		}
@@ -207,244 +202,177 @@ func (c *Client) safeProcessEvents(rawMessage []byte) (err error) {
 	return c.processEvents(rawMessage)
 }
 
-// closedWhenEnded are the actions that would deal, seat or move chips, which
-// stop once a session ends so its ledger stays final.
-var closedWhenEnded = map[string]bool{
-	actionTakeSeat:     true,
-	actionStartGame:    true,
-	actionRebuy:        true,
-	actionSitOut:       true,
-	actionSitOutPlayer: true,
-	actionApproveBuy:   true,
-	actionDenyBuy:      true,
-	actionAdjustChips:  true,
-	actionPauseGame:    true,
-	actionResumeGame:   true,
-	actionEndSession:   true,
-	actionAddBot:       true,
-	actionRemoveBot:    true,
+// sendError tells c why its message was refused.
+func (c *Client) sendError(code, msg string) {
+	select {
+	case c.send <- marshal(ErrorOut{ActionError, code, msg}):
+	default:
+	}
 }
 
-func (c *Client) processEvents(rawMessage []byte) error {
-	var baseMessage base
-	err := json.Unmarshal(rawMessage, &baseMessage)
+// refuse tells c why its message was refused, and returns that as an error.
+func (c *Client) refuse(msg string) error {
+	c.sendError("", msg)
+	return errors.New(msg)
+}
+
+// hostKinds are the host actions that name a player.
+var hostKinds = map[string]table.HostKind{
+	ActionMakeHost:        table.MakeHost,
+	ActionSetBanker:       table.SetBanker,
+	ActionMoveToSpectator: table.MoveToSpectator,
+	ActionRemovePlayer:    table.RemovePlayer,
+	ActionSitOutPlayer:    table.SitOutPlayer,
+	ActionApproveBuy:      table.ApproveBuy,
+	ActionDenyBuy:         table.DenyBuy,
+}
+
+func (c *Client) processEvents(raw []byte) error {
+	var in Inbound
+	if err := json.Unmarshal(raw, &in); err != nil {
+		return err
+	}
+	switch in.Action {
+	case "":
+		return errors.New("deserialize message")
+	case ActionCreateTable, ActionJoinTable:
+		return c.join(in, in.Action == ActionCreateTable)
+	case ActionListTables:
+		// carries nothing to validate; readPump's rate limit covers polling
+		c.send <- marshal(Tables{ActionTables, c.hub.publicTables()})
+		return nil
+	}
+
+	if c.table == nil {
+		return errors.New("client has not joined a table")
+	}
+	cmd, err := c.command(in)
 	if err != nil {
 		return err
 	}
+	r := c.table.ask(cmd, c)
+	if _, ok := cmd.(table.Leave); ok || errors.Is(r.err, errClosed) {
+		c.table, c.person = nil, ""
+	}
+	return r.err
+}
 
-	if baseMessage.Action == "" {
-		return errors.New("deserialize message")
+// command is the table command for in, from c's person.
+func (c *Client) command(in Inbound) (table.Command, error) {
+	p := c.person
+	switch in.Action {
+	case ActionLeaveTable:
+		return table.Leave{Person: p}, nil
+	case ActionSendMessage:
+		if !validLength(in.Message, maxMessageLen) {
+			return nil, errors.New("invalid chat message")
+		}
+		return table.Chat{Person: p, Text: in.Message}, nil
+	case ActionTakeSeat:
+		if !validBuyIn(in.Amount) {
+			return nil, c.refuse("invalid buy-in")
+		}
+		return table.TakeSeat{Person: p, Seat: in.Seat, BuyIn: uint(in.Amount)}, nil
+	case ActionStartGame:
+		return table.Start{Person: p}, nil
+	case ActionCheck:
+		return table.Play{Person: p, Action: holdem.Check{}}, nil
+	case ActionCall:
+		return table.Play{Person: p, Action: holdem.Call{}}, nil
+	case ActionFold:
+		return table.Play{Person: p, Action: holdem.Fold{}}, nil
+	case ActionRaise:
+		return table.Play{Person: p, Action: holdem.Raise{To: in.To}}, nil
+	case ActionGetHands:
+		if !validHandNumber(in.Before) {
+			return nil, errors.New("invalid hand number")
+		}
+		return table.GetHands{Person: p, Before: in.Before}, nil
+	case ActionLeaveSeat:
+		return table.LeaveSeat{Person: p}, nil
+	case ActionSitOut:
+		return table.SitOut{Person: p}, nil
+	case ActionRebuy:
+		if !validBuyIn(in.Amount) {
+			return nil, c.refuse("rebuy amount must be more than 0")
+		}
+		return table.Rebuy{Person: p, Amount: uint(in.Amount)}, nil
+	case ActionAddBot:
+		name := strings.TrimSpace(in.Name)
+		switch {
+		case !validUsername(name):
+			return nil, c.refuse("invalid bot name")
+		case !validBotLevel(in.Level):
+			return nil, c.refuse("invalid bot level")
+		case !validBuyIn(in.Amount):
+			return nil, c.refuse("invalid buy-in")
+		}
+		return table.AddBot{Person: p, Seat: in.Seat, BuyIn: uint(in.Amount), Name: name, Level: in.Level}, nil
+	case ActionRemoveBot:
+		return table.RemoveBot{Person: p, Seat: in.Seat}, nil
+	case ActionMakeHost, ActionSetBanker, ActionMoveToSpectator, ActionRemovePlayer, ActionSitOutPlayer,
+		ActionApproveBuy, ActionDenyBuy:
+		if !validLength(in.Name, maxUsernameLen) {
+			return nil, c.refuse("invalid name")
+		}
+		return table.HostAction{Person: p, Kind: hostKinds[in.Action], Name: in.Name}, nil
+	case ActionPauseGame, ActionResumeGame:
+		return table.Pause{Person: p, Pause: in.Action == ActionPauseGame}, nil
+	case ActionEndSession:
+		return table.EndSession{Person: p}, nil
+	case ActionAdjustChips:
+		if !validLength(in.Name, maxUsernameLen) || !validAdjust(in.Amount) || !validReason(in.Reason) {
+			return nil, c.refuse("invalid chip change")
+		}
+		return table.AdjustChips{Person: p, Name: in.Name, Amount: in.Amount, Reason: in.Reason}, nil
+	}
+	return nil, errors.New("unexpected message action")
+}
+
+// join creates or joins the table in names, leaving any table c is at.
+func (c *Client) join(in Inbound, create bool) error {
+	username := strings.TrimSpace(in.Username)
+	if !validLength(in.Tablename, maxTablenameLen) {
+		return c.refuse("invalid table name")
+	}
+	if !validUsername(username) {
+		return c.refuse("invalid name")
+	}
+	if create && !validPassword(in.Password) {
+		return c.refuse("invalid password")
+	}
+	settings := table.DefaultSettings
+	if create && in.Settings != nil {
+		if err := json.Unmarshal(in.Settings, &settings); err != nil {
+			return c.refuse("invalid settings")
+		}
+		if err := settings.Validate(); err != nil {
+			return c.refuse(err.Error())
+		}
 	}
 
-	joining := baseMessage.Action == actionCreateTable || baseMessage.Action == actionJoinTable
-	if !joining && baseMessage.Action != actionListTables && c.table == nil {
-		return errors.New("client has not joined a table")
+	if c.table != nil {
+		c.table.ask(table.Leave{Person: c.person}, c)
+		c.table, c.person = nil, ""
 	}
-	if t := c.table; t != nil {
-		// any message from a player keeps the table open
-		t.mu.Lock()
-		t.lastActive = time.Now()
-		t.mu.Unlock()
+	var a *tableActor
+	var err error
+	if create {
+		a, err = c.hub.createTable(in.Tablename, c.ip, in.Password, settings)
+	} else if a = c.hub.table(in.Tablename); a == nil {
+		err = errNoTable
 	}
-	if closedWhenEnded[baseMessage.Action] && c.table.ended() {
-		sendError(c, "the session has ended")
-		return nil
+	if err != nil {
+		return c.refuse(err.Error())
 	}
-
-	switch baseMessage.Action {
-
-	case actionCreateTable, actionJoinTable:
-		var table joinTable
-		err := json.Unmarshal(rawMessage, &table)
-		if err != nil {
-			return err
-		}
-		username := strings.TrimSpace(table.Username)
-		if !validLength(table.Tablename, maxTablenameLen) {
-			sendError(c, "invalid table name")
-			return errors.New("invalid table name")
-		}
-		if !validUsername(username) {
-			sendError(c, "invalid name")
-			return errors.New("invalid username")
-		}
-		create := baseMessage.Action == actionCreateTable
-		if create && !validPassword(table.Password) {
-			sendError(c, "invalid password")
-			return errors.New("invalid password")
-		}
-		settings := defaultSettings
-		if create && table.Settings != nil {
-			if err := json.Unmarshal(table.Settings, &settings); err != nil {
-				sendError(c, "invalid settings")
-				return err
-			}
-			if err := validSettings(settings); err != nil {
-				sendError(c, err.Error())
-				return err
-			}
-		}
-		handleJoinTable(c, table.Tablename, username, table.Token, table.Password, create, settings)
-		return nil
-
-	case actionListTables:
-		// carries nothing to validate; readPump's rate limit covers polling
-		c.send <- createTables(c.hub.publicTables())
-		return nil
-
-	case actionLeaveTable:
-		var table leaveTable
-		err := json.Unmarshal(rawMessage, &table)
-		if err != nil {
-			return err
-		}
-		handleLeaveTable(c, table.Tablename)
-		return nil
-
-	case actionSendMessage:
-		var message sendMessage
-		err := json.Unmarshal(rawMessage, &message)
-		if err != nil {
-			return err
-		}
-		if !validLength(message.Message, maxMessageLen) {
-			return errors.New("invalid chat message")
-		}
-		handleSendMessage(c, message.Message)
-		return nil
-
-	case actionTakeSeat:
-		var seat takeSeat
-		err := json.Unmarshal(rawMessage, &seat)
-		if err != nil {
-			return err
-		}
-		handleTakeSeat(c, seat.SeatID, seat.BuyIn)
-		return nil
-
-	case actionStartGame:
-		handleStartGame(c)
-		return nil
-
-	case actionPlayerCall:
-		handleCall(c)
-		return nil
-
-	case actionPlayerCheck:
-		handleCheck(c)
-		return nil
-
-	case actionPlayerRaise:
-		var raise playerRaise
-		err := json.Unmarshal(rawMessage, &raise)
-		if err != nil {
-			return err
-		}
-		handleRaise(c, raise.Amount)
-		return nil
-
-	case actionPlayerFold:
-		handleFold(c)
-		return nil
-
-	case actionGetHands:
-		var g getHands
-		err := json.Unmarshal(rawMessage, &g)
-		if err != nil {
-			return err
-		}
-		if !validHandNumber(g.Before) {
-			return errors.New("invalid hand number")
-		}
-		handleGetHands(c, g.Before)
-		return nil
-
-	case actionLeaveSeat:
-		handleLeaveSeat(c)
-		return nil
-
-	case actionSitOut:
-		handleSitOut(c)
-		return nil
-
-	case actionRebuy:
-		var r rebuy
-		err := json.Unmarshal(rawMessage, &r)
-		if err != nil {
-			return err
-		}
-		if !validAmount(r.Amount) {
-			sendError(c, "rebuy amount must be more than 0")
-			return errors.New("invalid rebuy amount")
-		}
-		handleRebuy(c, r.Amount)
-		return nil
-
-	case actionAddBot:
-		var b addBot
-		err := json.Unmarshal(rawMessage, &b)
-		if err != nil {
-			return err
-		}
-		name := strings.TrimSpace(b.Name)
-		if !validUsername(name) {
-			sendError(c, "invalid bot name")
-			return errors.New("invalid bot name")
-		}
-		if !validBotLevel(b.Level) {
-			sendError(c, "invalid bot level")
-			return errors.New("invalid bot level")
-		}
-		handleAddBot(c, b.SeatID, b.BuyIn, name, b.Level)
-		return nil
-
-	case actionRemoveBot:
-		var b removeBot
-		err := json.Unmarshal(rawMessage, &b)
-		if err != nil {
-			return err
-		}
-		handleRemoveBot(c, b.SeatID)
-		return nil
-
-	case actionMakeHost, actionSetBanker, actionMoveToSpectator, actionRemovePlayer, actionSitOutPlayer,
-		actionApproveBuy, actionDenyBuy:
-		var target playerTarget
-		err := json.Unmarshal(rawMessage, &target)
-		if err != nil {
-			return err
-		}
-		if !validLength(target.Name, maxUsernameLen) {
-			sendError(c, "invalid name")
-			return errors.New("invalid host action name")
-		}
-		hostActions[baseMessage.Action](c, target.Name)
-		return nil
-
-	case actionPauseGame, actionResumeGame:
-		handlePause(c, baseMessage.Action == actionPauseGame)
-		return nil
-
-	case actionEndSession:
-		handleEndSession(c)
-		return nil
-
-	case actionAdjustChips:
-		var adjust adjustChips
-		err := json.Unmarshal(rawMessage, &adjust)
-		if err != nil {
-			return err
-		}
-		if !validLength(adjust.Name, maxUsernameLen) || !validAdjust(adjust.Amount) || !validReason(adjust.Reason) {
-			sendError(c, "invalid chip change")
-			return errors.New("invalid chip change")
-		}
-		handleAdjustChips(c, adjust.Name, adjust.Amount, adjust.Reason)
-		return nil
-
-	default:
-		return errors.New("unexpected message action")
+	r := a.ask(table.Join{ID: uuid.New().String(), Name: username, Token: in.Token, Password: in.Password}, c)
+	if r.err != nil {
+		return c.refuse(r.err.Error())
 	}
+	if r.joined != nil {
+		c.table, c.person = a, r.joined.ID
+	}
+	return nil
 }
 
 // clientIP is the address the request came from. Behind a trusted proxy it is

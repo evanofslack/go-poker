@@ -10,11 +10,13 @@ function record(page) {
         ws.on("framereceived", ({ payload }) => {
             try {
                 const m = JSON.parse(payload);
-                if (m.action === "update-game") rec.games.push(m.game);
-                if (m.action === "new-log") rec.logs.push(m.message);
+                if (m.action === "welcome" || m.action === "table-update") rec.games.push(m.view);
+                for (const e of m.events ?? []) {
+                    if (e.type === "log") rec.logs.push(e.data.log.message);
+                    // hands as they end
+                    if (e.type === "hand-done") rec.hands.push(e.data.record);
+                }
                 if (m.action === "error") rec.errors.push(m.message);
-                // hands as they end; the backlog on joining is full
-                if (m.action === "hand-history" && !m.full) rec.hands.push(...m.hands);
             } catch {}
         });
     });
@@ -48,7 +50,7 @@ async function sit(page, seat) {
 }
 
 const lastGame = (rec) => rec.games[rec.games.length - 1];
-const cardsShown = (g, name) => g.players.find((p) => p.username === name)?.cards[0] !== 0;
+const cardsShown = (g, name) => g.players.find((p) => p.name === name)?.cards[0] !== 0;
 
 const TABLE = "e2e" + Date.now();
 const browser = await launch();
@@ -83,7 +85,7 @@ await shot(alice, "2-alice-hand1");
 await shot(bob, "3-bob-hand1");
 
 // hidden cards: every frame before the first showdown
-const preShowdown = (rec) => rec.games.filter((g) => g.running && g.stage !== 1);
+const preShowdown = (rec) => rec.games.filter((g) => g.running && g.street !== "");
 check(
     "alice never receives bob's cards mid-hand",
     preShowdown(aRec).every((g) => !cardsShown(g, "bob")) && cardsShown(lastGame(aRec), "alice"),
@@ -107,16 +109,16 @@ check(
 check("the log leaves out poker actions", !aRec.logs.some((l) => /folds|wins|starting new hand|blind/.test(l)), JSON.stringify(aRec.logs));
 
 // reload bob's tab mid-hand: it rejoins and keeps the seat
-const bobStack = lastGame(aRec).players.find((p) => p.username === "bob").stack;
+const bobStack = lastGame(aRec).players.find((p) => p.name === "bob").stack;
 await bob.reload();
 const rejoined = await waitFor(
-    () => bRec.games.length && lastGame(bRec).players.some((p) => p.username === "bob") && cardsShown(lastGame(bRec), "bob"),
+    () => bRec.games.length && lastGame(bRec).players.some((p) => p.name === "bob") && cardsShown(lastGame(bRec), "bob"),
     5000,
     "bob to rejoin",
 );
 await sleep(500);
 check("reload reclaims the seat with its cards", rejoined && (await bob.locator("#username").count()) === 0);
-check("stack kept after reload", lastGame(aRec).players.find((p) => p.username === "bob").stack === bobStack);
+check("stack kept after reload", lastGame(aRec).players.find((p) => p.name === "bob").stack === bobStack);
 await shot(bob, "4-bob-after-reload");
 
 // close bob's tab; bob acts first in hand 2 (dealer), so the turn timer acts for him

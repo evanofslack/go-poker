@@ -1,7 +1,7 @@
 import classNames from "classnames";
 import { useContext } from "react";
 import { AppContext } from "../providers/AppStore";
-import { Game, Player } from "../interfaces";
+import { PlayerView, View } from "../interfaces";
 import { at, markerAt, seatAngle } from "../lib/seats";
 import Seat from "./Seat";
 import Pot from "./Pot";
@@ -16,10 +16,10 @@ const seatSize =
     "[--seat-hw:3.5rem] [--seat-hh:2.75rem] sm:[--seat-hw:4.5rem] sm:[--seat-hh:3.4rem] lg:[--seat-hw:5.5rem] lg:[--seat-hh:4.4rem] short:[--seat-hw:5.1rem] short:[--seat-hh:1.4rem]";
 
 // blind labels the small and big blind seats, only preflop when they matter
-function blind(game: Game, position: number) {
-    if (game.stage !== 2) return "";
-    if (game.sb === position) return "SB";
-    if (game.bb === position) return "BB";
+function blind(view: View, seat: number) {
+    if (view.street !== "preflop") return "";
+    if (view.sb === seat) return "SB";
+    if (view.bb === seat) return "BB";
     return "";
 }
 
@@ -34,12 +34,12 @@ function actStyle(act: string) {
 
 // Markers are the dealer button, blind labels and bet in front of a seat, with
 // the last action under them, or above them for seats below the table's middle
-function Markers({ game, player, above }: { game: Game; player: Player; above: boolean }) {
-    const dealer = game.running && game.dealer === player.position;
-    const label = game.running ? blind(game, player.position) : "";
+function Markers({ view, player, above }: { view: View; player: PlayerView; above: boolean }) {
+    const dealer = view.running && view.button === player.seat;
+    const label = view.running ? blind(view, player.seat) : "";
     // the player to act is choosing again, and the bet chip shows any amount
-    const turn = game.betting && game.action === player.position;
-    const act = turn ? "" : (game.acts[player.uuid] ?? "");
+    const turn = view.betting && view.toAct === player.seat;
+    const act = turn ? "" : (view.acts[player.seat] ?? "");
     const shown = player.bet ? act.replace(/ (to )?\d+$/, "") : act;
     if (!dealer && !label && !act && !player.bet) return null;
     return (
@@ -79,14 +79,13 @@ function Markers({ game, player, above }: { game: Game; player: Player; above: b
 
 export default function Table() {
     const { appState } = useContext(AppContext);
-    const game = appState.game;
-    if (!game) return null;
+    const view = appState.view;
+    if (!view) return null;
 
-    const seats = game.settings.seats;
-    const own = game.players.find((p) => p.uuid === appState.clientID);
-    const bySeat = new Map(game.players.map((p) => [p.seatID, p]));
+    const seats = view.settings.seats;
+    const bySeat = new Map(view.players.map((p) => [p.seat, p]));
     const ids = Array.from({ length: seats }, (_, i) => i + 1);
-    const angle = (id: number) => seatAngle(id, seats, own?.seatID ?? 1);
+    const angle = (id: number) => seatAngle(id, seats, view.you || 1);
 
     return (
         <div className={"absolute inset-0 " + seatSize}>
@@ -97,14 +96,14 @@ export default function Table() {
                 <TableHint />
                 <BuyRequests />
             </div>
-            {game.players.map((p) => (
+            {view.players.map((p) => (
                 <div
-                    key={p.uuid}
+                    key={p.seat}
                     className="absolute z-10 -translate-1/2"
-                    style={markerAt(angle(p.seatID))}
+                    style={markerAt(angle(p.seat))}
                 >
                     {/* the action goes on the side away from the seat */}
-                    <Markers game={game} player={p} above={Math.sin(angle(p.seatID)) > 0.1} />
+                    <Markers view={view} player={p} above={Math.sin(angle(p.seat)) > 0.1} />
                 </div>
             ))}
             {ids.map((id) => (
@@ -113,7 +112,7 @@ export default function Table() {
                     // your seat goes on top, so its menu opens over the seats beside it
                     className={classNames(
                         "absolute -translate-1/2",
-                        id === own?.seatID ? "z-40" : "z-20"
+                        id === view.you ? "z-40" : "z-20"
                     )}
                     style={at(angle(id))}
                     data-seat={id}

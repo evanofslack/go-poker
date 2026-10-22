@@ -47,7 +47,7 @@ await bob.locator("#buyIn ~ button").first().click();
 check("watching count clears once seated", await alice.waitForSelector("text=watching 1", { state: "detached", timeout: 3000 }).then(() => true).catch(() => false));
 check("hint clears when two are ready", await alice.waitForSelector("text=waiting for another player", { state: "detached", timeout: 3000 }).then(() => true).catch(() => false));
 
-aliceWS.send(JSON.stringify({ action: "error", message: "can't rebuy during a hand", timestamp: "" }));
+aliceWS.send(JSON.stringify({ action: "error", message: "can't rebuy during a hand" }));
 check("server errors show as a toast", await has(alice, "[role=alert] >> text=can't rebuy during a hand"));
 await shot(alice, `ux-2-toast`);
 check("toast goes away", await alice.waitForSelector("button[role=alert]", { state: "detached", timeout: 6000 }).then(() => true).catch(() => false));

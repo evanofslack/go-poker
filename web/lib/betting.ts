@@ -1,26 +1,26 @@
-import { Game } from "../interfaces/index";
+import { View } from "../interfaces/index";
 
 export type Betting = ReturnType<typeof bettingInfo>;
 
-// Betting numbers for the player to act. "To" amounts are the player's total bet for the
-// street, which is what the raise input shows; the server takes the chips added on top.
-export function bettingInfo(game: Game) {
-    const player = game.players[game.action];
-    const maxBet = Math.max(...game.players.map((p) => p.bet));
-    const toCall = Math.min(maxBet - player.bet, player.stack);
-    const maxTo = player.bet + player.stack;
+// Betting numbers for the player to act, from what the server says they may do.
+// "To" amounts are the player's total bet for the street, which is what the
+// raise input shows and the server takes.
+export function bettingInfo(view: View) {
+    const player = view.players.find((p) => p.seat === view.toAct)!;
+    const { call, raiseMin, raiseMax } = view.legal;
+    const maxBet = Math.max(...view.players.map((p) => p.bet));
     return {
         player,
         maxBet,
-        toCall,
-        maxTo,
-        minTo: Math.min(maxBet + game.minRaise, maxTo),
+        toCall: call,
+        maxTo: raiseMax,
+        minTo: Math.min(raiseMin, raiseMax),
         // every chip committed this hand, including this street's bets
-        pot: game.players.reduce((sum, p) => sum + p.totalBet, 0),
+        pot: view.players.reduce((sum, p) => sum + p.committed, 0),
         opening: maxBet === 0,
-        canRaise: player.stack > toCall,
+        canRaise: raiseMax > 0,
         // a short stack can only shove, and a short all-in doesn't reopen betting
-        fullRaise: !player.called && maxTo > maxBet + game.minRaise,
+        fullRaise: raiseMax > raiseMin,
     };
 }
 

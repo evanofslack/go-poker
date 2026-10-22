@@ -14,26 +14,28 @@ Realtime multiplayer poker: Go websocket server (`backend/`) + Next.js client (`
   changes, look at screenshots too (`SHOTS=<dir>`). See `e2e/README.md`.
 
 ## Architecture
-- `backend/poker/`: game engine, forked from riverboat. Keep its license header.
-- `backend/server/`: hub → tables → clients. Each table runs its own goroutine and game actions
-  are serialized by `table.mu` (handlers run on client goroutines and must hold it). The table
-  goroutine owns `table.clients` and fans out messages. `hub.tables` is guarded by `hub.mu`.
-- Clients get per-player state via `GeneratePlayerView`, which hides other players' hole cards.
-  Never broadcast the raw game state.
+- `backend/holdem/`: the game engine. Plain data `State`, no locks, clock or global rand; methods
+  check legality before changing anything and return the `Event`s they caused. Hand evaluation
+  comes from riverboat's `eval` module.
+- `backend/table/`: one table as a reducer, `Reduce(state, now, cmd) Result`. People, seats,
+  host controls, ledger, history, stats, bots. Timers are deadlines in `State.Timers`; the runtime
+  fires them back as `TimerFired`. `State` is plain JSON, so a table can be saved and restored.
+- `backend/server/`: websockets and the runtime. Each table is an actor goroutine
+  (`tableActor`) that owns its state and connections: inbox → `Reduce` → arm timers → send →
+  save to the `Store` (in memory for now). Client goroutines only talk to it through the inbox.
+- Clients get `table.ViewFor` and `table.EventsFor`, which hide other players' hole cards.
+  Never send the raw state.
 - `web/` is a static export (`output: 'export'`) served by the Go binary from `STATIC_DIR`.
   No API routes, SSR, or middleware.
 - Tailwind 4: config lives in CSS, there is no tailwind.config.js.
 
 ## Websocket protocol
-No shared schema. Changing a message means updating all three:
-`backend/server/messages.go` ↔ `web/actions/actions.ts` ↔ `web/interfaces/index.ts`.
-New inbound actions also need validation in `backend/server/validate.go` and a test.
-
-## Metrics
-Prometheus metrics live in `backend/server/metrics.go` and are served on `METRICS_ADDR` (default `:2112`),
-never the public port. Gauges are read from the hub at scrape time; counters are incremented where things
-happen. Labels must be fixed sets created at 0 in `init` (never a table, address or player). A new metric
-also goes in the README's metrics table.
+- `backend/server/messages.go` defines the messages; the types they carry live in `table` and
+  `holdem`. `just types` (tygo) generates `web/interfaces/{holdem,table,server}.ts` from them;
+  CI fails if they're stale. `web/interfaces/index.ts` adds the event union by hand.
+- Outbound is mostly `table-update {view, events}` per viewer; `welcome` has the backlog on join.
+- New inbound actions need a command in `table/commands.go`, mapping and validation in
+  `server/client.go` and `server/validate.go`, a sender in `web/actions/actions.ts`, and tests.
 
 ## Conventions
 - Commits: short, lowercase, imperative ("fix engine index panics").

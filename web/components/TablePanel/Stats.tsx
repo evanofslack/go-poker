@@ -16,7 +16,7 @@ export default function Stats() {
     }
     const all = names(hands);
     const stats = playerStats(hands);
-    const style = styleStats(appState.totals, all, appState.game?.settings.bb ?? 0);
+    const style = styleStats(appState.totals, all, appState.view?.settings.bb ?? 0);
     const best = style.filter((s) => s.bestHand);
     // since the first hand kept, breaks included; too noisy in the first minutes
     const hours = (Date.now() - hands[0].started) / 3_600_000;

@@ -30,8 +30,7 @@ function beep() {
 export default function TurnAlert() {
     const { appState } = useContext(AppContext);
     const [muted, setMuted] = useState(loadMuted);
-    const game = appState.game;
-    const myTurn = !!game?.betting && game.players[game.action]?.uuid === appState.clientID;
+    const myTurn = !!appState.view?.legal.turn;
     const wasMyTurn = useRef(false);
 
     useEffect(() => {

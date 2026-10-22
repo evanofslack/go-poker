@@ -2,16 +2,16 @@ import { useRef, useState } from "react";
 import { leaveSeat, rebuy, sitOut } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { useDismiss } from "../hooks/useDismiss";
-import { Game, Player } from "../interfaces/index";
+import { PlayerView, View } from "../interfaces/index";
 import BuyIn from "./BuyIn";
 
 type seatMenuProps = {
-    player: Player;
-    game: Game;
+    player: PlayerView;
+    view: View;
 };
 
 // SeatMenu holds your own seat's controls: leave, sit out or in, and rebuy
-export default function SeatMenu({ player, game }: seatMenuProps) {
+export default function SeatMenu({ player, view }: seatMenuProps) {
     const socket = useSocket();
     const [open, setOpen] = useState(false);
     const [rebuying, setRebuying] = useState(false);
@@ -22,18 +22,18 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
     };
     useDismiss(ref, open, close);
 
-    const betweenHands = !game.running || game.stage === 1;
+    const betweenHands = view.street === "";
 
     if (!socket) return null;
 
-    const sittingOut = !player.ready && player.stack > 0;
-    const room = game.settings.maxBuy - player.stack;
+    const sittingOut = player.sittingOut && player.stack > 0;
+    const room = view.settings.maxBuy - player.stack;
     // topping up can be any amount, but a busted player buys back in
-    const minRebuy = player.stack === 0 ? game.settings.minBuy : 1;
+    const minRebuy = player.stack === 0 ? view.settings.minBuy : 1;
 
     let sitLabel = "sit out";
     if (sittingOut) sitLabel = "sit in";
-    else if (!betweenHands) sitLabel = game.sitOutNext ? "play next hand" : "sit out next hand";
+    else if (!betweenHands) sitLabel = view.sitOutNext ? "play next hand" : "sit out next hand";
 
     const item = "px-3 py-1.5 text-left text-sm hover:bg-raised";
     return (
@@ -69,7 +69,7 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
                         </div>
                     ) : (
                         <>
-                            {player.stack > 0 && !game.ended && (
+                            {player.stack > 0 && !view.ended && (
                                 <button
                                     role="menuitem"
                                     className={item}
@@ -81,7 +81,7 @@ export default function SeatMenu({ player, game }: seatMenuProps) {
                                     {sitLabel}
                                 </button>
                             )}
-                            {betweenHands && room >= minRebuy && !game.ended && (
+                            {betweenHands && room >= minRebuy && !view.ended && (
                                 <button
                                     role="menuitem"
                                     className={item}

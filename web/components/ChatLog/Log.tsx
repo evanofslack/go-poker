@@ -10,7 +10,7 @@ export default function Log() {
     return (
         <div ref={scrollRef} className=" h-full w-full overflow-auto bg-surface p-2">
             {appState.logs.map((log, index) => (
-                <LogMessage key={index} message={log.message} timestamp={log.timestamp} />
+                <LogMessage key={log.id ?? `e${index}`} message={log.message} time={log.time} />
             ))}
         </div>
     );
