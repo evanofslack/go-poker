@@ -214,7 +214,7 @@ type updateGame struct {
 
 	Ledger ledgerView `json:"ledger"`
 
-	// each player's action this street, and folds this hand, by uuid
+	// each player's action this street, by uuid
 	Acts map[string]string `json:"acts"`
 }
 
