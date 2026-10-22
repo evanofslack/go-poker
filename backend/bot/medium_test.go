@@ -229,3 +229,18 @@ func TestMediumCbets(t *testing.T) {
 		t.Errorf("c-bet seven deuce on a dry flop %d times in 400, want about 260", bets)
 	}
 }
+
+func TestStyleOf(t *testing.T) {
+	a, b := styleOf("a"), styleOf("b")
+	if a != styleOf("a") {
+		t.Error("styleOf changed for the same uuid")
+	}
+	if a == b {
+		t.Error("styleOf gave two uuids the same style")
+	}
+	for _, s := range []style{a, b, styleOf("")} {
+		if s.loose < -1 || s.loose > 1.5 || s.aggro < -0.3 || s.aggro > 0.3 {
+			t.Errorf("style %+v out of range", s)
+		}
+	}
+}

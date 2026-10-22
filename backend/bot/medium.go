@@ -45,16 +45,16 @@ func medium(s spot, r *rand.Rand) Action {
 			return because(Action{Kind: Check}, "%s, slow-play", why)
 		case e > value:
 			return because(s.size(betSize(s, w, r)), "%s > %.2f, value bet", why, value)
-		case s.led && len(s.board) == 3 && r.Float64() < cbet:
+		case s.led && len(s.board) == 3 && s.often(cbet, r):
 			return because(s.size(betSize(s, w, r)), "%s, c-bet", why)
-		case !river && d >= openEnded && r.Float64() < 0.5,
-			!river && d == gutshot && r.Float64() < 0.2:
+		case !river && d >= openEnded && s.often(0.5, r),
+			!river && d == gutshot && s.often(0.2, r):
 			return because(s.size(betSize(s, w, r)), "%s, semi-bluff", why)
-		case s.led && len(s.board) == 4 && e > 0.4 && r.Float64() < 0.5:
+		case s.led && len(s.board) == 4 && e > 0.4 && s.often(0.5, r):
 			return because(s.size(betSize(s, w, r)), "%s, barrel", why)
-		case river && s.led && e < 0.3 && r.Float64() < 0.25:
+		case river && s.led && e < 0.3 && s.often(0.25, r):
 			return because(s.size(betSize(s, w, r)), "%s, river bluff", why)
-		case s.others == 1 && s.behind == 0 && r.Float64() < 0.25:
+		case s.others == 1 && s.behind == 0 && s.often(0.25, r):
 			return because(s.size(betSize(s, w, r)), "%s, stab when checked to", why)
 		}
 		return because(Action{Kind: Check}, "%s, check", why)
@@ -72,7 +72,7 @@ func medium(s spot, r *rand.Rand) Action {
 	switch {
 	case e > 0.7:
 		return because(s.size(raiseSize(s, owe, w, r)), "%s > 0.7, raise for value", why)
-	case !river && d >= openEnded && r.Float64() < 0.15:
+	case !river && d >= openEnded && s.often(0.15, r):
 		return because(s.size(raiseSize(s, owe, w, r)), "%s, semi-bluff raise", why)
 	case e+credit > odds:
 		return because(Action{Kind: Call}, "%s + %.2f > odds %.2f, call", why, credit, odds)
@@ -208,7 +208,7 @@ func straight(m uint16) bool {
 // mediumPreflop raises or folds when nobody has raised, with more hands the
 // later it acts, and reraises strong hands and a few bluffs.
 func mediumPreflop(s spot, r *rand.Rand) Action {
-	c := chen(s.hole)
+	c := chen(s.hole) + s.style.loose
 	owe := s.top - s.bet
 	switch {
 	case s.top <= s.bb: // unopened, maybe limped
@@ -222,7 +222,7 @@ func mediumPreflop(s spot, r *rand.Rand) Action {
 		}
 		return because(Action{Kind: Fold}, "chen %v < %v, fold unopened", c, openAt(s))
 	case s.top <= 6*s.bb: // one raise
-		bluff := suitedPlayable(s.hole) && r.Float64() < 0.25
+		bluff := suitedPlayable(s.hole) && s.often(0.25, r)
 		if c >= 10 || s.others == 1 && c >= 8 || bluff {
 			// reraise to three times the raise in position, four out of it
 			mult := uint(3)

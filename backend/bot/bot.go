@@ -67,6 +67,7 @@ type spot struct {
 	limpers  int  // opponents who just called the big blind preflop
 	led      bool // the bot made the last bet or raise before this street
 	raised   bool // someone bet or raised before this street
+	style    style
 }
 
 func spotOf(view *poker.GameView, pn uint) spot {
@@ -79,6 +80,7 @@ func spotOf(view *poker.GameView, pn uint) spot {
 		minRaise: view.MinRaise,
 		called:   p.Called,
 		bb:       view.Config.BigBlind,
+		style:    styleOf(p.UUID),
 	}
 	for i, q := range view.Players {
 		s.top = max(s.top, q.Bet)
