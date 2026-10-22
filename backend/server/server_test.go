@@ -1684,6 +1684,29 @@ func TestActsShown(t *testing.T) {
 	waitActs(t, aRecv, map[string]string{"a": "fold", "b": "check"})
 }
 
+func TestFoldClearsNextStreet(t *testing.T) {
+	srv := newTestServer(t)
+	conns, aRecv := seatThree(t, srv)
+
+	send(t, conns["a"], `{"action":"start-game"}`)
+	g := waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Betting })
+	folder := g.Players[g.ActionNum].Username
+	send(t, conns[folder], `{"action":"player-fold"}`)
+	waitActs(t, aRecv, map[string]string{folder: "fold"})
+	// the other two close preflop, and the flop starts without the fold
+	g = waitGame(t, aRecv.games, func(g poker.GameView) bool {
+		return g.Betting && g.Players[g.ActionNum].Username != folder
+	})
+	caller := g.Players[g.ActionNum].Username
+	send(t, conns[caller], `{"action":"player-call"}`)
+	g = waitGame(t, aRecv.games, func(g poker.GameView) bool {
+		return g.Betting && g.Players[g.ActionNum].Username != caller
+	})
+	send(t, conns[g.Players[g.ActionNum].Username], `{"action":"player-check"}`)
+	waitGame(t, aRecv.games, func(g poker.GameView) bool { return g.Stage == poker.Flop && g.Betting })
+	waitActs(t, aRecv, map[string]string{})
+}
+
 func TestPauseBetweenStreets(t *testing.T) {
 	srv := newTestServer(t)
 	a, aRecv, b, _ := seatTwo(t, srv)

@@ -668,8 +668,8 @@ func (t *table) act(view *poker.GameView, pn uint, label string, allIn bool) {
 	t.acts[view.Players[pn].UUID] = act{view.Stage, label}
 }
 
-// shownActs are the actions the seats show by uuid: this street's, and folds.
-// Between hands the last street's stay up. Caller holds t.mu.
+// shownActs are the actions the seats show by uuid: this street's. Between
+// hands the last street's stay up. Caller holds t.mu.
 func (t *table) shownActs(stage poker.GameStage) map[string]string {
 	if stage == poker.PreDeal {
 		for _, a := range t.acts {
@@ -678,7 +678,7 @@ func (t *table) shownActs(stage poker.GameStage) map[string]string {
 	}
 	shown := map[string]string{}
 	for uuid, a := range t.acts {
-		if a.stage == stage || a.label == "fold" {
+		if a.stage == stage {
 			shown[uuid] = a.label
 		}
 	}
