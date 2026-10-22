@@ -53,6 +53,25 @@ location / {
 
 Set `ALLOWED_ORIGINS` (comma separated) to allow websockets from other origins, e.g. a frontend dev server.
 
+## metrics
+
+Prometheus metrics are served at `/metrics` on a separate port, `METRICS_ADDR` (default `:2112`; set it empty to turn them off), never on the public game port. Don't expose it publicly: firewall it, or bind a private address like `10.0.0.5:2112`.
+
+| metric | labels | |
+|---|---|---|
+| `poker_connections` | | open websockets |
+| `poker_tables` | `state`: active, ended | open tables |
+| `poker_players` | `kind`: human, bot | seated players |
+| `poker_limit` | `limit`: conns, conns_per_ip, tables, tables_per_ip, messages | configured limits |
+| `poker_limit_hits_total` | `limit` | connections, tables or messages refused by a limit |
+| `poker_hands_total` | | hands dealt |
+| `poker_tables_closed_total` | `reason`: empty, ended, idle, shutdown | tables closed |
+| `poker_seat_grace_total` | `outcome`: reconnected, expired | dropped players who came back or lost their seat |
+| `poker_slow_client_drops_total` | | clients dropped for falling behind |
+| `poker_panics_total` | | panics recovered while handling a message |
+
+Plus the standard `go_*` and `process_*` metrics.
+
 ## development
 
 Run the go server and next dev server with hot reload (needs go, node and [just](https://github.com/casey/just)):

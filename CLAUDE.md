@@ -29,5 +29,11 @@ No shared schema. Changing a message means updating all three:
 `backend/server/messages.go` ↔ `web/actions/actions.ts` ↔ `web/interfaces/index.ts`.
 New inbound actions also need validation in `backend/server/validate.go` and a test.
 
+## Metrics
+Prometheus metrics live in `backend/server/metrics.go` and are served on `METRICS_ADDR` (default `:2112`),
+never the public port. Gauges are read from the hub at scrape time; counters are incremented where things
+happen. Labels must be fixed sets created at 0 in `init` (never a table, address or player). A new metric
+also goes in the README's metrics table.
+
 ## Conventions
 - Commits: short, lowercase, imperative ("fix engine index panics").

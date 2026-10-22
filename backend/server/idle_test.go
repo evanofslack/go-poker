@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"testing"
 	"time"
 )
@@ -16,6 +17,7 @@ func TestIdleTablesClosed(t *testing.T) {
 	time.Sleep(2 * idle)
 	send(t, b, `{"action":"send-message","message":"still here"}`)
 	waitChat(t, bRecv, "b: still here")
+	closed := testutil.ToFloat64(tablesClosed.WithLabelValues("idle"))
 	hub.closeIdle(idle)
 
 	if msg := waitError(t, aRecv); msg != "the table closed after 300ms idle" {
@@ -25,6 +27,9 @@ func TestIdleTablesClosed(t *testing.T) {
 		t.Errorf("a got code %q, want %q", code, codeClosed)
 	}
 	waitForTables(t, hub, "b")
+	if d := testutil.ToFloat64(tablesClosed.WithLabelValues("idle")) - closed; d != 1 {
+		t.Errorf("idle closes went up %v, want 1", d)
+	}
 }
 
 func TestHumanDuration(t *testing.T) {

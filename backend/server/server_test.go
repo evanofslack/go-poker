@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -268,6 +269,7 @@ func waitForTables(t *testing.T, h *Hub, want ...string) {
 }
 
 func TestEmptyTablesDeleted(t *testing.T) {
+	emptied := testutil.ToFloat64(tablesClosed.WithLabelValues("empty"))
 	srv, hub := newTestServerHub(t)
 	conn := dial(t, srv)
 
@@ -281,6 +283,10 @@ func TestEmptyTablesDeleted(t *testing.T) {
 	waitForTables(t, hub, "c")
 	conn.Close()
 	waitForTables(t, hub)
+	// other tests' tables may empty meanwhile
+	if d := testutil.ToFloat64(tablesClosed.WithLabelValues("empty")) - emptied; d < 2 {
+		t.Errorf("empty closes went up %v, want at least 2", d)
+	}
 }
 
 func TestTableCap(t *testing.T) {
@@ -300,6 +306,7 @@ func TestConnsPerIP(t *testing.T) {
 	n := maxConnsPerIP
 	t.Cleanup(func() { maxConnsPerIP = n }) // runs after the server closes
 	maxConnsPerIP = 2                       // before the server starts, so its goroutines see it
+	hits := testutil.ToFloat64(limitHits.WithLabelValues("conns_per_ip"))
 	srv, _ := newTestServerHub(t)
 	first := dial(t, srv)
 	dial(t, srv)
@@ -308,6 +315,9 @@ func TestConnsPerIP(t *testing.T) {
 	_, resp, err := websocket.DefaultDialer.Dial(url, nil)
 	if err == nil || resp == nil || resp.StatusCode != http.StatusTooManyRequests {
 		t.Fatalf("third dial: err = %v, resp = %v, want 429", err, resp)
+	}
+	if d := testutil.ToFloat64(limitHits.WithLabelValues("conns_per_ip")) - hits; d != 1 {
+		t.Errorf("conns_per_ip hits went up %v, want 1", d)
 	}
 
 	first.Close()
@@ -333,8 +343,12 @@ func TestTablesPerIP(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	hits := testutil.ToFloat64(limitHits.WithLabelValues("tables_per_ip"))
 	if err := create("c", "1.1.1.1"); err != errTooManyTablesIP {
 		t.Errorf("third table: err = %v, want %v", err, errTooManyTablesIP)
+	}
+	if d := testutil.ToFloat64(limitHits.WithLabelValues("tables_per_ip")) - hits; d != 1 {
+		t.Errorf("tables_per_ip hits went up %v, want 1", d)
 	}
 	if err := create("d", "2.2.2.2"); err != nil {
 		t.Errorf("other address: %v", err)
@@ -706,6 +720,7 @@ func TestCreateAndJoinErrors(t *testing.T) {
 }
 
 func TestServerDealsNextHand(t *testing.T) {
+	hands := testutil.ToFloat64(handsTotal)
 	srv := newTestServer(t)
 	a, aRecv, _, _ := seatTwo(t, srv)
 
@@ -723,6 +738,10 @@ func TestServerDealsNextHand(t *testing.T) {
 	}
 	if n := len(aRecv.history); n != 0 {
 		t.Errorf("%d more hands ended, want none", n)
+	}
+	// other tests' bots may still be dealing
+	if d := testutil.ToFloat64(handsTotal) - hands; d < 2 {
+		t.Errorf("hands went up %v, want at least 2", d)
 	}
 }
 
