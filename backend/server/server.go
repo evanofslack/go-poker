@@ -101,6 +101,9 @@ func getPort() string {
 }
 
 func (s *Server) mountMiddleware() {
+	if trustProxy {
+		s.router.Use(middleware.RealIP)
+	}
 	s.router.Use(middleware.Logger)
 	s.router.Use(middleware.Recoverer)
 }

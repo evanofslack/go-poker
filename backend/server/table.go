@@ -55,6 +55,7 @@ type table struct {
 	game       *poker.Game
 	settings   tableSettings // fixed after creation
 	password   string        // empty for none, fixed after creation
+	creatorIP  string        // address of the client that created it, fixed after creation
 	ledger     []ledgerEntry // chips in and out by name, guarded by mu
 	hub        *Hub          // closes the table once an ended session expires
 

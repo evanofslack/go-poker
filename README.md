@@ -34,13 +34,16 @@ poker.example.com {
 }
 ```
 
-With nginx, forward the `Host` header (the server only accepts same-origin websockets) and the upgrade headers:
+Caddy sets `X-Forwarded-For`, so also set `TRUST_PROXY=true` for the per-address limits to see real client addresses (the limits are listed in `.env.example`).
+
+With nginx, forward the `Host` header (the server only accepts same-origin websockets), the client address and the upgrade headers, and set `TRUST_PROXY=true`:
 
 ```nginx
 location / {
     proxy_pass http://localhost:8080;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
 }
