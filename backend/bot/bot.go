@@ -6,7 +6,7 @@ import (
 	"math/rand/v2"
 
 	"github.com/alexclewontin/riverboat/eval"
-	"github.com/evanofslack/go-poker/poker"
+	"github.com/evanofslack/go-poker/holdem"
 )
 
 // bot levels
@@ -25,7 +25,8 @@ const (
 	Fold
 )
 
-// Action is a bot's move. Amount is the chips it puts in, for Raise only.
+// Action is a bot's move before it becomes a holdem.Action. Amount is the
+// chips it puts in, for Raise only.
 type Action struct {
 	Kind   Kind
 	Amount uint
@@ -36,14 +37,25 @@ func Valid(level string) bool {
 	return level == Easy || level == Medium
 }
 
-// Decide picks a move for player pn, whose turn it is. view should be pn's own
-// player view, so the bot only knows what pn would.
-func Decide(level string, view *poker.GameView, pn uint, r *rand.Rand) Action {
-	s := spotOf(view, pn)
+// Decide picks a move for the player in seat, whose turn it is. view should be
+// that player's own view, so the bot only knows what they would.
+func Decide(level string, view holdem.View, seat int, r *rand.Rand) holdem.Action {
+	s := spotOf(view, seat)
+	var a Action
 	if level == Medium {
-		return medium(s, r)
+		a = medium(s, r)
+	} else {
+		a = easy(s, r)
 	}
-	return easy(s, r)
+	switch a.Kind {
+	case Raise:
+		return holdem.Raise{To: s.bet + a.Amount}
+	case Call:
+		return holdem.Call{}
+	case Check:
+		return holdem.Check{}
+	}
+	return holdem.Fold{}
 }
 
 // spot is what a bot looks at to decide.
@@ -60,37 +72,19 @@ type spot struct {
 	others   int  // opponents still in the hand
 }
 
-func spotOf(view *poker.GameView, pn uint) spot {
-	p := view.Players[pn]
-	s := spot{
-		hole:     p.Cards,
-		board:    dealt(view.CommunityCards),
-		bet:      p.Bet,
-		stack:    p.Stack,
-		minRaise: view.MinRaise,
-		called:   p.Called,
-		bb:       view.Config.BigBlind,
-	}
-	for i, q := range view.Players {
-		s.top = max(s.top, q.Bet)
-		s.pot += q.TotalBet
-		if q.In && uint(i) != pn {
+func spotOf(view holdem.View, seat int) spot {
+	s := spot{board: view.Board, bb: view.Config.BigBlind, minRaise: view.MinRaise}
+	for _, p := range view.Players {
+		s.top = max(s.top, p.Bet)
+		s.pot += p.Committed
+		switch {
+		case p.Seat == seat:
+			s.hole, s.bet, s.stack, s.called = p.Cards, p.Bet, p.Stack, p.Acted
+		case p.In:
 			s.others++
 		}
 	}
 	return s
-}
-
-// dealt is the cards dealt so far. A view always holds five community cards,
-// with zeros for the ones still to come.
-func dealt(cards []eval.Card) []eval.Card {
-	var d []eval.Card
-	for _, c := range cards {
-		if c != 0 {
-			d = append(d, c)
-		}
-	}
-	return d
 }
 
 // easy is a calling station: it checks when it can, calls most bets, folds

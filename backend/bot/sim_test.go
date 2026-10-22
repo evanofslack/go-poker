@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/evanofslack/go-poker/poker"
+	"github.com/evanofslack/go-poker/holdem"
 )
 
 // TestSim plays medium against easy heads up on the real engine and checks
@@ -29,58 +29,42 @@ func TestSim(t *testing.T) {
 // sim plays hands between bots of levels, rebuying busted ones, and returns
 // each one's chips won or lost.
 func sim(t *testing.T, levels []string, hands int, buyIn uint) []int {
-	g := poker.NewGame(poker.GameConfig{MaxBuy: buyIn, BigBlind: 20, SmallBlind: 10})
+	g := holdem.New(holdem.Config{SmallBlind: 10, BigBlind: 20}, [32]byte{byte(rand.Uint64())})
+	bought := make([]uint, len(levels))
 	for i := range levels {
-		pn := g.AddPlayer()
-		must(t, poker.BuyIn(g, pn, buyIn))
-		must(t, poker.ToggleReady(g, pn, 0))
-		must(t, poker.SetSeatID(g, pn, uint(i+1)))
+		must(t, g.Sit(i+1, buyIn))
+		bought[i] = buyIn
 	}
-	// players stay in seat order, so the index is the level's index
-	must(t, g.Start())
 	r := rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))
 
 	for played := 0; played < hands; {
-		view := g.GenerateOmniView()
-		if !view.Betting {
+		switch {
+		case !g.InHand():
 			played++
-			for pn, p := range view.Players {
+			for i, p := range g.Players {
 				if p.Stack == 0 {
-					must(t, poker.BuyIn(g, uint(pn), buyIn))
-					if !p.Ready {
-						must(t, poker.ToggleReady(g, uint(pn), 0))
-					}
+					must(t, g.AddChips(p.Seat, buyIn))
+					must(t, g.SetSittingOut(p.Seat, false))
+					bought[i] += buyIn
 				}
 			}
-			must(t, poker.Deal(g, view.DealerNum, 0))
-			continue
-		}
-		pn := view.ActionNum
-		p := view.Players[pn]
-		a := Decide(levels[pn], g.GeneratePlayerView(pn), pn, r)
-		var top uint
-		for _, q := range view.Players {
-			top = max(top, q.Bet)
-		}
-		var err error
-		switch a.Kind {
-		case Raise:
-			err = poker.Bet(g, pn, a.Amount)
-		case Call:
-			err = poker.Bet(g, pn, min(top-p.Bet, p.Stack))
-		case Check:
-			err = poker.Bet(g, pn, 0)
+			_, err := g.StartHand()
+			must(t, err)
+		case !g.Betting:
+			_, err := g.NextStreet()
+			must(t, err)
 		default:
-			err = poker.Fold(g, pn, 0)
-		}
-		if err != nil {
-			t.Fatalf("%s's %+v rejected: %v", levels[pn], a, err)
+			seat := g.ToAct
+			a := Decide(levels[seat-1], g.View(seat), seat, r)
+			if _, err := g.Act(seat, a); err != nil {
+				t.Fatalf("%s's %+v rejected: %v", levels[seat-1], a, err)
+			}
 		}
 	}
 
 	net := make([]int, len(levels))
-	for pn, p := range g.GenerateOmniView().Players {
-		net[pn] = int(p.Stack+p.TotalBet) - int(p.TotalBuyIn)
+	for i, p := range g.Players {
+		net[i] = int(p.Stack+p.Committed) - int(bought[i])
 	}
 	return net
 }
