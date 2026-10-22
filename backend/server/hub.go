@@ -2,8 +2,10 @@ package server
 
 import (
 	"cmp"
+	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"sync"
 	"time"
@@ -14,6 +16,8 @@ type Hub struct {
 	clients    map[*Client]bool
 	register   chan *Client
 	unregister chan *Client
+	stop       chan chan []*Client // shutdown asks run for the clients to close
+	stopping   bool                // owned by run, like clients
 
 	mu     sync.Mutex // guards tables, which client goroutines access directly
 	tables map[string]*table
@@ -28,6 +32,7 @@ func newHub() *Hub {
 		clients:    make(map[*Client]bool),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
+		stop:       make(chan chan []*Client),
 		tables:     make(map[string]*table),
 		conns:      make(map[string]int),
 	}
@@ -40,12 +45,23 @@ func (h *Hub) run() {
 			h.registerClient(client)
 		case client := <-h.unregister:
 			h.unregisterClient(client)
+		case reply := <-h.stop:
+			h.stopping = true
+			var clients []*Client
+			for c := range h.clients {
+				close(c.quit)
+				clients = append(clients, c)
+			}
+			reply <- clients
 		}
 	}
 }
 
 func (h *Hub) registerClient(client *Client) {
 	h.clients[client] = true
+	if h.stopping {
+		close(client.quit)
+	}
 }
 
 func (h *Hub) unregisterClient(client *Client) {
@@ -263,8 +279,8 @@ func (h *Hub) deleteIfEmpty(t *table) {
 	}
 }
 
-// closeTable deletes a table whose session ended, telling anyone still there.
-func (h *Hub) closeTable(t *table) {
+// closeTable deletes a table, telling anyone still there why.
+func (h *Hub) closeTable(t *table, reason string) {
 	h.mu.Lock()
 	open := h.tables[t.name] == t
 	if open {
@@ -276,10 +292,32 @@ func (h *Hub) closeTable(t *table) {
 	}
 	t.mu.Lock()
 	for u := range t.users {
-		sendErrorCode(u, codeClosed, "the table has closed")
+		sendErrorCode(u, codeClosed, reason)
 	}
 	t.mu.Unlock()
 	close(t.done)
+}
+
+// shutdown closes every table, telling its players the server is restarting,
+// then closes every connection once its pending messages are written, or ctx
+// is done.
+func (h *Hub) shutdown(ctx context.Context) {
+	h.mu.Lock()
+	tables := slices.Collect(maps.Values(h.tables))
+	h.mu.Unlock()
+	for _, t := range tables {
+		h.closeTable(t, "the server is restarting")
+	}
+
+	reply := make(chan []*Client, 1)
+	h.stop <- reply
+	for _, c := range <-reply {
+		select {
+		case <-c.done:
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 // publicTables summarizes the public tables whose session hasn't ended, with

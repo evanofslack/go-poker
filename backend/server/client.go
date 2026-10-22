@@ -37,6 +37,8 @@ type Client struct {
 	hub      *Hub
 	conn     *websocket.Conn // Websocket connection
 	send     chan []byte     // Buffered channel of outbound bytes
+	quit     chan struct{}   // closed by the hub on shutdown
+	done     chan struct{}   // closed when writePump returns
 	uuid     atomic.Value    // string, read by the table goroutine; use id()
 	username string
 	table    *table // Player's table
@@ -49,6 +51,8 @@ func newClient(conn *websocket.Conn, hub *Hub, ip string) *Client {
 		conn: conn,
 		send: make(chan []byte, 1024),
 		ip:   ip,
+		quit: make(chan struct{}),
+		done: make(chan struct{}),
 	}
 	c.uuid.Store(newUUID())
 	return c
@@ -120,6 +124,7 @@ func (c *Client) writePump() {
 	defer func() {
 		ticker.Stop()
 		c.conn.Close()
+		close(c.done)
 	}()
 	for {
 		select {
@@ -130,16 +135,20 @@ func (c *Client) writePump() {
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			w, err := c.conn.NextWriter(websocket.TextMessage)
-			if err != nil {
-				slog.Default().Warn("Write websocket message", "error", err)
+			if err := c.write(message); err != nil {
 				return
 			}
-			w.Write(message)
 
-			if err := w.Close(); err != nil {
-				return
+		case <-c.quit:
+			// the server is shutting down: flush what's queued, then close
+			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			for len(c.send) > 0 {
+				if err := c.write(<-c.send); err != nil {
+					return
+				}
 			}
+			c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseGoingAway, "server restarting"))
+			return
 
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
@@ -149,6 +158,16 @@ func (c *Client) writePump() {
 			}
 		}
 	}
+}
+
+func (c *Client) write(message []byte) error {
+	w, err := c.conn.NextWriter(websocket.TextMessage)
+	if err != nil {
+		slog.Default().Warn("Write websocket message", "error", err)
+		return err
+	}
+	w.Write(message)
+	return w.Close()
 }
 
 // serveWs handles websocket requests from the peer.
