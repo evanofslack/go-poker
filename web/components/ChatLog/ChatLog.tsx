@@ -39,7 +39,7 @@ export default function ChatLog() {
                 )}
             </button>
             {open && (
-                <div className="absolute right-2 bottom-full left-2 z-40 flex h-72 flex-col rounded-xl bg-raised p-2 text-muted shadow-xl sm:right-auto sm:left-4 sm:w-96">
+                <div className="absolute right-2 bottom-full left-2 z-40 flex h-72 flex-col rounded-xl bg-raised p-2 text-muted shadow-float ring-1 ring-black/20 sm:right-auto sm:left-4 sm:w-96">
                     <div className="mb-2 flex items-center gap-1">
                         <button className={tabStyle("chat")} onClick={() => setTab("chat")}>
                             chat
