@@ -64,7 +64,7 @@ func spotOf(view *poker.GameView, pn uint) spot {
 	p := view.Players[pn]
 	s := spot{
 		hole:     p.Cards,
-		board:    view.CommunityCards,
+		board:    dealt(view.CommunityCards),
 		bet:      p.Bet,
 		stack:    p.Stack,
 		minRaise: view.MinRaise,
@@ -79,6 +79,18 @@ func spotOf(view *poker.GameView, pn uint) spot {
 		}
 	}
 	return s
+}
+
+// dealt is the cards dealt so far. A view always holds five community cards,
+// with zeros for the ones still to come.
+func dealt(cards []eval.Card) []eval.Card {
+	var d []eval.Card
+	for _, c := range cards {
+		if c != 0 {
+			d = append(d, c)
+		}
+	}
+	return d
 }
 
 // easy is a calling station: it checks when it can, calls most bets, folds

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/alexclewontin/riverboat/eval"
+	"github.com/evanofslack/go-poker/poker"
 )
 
 func cards(s ...string) []eval.Card {
@@ -99,5 +100,22 @@ func TestEasyCallsShortStack(t *testing.T) {
 		if a.Kind != Call {
 			t.Fatalf("aces with a short stack: got %v, want call", a)
 		}
+	}
+}
+
+// A view always holds five community cards, zero until dealt, so a bot
+// mustn't count those as board cards.
+func TestSpotSkipsUndealtCards(t *testing.T) {
+	g := poker.NewGame(poker.GameConfig{MaxBuy: 1000, BigBlind: 20, SmallBlind: 10})
+	for i := range 2 {
+		pn := g.AddPlayer()
+		must(t, poker.BuyIn(g, pn, 1000))
+		must(t, poker.ToggleReady(g, pn, 0))
+		must(t, poker.SetSeatID(g, pn, uint(i+1)))
+	}
+	must(t, g.Start())
+	pn := g.GenerateOmniView().ActionNum
+	if s := spotOf(g.GeneratePlayerView(pn), pn); len(s.board) != 0 {
+		t.Fatalf("preflop board = %v, want none", s.board)
 	}
 }
