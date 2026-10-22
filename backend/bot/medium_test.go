@@ -35,17 +35,17 @@ func TestEquity(t *testing.T) {
 			t.Errorf("%s: equity = %.3f, want about %.2f", name, got, want)
 		}
 	}
-	near("aces heads up", equity(hole("As", "Ad"), nil, 1, 4000, r), 0.85)
-	near("seven deuce heads up", equity(hole("7s", "2d"), nil, 1, 4000, r), 0.35)
-	if e := equity(hole("As", "Ks"), cards("Qs", "Js", "Ts", "2d", "3c"), 3, 500, r); e != 1 {
+	near("aces heads up", equity(hole("As", "Ad"), nil, 1, anyHand, false, 4000, r), 0.85)
+	near("seven deuce heads up", equity(hole("7s", "2d"), nil, 1, anyHand, false, 4000, r), 0.35)
+	if e := equity(hole("As", "Ks"), cards("Qs", "Js", "Ts", "2d", "3c"), 3, anyHand, false, 500, r); e != 1 {
 		t.Errorf("royal flush: equity = %v, want 1", e)
 	}
-	one := equity(hole("Qs", "Qd"), nil, 1, 2000, r)
-	five := equity(hole("Qs", "Qd"), nil, 5, 2000, r)
+	one := equity(hole("Qs", "Qd"), nil, 1, anyHand, false, 2000, r)
+	five := equity(hole("Qs", "Qd"), nil, 5, anyHand, false, 2000, r)
 	if five >= one {
 		t.Errorf("queens: equity against 5 (%.2f) should be below against 1 (%.2f)", five, one)
 	}
-	if e := equity(hole("7s", "2d"), nil, 0, 100, r); e != 1 {
+	if e := equity(hole("7s", "2d"), nil, 0, anyHand, false, 100, r); e != 1 {
 		t.Errorf("no opponents: equity = %v, want 1", e)
 	}
 }
@@ -53,7 +53,7 @@ func TestEquity(t *testing.T) {
 func BenchmarkEquity(b *testing.B) {
 	r := rand.New(rand.NewPCG(1, 2))
 	for b.Loop() {
-		equity(hole("As", "Kd"), nil, 8, trials, r)
+		equity(hole("As", "Kd"), nil, 8, anyHand, false, trials, r)
 	}
 }
 
@@ -175,5 +175,57 @@ func TestMediumReraisesAces(t *testing.T) {
 		if a.Kind != Raise || a.Amount < 3*60 {
 			t.Fatalf("aces facing a raise to 60: got %+v, want a 3-bet", a)
 		}
+	}
+}
+
+func TestDrawOf(t *testing.T) {
+	tests := []struct {
+		hole  [2]eval.Card
+		board []eval.Card
+		want  draw
+	}{
+		{hole("As", "Ks"), cards("Qs", "7s", "2d"), openEnded},    // flush draw
+		{hole("9h", "8d"), cards("7c", "6s", "2d"), openEnded},    // five to ten
+		{hole("9h", "8d"), cards("6c", "5s", "Kd"), gutshot},      // needs a seven
+		{hole("Ah", "2d"), cards("3c", "4s", "Kd"), gutshot},      // wheel needs a five
+		{hole("Js", "Ts"), cards("9s", "8d", "2s"), comboDraw},    // flush and straight
+		{hole("9h", "8d"), cards("7c", "6s", "5d"), noDraw},       // made straight
+		{hole("Ah", "Kd"), cards("9c", "8s", "7d", "6h"), noDraw}, // board's own draw
+		{hole("As", "Ks"), cards("Qs", "7s", "2d", "3c", "4h"), noDraw},
+	}
+	for _, tt := range tests {
+		if got := drawOf(tt.hole, tt.board); got != tt.want {
+			t.Errorf("drawOf(%v, %v) = %v, want %v", tt.hole, tt.board, got, tt.want)
+		}
+	}
+}
+
+func TestWet(t *testing.T) {
+	for _, b := range [][]eval.Card{cards("Ks", "7s", "2d"), cards("9c", "8d", "6h"), cards("Ah", "2c", "4d")} {
+		if !wet(b) {
+			t.Errorf("wet(%v) = false", b)
+		}
+	}
+	for _, b := range [][]eval.Card{cards("Ks", "7d", "2c"), cards("Ah", "Ac", "8d")} {
+		if wet(b) {
+			t.Errorf("wet(%v) = true", b)
+		}
+	}
+}
+
+// TestMediumCbets checks the preflop raiser bets the flop often, but not with
+// every hand.
+func TestMediumCbets(t *testing.T) {
+	r := rand.New(rand.NewPCG(1, 2))
+	s := at(hole("7s", "2d"), cards("Kh", "9c", "4d"), 0, 120, 1)
+	s.led, s.raised, s.behind = true, true, 0
+	bets := 0
+	for range 400 {
+		if medium(s, r).Kind == Raise {
+			bets++
+		}
+	}
+	if bets < 150 || bets > 350 {
+		t.Errorf("c-bet seven deuce on a dry flop %d times in 400, want about 260", bets)
 	}
 }

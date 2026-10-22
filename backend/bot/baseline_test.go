@@ -11,11 +11,11 @@ import (
 const baselineLevel = "baseline"
 
 // decide is Decide, plus the baseline level.
-func decide(level string, view *poker.GameView, pn uint, r *rand.Rand) Action {
+func decide(level string, view *poker.GameView, pn uint, aggressor int, r *rand.Rand) Action {
 	if level == baselineLevel {
 		return baseline(spotOf(view, pn), r)
 	}
-	return Decide(level, view, pn, r)
+	return Decide(level, view, pn, aggressor, r)
 }
 
 func baseline(s spot, r *rand.Rand) Action {
@@ -23,7 +23,7 @@ func baseline(s spot, r *rand.Rand) Action {
 		return baselinePreflop(s, r)
 	}
 	owe := s.top - s.bet
-	e := equity(s.hole, s.board, s.others, trials, r)
+	e := equity(s.hole, s.board, s.others, anyHand, false, trials, r)
 	slowPlay := e > 0.85 && r.Float64() < 0.2
 
 	if owe == 0 {

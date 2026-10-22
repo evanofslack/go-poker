@@ -219,3 +219,23 @@ func TestViewFor(t *testing.T) {
 		t.Error("viewFor changed the record it was called on")
 	}
 }
+
+func TestAggressor(t *testing.T) {
+	r := &handRecord{Actions: []handAction{
+		{Street: "preflop", Name: "a", Kind: "small blind"},
+		{Street: "preflop", Name: "b", Kind: "big blind"},
+		{Street: "preflop", Name: "c", Kind: "raise"},
+		{Street: "preflop", Name: "a", Kind: "call"},
+		{Street: "flop", Name: "a", Kind: "check"},
+		{Street: "flop", Name: "c", Kind: "check"},
+		{Street: "turn", Name: "a", Kind: "bet"},
+	}}
+	for street, want := range map[string]string{"preflop": "", "flop": "c", "turn": "c", "river": "a"} {
+		if got := r.aggressor(street); got != want {
+			t.Errorf("aggressor before %s = %q, want %q", street, got, want)
+		}
+	}
+	if got := (*handRecord)(nil).aggressor("flop"); got != "" {
+		t.Errorf("aggressor with no hand = %q", got)
+	}
+}

@@ -39,9 +39,11 @@ func Valid(level string) bool {
 }
 
 // Decide picks a move for player pn, whose turn it is. view should be pn's own
-// player view, so the bot only knows what pn would.
-func Decide(level string, view *poker.GameView, pn uint, r *rand.Rand) Action {
+// player view, so the bot only knows what pn would. aggressor is the player
+// who made the last bet or raise before this street, -1 if nobody did.
+func Decide(level string, view *poker.GameView, pn uint, aggressor int, r *rand.Rand) Action {
 	s := spotOf(view, pn)
+	s.led, s.raised = aggressor == int(pn), aggressor >= 0
 	if level == Medium {
 		return medium(s, r)
 	}
@@ -63,6 +65,8 @@ type spot struct {
 	behind   int  // opponents who act after the bot after the flop, 0 on the button
 	sb, bbs  bool // the bot is in the small or big blind
 	limpers  int  // opponents who just called the big blind preflop
+	led      bool // the bot made the last bet or raise before this street
+	raised   bool // someone bet or raised before this street
 }
 
 func spotOf(view *poker.GameView, pn uint) spot {

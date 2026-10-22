@@ -116,6 +116,8 @@ func sim(t *testing.T, levels []string, hands int, buyIn uint) []stats {
 	flags := make([]handFlags, len(levels))
 	startHand(g.GenerateOmniView(), 1, flags, log, name)
 	shown := 0 // board cards logged
+	// who made the last bet or raise before this street, and on it
+	aggressor, latest := -1, -1
 	// the engine deals each street itself, and stops betting once the hand
 	// is over
 	for played := 0; ; {
@@ -135,17 +137,20 @@ func sim(t *testing.T, levels []string, hands int, buyIn uint) []stats {
 			}
 			must(t, poker.Deal(g, view.DealerNum, 0))
 			startHand(g.GenerateOmniView(), played+1, flags, log, name)
-			shown = 0
+			shown, aggressor, latest = 0, -1, -1
 			continue
 		}
 		if b := dealt(view.CommunityCards); len(b) != shown {
 			shown = len(b)
+			if latest >= 0 {
+				aggressor, latest = latest, -1
+			}
 			fmt.Fprintf(log, "  board %s\n", cardList(b))
 		}
 		pn := view.ActionNum
 		p := view.Players[pn]
 		pv := g.GeneratePlayerView(pn)
-		a := decide(levels[pn], pv, pn, r)
+		a := decide(levels[pn], pv, pn, aggressor, r)
 		note(&res[pn], &flags[pn], view, pn, a)
 		fmt.Fprintf(log, "    %-7s %-8s %-5s %-5s %5s  %s\n", streetName(view), name(pn), cardList(pv.Players[pn].Cards[:]), kindNames[a.Kind], amount(a), a.Reason)
 
@@ -156,6 +161,7 @@ func sim(t *testing.T, levels []string, hands int, buyIn uint) []stats {
 		var err error
 		switch a.Kind {
 		case Raise:
+			latest = int(pn)
 			err = poker.Bet(g, pn, a.Amount)
 		case Call:
 			err = poker.Bet(g, pn, min(top-p.Bet, p.Stack))
