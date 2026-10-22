@@ -36,6 +36,9 @@
   --color-loss: var(--color-rose-400); /* chips lost */
   --color-highlight: var(--color-amber-200); /* winning seat */
 
+  /* panels floating over the table; dark enough to read on zinc */
+  --shadow-float: 0 4px 16px rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.3);
+
   --animate-pop: pop 150ms ease-out; /* a badge appearing */
   @keyframes pop {
     from {

@@ -57,7 +57,7 @@ export default function TablePanel({ onClose }: { onClose: () => void }) {
         <div
             role="region"
             aria-label="table"
-            className="absolute inset-y-2 right-2 left-2 z-40 flex flex-col rounded-xl bg-raised p-2 text-muted shadow-xl sm:right-auto sm:w-[28rem]"
+            className="absolute inset-y-2 right-2 left-2 z-40 flex flex-col rounded-xl bg-raised p-2 text-muted shadow-float ring-1 ring-black/20 sm:right-auto sm:w-[28rem]"
         >
             <div className="mb-2 flex items-center gap-1">
                 <div className="flex min-w-0 gap-1 overflow-x-auto">

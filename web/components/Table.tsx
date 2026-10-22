@@ -15,9 +15,9 @@ import BuyRequests from "./BuyRequests";
 const seatSize =
     "[--seat-hw:3.5rem] [--seat-hh:2.75rem] sm:[--seat-hw:4.5rem] sm:[--seat-hh:3.4rem] lg:[--seat-hw:5.5rem] lg:[--seat-hh:4.4rem] short:[--seat-hw:5.1rem] short:[--seat-hh:1.4rem]";
 
-// blind labels the small and big blind seats for the current hand
+// blind labels the small and big blind seats, only preflop when they matter
 function blind(game: Game, position: number) {
-    if (game.stage === 1) return "";
+    if (game.stage !== 2) return "";
     if (game.sb === position) return "SB";
     if (game.bb === position) return "BB";
     return "";

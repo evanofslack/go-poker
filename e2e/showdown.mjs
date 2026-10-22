@@ -32,6 +32,11 @@ await alice.locator('button:text-is("call 10")').waitFor({ state: "detached", ti
 const tagged = await bob.locator('[data-markers] [data-act]', { hasText: /^call$/ }).waitFor({ timeout: 2000 }).then(() => true).catch(() => false);
 check("others see a player's action by their bet", tagged);
 
+// the big blind checks their option and the flop comes
+await bob.click('button:text-is("check")');
+const gone = await alice.locator("text=SB").waitFor({ state: "detached", timeout: 3000 }).then(() => true).catch(() => false);
+check("blind labels go after preflop", gone && (await alice.locator("text=BB").count()) === 0);
+
 // check or call down to showdown
 const label = alice.locator("[data-won]");
 // streets are dealt a second after betting closes
