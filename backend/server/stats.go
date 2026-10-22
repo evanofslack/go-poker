@@ -13,10 +13,11 @@ const maxHands = 1000
 // handStats is a snapshot taken as a hand ends. Stats are worked out from
 // these on the client.
 type handStats struct {
-	Hand   int             `json:"hand"`   // counts from 1
-	Stacks map[string]uint `json:"stacks"` // everyone seated, after the pots are paid
-	Played []string        `json:"played"` // names dealt in
-	Won    map[string]uint `json:"won"`    // pots each winner took, their own chips included
+	Hand    int             `json:"hand"`    // counts from 1
+	Started int64           `json:"started"` // unix ms, 0 if unknown
+	Stacks  map[string]uint `json:"stacks"`  // everyone seated, after the pots are paid
+	Played  []string        `json:"played"`  // names dealt in
+	Won     map[string]uint `json:"won"`     // pots each winner took, their own chips included
 }
 
 // playerTotals add up how someone has played every hand at the table, for
@@ -128,6 +129,9 @@ func recordHand(t *table, view *poker.GameView, r *handRecord) {
 		Stacks: make(map[string]uint, len(view.Players)),
 		Played: r.played(),
 		Won:    make(map[string]uint),
+	}
+	if r != nil {
+		h.Started = r.Started
 	}
 	t.handCount++
 	for _, p := range view.Players {
