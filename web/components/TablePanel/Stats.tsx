@@ -18,6 +18,9 @@ export default function Stats() {
     const stats = playerStats(hands);
     const style = styleStats(appState.totals, all, appState.game?.settings.bb ?? 0);
     const best = style.filter((s) => s.bestHand);
+    // since the first hand kept, breaks included; too noisy in the first minutes
+    const hours = (Date.now() - hands[0].started) / 3_600_000;
+    const perHour = hours >= minRateHours ? Math.round(hands.length / hours) : 0;
 
     return (
         <div className="flex h-full flex-col gap-2 overflow-y-auto pr-1">
@@ -114,10 +117,14 @@ export default function Stats() {
             <p className="text-xs text-subtle">
                 {hands.length === 1 ? "1 hand" : `${hands.length} hands`}
                 {hands[0].hand > 1 && ` · from hand ${hands[0].hand}`}
+                {perHour > 0 && ` · ${perHour}/hr`}
             </p>
         </div>
     );
 }
+
+// minRateHours is how long hands are played before the hourly rate shows
+const minRateHours = 5 / 60;
 
 // styleColumns label the play style table, with what each one means on hover
 const styleColumns = [

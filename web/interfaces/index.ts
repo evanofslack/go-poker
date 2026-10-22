@@ -57,6 +57,7 @@ export type TableSummary = {
 // HandStats is a snapshot taken as a hand ends.
 export type HandStats = {
     hand: number; // counts from 1
+    started: number; // unix ms
     stacks: Record<string, number>; // everyone seated, after the pots are paid
     played: string[]; // names dealt in
     won: Record<string, number>; // pots each winner took, their own chips included

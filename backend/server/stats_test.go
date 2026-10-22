@@ -36,8 +36,8 @@ func TestHandSnapshots(t *testing.T) {
 		t.Fatalf("got %d hands at the end of a hand, want just the new one", len(s.Hands))
 	}
 	h := s.Hands[0]
-	if h.Hand != 1 || h.Stacks["a"] != 90 || h.Stacks["b"] != 110 {
-		t.Errorf("hand = %+v, want hand 1 with a on 90 and b on 110", h)
+	if h.Hand != 1 || h.Started == 0 || h.Stacks["a"] != 90 || h.Stacks["b"] != 110 {
+		t.Errorf("hand = %+v, want hand 1, started, with a on 90 and b on 110", h)
 	}
 	if !slices.Equal(slices.Sorted(slices.Values(h.Played)), []string{"a", "b"}) {
 		t.Errorf("played = %v, want a and b", h.Played)
