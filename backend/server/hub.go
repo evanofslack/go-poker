@@ -158,6 +158,7 @@ func (h *Hub) joinTable(c *Client, name, username, token, password string, creat
 	}
 	c.username = username
 	t.users[c] = true
+	t.lastActive = time.Now()
 	if create || t.host == "" {
 		t.host = username
 	}
@@ -318,6 +319,48 @@ func (h *Hub) shutdown(ctx context.Context) {
 			return
 		}
 	}
+}
+
+// reapInterval is how often idle tables are looked for, a var for tests.
+var reapInterval = time.Minute
+
+// reap closes idle tables every reapInterval.
+func (h *Hub) reap() {
+	for range time.Tick(reapInterval) {
+		h.closeIdle(idleTableTimeout)
+	}
+}
+
+// closeIdle closes the tables no player has acted at for longer than idle.
+// Ended sessions close on their own after endedTableTTL.
+func (h *Hub) closeIdle(idle time.Duration) {
+	h.mu.Lock()
+	tables := slices.Collect(maps.Values(h.tables))
+	h.mu.Unlock()
+	for _, t := range tables {
+		t.mu.Lock()
+		stale := t.endedAt.IsZero() && time.Since(t.lastActive) > idle
+		t.mu.Unlock()
+		if stale {
+			h.closeTable(t, fmt.Sprintf("the table closed after %s idle", humanDuration(idle)))
+		}
+	}
+}
+
+// humanDuration spells out whole hours or minutes, e.g. "30 minutes".
+func humanDuration(d time.Duration) string {
+	for _, u := range []struct {
+		d    time.Duration
+		name string
+	}{{time.Hour, "hour"}, {time.Minute, "minute"}} {
+		if n := d / u.d; n > 0 && d%u.d == 0 {
+			if n == 1 {
+				return "1 " + u.name
+			}
+			return fmt.Sprintf("%d %ss", n, u.name)
+		}
+	}
+	return d.String()
 }
 
 // publicTables summarizes the public tables whose session hasn't ended, with

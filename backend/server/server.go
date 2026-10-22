@@ -70,6 +70,7 @@ func New() (*Server, error) {
 // the error if the server stops unexpectedly.
 func (s *Server) Run() <-chan error {
 	go s.hub.run()
+	go s.hub.reap()
 	slog.Default().Info("running websocket hub")
 
 	errc := make(chan error, 1)

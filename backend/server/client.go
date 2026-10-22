@@ -237,6 +237,12 @@ func (c *Client) processEvents(rawMessage []byte) error {
 	if !joining && baseMessage.Action != actionListTables && c.table == nil {
 		return errors.New("client has not joined a table")
 	}
+	if t := c.table; t != nil {
+		// any message from a player keeps the table open
+		t.mu.Lock()
+		t.lastActive = time.Now()
+		t.mu.Unlock()
+	}
 	if closedWhenEnded[baseMessage.Action] && c.table.ended() {
 		sendError(c, "the session has ended")
 		return nil
