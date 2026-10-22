@@ -132,3 +132,48 @@ func TestMediumMovesAreLegal(t *testing.T) {
 		}
 	}
 }
+
+// unopened is a six-handed preflop spot nobody has raised, behind players
+// from the button.
+func unopened(h [2]eval.Card, behind int) spot {
+	return spot{hole: h, top: 20, stack: 2000, minRaise: 20, pot: 30, bb: 20, others: 5, behind: behind}
+}
+
+func TestMediumOpensOrFolds(t *testing.T) {
+	r := rand.New(rand.NewPCG(1, 2))
+	for range 200 {
+		for behind := range 5 {
+			if a := medium(unopened(hole("As", "Ad"), behind), r); a.Kind != Raise {
+				t.Fatalf("aces unopened with %d behind: got %v, want raise", behind, a)
+			}
+			if a := medium(unopened(hole("7s", "2d"), behind), r); a.Kind != Fold {
+				t.Fatalf("seven deuce unopened with %d behind: got %v, want fold", behind, a)
+			}
+		}
+		if a := medium(unopened(hole("9s", "8s"), 3), r); a.Kind == Call {
+			t.Fatalf("limped nine eight suited: %v", a)
+		}
+	}
+}
+
+func TestMediumOpensWiderOnTheButton(t *testing.T) {
+	r := rand.New(rand.NewPCG(1, 2))
+	if a := medium(unopened(hole("6s", "5s"), 0), r); a.Kind != Raise {
+		t.Fatalf("six five suited on the button: got %v, want raise", a)
+	}
+	if a := medium(unopened(hole("6s", "5s"), 4), r); a.Kind != Fold {
+		t.Fatalf("six five suited first to act: got %v, want fold", a)
+	}
+}
+
+func TestMediumReraisesAces(t *testing.T) {
+	r := rand.New(rand.NewPCG(1, 2))
+	s := unopened(hole("As", "Ad"), 2)
+	s.top, s.pot = 60, 90
+	for range 200 {
+		a := medium(s, r)
+		if a.Kind != Raise || a.Amount < 3*60 {
+			t.Fatalf("aces facing a raise to 60: got %+v, want a 3-bet", a)
+		}
+	}
+}

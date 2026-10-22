@@ -33,6 +33,26 @@ func TestSim(t *testing.T) {
 	}
 }
 
+// TestSimBaseline seats three medium bots with three playing as medium did
+// before its rewrite, and checks the new one comes out ahead.
+func TestSimBaseline(t *testing.T) {
+	if os.Getenv("BOTSIM") == "" {
+		t.Skip("set BOTSIM=1 to run")
+	}
+	levels := []string{Medium, baselineLevel, Medium, baselineLevel, Medium, baselineLevel}
+	res := sim(t, levels, 4000, 100*simBB)
+	report(t, res)
+	net := 0
+	for _, s := range res {
+		if s.level == Medium {
+			net += s.net
+		}
+	}
+	if net <= 0 {
+		t.Errorf("medium lost %d chips to baseline", -net)
+	}
+}
+
 // TestSimTable plays six bots of a level at one table, the lineup a person
 // joining a bot table meets.
 func TestSimTable(t *testing.T) {
@@ -125,7 +145,7 @@ func sim(t *testing.T, levels []string, hands int, buyIn uint) []stats {
 		pn := view.ActionNum
 		p := view.Players[pn]
 		pv := g.GeneratePlayerView(pn)
-		a := Decide(levels[pn], pv, pn, r)
+		a := decide(levels[pn], pv, pn, r)
 		note(&res[pn], &flags[pn], view, pn, a)
 		fmt.Fprintf(log, "    %-7s %-8s %-5s %-5s %5s  %s\n", streetName(view), name(pn), cardList(pv.Players[pn].Cards[:]), kindNames[a.Kind], amount(a), a.Reason)
 
