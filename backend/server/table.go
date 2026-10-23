@@ -137,7 +137,7 @@ func (a *tableActor) handle(env envelope) {
 	}()
 	if env.cmd == nil {
 		a.save()
-		a.close("shutdown", table.Error{Code: table.CodeClosed, Message: "the server is restarting"}, false)
+		a.close("shutdown", table.Error{Code: table.CodeRestarting, Message: "the server is restarting"}, false)
 		return
 	}
 	if d, ok := env.cmd.(table.Disconnect); ok && a.conns[d.Person] != env.client {

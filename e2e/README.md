@@ -23,6 +23,7 @@ protect what you run them on.
 | `layout.mjs` | nine seats on desktop, laptop, tablet and phone screens |
 | `bots.mjs` | adding, playing with and removing bots |
 | `lobby.mjs` | public tables on the home page: listing, order, lock, joining from the list |
+| `restart.mjs` | tables surviving a graceful restart mid-hand and a crash, on SQLite; runs its own server on :8097 |
 
 ## Setup
 

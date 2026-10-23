@@ -25,6 +25,9 @@ Realtime multiplayer poker: Go websocket server (`backend/`) + Next.js client (`
   (`tableActor`) that owns its state and connections: inbox → `Reduce` → arm timers → send →
   save to the `Store` at checkpoints (between hands, and on shutdown). Client goroutines only
   talk to it through the inbox. See `plans/persistence.md`.
+- Stores: memory by default; `DATABASE_URL` picks Postgres or SQLite (`sqlStore`, same SQL for
+  both). Schema changes are new files in `backend/server/migrations/`, never edits to old ones.
+  `TestStores` runs every store, Postgres via testcontainers (skipped without Docker).
 - Clients get `table.ViewFor` and `table.EventsFor`, which hide other players' hole cards.
   Never send the raw state.
 - `web/` is a static export (`output: 'export'`) served by the Go binary from `STATIC_DIR`.

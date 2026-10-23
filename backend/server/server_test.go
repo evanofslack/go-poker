@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -535,7 +536,7 @@ func TestShutdown(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	hub.shutdown(ctx)
-	if e := c.errorMsg(); e.Code != table.CodeClosed || e.Message != "the server is restarting" {
+	if e := c.errorMsg(); e.Code != table.CodeRestarting || e.Message != "the server is restarting" {
 		t.Fatalf("got %+v", e)
 	}
 	if got := openTables(t, store); !slices.Equal(got, []string{"t"}) {
@@ -611,7 +612,14 @@ func (c *crashStore) Save(ctx context.Context, cp Checkpoint) error {
 // TestCrashRestore brings back a table that died mid-hand from before the
 // hand, which is dealt again the same.
 func TestCrashRestore(t *testing.T) {
-	store := &crashStore{Store: newMemStore()}
+	t.Run("memory", func(t *testing.T) { testCrashRestore(t, newMemStore()) })
+	t.Run("sqlite", func(t *testing.T) {
+		testCrashRestore(t, openTestStore(t, "sqlite:"+filepath.Join(t.TempDir(), "poker.db")))
+	})
+}
+
+func testCrashRestore(t *testing.T, saved Store) {
+	store := &crashStore{Store: saved}
 	srv, _ := newTestServerHub(t, store)
 	host := dial(t, srv)
 	host.timeout = 5 * time.Second // the next hand waits NextHandDelay
@@ -634,9 +642,9 @@ func TestCrashRestore(t *testing.T) {
 	})
 	cards := u.View.Players[0].Cards
 	store.cut.Store(true)
-	saved, _ := store.Open(context.Background())
+	open, _ := store.Open(context.Background())
 	var s table.State
-	if json.Unmarshal(saved[0].State, &s); s.Game.InHand() || s.Game.Hands != 1 {
+	if json.Unmarshal(open[0].State, &s); s.Game.InHand() || s.Game.Hands != 1 {
 		t.Fatalf("saved mid-hand, at hand %d", s.Game.Hands)
 	}
 
