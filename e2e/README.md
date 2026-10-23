@@ -22,7 +22,7 @@ protect what you run them on.
 | `history.mjs` | table panel: hands tab, hidden and shown cards, late joiners and reloads |
 | `settings.mjs` | table panel: settings tab, for the host and a player |
 | `ux.mjs` | toasts, reconnecting, the header, leaving |
-| `layout.mjs` | nine seats on desktop, laptop, tablet and phone screens |
+| `layout.mjs` | nine seats on desktop, laptop, tablet and phone screens; six, eight and four players on phones |
 | `bots.mjs` | adding, playing with and removing bots |
 | `lobby.mjs` | public tables on the home page: listing, order, lock, joining from the list |
 | `restart.mjs` | tables surviving a graceful restart mid-hand and a crash, on SQLite; runs its own server on :8097 |
