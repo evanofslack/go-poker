@@ -90,6 +90,34 @@ for (const { p, kind, name } of pages) {
         );
     });
     check(`${kind}: markers clear of the seats`, covered.length === 0, covered.join(", "));
+    // on a phone, no seat's cards cover another seat's name and stack
+    const cardsOver = await p.evaluate(() => {
+        const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+        const seats = [...document.querySelectorAll("[data-seat]")];
+        const plates = seats.flatMap((e) => [...e.querySelectorAll("p.truncate")].map((n) => [e.dataset.seat, n.parentElement.getBoundingClientRect()]));
+        return seats.flatMap((e) =>
+            [...e.querySelectorAll('[role="img"]')].flatMap((c) =>
+                plates.filter(([id, r]) => id !== e.dataset.seat && hit(c.getBoundingClientRect(), r)).map(([id]) => `seat ${e.dataset.seat} cards on seat ${id}`)
+            )
+        );
+    });
+    // on a phone, a bet sits closer to its own seat than to any other
+    if (["phone", "small"].includes(kind)) {
+        check(`${kind}: cards clear of other seats`, cardsOver.length === 0, [...new Set(cardsOver)].join(", "));
+        const astray = await p.evaluate(() => {
+            const mid = (r) => [r.left + r.width / 2, r.top + r.height / 2];
+            const seats = [...document.querySelectorAll("[data-seat]")].map((e) => [e.dataset.seat, mid(e.firstElementChild.getBoundingClientRect())]);
+            return [...document.querySelectorAll("[data-markers]")].flatMap((m) => {
+                const [x, y] = mid(m.getBoundingClientRect());
+                const near = seats.reduce((a, b) => (Math.hypot(b[1][0] - x, b[1][1] - y) < Math.hypot(a[1][0] - x, a[1][1] - y) ? b : a));
+                const own = m.closest("[data-seat]")?.dataset.seat;
+                return near[0] === own ? [] : [`${m.textContent} of seat ${own} nearest seat ${near[0]}`];
+            });
+        });
+        check(`${kind}: bets by their own seat`, astray.length === 0, astray.join(", "));
+        const badges = await p.locator("[data-seat] [data-badges]").count();
+        check(`${kind}: dealer and blinds on the seats`, badges >= 2, `${badges}`);
+    }
     const gap = await footerGap(p, name);
     check(`${kind}: own seat clear of the footer`, gap >= 0, `${gap}px`);
     await shot(p, `lay-1-${kind}-${name}`);

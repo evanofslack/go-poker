@@ -2,7 +2,9 @@ import classNames from "classnames";
 import { useContext } from "react";
 import { AppContext } from "../providers/AppStore";
 import { PlayerView, View } from "../interfaces";
-import { at, markerAt, seatAngle } from "../lib/seats";
+import { at, besideSeat, markerAt, seatAngle } from "../lib/seats";
+import { blind } from "../lib/hands";
+import { phone, useMedia } from "../hooks/useMedia";
 import Seat from "./Seat";
 import Pot from "./Pot";
 import CommunityCards from "./CommunityCards";
@@ -15,14 +17,6 @@ import BuyRequests from "./BuyRequests";
 const seatSize =
     "[--seat-hw:3.5rem] [--seat-hh:2.75rem] sm:[--seat-hw:4.5rem] sm:[--seat-hh:3.4rem] lg:[--seat-hw:5.5rem] lg:[--seat-hh:4.4rem] short:[--seat-hw:5.1rem] short:[--seat-hh:1.4rem]";
 
-// blind labels the small and big blind seats, only preflop when they matter
-function blind(view: View, seat: number) {
-    if (view.street !== "preflop") return "";
-    if (view.sb === seat) return "SB";
-    if (view.bb === seat) return "BB";
-    return "";
-}
-
 // actStyle colors a player's last action by what it was
 function actStyle(act: string) {
     if (act === "fold") return "bg-zinc-600 text-zinc-300";
@@ -33,10 +27,12 @@ function actStyle(act: string) {
 }
 
 // Markers are the dealer button, blind labels and bet in front of a seat, with
-// the last action under them, or above them for seats below the table's middle
-function Markers({ view, player, above }: { view: View; player: PlayerView; above: boolean }) {
-    const dealer = view.running && view.button === player.seat;
-    const label = view.running ? blind(view, player.seat) : "";
+// the last action under them, or above them for seats below the table's middle.
+// On a phone the seat's plate carries the button and blind, so just the bet and
+// action go here.
+function Markers({ view, player, above, badges }: { view: View; player: PlayerView; above: boolean; badges: boolean }) {
+    const dealer = badges && view.running && view.button === player.seat;
+    const label = badges && view.running ? blind(view, player.seat) : "";
     // the player to act is choosing again, and the bet chip shows any amount
     const turn = view.betting && view.toAct === player.seat;
     const act = turn ? "" : (view.acts[player.seat] ?? "");
@@ -79,6 +75,7 @@ function Markers({ view, player, above }: { view: View; player: PlayerView; abov
 
 export default function Table() {
     const { appState } = useContext(AppContext);
+    const onPhone = useMedia(phone);
     const view = appState.view;
     if (!view) return null;
 
@@ -96,16 +93,17 @@ export default function Table() {
                 <TableHint />
                 <BuyRequests />
             </div>
-            {view.players.map((p) => (
-                <div
-                    key={p.seat}
-                    className="absolute z-10 -translate-1/2"
-                    style={markerAt(angle(p.seat))}
-                >
-                    {/* the action goes on the side away from the seat */}
-                    <Markers view={view} player={p} above={Math.sin(angle(p.seat)) > 0.1} />
-                </div>
-            ))}
+            {!onPhone &&
+                view.players.map((p) => (
+                    <div
+                        key={p.seat}
+                        className="absolute z-10 -translate-1/2"
+                        style={markerAt(angle(p.seat))}
+                    >
+                        {/* the action goes on the side away from the seat */}
+                        <Markers view={view} player={p} above={Math.sin(angle(p.seat)) > 0.1} badges />
+                    </div>
+                ))}
             {ids.map((id) => (
                 <div
                     key={id}
@@ -118,6 +116,11 @@ export default function Table() {
                     data-seat={id}
                 >
                     <Seat id={id} player={bySeat.get(id) ?? null} />
+                    {onPhone && bySeat.has(id) && (
+                        <div className="absolute -translate-1/2" style={besideSeat(angle(id))}>
+                            <Markers view={view} player={bySeat.get(id)!} above={Math.sin(angle(id)) > 0.1} badges={false} />
+                        </div>
+                    )}
                 </div>
             ))}
         </div>

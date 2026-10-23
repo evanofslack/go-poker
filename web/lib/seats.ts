@@ -36,3 +36,17 @@ export function at(angle: number, fraction = 1): CSSProperties {
         top: `calc(50% + ${y} * (50% - var(--seat-hh)))`,
     };
 }
+
+// besideSeat places a seat's bet just off the seat, on the side toward the table's centre.
+// It's relative to the seat, so on a phone, where seats crowd the table, the bet stays
+// with its own seat.
+export function besideSeat(angle: number): CSSProperties {
+    // out to the edge of a square, so bets off a seat's corner clear its corner too
+    const m = Math.max(Math.abs(Math.cos(angle)), Math.abs(Math.sin(angle)));
+    const x = (-Math.cos(angle) / m).toFixed(4);
+    const y = (-Math.sin(angle) / m).toFixed(4);
+    return {
+        left: `calc(50% + ${x} * (50% + 1.75rem))`,
+        top: `calc(50% + ${y} * (50% + 1rem))`,
+    };
+}

@@ -85,6 +85,22 @@ function color(card: string, highlight = false) {
     );
 }
 
+// MiniCards stand in for another player's face-down cards on a phone, tucked into
+// the corner of their seat
+export function MiniCards({ count }: { count: number }) {
+    return (
+        <div
+            role="img"
+            aria-label="face-down cards"
+            className="absolute -top-2 right-3 z-20 flex gap-0.5"
+        >
+            {Array.from({ length: count }, (_, i) => (
+                <div key={i} className="h-5 w-3.5 rounded-sm border border-white bg-red-900" />
+            ))}
+        </div>
+    );
+}
+
 export default function Card({ card, placeholder, folded, hidden, highlight }: cardProps) {
     if (placeholder) {
         return (
