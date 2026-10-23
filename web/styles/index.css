@@ -5,6 +5,10 @@
   pick shades ad hoc. Radius scale: rounded-md for controls, rounded-xl for
   seats and panels, rounded-full for chips and pills.
 */
+/* a phone held upright; matches phone in hooks/useMedia.ts */
+@custom-variant phone (@media (orientation: portrait) and (max-width: 639px));
+/* a screen much taller than wide; matches tall in hooks/useMedia.ts */
+@custom-variant tall (@media (max-aspect-ratio: 3/4));
 /* short screens, like a phone on its side; listed last so it wins over sm: and lg: */
 @custom-variant short (@media (max-height: 500px));
 

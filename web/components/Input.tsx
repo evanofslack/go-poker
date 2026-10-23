@@ -8,7 +8,7 @@ import { Pre, owed, preOptions, preStreet, resolvePre } from "../lib/preaction";
 import Button from "./Button";
 import RaiseInput from "./RaiseInput";
 
-const btn = "flex-1 px-2 sm:flex-none sm:px-4 sm:text-xl";
+const btn = "flex-1 px-2 sm:flex-none sm:px-4 sm:text-xl tall:py-3";
 // key hints, drawn after the label so they aren't part of its text
 const hint =
     "pointer-fine:after:ml-2 pointer-fine:after:text-xs pointer-fine:after:font-normal pointer-fine:after:opacity-60";

@@ -66,3 +66,11 @@ export function madeHand(cards: Card[]) {
     if (n[0] === 2) return "pair";
     return "high card";
 }
+
+// blind labels the small and big blind seats, only preflop when they matter
+export function blind(view: View, seat: number) {
+    if (view.street !== "preflop") return "";
+    if (view.sb === seat) return "SB";
+    if (view.bb === seat) return "BB";
+    return "";
+}

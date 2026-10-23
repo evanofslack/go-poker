@@ -33,8 +33,14 @@ export default function GameInfo() {
                 )}
             </p>
             <div className="flex items-center justify-end gap-1">
-                {watching > 0 && <span className="mr-1 shrink-0 whitespace-nowrap">watching {watching} ·</span>}
-                <span className="truncate">
+                {/* a phone has no room for the table's name, which the table menu shows */}
+                {watching > 0 && (
+                    <span className="mr-1 shrink-0 whitespace-nowrap">
+                        watching {watching}
+                        <span className="phone:hidden"> ·</span>
+                    </span>
+                )}
+                <span className="truncate phone:hidden">
                     table <span className="text-muted">{table}</span>
                 </span>
                 {table && (

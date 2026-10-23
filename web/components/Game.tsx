@@ -30,8 +30,10 @@ export default function Game() {
                 <Table />
                 {tableOpen && <TablePanel onClose={() => setTableOpen(false)} />}
             </div>
-            {/* fixed height, so the table doesn't resize as the controls change */}
-            <footer className="relative flex h-16 shrink-0 items-end gap-2 p-2 sm:h-20 sm:p-4">
+            {/* fixed height, so the table doesn't resize as the controls change. On a tall
+                screen it's high enough for the raise controls, which float over the table
+                elsewhere. */}
+            <footer className="relative flex h-16 shrink-0 items-end gap-2 p-2 sm:h-20 sm:p-4 tall:h-28">
                 <ChatLog />
                 <div className="flex min-w-0 flex-1 justify-end">
                     <Input />

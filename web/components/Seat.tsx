@@ -3,13 +3,14 @@ import { AppContext } from "../providers/AppStore";
 import { removeBot, takeSeat } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { PlayerView, View } from "../interfaces/index";
-import Card, { cardSize } from "./Card";
+import Card, { MiniCards, cardSize } from "./Card";
 import BuyIn from "./BuyIn";
 import Dialog from "./Dialog";
 import AddBot from "./AddBot";
 import Countdown from "./Countdown";
 import SeatMenu from "./SeatMenu";
-import { isWinner, madeHand, winningCards, winningHand, winnings } from "../lib/hands";
+import { blind, isWinner, madeHand, winningCards, winningHand, winnings } from "../lib/hands";
+import { phone, useMedia } from "../hooks/useMedia";
 import classNames from "classnames";
 
 const plate =
@@ -94,16 +95,51 @@ type playerSeatProps = {
     host: boolean; // the viewer is the host
 };
 
+// Badges put the dealer button and blind on a phone's seat plate, where there's
+// no room on the felt to set them in front of the seat
+function Badges({ player, view, own }: { player: PlayerView; view: View; own: boolean }) {
+    const dealer = view.running && view.button === player.seat;
+    const label = view.running ? blind(view, player.seat) : "";
+    if (!dealer && !label) return null;
+    return (
+        // your own cards cover the top of your plate and your hand is under it, so
+        // yours go beside it
+        <span
+            className={classNames(
+                "absolute z-20 flex gap-0.5",
+                own ? "top-1/2 right-full mr-1 -translate-y-1/2" : "-top-2 -left-2"
+            )}
+            data-badges
+        >
+            {dealer && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-purple-800 shadow-md">
+                    D
+                </span>
+            )}
+            {label && (
+                <span className="flex h-5 items-center rounded-full bg-zinc-300 px-1.5 text-xs font-bold text-zinc-800 shadow-md">
+                    {label}
+                </span>
+            )}
+        </span>
+    );
+}
+
 function PlayerSeat({ player, view, own, host }: playerSeatProps) {
     const socket = useSocket();
+    const onPhone = useMedia(phone);
     const winning = winningCards(view);
     const bot = player.bot;
+    // on a phone, other players' face-down cards shrink onto the plate, and only
+    // cards you can read, like at showdown, take the full size
+    const mini = onPhone && !own && player.dealt && player.cards.every((c) => !c);
     return (
         <div className="flex flex-col items-center short:flex-row">
             <div
                 className={classNames(
                     "relative z-10 -mb-2 flex gap-0.5 short:-mr-2 short:mb-0",
-                    cardSize.h
+                    cardSize.h,
+                    mini && "hidden"
                 )}
             >
                 {player.dealt &&
@@ -143,6 +179,8 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
                     </span>
                 )}
                 <ResultTag player={player} view={view} own={own} />
+                {onPhone && <Badges player={player} view={view} own={own} />}
+                {mini && player.in && <MiniCards count={player.cards.length} />}
                 {own && <SeatMenu player={player} view={view} />}
                 {bot && host && socket && !view.ended && (
                     // on the top corner, clear of the name, icon and result tag

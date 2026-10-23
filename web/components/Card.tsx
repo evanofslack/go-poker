@@ -64,12 +64,13 @@ function getSuitChar(letter: string) {
     }
 }
 
-// cardSize scales cards down on small screens
+// cardSize scales cards down on small screens. A phone held upright has room for a size
+// up, since other players' face-down cards shrink onto their seats there.
 export const cardSize = {
-    h: "h-14 sm:h-[4.5rem] lg:h-24 short:h-10",
-    box: "w-10 h-14 sm:w-12 sm:h-[4.5rem] lg:w-16 lg:h-24 short:w-7 short:h-10",
+    h: "h-14 sm:h-[4.5rem] lg:h-24 phone:h-[4.5rem] short:h-10",
+    box: "w-10 h-14 sm:w-12 sm:h-[4.5rem] lg:w-16 lg:h-24 phone:w-12 phone:h-[4.5rem] short:w-7 short:h-10",
 };
-const rank = "text-lg sm:text-xl lg:text-3xl short:text-sm";
+const rank = "text-lg sm:text-xl lg:text-3xl phone:text-xl short:text-sm";
 
 function color(card: string, highlight = false) {
     return classNames(
@@ -80,8 +81,24 @@ function color(card: string, highlight = false) {
             "text-green-700": card[1] == "C",
             "text-black": card[1] == "S",
         },
-        "rounded-md border border-zinc-100 shadow-2xl bg-white pt-0.5 px-1 text-2xl sm:text-3xl lg:pt-1 lg:px-2.5 lg:text-5xl short:text-base short:px-0.5 short:pt-0 font-normal flex items-center justify-start flex-col",
+        "rounded-md border border-zinc-100 shadow-2xl bg-white pt-0.5 px-1 text-2xl sm:text-3xl lg:pt-1 lg:px-2.5 lg:text-5xl phone:text-3xl short:text-base short:px-0.5 short:pt-0 font-normal flex items-center justify-start flex-col",
         cardSize.box
+    );
+}
+
+// MiniCards stand in for another player's face-down cards on a phone, tucked into
+// the corner of their seat
+export function MiniCards({ count }: { count: number }) {
+    return (
+        <div
+            role="img"
+            aria-label="face-down cards"
+            className="absolute -top-2 right-3 z-20 flex gap-0.5"
+        >
+            {Array.from({ length: count }, (_, i) => (
+                <div key={i} className="h-5 w-3.5 rounded-sm border border-white bg-red-900" />
+            ))}
+        </div>
     );
 }
 

@@ -10,7 +10,7 @@ export default function CommunityCards() {
 
     const winning = winningCards(view);
     return (
-        <div className="flex flex-row gap-0.5 text-black sm:gap-1">
+        <div className="flex flex-row gap-0.5 text-black sm:gap-1" data-board>
             {[0, 1, 2, 3, 4].map((i) => (
                 <div key={i}>
                     {view.board[i] ? (
