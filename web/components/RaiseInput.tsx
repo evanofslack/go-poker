@@ -6,9 +6,10 @@ type raiseProps = {
     b: Betting;
     onRaise: (to: number) => void;
     onClose: () => void;
+    step: number; // the arrow keys change the amount by this
 };
 
-export default function RaiseInput({ b, onRaise, onClose }: raiseProps) {
+export default function RaiseInput({ b, onRaise, onClose, step }: raiseProps) {
     const [text, setText] = useState(String(b.minTo));
 
     const typed = parseInt(text);
@@ -29,7 +30,15 @@ export default function RaiseInput({ b, onRaise, onClose }: raiseProps) {
                 e.preventDefault();
                 onRaise(amount);
             }}
-            onKeyDown={(e) => e.key === "Escape" && onClose()}
+            onKeyDown={(e) => {
+                if (e.key === "Escape") onClose();
+                // the slider handles its own arrows
+                if ((e.target as HTMLInputElement).type === "range") return;
+                if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setText(String(clampRaise(b, amount + (e.key === "ArrowUp" ? step : -step))));
+                }
+            }}
         >
             {/* the presets and slider float above the footer, so it keeps its height */}
             <div className="absolute right-0 bottom-full left-0 z-40 mb-2 flex flex-col items-center rounded-md border-2 border-line bg-surface px-2 sm:left-auto">

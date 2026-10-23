@@ -8,6 +8,7 @@ protect what you run them on.
 | `session.mjs` | hidden cards, next hand, reload and reconnect, turn timer and grace period |
 | `betting.mjs` | betting controls: labels, presets, raise, the waiting line |
 | `preaction.mjs` | picking an action before your turn: offers, clearing, playing it |
+| `keys.mjs` | keyboard shortcuts, the raise panel's arrows, turning them off |
 | `showdown.mjs` | action tags and the showdown display |
 | `turn.mjs` | turn countdown |
 | `seat.mjs` | seat menu: sit out and in, rebuy, sit out next hand, leave |
