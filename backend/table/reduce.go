@@ -14,6 +14,10 @@ type Result struct {
 	Close   *Close  // the table should close
 	Changed bool    // views need sending again
 	Grace   string  // "reconnected" or "expired" when a disconnected player did either
+
+	// Checkpoint is set when no hand is being played, so the table is worth
+	// saving: a table brought back from it replays nothing half done.
+	Checkpoint bool
 }
 
 // Out is a message for one person, or for everyone when To is empty: an
@@ -76,6 +80,7 @@ func Reduce(s *State, now time.Time, cmd Command) Result {
 		return r.res
 	}
 	r.res.Changed = !r.quiet
+	r.res.Checkpoint = !s.Game.InHand()
 	return r.res
 }
 

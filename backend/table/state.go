@@ -79,9 +79,11 @@ type Act struct {
 	Label  string        `json:"label"` // like "check" or "raise to 80"
 }
 
-// State is a table. Everything in it is serializable.
+// State is a table. Everything in it is serializable. History, Stats and
+// Logs only grow, so they're left out of the JSON and saved as they're added.
 type State struct {
 	Version   int          `json:"version"`
+	ID        string       `json:"id"` // names are reused once a table closes; IDs aren't
 	Name      string       `json:"name"`
 	Settings  Settings     `json:"settings"`
 	Timing    Timing       `json:"timing"`
@@ -101,11 +103,11 @@ type State struct {
 
 	Ledger   []LedgerEntry         `json:"ledger"`
 	Requests map[string]BuyRequest `json:"requests"` // by name
-	History  []HandRecord          `json:"history"`  // the last maxHands hands
+	History  []HandRecord          `json:"-"`        // the last MaxHands hands
 	Current  *HandRecord           `json:"current"`  // the hand being played
-	Stats    []HandStats           `json:"stats"`    // the last maxHands hands
+	Stats    []HandStats           `json:"-"`        // the last MaxHands hands, alongside History
 	Totals   map[string]*Totals    `json:"totals"`   // by name
-	Logs     []Log                 `json:"logs"`     // the last maxLogs lines
+	Logs     []Log                 `json:"-"`        // the last MaxLogs lines
 	LogSeq   int                   `json:"logSeq"`
 	Acts     map[int]Act           `json:"acts"` // by seat
 
@@ -119,6 +121,7 @@ func New(name string, settings Settings, timing Timing, password, creatorIP stri
 	rand.Read(seed[:])
 	s := &State{
 		Version:   Version,
+		ID:        newID(),
 		Name:      name,
 		Settings:  settings,
 		Timing:    timing,
@@ -203,6 +206,12 @@ func checkPassword(hash, password string) bool {
 	}
 	sum := sha256.Sum256(append(salt, password...))
 	return subtle.ConstantTimeCompare([]byte(hex.EncodeToString(sum[:])), []byte(sumHex)) == 1
+}
+
+func newID() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 // newToken is a secret for reclaiming a seat, and the hash the table keeps.

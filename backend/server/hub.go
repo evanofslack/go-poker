@@ -89,26 +89,56 @@ var (
 	errNoTable         = errors.New("table not found")
 )
 
-// restore brings back the tables in the store, as after a restart.
-func (h *Hub) restore() error {
-	saved, err := h.store.Load()
+// restore brings back the open tables in the store, as after a restart. A
+// table saved by an incompatible version is closed instead.
+func (h *Hub) restore(ctx context.Context) error {
+	saved, err := h.store.Open(ctx)
 	if err != nil {
 		return err
 	}
 	now := time.Now()
-	for name, b := range saved {
+	for _, sv := range saved {
 		var s table.State
-		if err := json.Unmarshal(b, &s); err != nil || s.Version != table.Version {
-			slog.Default().Warn("dropping saved table", "table", name, "error", err)
-			h.store.Delete(name)
+		err := json.Unmarshal(sv.State, &s)
+		if err != nil || sv.Version != table.Version || h.tables[s.Name] != nil {
+			slog.Default().Warn("closing saved table", "table", sv.Name, "version", sv.Version, "error", err)
+			if err := h.store.MarkClosed(ctx, sv.ID, "incompatible", now); err != nil {
+				return err
+			}
 			continue
 		}
+		for _, hand := range sv.Hands {
+			s.History = append(s.History, hand.Record)
+			s.Stats = append(s.Stats, hand.Stats)
+		}
+		s.Logs = sv.Logs
 		table.Restore(&s, now)
 		a := newTableActor(h, &s)
-		h.tables[name] = a
+		h.tables[s.Name] = a
 		go a.run()
 	}
 	return nil
+}
+
+// pruneEvery is how often closed tables past retention are deleted.
+const pruneEvery = time.Hour
+
+// prune deletes closed tables older than the retention, now and then every
+// pruneEvery, until ctx is done.
+func (h *Hub) prune(ctx context.Context) {
+	for {
+		n, err := h.store.Prune(ctx, time.Now().Add(-time.Duration(retainDays)*24*time.Hour))
+		if err != nil {
+			slog.Default().Error("prune tables", "error", err)
+		} else if n > 0 {
+			slog.Default().Info("pruned tables", "count", n)
+		}
+		select {
+		case <-time.After(pruneEvery):
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 // createTable makes a table named name for the client at ip.

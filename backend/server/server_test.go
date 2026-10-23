@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -62,9 +63,10 @@ func (m msg) decode(t *testing.T, v any) {
 
 // client is a test connection that keeps what the server sends.
 type client struct {
-	t    *testing.T
-	conn *websocket.Conn
-	msgs chan msg
+	t       *testing.T
+	conn    *websocket.Conn
+	msgs    chan msg
+	timeout time.Duration // how long wait waits
 }
 
 func dial(t *testing.T, srv *httptest.Server) *client {
@@ -74,7 +76,7 @@ func dial(t *testing.T, srv *httptest.Server) *client {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { conn.Close() })
-	c := &client{t, conn, make(chan msg, 1000)}
+	c := &client{t, conn, make(chan msg, 1000), 2 * time.Second}
 	go func() {
 		defer close(c.msgs)
 		for {
@@ -102,10 +104,11 @@ func (c *client) send(msgs ...string) {
 	}
 }
 
-// wait reads messages until one with action passes cond, failing after 2s.
+// wait reads messages until one with action passes cond, failing after
+// c.timeout.
 func (c *client) wait(action string, cond func(msg) bool) msg {
 	c.t.Helper()
-	timeout := time.After(2 * time.Second)
+	timeout := time.After(c.timeout)
 	for {
 		select {
 		case m, ok := <-c.msgs:
@@ -510,6 +513,21 @@ func TestEndedTableCloses(t *testing.T) {
 	waitForTables(t, hub)
 }
 
+// openTables names the tables the store would bring back.
+func openTables(t *testing.T, store Store) []string {
+	t.Helper()
+	saved, err := store.Open(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, s := range saved {
+		names = append(names, s.Name)
+	}
+	slices.Sort(names)
+	return names
+}
+
 func TestShutdown(t *testing.T) {
 	store := newMemStore()
 	srv, hub := newTestServerHub(t, store)
@@ -520,8 +538,29 @@ func TestShutdown(t *testing.T) {
 	if e := c.errorMsg(); e.Code != table.CodeClosed || e.Message != "the server is restarting" {
 		t.Fatalf("got %+v", e)
 	}
-	if saved, _ := store.Load(); saved["t"] == nil {
-		t.Fatal("a shutdown keeps the table in the store")
+	if got := openTables(t, store); !slices.Equal(got, []string{"t"}) {
+		t.Fatalf("a shutdown keeps the table open in the store, got %v", got)
+	}
+}
+
+func TestClosedTablesKept(t *testing.T) {
+	store := newMemStore()
+	srv, hub := newTestServerHub(t, store)
+	c := create(t, srv, "t", "host")
+	c.send(`{"action":"leave-table"}`)
+	waitForTables(t, hub)
+	if got := openTables(t, store); len(got) != 0 {
+		t.Fatalf("open tables %v", got)
+	}
+	// a new table can take the name
+	create(t, srv, "t", "host")
+	eventually(t, func() bool { return len(openTables(t, store)) == 1 }, "the new table isn't saved")
+
+	if n, _ := store.Prune(context.Background(), time.Now().Add(-time.Hour)); n != 0 {
+		t.Fatalf("pruned %d tables closed within retention", n)
+	}
+	if n, _ := store.Prune(context.Background(), time.Now()); n != 1 {
+		t.Fatalf("pruned %d tables, want the closed one", n)
 	}
 }
 
@@ -541,7 +580,7 @@ func TestRestore(t *testing.T) {
 	hub.shutdown(ctx)
 
 	srv2, hub2 := newTestServerHub(t, store)
-	if err := hub2.restore(); err != nil {
+	if err := hub2.restore(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	waitForTables(t, hub2, "t")
@@ -554,6 +593,74 @@ func TestRestore(t *testing.T) {
 	}
 	back.send(`{"action":"player-fold"}`)
 	back.update(func(v table.View) bool { return v.Street == "" && v.Hand == 1 })
+}
+
+// crashStore stops saving once cut, like a server that died.
+type crashStore struct {
+	Store
+	cut atomic.Bool
+}
+
+func (c *crashStore) Save(ctx context.Context, cp Checkpoint) error {
+	if c.cut.Load() {
+		return nil
+	}
+	return c.Store.Save(ctx, cp)
+}
+
+// TestCrashRestore brings back a table that died mid-hand from before the
+// hand, which is dealt again the same.
+func TestCrashRestore(t *testing.T) {
+	store := &crashStore{Store: newMemStore()}
+	srv, _ := newTestServerHub(t, store)
+	host := dial(t, srv)
+	host.timeout = 5 * time.Second // the next hand waits NextHandDelay
+	host.send(`{"action":"create-table","tablename":"t","username":"host","settings":{"nextHandDelay":2000}}`)
+	host.wait(ActionWelcome, nil)
+	host.send(seatMsg(1),
+		`{"action":"add-bot","seat":2,"amount":1000,"name":"bob","level":"easy"}`,
+		`{"action":"start-game"}`)
+	var tok TokenOut
+	host.wait(ActionToken, nil).decode(t, &tok)
+	// fold through the first hand, into the second
+	u := host.update(func(v table.View) bool {
+		if v.Hand == 2 && v.Street != "" {
+			return true
+		}
+		if v.Legal.Turn {
+			host.send(`{"action":"player-fold"}`)
+		}
+		return false
+	})
+	cards := u.View.Players[0].Cards
+	store.cut.Store(true)
+	saved, _ := store.Open(context.Background())
+	var s table.State
+	if json.Unmarshal(saved[0].State, &s); s.Game.InHand() || s.Game.Hands != 1 {
+		t.Fatalf("saved mid-hand, at hand %d", s.Game.Hands)
+	}
+
+	srv2, hub2 := newTestServerHub(t, store.Store)
+	if err := hub2.restore(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	waitForTables(t, hub2, "t")
+	back := dial(t, srv2)
+	back.timeout = 5 * time.Second
+	back.send(`{"action":"join-table","tablename":"t","username":"x","token":"` + tok.Token + `"}`)
+	var w Welcome
+	back.wait(ActionWelcome, nil).decode(t, &w)
+	if w.View.You != 1 || len(w.History) != 1 {
+		t.Fatalf("restored as seat %d with %d hands of history, want 1 of each", w.View.You, len(w.History))
+	}
+	// the deal timer was due before the restart, so hand 2 may already be out
+	v := w.View
+	if v.Hand != 2 || v.Street == "" {
+		v = back.update(func(v table.View) bool { return v.Hand == 2 && v.Street != "" }).View
+	}
+	if v.Players[0].Cards != cards {
+		t.Fatalf("hand 2 dealt %v, then %v", cards, v.Players[0].Cards)
+	}
 }
 
 func TestClientIP(t *testing.T) {

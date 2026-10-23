@@ -28,6 +28,7 @@ type Server struct {
 	hub       *Hub
 	staticDir string
 	ready     atomic.Bool // false once shutdown starts
+	stop      context.CancelFunc
 
 	// serves /metrics on its own address, nil when metrics are off
 	metrics         *http.Server
@@ -47,7 +48,7 @@ func New() (*Server, error) {
 	}
 
 	hub := newHub(newMemStore())
-	if err := hub.restore(); err != nil {
+	if err := hub.restore(context.Background()); err != nil {
 		ln.Close()
 		return nil, err
 	}
@@ -89,6 +90,9 @@ func New() (*Server, error) {
 func (s *Server) Run() <-chan error {
 	go s.hub.run()
 	slog.Default().Info("running websocket hub")
+	ctx, stop := context.WithCancel(context.Background())
+	s.stop = stop
+	go s.hub.prune(ctx)
 
 	errc := make(chan error, 2)
 	go func() {
@@ -113,6 +117,9 @@ func (s *Server) Run() <-chan error {
 // requests.
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.ready.Store(false)
+	if s.stop != nil {
+		s.stop()
+	}
 	s.hub.shutdown(ctx)
 	if s.metrics != nil {
 		s.metrics.Shutdown(ctx)

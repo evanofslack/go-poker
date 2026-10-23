@@ -34,6 +34,13 @@ var (
 	panicsTotal = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "poker_panics_total", Help: "Panics recovered while handling a message.",
 	})
+	saveErrors = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "poker_save_errors_total", Help: "Tables that failed to save.",
+	})
+	saveSeconds = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name: "poker_save_seconds", Help: "How long saving a table took.",
+		Buckets: prometheus.ExponentialBuckets(0.0005, 4, 8),
+	})
 )
 
 // start every series at 0 so rate() works before the first event
@@ -106,6 +113,7 @@ func metricsHandler(h *Hub) http.Handler {
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		hubCollector{h},
 		handsTotal, limitHits, slowClientDrops, tablesClosed, seatGrace, panicsTotal,
+		saveErrors, saveSeconds,
 	)
 	return promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
 }

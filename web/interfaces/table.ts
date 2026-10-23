@@ -76,6 +76,10 @@ export interface HandsPage {
 // source: records.go
 
 /**
+ * MaxHands caps how many hands of history and stats a table keeps in memory.
+ */
+export const MaxHands = 1000;
+/**
  * HandRecord is one hand as it was played. Records keep every player's hole
  * cards, so they only leave the table through viewFor.
  */
