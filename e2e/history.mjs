@@ -1,4 +1,4 @@
-// Hands tab: the hands played, with only your own and shown cards.
+// Hands tab: the hands played, with only your own and shown cards, and mucked hands marked.
 import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
 
 const has = (p, sel, ms = 3000) => p.waitForSelector(sel, { timeout: ms }).then(() => true).catch(() => false);
@@ -52,7 +52,10 @@ for (let i = 0; i < 40 && !(await alice.locator('button[aria-label="hand 2"]').c
 }
 check("the showdown shows up", await has(alice, 'button[aria-label="hand 2"]'));
 check("newest hand starts open", (await hand(alice, 2).locator("button").first().getAttribute("aria-expanded")) === "true");
-check("showdown shows both hands", (await cardsIn(alice, 2)) === 4);
+// checked down, so the loser mucks; a split pot shows both
+const mucked = await hand(alice, 2).locator("text=mucked").count();
+check("the loser mucks", mucked <= 1, mucked);
+check("you see your own cards and the winner's", (await cardsIn(alice, 2)) >= 2);
 const pot = await hand(alice, 2).locator('ul[aria-label="pots"]').innerText();
 check("pot names the hand with its ranks", /pot \d+ · .+, .*(s|high|flush)$/.test(pot.trim()), pot);
 check("streets run to the river", (await hand(alice, 2).locator("p", { hasText: /^river/ }).count()) === 1);
@@ -71,7 +74,7 @@ await carol.click('button:text-is("join")');
 await carol.waitForSelector("text=Open");
 await openHands(carol);
 check("a late joiner gets the hands", await has(carol, "text=2 hands"));
-check("with shown cards", (await cardsIn(carol, 2)) === 4);
+check("with shown cards only", (await cardsIn(carol, 2)) === (mucked ? 2 : 4));
 check("and none from the fold", (await cardsIn(carol, 1)) === 0);
 await carol.check("text=hands I played");
 check("filtering to your hands", await has(carol, "text=you haven't played a hand yet"));
