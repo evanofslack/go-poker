@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,6 +35,10 @@ type tableActor struct {
 	slow   map[*Client]bool   // dropped for not keeping up, waiting to disconnect
 	armed  map[table.Timer]armedTimer
 	closed bool
+
+	// the last hand and log line in the store
+	savedHand int
+	savedLog  int
 }
 
 type armedTimer struct {
@@ -68,6 +73,12 @@ func newTableActor(h *Hub, s *table.State) *tableActor {
 		slow:      map[*Client]bool{},
 		armed:     map[table.Timer]armedTimer{},
 	}
+	if n := len(s.History); n > 0 {
+		a.savedHand = s.History[n-1].Hand
+	}
+	if n := len(s.Logs); n > 0 {
+		a.savedLog = s.Logs[n-1].ID
+	}
 	a.publish()
 	return a
 }
@@ -96,7 +107,8 @@ func (a *tableActor) post(cmd table.Command) {
 	}
 }
 
-// shutdown closes the table for a server restart, keeping it in the store.
+// shutdown saves the table, even mid-hand, and closes it for a server
+// restart.
 func (a *tableActor) shutdown() {
 	a.ask(nil, nil)
 }
@@ -124,6 +136,7 @@ func (a *tableActor) handle(env envelope) {
 		}
 	}()
 	if env.cmd == nil {
+		a.save()
 		a.close("shutdown", table.Error{Code: table.CodeClosed, Message: "the server is restarting"}, false)
 		return
 	}
@@ -151,7 +164,9 @@ func (a *tableActor) handle(env envelope) {
 	}
 	a.metrics(res)
 	a.arm()
-	a.save()
+	if res.Checkpoint {
+		a.save()
+	}
 	a.publish()
 	if res.Close != nil {
 		a.close(res.Close.Reason, table.Error{Code: table.CodeClosed, Message: res.Close.Message}, true)
@@ -318,15 +333,43 @@ func (a *tableActor) arm() {
 	}
 }
 
-// save stores the table, so a disk store could bring it back after a restart.
+// saveTimeout bounds a save, which holds up the table.
+const saveTimeout = 5 * time.Second
+
+// save writes the table to the store with the hands and log lines the store
+// doesn't have yet. A failed save is retried by the next one.
 func (a *tableActor) save() {
-	b, err := json.Marshal(a.state)
+	s := a.state
+	b, err := json.Marshal(s)
 	if err != nil {
 		slog.Default().Error("marshal table", "table", a.name, "error", err)
 		return
 	}
-	if err := a.hub.store.Save(a.name, b); err != nil {
+	c := Checkpoint{ID: s.ID, Name: s.Name, Version: s.Version, State: b, At: time.Now()}
+	for i, h := range s.History {
+		if h.Hand > a.savedHand {
+			c.Hands = append(c.Hands, Hand{h, s.Stats[i]})
+		}
+	}
+	for _, l := range s.Logs {
+		if l.ID > a.savedLog {
+			c.Logs = append(c.Logs, l)
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), saveTimeout)
+	defer cancel()
+	if err := a.hub.store.Save(ctx, c); err != nil {
+		saveErrors.Inc()
 		slog.Default().Error("save table", "table", a.name, "error", err)
+		return
+	}
+	saveSeconds.Observe(time.Since(c.At).Seconds())
+	if n := len(c.Hands); n > 0 {
+		a.savedHand = c.Hands[n-1].Record.Hand
+	}
+	if n := len(c.Logs); n > 0 {
+		a.savedLog = c.Logs[n-1].ID
 	}
 }
 
@@ -338,7 +381,7 @@ func (a *tableActor) publish() {
 }
 
 // close tells everyone why the table is going, stops it and removes it from
-// the hub. forget deletes it from the store; a shutdown keeps it.
+// the hub. forget marks it closed in the store; a shutdown leaves it open.
 func (a *tableActor) close(reason string, why table.Error, forget bool) {
 	msg := marshalOut(why)
 	for _, c := range a.conns {
@@ -350,7 +393,12 @@ func (a *tableActor) close(reason string, why table.Error, forget bool) {
 	a.closed = true
 	a.hub.removeTable(a, reason)
 	if forget {
-		a.hub.store.Delete(a.name)
+		ctx, cancel := context.WithTimeout(context.Background(), saveTimeout)
+		defer cancel()
+		if err := a.hub.store.MarkClosed(ctx, a.state.ID, reason, time.Now()); err != nil {
+			saveErrors.Inc()
+			slog.Default().Error("close table", "table", a.name, "error", err)
+		}
 	}
 	close(a.done)
 }

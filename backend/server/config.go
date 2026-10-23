@@ -16,6 +16,7 @@ var (
 	maxTablesPerIP = 3       // open tables created from one address
 	trustProxy     = false   // take the client address from X-Forwarded-For
 	metricsAddr    = ":2112" // where /metrics is served, empty for off; never the public port
+	retainDays     = 30      // closed tables are kept this long
 
 	timing = table.DefaultTiming // how long tables wait for things
 )
@@ -28,6 +29,7 @@ func loadConfig() {
 	envInt("MAX_CONNS", &maxConns)
 	envInt("MAX_CONNS_PER_IP", &maxConnsPerIP)
 	envInt("MAX_TABLES_PER_IP", &maxTablesPerIP)
+	envInt("RETAIN_DAYS", &retainDays)
 	envDuration("RECONNECT_GRACE", &timing.ReconnectGrace)
 	envDuration("ENDED_TABLE_TTL", &timing.EndedTTL)
 	envDuration("IDLE_TABLE_TIMEOUT", &timing.IdleTimeout)

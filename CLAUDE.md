@@ -19,10 +19,12 @@ Realtime multiplayer poker: Go websocket server (`backend/`) + Next.js client (`
   comes from riverboat's `eval` module.
 - `backend/table/`: one table as a reducer, `Reduce(state, now, cmd) Result`. People, seats,
   host controls, ledger, history, stats, bots. Timers are deadlines in `State.Timers`; the runtime
-  fires them back as `TimerFired`. `State` is plain JSON, so a table can be saved and restored.
+  fires them back as `TimerFired`. `State` is plain JSON, so a table can be saved and restored;
+  History, Stats and Logs are left out of it and saved as they're appended.
 - `backend/server/`: websockets and the runtime. Each table is an actor goroutine
   (`tableActor`) that owns its state and connections: inbox → `Reduce` → arm timers → send →
-  save to the `Store` (in memory for now). Client goroutines only talk to it through the inbox.
+  save to the `Store` at checkpoints (between hands, and on shutdown). Client goroutines only
+  talk to it through the inbox. See `plans/persistence.md`.
 - Clients get `table.ViewFor` and `table.EventsFor`, which hide other players' hole cards.
   Never send the raw state.
 - `web/` is a static export (`output: 'export'`) served by the Go binary from `STATIC_DIR`.

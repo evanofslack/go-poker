@@ -7,8 +7,8 @@ import (
 	"github.com/evanofslack/go-poker/holdem"
 )
 
-// maxHands caps how many hands of history and stats a table keeps.
-const maxHands = 1000
+// MaxHands caps how many hands of history and stats a table keeps in memory.
+const MaxHands = 1000
 
 // handsPerPage is how many hands of history go out at once.
 const handsPerPage = 20
@@ -203,8 +203,8 @@ func (r *reducer) finishHand() {
 	}
 	tally(s.Totals, h)
 	s.History = append(s.History, *h)
-	if len(s.History) > maxHands {
-		s.History = s.History[len(s.History)-maxHands:]
+	if len(s.History) > MaxHands {
+		s.History = s.History[len(s.History)-MaxHands:]
 	}
 
 	st := HandStats{Hand: h.Hand, Started: h.Started, Stacks: map[string]uint{}, Played: h.played(), Won: map[string]uint{}}
@@ -218,8 +218,8 @@ func (r *reducer) finishHand() {
 		}
 	}
 	s.Stats = append(s.Stats, st)
-	if len(s.Stats) > maxHands {
-		s.Stats = s.Stats[len(s.Stats)-maxHands:]
+	if len(s.Stats) > MaxHands {
+		s.Stats = s.Stats[len(s.Stats)-MaxHands:]
 	}
 	r.res.Events = append(r.res.Events, HandDone{Record: *h, Stats: st, Totals: TotalsView(s)})
 }

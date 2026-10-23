@@ -11,9 +11,7 @@ import {
     TableSummary,
     View,
 } from "../interfaces";
-
-// maxHands matches the server's cap
-const maxHands = 1000;
+import { MaxHands } from "../interfaces/table";
 
 const initialState: AppState = {
     messages: [],
@@ -83,7 +81,7 @@ function reducer(state: AppState, action: ACTIONTYPE): AppState {
             const { record, stats, totals } = action.payload;
             return {
                 ...state,
-                hands: [...state.hands, stats].slice(-maxHands),
+                hands: [...state.hands, stats].slice(-MaxHands),
                 totals,
                 history: [...state.history.filter((h) => h.hand !== record.hand), record],
             };

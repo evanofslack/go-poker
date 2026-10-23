@@ -213,11 +213,11 @@ func (r *reducer) log(format string, args ...any) {
 	s.LogSeq++
 	l := Log{ID: s.LogSeq, Message: fmt.Sprintf(format, args...), Time: r.now.UnixMilli()}
 	s.Logs = append(s.Logs, l)
-	if len(s.Logs) > maxLogs {
-		s.Logs = s.Logs[len(s.Logs)-maxLogs:]
+	if len(s.Logs) > MaxLogs {
+		s.Logs = s.Logs[len(s.Logs)-MaxLogs:]
 	}
 	r.res.Events = append(r.res.Events, Logged{l})
 }
 
-// maxLogs caps how many log lines a table keeps for people who join later.
-const maxLogs = 200
+// MaxLogs caps how many log lines a table keeps for people who join later.
+const MaxLogs = 200
