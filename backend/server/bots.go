@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evanofslack/go-poker/bot"
+	"github.com/evanofslack/go-poker/holdem"
 	"github.com/evanofslack/go-poker/poker"
 )
 
@@ -96,14 +97,14 @@ func botMove(t *table, seq int) {
 	}
 
 	// the bot sees only what its player would
-	a := bot.Decide(seat.level, t.game.GeneratePlayerView(pn), pn, t.rng)
+	a := bot.Decide(seat.level, legacyView(t.game.GeneratePlayerView(pn)), int(pn)+1, t.rng)
 	var err error
-	switch a.Kind {
-	case bot.Raise:
-		err = raise(t, pn, a.Amount)
-	case bot.Call:
+	switch a := a.(type) {
+	case holdem.Raise:
+		err = raise(t, pn, a.To-view.Players[pn].Bet)
+	case holdem.Call:
 		err = call(t, pn)
-	case bot.Check:
+	case holdem.Check:
 		err = check(t, pn)
 	default:
 		err = fold(t, pn)
@@ -146,4 +147,24 @@ func (t *table) botLevels() map[string]string {
 		levels[id] = seat.level
 	}
 	return levels
+}
+
+// legacyView is the old engine's view as the bot reads it, seats numbered by
+// player index. It goes with the old engine.
+func legacyView(v *poker.GameView) holdem.View {
+	hv := holdem.View{
+		Config:   holdem.Config{SmallBlind: v.Config.SmallBlind, BigBlind: v.Config.BigBlind},
+		MinRaise: v.MinRaise,
+	}
+	for _, c := range v.CommunityCards {
+		if c != 0 {
+			hv.Board = append(hv.Board, c)
+		}
+	}
+	for i, p := range v.Players {
+		hv.Players = append(hv.Players, holdem.Player{
+			Seat: i + 1, Stack: p.Stack, Bet: p.Bet, Committed: p.TotalBet, In: p.In, Acted: p.Called, Cards: p.Cards,
+		})
+	}
+	return hv
 }

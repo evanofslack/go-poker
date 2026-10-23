@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/alexclewontin/riverboat/eval"
-	"github.com/evanofslack/go-poker/poker"
+	"github.com/evanofslack/go-poker/holdem"
 )
 
 func cards(s ...string) []eval.Card {
@@ -103,19 +103,15 @@ func TestEasyCallsShortStack(t *testing.T) {
 	}
 }
 
-// A view always holds five community cards, zero until dealt, so a bot
-// mustn't count those as board cards.
-func TestSpotSkipsUndealtCards(t *testing.T) {
-	g := poker.NewGame(poker.GameConfig{MaxBuy: 1000, BigBlind: 20, SmallBlind: 10})
-	for i := range 2 {
-		pn := g.AddPlayer()
-		must(t, poker.BuyIn(g, pn, 1000))
-		must(t, poker.ToggleReady(g, pn, 0))
-		must(t, poker.SetSeatID(g, pn, uint(i+1)))
+func TestSpotOf(t *testing.T) {
+	g := holdem.New(holdem.Config{SmallBlind: 10, BigBlind: 20}, [32]byte{})
+	for seat := 1; seat <= 3; seat++ {
+		must(t, g.Sit(seat, 1000))
 	}
-	must(t, g.Start())
-	pn := g.GenerateOmniView().ActionNum
-	if s := spotOf(g.GeneratePlayerView(pn), pn); len(s.board) != 0 {
-		t.Fatalf("preflop board = %v, want none", s.board)
+	_, err := g.StartHand()
+	must(t, err)
+	s := spotOf(g.View(g.ToAct), g.ToAct)
+	if len(s.board) != 0 || s.top != 20 || s.pot != 30 || s.others != 2 || s.bb != 20 || s.hole[0] == 0 {
+		t.Fatalf("preflop spot %+v", s)
 	}
 }
