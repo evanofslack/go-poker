@@ -9,7 +9,7 @@ type cardProps = {
     highlight?: boolean;
 };
 
-function cardToString(card: CardType) {
+function cardToString(c: CardType) {
     // convert int32 cards to a unicode string that we can display directly
 
     // card is the type representing a single laying card. It is 32 bits long, packed according to the following schematic:
@@ -22,12 +22,6 @@ function cardToString(card: CardType) {
     // 	cdhs	= suit of card (bit turned on based on suit of card)
     // 	b 	= bit turned on depending on rank of card
 
-    // opponents cards represented with "?"
-    if (card === "?") {
-        return "?";
-    }
-
-    let c = parseInt(card);
     // bitwise operations to map int32 representation to string representation
     let rank = (c >> 8) & 0x0f;
     let suit = c & 0xf000;
@@ -77,7 +71,7 @@ export const cardSize = {
 };
 const rank = "text-lg sm:text-xl lg:text-3xl short:text-sm";
 
-function color(card: CardType, highlight = false) {
+function color(card: string, highlight = false) {
     return classNames(
         {
             "ring-2 ring-amber-300 lg:ring-4": highlight,
@@ -104,7 +98,7 @@ export default function Card({ card, placeholder, folded, hidden, highlight }: c
     const c = cardToString(card);
     // the server sends 0 for cards this client can't see, which still show face down
     const faceDown = hidden && !folded;
-    if (!faceDown && (c == "2\u0000" || card == "0")) {
+    if (!faceDown && !card) {
         return null;
     }
     if (hidden) {

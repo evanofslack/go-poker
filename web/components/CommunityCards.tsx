@@ -4,38 +4,29 @@ import { winningCards } from "../lib/hands";
 import Card from "./Card";
 
 export default function CommunityCards() {
-    const { appState, dispatch } = useContext(AppContext);
+    const { appState } = useContext(AppContext);
+    const view = appState.view;
+    if (!view) return null;
 
-    const cards = [0, 1, 2, 3, 4];
-
-    if (appState.game?.communityCards) {
-        const winning = winningCards(appState.game);
-        return (
-            <div className="flex flex-row gap-0.5 text-black sm:gap-1">
-                {cards.map((num, i) => (
-                    <div key={i}>
-                        {appState.game?.communityCards[num] ? (
-                            // show dealt card
-                            <Card
-                                card={appState.game.communityCards[num]}
-                                placeholder={false}
-                                folded={false}
-                                hidden={false}
-                                highlight={winning.has(String(appState.game.communityCards[num]))}
-                            />
-                        ) : (
-                            // show placeholder
-                            <Card
-                                card="placeholder"
-                                placeholder={true}
-                                folded={false}
-                                hidden={false}
-                            />
-                        )}
-                    </div>
-                ))}
-            </div>
-        );
-    }
-    return null;
+    const winning = winningCards(view);
+    return (
+        <div className="flex flex-row gap-0.5 text-black sm:gap-1">
+            {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i}>
+                    {view.board[i] ? (
+                        // show dealt card
+                        <Card
+                            card={view.board[i]}
+                            placeholder={false}
+                            folded={false}
+                            hidden={false}
+                            highlight={winning.has(view.board[i])}
+                        />
+                    ) : (
+                        <Card card={0} placeholder={true} folded={false} hidden={false} />
+                    )}
+                </div>
+            ))}
+        </div>
+    );
 }

@@ -1,35 +1,32 @@
-import { Card, Game, Pot } from "../interfaces/index";
-
-const preDeal = 1;
+import { Card, Pot, View } from "../interfaces/index";
 
 // settledPots are the pots awarded in the last hand, shown until the next deal
-export function settledPots(game: Game): Pot[] {
-    if (game.stage !== preDeal) return [];
-    return game.pots.filter((p) => p.winningPlayerNums?.length);
+export function settledPots(view: View): Pot[] {
+    if (view.street !== "") return [];
+    return view.pots.filter((p) => p.winners.length);
 }
 
-export function isWinner(game: Game, position: number) {
-    return settledPots(game).some((p) => p.winningPlayerNums.includes(position));
+export function isWinner(view: View, seat: number) {
+    return settledPots(view).some((p) => p.winners.includes(seat));
 }
 
 // winningCards are the cards that made a winning hand at showdown
-export function winningCards(game: Game) {
-    const pots = settledPots(game).filter((p) => p.hand);
-    return new Set(pots.flatMap((p) => (p.winningHand ?? []).map(String)));
+export function winningCards(view: View) {
+    return new Set(settledPots(view).flatMap((p) => p.cards));
 }
 
-// winningHand names the hand the player at position won with at showdown, like
+// winningHand names the hand the player in seat won with at showdown, like
 // "two pair, kings and sevens", or is empty if they won without showing
-export function winningHand(game: Game, position: number) {
-    const pot = settledPots(game).find((p) => p.hand && p.winningPlayerNums.includes(position));
+export function winningHand(view: View, seat: number) {
+    const pot = settledPots(view).find((p) => p.hand && p.winners.includes(seat));
     return pot?.hand ?? "";
 }
 
-// winnings are the chips the player at position took from the pots last hand
-export function winnings(game: Game, position: number) {
-    return settledPots(game)
-        .filter((p) => p.winningPlayerNums.includes(position))
-        .reduce((sum, p) => sum + Math.floor(p.amount / p.winningPlayerNums.length), 0);
+// winnings are the chips the player in seat took from the pots last hand
+export function winnings(view: View, seat: number) {
+    return settledPots(view)
+        .filter((p) => p.winners.includes(seat))
+        .reduce((sum, p) => sum + Math.floor(p.amount / p.winners.length), 0);
 }
 
 // hasStraight says whether ranks (0 for a deuce to 12 for an ace) hold five in a row,
@@ -47,7 +44,7 @@ function hasStraight(ranks: Set<number>) {
 // madeHand names the best hand in cards, like "two pair". Cards are the server's
 // ints, with the rank in bits 8-11 and the suit in bits 12-15.
 export function madeHand(cards: Card[]) {
-    const cs = cards.filter((c) => c && c !== "?").map(Number);
+    const cs = cards.filter((c) => c);
     if (cs.length < 2) return "";
     const rank = (c: number) => (c >> 8) & 0xf;
     const bySuit = new Map<number, Set<number>>();

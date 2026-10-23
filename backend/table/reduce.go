@@ -36,14 +36,6 @@ type Close struct {
 	Message string
 }
 
-// Error is a command refused. It goes only to whoever sent it.
-type Error struct {
-	Code    string `json:"code,omitempty"` // for errors the client handles
-	Message string `json:"message"`
-}
-
-func (e *Error) Error() string { return e.Message }
-
 var (
 	ErrNeedPassword  = &Error{"password-required", "this table needs a password"}
 	ErrWrongPassword = &Error{"wrong-password", "wrong password"}
@@ -59,28 +51,6 @@ const (
 
 func fail(format string, args ...any) error {
 	return &Error{Message: fmt.Sprintf(format, args...)}
-}
-
-// ChatMessage is a chat line. Name is "system" for the table's own.
-type ChatMessage struct {
-	Name    string `json:"name"`
-	Message string `json:"message"`
-	Time    int64  `json:"time"` // unix ms
-}
-
-// SystemName is who the table's own chat messages are from.
-const SystemName = "system"
-
-// NewToken is the secret that reclaims a person's seat, or empty once they
-// gave it up.
-type NewToken struct {
-	Token string `json:"token"`
-}
-
-// HandsPage is a page of hand history.
-type HandsPage struct {
-	Hands []HandRecord `json:"hands"`
-	More  bool         `json:"more"` // older hands are kept
 }
 
 type reducer struct {
@@ -170,6 +140,10 @@ func (r *reducer) do(cmd Command) error {
 	}
 
 	p := r.s.People[personOf(cmd)]
+	if _, leaving := cmd.(Leave); leaving && p == nil {
+		r.quiet = true // already gone, like after the host removed them
+		return nil
+	}
 	if p == nil {
 		return ErrNoPerson
 	}

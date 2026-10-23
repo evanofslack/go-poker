@@ -221,10 +221,3 @@ func (r *reducer) log(format string, args ...any) {
 
 // maxLogs caps how many log lines a table keeps for people who join later.
 const maxLogs = 200
-
-// Log is a line in the table's log.
-type Log struct {
-	ID      int    `json:"id"`
-	Message string `json:"message"`
-	Time    int64  `json:"time"` // unix ms
-}

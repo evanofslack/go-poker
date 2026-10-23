@@ -3,287 +3,142 @@ package server
 import (
 	"encoding/json"
 
-	"github.com/evanofslack/go-poker/poker"
+	"github.com/evanofslack/go-poker/table"
 )
+
+// The websocket protocol. tygo turns this file into web/interfaces/server.ts;
+// run `just types` after changing it.
 
 // inbound (client) actions
 const (
-	actionCreateTable string = "create-table"
-	actionJoinTable   string = "join-table"
-	actionLeaveTable  string = "leave-table"
-	actionSendMessage string = "send-message"
-	actionTakeSeat    string = "take-seat"
-	actionStartGame   string = "start-game"
-	actionPlayerCall  string = "player-call"
-	actionPlayerCheck string = "player-check"
-	actionPlayerRaise string = "player-raise"
-	actionPlayerFold  string = "player-fold"
-	actionLeaveSeat   string = "leave-seat"
-	actionSitOut      string = "sit-out"
-	actionRebuy       string = "rebuy"
-	actionAddBot      string = "add-bot"
-	actionRemoveBot   string = "remove-bot"
-	actionListTables  string = "list-tables" // works before joining a table
-	actionGetHands    string = "get-hands"
+	ActionCreateTable = "create-table"
+	ActionJoinTable   = "join-table"
+	ActionLeaveTable  = "leave-table"
+	ActionListTables  = "list-tables" // works before joining a table
+	ActionSendMessage = "send-message"
+	ActionTakeSeat    = "take-seat"
+	ActionStartGame   = "start-game"
+	ActionCheck       = "player-check"
+	ActionCall        = "player-call"
+	ActionRaise       = "player-raise"
+	ActionFold        = "player-fold"
+	ActionLeaveSeat   = "leave-seat"
+	ActionSitOut      = "sit-out"
+	ActionRebuy       = "rebuy"
+	ActionGetHands    = "get-hands"
 
 	// host only
-	actionMakeHost        string = "make-host"
-	actionSetBanker       string = "set-banker"
-	actionMoveToSpectator string = "move-to-spectator"
-	actionRemovePlayer    string = "remove-player"
-	actionSitOutPlayer    string = "sit-out-player"
-	actionAdjustChips     string = "adjust-chips"
-	actionPauseGame       string = "pause-game"
-	actionResumeGame      string = "resume-game"
-	actionEndSession      string = "end-session"
-	actionApproveBuy      string = "approve-buy-in"
-	actionDenyBuy         string = "deny-buy-in"
+	ActionAddBot          = "add-bot"
+	ActionRemoveBot       = "remove-bot"
+	ActionMakeHost        = "make-host"
+	ActionSetBanker       = "set-banker"
+	ActionMoveToSpectator = "move-to-spectator"
+	ActionRemovePlayer    = "remove-player"
+	ActionSitOutPlayer    = "sit-out-player"
+	ActionApproveBuy      = "approve-buy-in"
+	ActionDenyBuy         = "deny-buy-in"
+	ActionAdjustChips     = "adjust-chips"
+	ActionPauseGame       = "pause-game"
+	ActionResumeGame      = "resume-game"
+	ActionEndSession      = "end-session"
 )
 
-type base struct {
-	// allows for correctly identifying messages
+// Inbound is every message a client sends. Action says which fields are used.
+type Inbound struct {
 	Action string `json:"action"`
-}
 
-// joinTable is used for both actionCreateTable and actionJoinTable
-type joinTable struct {
-	base             // actionCreateTable, actionJoinTable
-	Tablename string `json:"tablename"`
-	Username  string `json:"username"`
-	Token     string `json:"token"`    // optional, reclaims a seat after a disconnect
-	Password  string `json:"password"` // sets the table's password on create, else checked
+	// create-table and join-table
+	Tablename string          `json:"tablename,omitempty"` // also leave-table
+	Username  string          `json:"username,omitempty"`
+	Token     string          `json:"token,omitempty"`                                     // reclaims a seat after a disconnect
+	Password  string          `json:"password,omitempty"`                                  // sets the table's password on create, else checked
+	Settings  json.RawMessage `json:"settings,omitempty" tstype:"Partial<table.Settings>"` // create-table; missing fields get their default
 
-	// create-table only, a tableSettings. Missing fields get their default.
-	Settings json.RawMessage `json:"settings"`
-}
-
-type leaveTable struct {
-	base             // actionLeaveTable
-	Tablename string `json:"tablename"`
-}
-
-type sendMessage struct {
-	base            // actionSendMessage
-	Username string `json:"username"` // ignored, the server uses the client's username
-	Message  string `json:"message"`
-}
-
-type takeSeat struct {
-	base            // actionTakeSeat
-	Username string `json:"username"` // ignored, the server uses the client's username
-	SeatID   uint   `json:"seatID"`
-	BuyIn    uint   `json:"buyIn"`
-}
-
-type startGame struct {
-	base // actionStartGame
-}
-
-type playerCall struct {
-	base // actionPlayerCall
-}
-
-type playerCheck struct {
-	base // actionPlayerCheck
-}
-
-type playerRaise struct {
-	base        // actionPlayerRaise
-	Amount uint `json:"amount"`
-}
-
-type playerFold struct {
-	base // actionPlayerFold
-}
-
-type leaveSeatMsg struct {
-	base // actionLeaveSeat
-}
-
-// sitOut toggles sitting out: right away between hands, else after the hand
-type sitOut struct {
-	base // actionSitOut
-}
-
-type rebuy struct {
-	base        // actionRebuy
-	Amount uint `json:"amount"`
-}
-
-// addBot is the host sitting a bot down
-type addBot struct {
-	base          // actionAddBot
-	SeatID uint   `json:"seatID"`
-	BuyIn  uint   `json:"buyIn"`
-	Name   string `json:"name"`
-	Level  string `json:"level"`
-}
-
-// removeBot is the host taking the bot in a seat out of the game
-type removeBot struct {
-	base        // actionRemoveBot
-	SeatID uint `json:"seatID"`
-}
-
-// playerTarget names who a host action is for: actionMakeHost,
-// actionSetBanker, actionMoveToSpectator, actionRemovePlayer, actionSitOutPlayer
-type playerTarget struct {
-	base
-	Name string `json:"name"`
-}
-
-type adjustChips struct {
-	base          // actionAdjustChips
-	Name   string `json:"name"`
-	Amount int64  `json:"amount"` // chips to add, or take away when negative
-	Reason string `json:"reason"` // optional, shown in the log
-}
-
-// pauseGame, resumeGame and endSession carry nothing: actionPauseGame,
-// actionResumeGame, actionEndSession
-type sessionAction struct {
-	base
+	Message string `json:"message,omitempty"` // send-message
+	Seat    int    `json:"seat,omitempty"`    // take-seat, add-bot, remove-bot
+	Amount  int64  `json:"amount,omitempty"`  // take-seat and add-bot buy-in, rebuy, adjust-chips
+	To      uint   `json:"to,omitempty"`      // player-raise: the whole bet this street
+	Before  int    `json:"before,omitempty"`  // get-hands: hands before this number
+	Name    string `json:"name,omitempty"`    // add-bot, and the host actions that name a player
+	Level   string `json:"level,omitempty"`   // add-bot
+	Reason  string `json:"reason,omitempty"`  // adjust-chips
 }
 
 // outbound (server) actions
 const (
-	actionNewMessage       string = "new-message"
-	actionNewLog           string = "new-log"
-	actionUpdateGame       string = "update-game"
-	actionUpdatePlayerUUID string = "update-player-uuid"
-	actionError            string = "error"
-	actionJoinedTable      string = "joined-table"
-	actionUpdateStats      string = "update-stats"
-	actionTables           string = "tables"
-	actionHandHistory      string = "hand-history"
-	actionLogHistory       string = "log-history"
+	ActionJoined      = "joined-table"
+	ActionWelcome     = "welcome"
+	ActionTableUpdate = "table-update"
+	ActionHandHistory = "hand-history"
+	ActionChat        = "chat"
+	ActionToken       = "token"
+	ActionError       = "error"
+	ActionTables      = "tables"
 )
 
-type newMessage struct {
-	base             // actionNewMessage
-	Id        string `json:"uuid"`
-	Message   string `json:"message"`
-	Username  string `json:"username"`
-	Timestamp string `json:"timestamp"`
-}
-
-type newLog struct {
-	base             // actionNewLog
-	Id        string `json:"uuid"`
-	Message   string `json:"message"`
-	Timestamp string `json:"timestamp"`
-}
-
-// logHistory carries the log lines a table has kept, sent on joining
-type logHistory struct {
-	base          // actionLogHistory
-	Logs []newLog `json:"logs"`
-}
-
-type updateGame struct {
-	base                 // actionUpdateGame
-	Game *poker.GameView `json:"game"`
-	Host string          `json:"host"` // name of the host
-
-	// milliseconds until the player to act times out, 0 when nobody is betting
-	TurnEndsIn int64 `json:"turnEndsIn"`
-
-	// whether this recipient asked to sit out once the current hand ends
-	SitOutNext bool `json:"sitOutNext"`
-
-	Settings    tableSettings `json:"settings"`
-	HasPassword bool          `json:"hasPassword"` // never the password itself
-
-	Paused   bool  `json:"paused"`   // no new hands are dealt
-	Ending   bool  `json:"ending"`   // the session ends after this hand
-	Ended    bool  `json:"ended"`    // the session is over and the ledger final
-	ClosesIn int64 `json:"closesIn"` // milliseconds until an ended table closes
-
-	// names of the clients at the table without a seat
-	BuyRequests []buyRequest `json:"buyRequests"` // waiting for the host, oldest first
-	Watchers    []string     `json:"watchers"`
-
-	// names of seated players who dropped and may still reconnect
-	Disconnected []string `json:"disconnected"`
-
-	Bots map[string]string `json:"bots"` // level of each bot, by uuid
-
-	// the hand that won each pot, like "two pair, kings and sevens", by
-	// game.pots index; empty for a pot won without a showdown
-	PotHands []string `json:"potHands"`
-
-	Ledger ledgerView `json:"ledger"`
-
-	// each player's action this street, by uuid
-	Acts map[string]string `json:"acts"`
-}
-
-// joinedTable confirms a create-table or join-table
-type joinedTable struct {
-	base             // actionJoinedTable
+// Joined confirms a create-table or join-table.
+type Joined struct {
+	Action    string `json:"action"`
 	Tablename string `json:"tablename"`
 	Username  string `json:"username"`
-	Uuid      string `json:"uuid"`
+	ID        string `json:"id"`
 	Password  string `json:"password,omitempty"` // only to this client, so it can share invite links
 }
 
-// errorMessage tells one client why its action was rejected
-type errorMessage struct {
-	base             // actionError
-	Code      string `json:"code,omitempty"` // for errors the client handles, like errorCodes
-	Message   string `json:"message"`
-	Timestamp string `json:"timestamp"`
+// Welcome follows Joined with the table so far.
+type Welcome struct {
+	Action  string                  `json:"action"`
+	View    table.View              `json:"view"`
+	Logs    []table.Log             `json:"logs"`
+	Stats   []table.HandStats       `json:"stats"`  // every hand the table keeps
+	Totals  map[string]table.Totals `json:"totals"` // by name
+	History []table.HandRecord      `json:"history"`
+	More    bool                    `json:"more"` // the table keeps older hands than History's first
 }
 
-type updatePlayerUUID struct {
-	base         //actionUpdatePlayerUUID
-	Uuid  string `json:"uuid"`
-	Token string `json:"token"` // secret for reclaiming the seat, only sent to its player
+// TableUpdate is the table after something changed, and what happened, both
+// as the receiver may see them.
+type TableUpdate struct {
+	Action string       `json:"action"`
+	View   table.View   `json:"view"`
+	Events []EventEnvel `json:"events"`
 }
 
-// updateStats carries hand snapshots: all the table keeps when Full (sent on
-// joining), else the hand that just ended.
-type updateStats struct {
-	base
-	Hands  []handStats             `json:"hands"`
-	Full   bool                    `json:"full"`
-	Totals map[string]playerTotals `json:"totals"` // everyone's, every time
+// EventEnvel is an event with its type: "log", "hand-done", or one of
+// holdem's events.
+type EventEnvel struct {
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data" tstype:"unknown"`
 }
 
-// getHands asks for the hands played before hand number Before
-type getHands struct {
-	base       // actionGetHands
-	Before int `json:"before"`
+// HandHistory answers get-hands.
+type HandHistory struct {
+	Action string             `json:"action"`
+	Hands  []table.HandRecord `json:"hands"`
+	More   bool               `json:"more"`
 }
 
-// handHistory carries hands, oldest first: the latest when Full (sent on
-// joining, replacing what the client has), else ones to add. More says the
-// table keeps hands older than the first.
-type handHistory struct {
-	base
-	Hands []handRecord `json:"hands"`
-	Full  bool         `json:"full"`
-	More  bool         `json:"more"`
+type ChatOut struct {
+	Action            string `json:"action"`
+	table.ChatMessage `tstype:",extends"`
 }
 
-// tableSummary is what the home page shows of a public table
-type tableSummary struct {
-	Name        string `json:"name"`
-	SmallBlind  uint   `json:"sb"`
-	BigBlind    uint   `json:"bb"`
-	MinBuy      uint   `json:"minBuy"`
-	MaxBuy      uint   `json:"maxBuy"`
-	Seats       uint   `json:"seats"`
-	Players     uint   `json:"players"`  // seated, bots included
-	Bots        uint   `json:"bots"`     // seated bots
-	Watchers    uint   `json:"watchers"` // connected without a seat
-	Running     bool   `json:"running"`
-	Paused      bool   `json:"paused"`
-	HasPassword bool   `json:"hasPassword"`
+// TokenOut is the secret for reclaiming a seat, only sent to its player.
+// Empty when the seat is given up.
+type TokenOut struct {
+	Action string `json:"action"`
+	Token  string `json:"token"`
 }
 
-// tablesMessage answers actionListTables
-type tablesMessage struct {
-	base                  // actionTables
-	Tables []tableSummary `json:"tables"`
+// ErrorOut tells one client why its action was rejected.
+type ErrorOut struct {
+	Action  string `json:"action"`
+	Code    string `json:"code,omitempty"` // "password-required", "wrong-password", "removed", "closed"
+	Message string `json:"message"`
+}
+
+// Tables answers list-tables with the public tables, best to join first.
+type Tables struct {
+	Action string          `json:"action"`
+	Tables []table.Summary `json:"tables"`
 }

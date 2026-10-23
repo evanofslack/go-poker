@@ -6,19 +6,18 @@ import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
 const names = ["harper", "eric", "yasmin", "robert", "gus", "rishi", "venetia", "kenny", "daria", "sweetpea", "henry", "jesse"];
 
 function record(page) {
-    const rec = { games: [], logs: [], errors: [], bots: {}, hands: [] };
+    const rec = { games: [], logs: [], errors: [], hands: [] };
     page.on("websocket", (ws) => {
         ws.on("framereceived", ({ payload }) => {
             try {
                 const m = JSON.parse(payload);
-                if (m.action === "update-game") {
-                    rec.games.push(m.game);
-                    rec.bots = m.bots;
+                if (m.action === "welcome" || m.action === "table-update") rec.games.push(m.view);
+                for (const e of m.events ?? []) {
+                    if (e.type === "log") rec.logs.push(e.data.log.message);
+                    // hands as they end
+                    if (e.type === "hand-done") rec.hands.push(e.data.record);
                 }
-                if (m.action === "new-log") rec.logs.push(m.message);
                 if (m.action === "error") rec.errors.push(m.message);
-                // hands as they end; the backlog on joining is full
-                if (m.action === "hand-history" && !m.full) rec.hands.push(...m.hands);
             } catch {}
         });
     });
@@ -70,7 +69,8 @@ check("suggested name skips taken ones", second !== "harper", second);
 await alice.click('label:has-text("easy")');
 await alice.click('button:text-is("add bot")');
 await waitFor(() => lastGame(aRec)?.players.length === 3, 3000, "second bot");
-check("server sends each bot's level", JSON.stringify(Object.values(aRec.bots).sort()) === '["easy","medium"]', JSON.stringify(aRec.bots));
+const levels = () => (lastGame(aRec)?.players ?? []).map((p) => p.bot).filter(Boolean).sort();
+check("server sends each bot's level", JSON.stringify(levels()) === '["easy","medium"]', JSON.stringify(levels()));
 check("easy bot shows its level on hover", await alice.locator('[data-seat] [title="easy bot"]').count() === 1);
 check("seats don't spell out bot levels", await alice.locator("[data-seat] >> text=/(easy|medium|hard) bot/").count() === 0);
 
@@ -131,8 +131,8 @@ check(
 await shot(alice, "bots-2-hand");
 
 await alice.click('button[aria-label="remove harper"]');
-await waitFor(() => !lastGame(aRec)?.players.some((p) => p.username === "harper"), 10000, "harper removed");
-check("host removes a bot", !lastGame(aRec)?.players.some((p) => p.username === "harper"));
+await waitFor(() => !lastGame(aRec)?.players.some((p) => p.name === "harper"), 10000, "harper removed");
+check("host removes a bot", !lastGame(aRec)?.players.some((p) => p.name === "harper"));
 
 // a host without a seat runs a game of only bots
 const bob = await (await browser.newContext()).newPage();
@@ -147,7 +147,7 @@ for (const seat of ["1", "2"]) {
 await bob.click('button:text-is("start")');
 // bots think 1-2s per move, streets pause 1s and hands are 5s apart, so two hands take over a minute
 check("bots-only game plays hands", await waitFor(() => handsWon(bRec) >= 2, 90000, "two bot hands"));
-check("spectating host sees no bot cards mid-hand", bRec.games.filter((g) => g.betting && g.stage > 1).every((g) => g.players.every((p) => p.cards[0] === 0) || g.players.every((p) => !p.in || p.stack === 0)));
+check("spectating host sees no bot cards mid-hand", bRec.games.filter((g) => g.betting && g.street !== "preflop").every((g) => g.players.every((p) => p.cards[0] === 0) || g.players.every((p) => !p.in || p.stack === 0)));
 await shot(bob, "bots-3-alone");
 
 check("no errors", aRec.errors.length === 0 && bRec.errors.length === 0, JSON.stringify([...aRec.errors, ...bRec.errors]));

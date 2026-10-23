@@ -26,7 +26,7 @@ function savedTab(host: boolean): tab {
 // while it's open.
 export default function TablePanel({ onClose }: { onClose: () => void }) {
     const { appState } = useContext(AppContext);
-    const game = appState.game;
+    const game = appState.view;
     const host = !!game && game.host === appState.username && !game.ended;
     const [picked, setTab] = useState<tab>(() => savedTab(host));
     // the host tab goes when you stop being host or the session ends

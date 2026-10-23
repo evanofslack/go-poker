@@ -5,11 +5,13 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/evanofslack/go-poker/table"
 )
 
 func TestMetricsHandler(t *testing.T) {
-	hub := newHub()
-	if _, err := hub.joinTable(newClient(nil, hub, "1.1.1.1"), "a", "p", "", "", true, defaultSettings); err != nil {
+	hub := newHub(newMemStore())
+	if _, err := hub.createTable("a", "1.1.1.1", "", table.DefaultSettings); err != nil {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(metricsHandler(hub))

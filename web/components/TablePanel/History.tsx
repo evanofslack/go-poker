@@ -2,7 +2,10 @@ import { useContext, useState } from "react";
 import classNames from "classnames";
 import { getHands } from "../../actions/actions";
 import { useSocket } from "../../hooks/useSocket";
-import { Card, HandRecord } from "../../interfaces/index";
+import { HandRecord } from "../../interfaces/index";
+
+// Card is a card as hand history spells it, like "Ks"
+type Card = string;
 import { actionText, netText, streets, winnersText } from "../../lib/history";
 import { AppContext } from "../../providers/AppStore";
 

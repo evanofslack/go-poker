@@ -9,12 +9,16 @@ const views = {
     small: { viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true },
     landscape: { viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true },
 };
-// gap between the bottom of name's seat plate and the footer's controls, negative on overlap
+// gap between the bottom of name's seat plate and the footer's controls below it, negative on
+// overlap. Controls off to the side of the plate, like the raise presets on a wide screen, don't count.
 const footerGap = (p, name) =>
     p.evaluate((name) => {
-        const plate = [...document.querySelectorAll("p.truncate")].find((e) => e.textContent === name).parentElement;
-        const controls = [...document.querySelectorAll("footer button, footer input")].map((e) => e.getBoundingClientRect().top);
-        return Math.min(...controls) - plate.getBoundingClientRect().bottom;
+        const plate = [...document.querySelectorAll("p.truncate")].find((e) => e.textContent === name).parentElement.getBoundingClientRect();
+        const controls = [...document.querySelectorAll("footer button, footer input")]
+            .map((e) => e.getBoundingClientRect())
+            .filter((r) => r.left < plate.right && r.right > plate.left)
+            .map((r) => r.top);
+        return Math.min(Infinity, ...controls) - plate.bottom;
     }, name);
 
 const names = ["alice", "bob", "carol", "dave", "erin", "frank", "grace", "heidi", "ivan"];

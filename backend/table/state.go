@@ -10,8 +10,6 @@ import (
 	"crypto/subtle"
 	"encoding/binary"
 	"encoding/hex"
-	"errors"
-	"fmt"
 	mrand "math/rand/v2"
 	"strings"
 	"time"
@@ -21,63 +19,6 @@ import (
 
 // Version is the version of State, for loading saved tables.
 const Version = 1
-
-// Settings are picked by the host when creating a table, and fixed after.
-// Buy-ins are in chips, times in milliseconds.
-type Settings struct {
-	Seats         uint `json:"seats"`
-	SmallBlind    uint `json:"sb"`
-	BigBlind      uint `json:"bb"`
-	MinBuy        uint `json:"minBuy"`
-	MaxBuy        uint `json:"maxBuy"`
-	TurnTime      uint `json:"turnTime"`      // time to act before checking or folding for you, 0 for no limit
-	NextHandDelay uint `json:"nextHandDelay"` // pause after a hand before dealing the next
-	Public        bool `json:"public"`        // listed on the home page
-	ApproveRebuys bool `json:"approveRebuys"` // rebuys, and sitting back down, wait for the host
-}
-
-// DefaultSettings are used for anything create-table leaves out.
-var DefaultSettings = Settings{
-	Seats:         8,
-	SmallBlind:    10,
-	BigBlind:      20,
-	MinBuy:        1000,
-	MaxBuy:        4000,
-	TurnTime:      30000,
-	NextHandDelay: 5000,
-}
-
-// settings limits, mirrored by the create table form
-const (
-	maxSeats         = 9
-	maxBigBlind      = 1_000_000
-	maxBuyInBB       = 1000 // max buy-in, in big blinds
-	minTurnTime      = 10_000
-	maxTurnTime      = 300_000
-	minNextHandDelay = 2000
-	maxNextHandDelay = 15_000
-)
-
-// Validate returns why s can't be used for a new table, if it can't.
-func (s Settings) Validate() error {
-	switch {
-	case s.Seats < 2 || s.Seats > maxSeats:
-		return fmt.Errorf("seats must be between 2 and %d", maxSeats)
-	case s.SmallBlind < 1 || s.SmallBlind > s.BigBlind:
-		return errors.New("small blind must be between 1 and the big blind")
-	case s.BigBlind > maxBigBlind:
-		return fmt.Errorf("big blind can't be more than %d", maxBigBlind)
-	case s.MinBuy < s.BigBlind || s.MinBuy > s.MaxBuy:
-		return errors.New("min buy-in must be between 1 big blind and the max buy-in")
-	case s.MaxBuy > maxBuyInBB*s.BigBlind:
-		return fmt.Errorf("max buy-in can't be more than %d big blinds", maxBuyInBB)
-	case s.TurnTime != 0 && (s.TurnTime < minTurnTime || s.TurnTime > maxTurnTime):
-		return fmt.Errorf("turn timer must be off or between %d and %d seconds", minTurnTime/1000, maxTurnTime/1000)
-	case s.NextHandDelay < minNextHandDelay || s.NextHandDelay > maxNextHandDelay:
-		return fmt.Errorf("next hand delay must be between %d and %d seconds", minNextHandDelay/1000, maxNextHandDelay/1000)
-	}
-	return nil
-}
 
 // Timing is how long the table waits for things. Tests shorten it.
 type Timing struct {
@@ -275,4 +216,21 @@ func newToken() (token, hash string) {
 func hashToken(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
+}
+
+// Restore readies a table loaded from storage after a restart. Nobody is
+// connected anymore: seated people get the reconnect grace and watchers are
+// gone. The player to act gets a fresh turn.
+func Restore(s *State, now time.Time) {
+	for id, p := range s.People {
+		if p.Seat == 0 {
+			delete(s.People, id)
+			continue
+		}
+		p.Connected = false
+		s.Timers[graceTimer(id)] = now.Add(s.Timing.ReconnectGrace)
+	}
+	if _, ok := s.Timers[TimerTurn]; ok {
+		s.Timers[TimerTurn] = now.Add(time.Duration(s.Settings.TurnTime) * time.Millisecond)
+	}
 }

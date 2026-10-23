@@ -1,0 +1,33 @@
+# go tool tygo generate (just types): the websocket protocol for the web client
+packages:
+  - path: "github.com/evanofslack/go-poker/holdem"
+    output_path: "../web/interfaces/holdem.ts"
+    include_files: [holdem.go, events.go, betting.go, view.go]
+    type_mappings:
+      eval.Card: "number"
+  - path: "github.com/evanofslack/go-poker/table"
+    output_path: "../web/interfaces/table.ts"
+    include_files: [settings.go, view.go, out.go, records.go, stats.go, ledger.go]
+    frontmatter: |
+      import type * as holdem from "./holdem";
+    type_mappings:
+      time.Time: "string"
+      holdem.Card: "number"
+      holdem.Street: "holdem.Street"
+      holdem.Pot: "holdem.Pot"
+      holdem.Legal: "holdem.Legal"
+      holdem.Player: "holdem.Player"
+      holdem.Event: "unknown"
+  - path: "github.com/evanofslack/go-poker/server"
+    output_path: "../web/interfaces/server.ts"
+    include_files: [messages.go]
+    frontmatter: |
+      import type * as table from "./table";
+    type_mappings:
+      table.View: "table.View"
+      table.Log: "table.Log"
+      table.HandStats: "table.HandStats"
+      table.Totals: "table.Totals"
+      table.HandRecord: "table.HandRecord"
+      table.Summary: "table.Summary"
+      table.ChatMessage: "table.ChatMessage"

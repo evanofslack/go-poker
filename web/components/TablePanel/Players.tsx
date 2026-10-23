@@ -9,7 +9,7 @@ import ManagePlayer from "./ManagePlayer";
 // each settles up with the banker
 export default function Players() {
     const { appState, dispatch } = useContext(AppContext);
-    const game = appState.game;
+    const game = appState.view;
     const [managing, setManaging] = useState<string | null>(null);
     if (!game) return null;
     const { banker, balance } = game.ledger;

@@ -7,13 +7,22 @@ import (
 	"github.com/evanofslack/go-poker/holdem"
 )
 
+// BuyRequest is a rebuy, or a returning player sitting back down, waiting for
+// the host on a table that approves rebuys.
+type BuyRequest struct {
+	Name   string    `json:"name"`
+	Amount uint      `json:"amount"`
+	Seat   int       `json:"seat"` // the seat asked for, 0 to rebuy at their seat
+	At     time.Time `json:"at"`   // when it was asked, for ordering
+}
+
 // PlayerView is a seat as everyone sees it.
 type PlayerView struct {
-	holdem.Player
-	Name         string `json:"name"`
-	Bot          string `json:"bot"`          // level, empty for a person
-	Disconnected bool   `json:"disconnected"` // may still reconnect
-	Leaving      bool   `json:"leaving"`
+	holdem.Player `tstype:",extends"`
+	Name          string `json:"name"`
+	Bot           string `json:"bot"`          // level, empty for a person
+	Disconnected  bool   `json:"disconnected"` // may still reconnect
+	Leaving       bool   `json:"leaving"`
 }
 
 // View is the table as one person sees it.

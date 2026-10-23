@@ -27,6 +27,9 @@ jobs:
       - name: vet
         run: go vet ./...
 
+      - name: generated types
+        run: ./types-current.sh
+
       - name: test
         run: go test -race ./...
 

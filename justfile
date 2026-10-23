@@ -28,6 +28,10 @@ serve: install
 fmt:
     cd backend && gofmt -w .
 
+# generate the web's protocol types from the go code
+types:
+    cd backend && go tool tygo generate
+
 # run go tests
 test:
     cd backend && go test -race ./...
@@ -42,7 +46,8 @@ e2e *scripts: install
     (cd web && npm run build)
     bin="$(mktemp -d)/go-poker"
     (cd backend && go build -o "$bin" ./cmd/go-poker)
-    PORT=8099 STATIC_DIR=web/out "$bin" 2>/dev/null &
+    # every browser connects from one address; seated players' tables outlive a script by the reconnect grace
+    PORT=8099 STATIC_DIR=web/out MAX_TABLES_PER_IP=100 "$bin" 2>/dev/null &
     server=$!
     trap 'kill $server' EXIT
     for _ in $(seq 50); do curl -sf localhost:8099 >/dev/null && break; sleep 0.2; done
@@ -58,6 +63,7 @@ e2e *scripts: install
 check: install
     cd backend && test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
     cd backend && go vet ./...
+    cd backend && ./types-current.sh
     cd backend && go test -race ./...
     cd web && npm run type-check
     cd web && npm run build

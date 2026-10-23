@@ -17,8 +17,8 @@ export default function Chat() {
     const handleClick = useCallback(
         (e: { preventDefault(): void }) => {
             e.preventDefault();
-            if (socket && appState.username && inputValue != "") {
-                sendMessage(socket, appState.username, inputValue);
+            if (socket && inputValue != "") {
+                sendMessage(socket, inputValue);
             }
             setInputValue("");
         },
@@ -52,7 +52,7 @@ export default function Chat() {
                         key={index}
                         name={message.name}
                         message={message.message}
-                        timestamp={message.timestamp}
+                        time={message.time}
                     />
                 ))}
             </div>

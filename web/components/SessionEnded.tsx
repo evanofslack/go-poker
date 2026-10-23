@@ -10,7 +10,7 @@ import Dialog from "./Dialog";
 export default function SessionEnded() {
     const { appState, dispatch } = useContext(AppContext);
     const [closed, setClosed] = useState(false);
-    const game = appState.game;
+    const game = appState.view;
     if (!game?.ended || closed) return null;
     const { rows, banker, balance } = game.ledger;
 

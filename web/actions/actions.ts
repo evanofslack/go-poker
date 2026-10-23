@@ -1,4 +1,9 @@
 import { Settings } from "../interfaces/index";
+import type { Inbound } from "../interfaces/server";
+
+function send(socket: WebSocket | null, msg: Inbound) {
+    socket?.send(JSON.stringify(msg));
+}
 
 // createTable makes a new table; the server uses its defaults without settings
 export function createTable(
@@ -37,25 +42,12 @@ export function joinTable(
     );
 }
 
-export function sendMessage(socket: WebSocket, username: string, message: string) {
-    socket.send(
-        JSON.stringify({
-            action: "send-message",
-            username: username,
-            message: message,
-        })
-    );
+export function sendMessage(socket: WebSocket, message: string) {
+    send(socket, { action: "send-message", message });
 }
 
-export function takeSeat(socket: WebSocket, username: string, seatID: number, buyIn: number) {
-    socket.send(
-        JSON.stringify({
-            action: "take-seat",
-            username: username,
-            seatID: seatID,
-            buyIn: buyIn,
-        })
-    );
+export function takeSeat(socket: WebSocket, seat: number, buyIn: number) {
+    send(socket, { action: "take-seat", seat, amount: buyIn });
 }
 
 export function startGame(socket: WebSocket) {
@@ -82,13 +74,9 @@ export function playerCheck(socket: WebSocket) {
     );
 }
 
-export function playerRaise(socket: WebSocket, amount: number) {
-    socket?.send(
-        JSON.stringify({
-            action: "player-raise",
-            amount: amount,
-        })
-    );
+// playerRaise bets or raises to to, the player's whole bet this street
+export function playerRaise(socket: WebSocket, to: number) {
+    send(socket, { action: "player-raise", to });
 }
 
 export function playerFold(socket: WebSocket) {
@@ -137,22 +125,8 @@ export function rebuy(socket: WebSocket, amount: number) {
 }
 
 // addBot has the host sit a bot down; level is "easy" or "medium"
-export function addBot(
-    socket: WebSocket,
-    seatID: number,
-    buyIn: number,
-    name: string,
-    level: string
-) {
-    socket?.send(
-        JSON.stringify({
-            action: "add-bot",
-            seatID: seatID,
-            buyIn: buyIn,
-            name: name,
-            level: level,
-        })
-    );
+export function addBot(socket: WebSocket, seat: number, buyIn: number, name: string, level: string) {
+    send(socket, { action: "add-bot", seat, amount: buyIn, name, level });
 }
 
 // host only: actions on the player called name
@@ -175,13 +149,8 @@ export function hostAction(socket: WebSocket, action: HostAction, name: string) 
 }
 
 // removeBot has the host take the bot in a seat out of the game
-export function removeBot(socket: WebSocket, seatID: number) {
-    socket?.send(
-        JSON.stringify({
-            action: "remove-bot",
-            seatID: seatID,
-        })
-    );
+export function removeBot(socket: WebSocket, seat: number) {
+    send(socket, { action: "remove-bot", seat });
 }
 
 // adjustChips adds amount to name's stack, or takes it away when negative (host only)

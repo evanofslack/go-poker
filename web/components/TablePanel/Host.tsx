@@ -11,9 +11,9 @@ export default function Host() {
     const socket = useSocket();
     const { appState } = useContext(AppContext);
     const [confirming, setConfirming] = useState(false);
-    const game = appState.game;
+    const game = appState.view;
     if (!socket || !game) return null;
-    const midHand = game.stage !== 1;
+    const midHand = game.street !== "";
 
     return (
         <div className="flex h-full flex-col gap-3 overflow-auto bg-surface p-3 text-sm">

@@ -1,340 +1,356 @@
 package server
 
 import (
-	"crypto/subtle"
-	"math/rand/v2"
-	"slices"
-	"strings"
-	"sync"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"sync/atomic"
 	"time"
 
-	"github.com/evanofslack/go-poker/poker"
+	"github.com/evanofslack/go-poker/holdem"
+	"github.com/evanofslack/go-poker/table"
 )
 
-// tableSettings are picked by the host when creating a table, and fixed after.
-// Buy-ins are in chips, times in milliseconds.
-type tableSettings struct {
-	Seats         uint `json:"seats"`
-	SmallBlind    uint `json:"sb"`
-	BigBlind      uint `json:"bb"`
-	MinBuy        uint `json:"minBuy"`
-	MaxBuy        uint `json:"maxBuy"`
-	TurnTime      uint `json:"turnTime"`      // time to act before checking or folding for you, 0 for no limit
-	NextHandDelay uint `json:"nextHandDelay"` // pause after a hand before dealing the next
-	Public        bool `json:"public"`        // listed on the home page
-	ApproveRebuys bool `json:"approveRebuys"` // rebuys, and sitting back down, wait for the host
+var errClosed = errors.New("table not found")
+
+// tableActor runs one table. Its goroutine owns the state and the clients
+// bound to it; everyone else talks to it through the inbox.
+type tableActor struct {
+	name      string
+	hub       *Hub
+	public    bool   // fixed at creation
+	creatorIP string // fixed at creation
+	inbox     chan envelope
+	done      chan struct{} // closed once the table has closed
+
+	// read by the hub without going through the inbox
+	summary atomic.Pointer[table.Summary]
+	ended   atomic.Bool
+
+	// owned by run
+	state  *table.State
+	conns  map[string]*Client // by person id
+	slow   map[*Client]bool   // dropped for not keeping up, waiting to disconnect
+	armed  map[table.Timer]armedTimer
+	closed bool
 }
 
-// defaultSettings are used when create-table sends none. A var so tests can
-// shorten the timers.
-var defaultSettings = tableSettings{
-	Seats:         8,
-	SmallBlind:    10,
-	BigBlind:      20,
-	MinBuy:        1000,
-	MaxBuy:        4000,
-	TurnTime:      30000,
-	NextHandDelay: 5000,
+type armedTimer struct {
+	at    time.Time
+	timer *time.Timer
 }
 
-// stateUpdate is a game update with one view per player, since each player
-// may only see their own cards. Clients without a seat get the spectator view.
-type stateUpdate struct {
-	byUUID    map[string][]byte
-	spectator []byte
+// envelope is a command for the table, or a shutdown when cmd is nil. client
+// is who sent it, for a Join, Leave or Disconnect; reply, when set, gets the
+// result once the command is done.
+type envelope struct {
+	cmd    table.Command
+	client *Client
+	reply  chan reply
 }
 
-// table is a single table or game of poker
-type table struct {
-	name       string
-	clients    map[*Client]bool
-	register   chan *Client
-	unregister chan *Client
-	broadcast  chan []byte
-	updates    chan stateUpdate
-	game       *poker.Game
-	settings   tableSettings // fixed after creation
-	password   string        // empty for none, fixed after creation
-	creatorIP  string        // address of the client that created it, fixed after creation
-	ledger     []ledgerEntry // chips in and out by name, guarded by mu
-	hub        *Hub          // closes the table once an ended session expires
-
-	hands     []handStats              // the last maxHands hands, guarded by mu
-	handCount int                      // hands played, guarded by mu
-	history   []handRecord             // the last maxHands hands as played, guarded by mu
-	current   *handRecord              // the hand being played, nil between hands; guarded by mu
-	totals    map[string]*playerTotals // by name, over every hand; guarded by mu
-	logs      []newLog                 // the last maxLogs log lines, guarded by mu
-
-	requests map[string]buyRequest // buy-ins waiting for the host, by name; guarded by mu
-
-	paused  bool          // no new hands are dealt, guarded by mu
-	ending  bool          // the session ends once this hand does, guarded by mu
-	endedAt time.Time     // when the session ended, zero until then; guarded by mu
-	done    chan struct{} // closed when the table is deleted
-	members int           // clients at this table, guarded by Hub.mu
-
-	lastActive time.Time // last join or message from a player, not a bot; guarded by mu
-
-	mu     sync.Mutex       // serializes game actions from client goroutines
-	users  map[*Client]bool // clients at this table, guarded by mu
-	host   string           // name of the host, guarded by mu
-	banker string           // name everyone settles up with, empty for the host; guarded by mu
-
-	dealTimer *time.Timer     // deals the next hand, guarded by mu
-	turnTimer *time.Timer     // acts for an idle player, guarded by mu
-	turnSeq   int             // invalidates old turn timers, guarded by mu
-	leaving   map[string]bool // uuids of players who left, guarded by mu
-
-	turnDeadline time.Time       // when the player to act times out, guarded by mu
-	sitOutNext   map[string]bool // uuids of players sitting out after this hand, guarded by mu
-
-	// seated players who disconnect can reconnect within reconnectGrace.
-	// Both guarded by mu.
-	tokens map[string]string      // session token to player uuid
-	grace  map[string]*time.Timer // player uuid to the timer that removes them
-
-	bots map[string]botSeat // bot players by uuid, guarded by mu
-	acts map[string]act     // each player's last action this hand, by uuid; guarded by mu
-	rng  *rand.Rand         // for bot moves, guarded by mu
-	// botDelay is copied from the global so a test can change one table's
-	botDelay func() time.Duration
+type reply struct {
+	joined *table.Joined
+	err    error
 }
 
-// newTable creates a new table
-func newTable(name string, settings tableSettings) *table {
-	return &table{
-		name:       name,
-		clients:    make(map[*Client]bool),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		broadcast:  make(chan []byte),
-		updates:    make(chan stateUpdate),
-		game: poker.NewGame(poker.GameConfig{
-			MaxBuy:       settings.MaxBuy,
-			BigBlind:     settings.BigBlind,
-			SmallBlind:   settings.SmallBlind,
-			PauseStreets: true,
-		}),
-		settings:   settings,
-		done:       make(chan struct{}),
-		lastActive: time.Now(),
-		users:      make(map[*Client]bool),
-		leaving:    make(map[string]bool),
-		sitOutNext: make(map[string]bool),
-		tokens:     make(map[string]string),
-		grace:      make(map[string]*time.Timer),
-		bots:       make(map[string]botSeat),
-		acts:       make(map[string]act),
-		rng:        rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())),
-		botDelay:   botDelay,
-		requests:   make(map[string]buyRequest),
-		totals:     make(map[string]*playerTotals),
+func newTableActor(h *Hub, s *table.State) *tableActor {
+	a := &tableActor{
+		name:      s.Name,
+		hub:       h,
+		public:    s.Settings.Public,
+		creatorIP: s.CreatorIP,
+		inbox:     make(chan envelope, 64),
+		done:      make(chan struct{}),
+		state:     s,
+		conns:     map[string]*Client{},
+		slow:      map[*Client]bool{},
+		armed:     map[table.Timer]armedTimer{},
+	}
+	a.publish()
+	return a
+}
+
+// ask sends cmd and waits for it to be done.
+func (a *tableActor) ask(cmd table.Command, c *Client) reply {
+	r := make(chan reply, 1)
+	select {
+	case a.inbox <- envelope{cmd, c, r}:
+	case <-a.done:
+		return reply{err: errClosed}
+	}
+	select {
+	case res := <-r:
+		return res
+	case <-a.done:
+		return reply{err: errClosed}
 	}
 }
 
-func (t *table) run() {
+// post sends cmd without waiting, dropping it if the table closed.
+func (a *tableActor) post(cmd table.Command) {
+	select {
+	case a.inbox <- envelope{cmd: cmd}:
+	case <-a.done:
+	}
+}
+
+// shutdown closes the table for a server restart, keeping it in the store.
+func (a *tableActor) shutdown() {
+	a.ask(nil, nil)
+}
+
+func (a *tableActor) run() {
+	a.arm()
 	for {
 		select {
-		case client := <-t.register:
-			t.registerClient(client)
-		case client := <-t.unregister:
-			t.unregisterClient(client)
-		case message := <-t.broadcast:
-			t.broadcastToClients(message)
-		case u := <-t.updates:
-			t.sendUpdate(u)
-		case <-t.done:
+		case env := <-a.inbox:
+			a.handle(env)
+			if a.closed {
+				return
+			}
+		case <-a.done:
 			return
 		}
 	}
 }
 
-// nameTaken reports whether name is used by anyone at the table, ignoring
-// case. Caller holds t.mu.
-func (t *table) nameTaken(name string) bool {
-	for u := range t.users {
-		if strings.EqualFold(u.username, name) {
-			return true
+func (a *tableActor) handle(env envelope) {
+	var r reply
+	defer func() {
+		if env.reply != nil {
+			env.reply <- r
 		}
+	}()
+	if env.cmd == nil {
+		a.close("shutdown", table.Error{Code: table.CodeClosed, Message: "the server is restarting"}, false)
+		return
 	}
-	// seated players may no longer be connected
-	for _, p := range t.game.GenerateOmniView().Players {
-		if strings.EqualFold(p.Username, name) {
-			return true
-		}
+	if d, ok := env.cmd.(table.Disconnect); ok && a.conns[d.Person] != env.client {
+		return // a connection already replaced by a reconnect
 	}
-	return false
+
+	now := time.Now()
+	res, err := a.reduce(now, env.cmd)
+	if err != nil {
+		r.err = err
+		return
+	}
+	if res.Joined != nil {
+		r.joined = res.Joined
+		a.bind(res.Joined, env.client)
+		a.welcome(res.Joined.ID, env.cmd.(table.Join).Password, env.client, now)
+	}
+	for _, o := range res.Out {
+		a.deliver(o, env)
+	}
+	a.prune()
+	if res.Changed {
+		a.update(res.Events, now)
+	}
+	a.metrics(res)
+	a.arm()
+	a.save()
+	a.publish()
+	if res.Close != nil {
+		a.close(res.Close.Reason, table.Error{Code: table.CodeClosed, Message: res.Close.Message}, true)
+	}
 }
 
-// checkPassword reports why password doesn't let someone join, if it doesn't.
-func (t *table) checkPassword(password string) error {
-	switch {
-	case t.password == "":
-		return nil
-	case password == "":
-		return errNeedPassword
-	case subtle.ConstantTimeCompare([]byte(password), []byte(t.password)) != 1:
-		return errWrongPassword
+// reduce applies cmd, recovering from a panic so one bad command can't take
+// the server down.
+func (a *tableActor) reduce(now time.Time, cmd table.Command) (res table.Result, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			panicsTotal.Inc()
+			slog.Default().Error("table panic", "table", a.name, "command", fmt.Sprintf("%T", cmd), "panic", p)
+			err = fmt.Errorf("panic: %v", p)
+		}
+	}()
+	return table.Reduce(a.state, now, cmd), nil
+}
+
+// bind attaches c to the person it joined as. Reclaiming a seat drops the
+// person's old connection, like a stale tab.
+func (a *tableActor) bind(j *table.Joined, c *Client) {
+	if old := a.conns[j.ID]; old != nil && old != c {
+		old.conn.Close()
+		delete(a.slow, old)
 	}
+	a.conns[j.ID] = c
+}
+
+// prune detaches the connections of people no longer at the table: who left,
+// were removed, or disconnected.
+func (a *tableActor) prune() {
+	for id, c := range a.conns {
+		if p := a.state.People[id]; p == nil || !p.Connected {
+			delete(a.conns, id)
+			delete(a.slow, c)
+		}
+	}
+}
+
+// deliver sends o to who it's for. A message to someone not yet joined goes
+// to the client that tried.
+func (a *tableActor) deliver(o table.Out, env envelope) {
+	msg := marshalOut(o.Msg)
+	if msg == nil {
+		return
+	}
+	switch {
+	case o.To == "":
+		for _, c := range a.conns {
+			a.sendTo(c, msg)
+		}
+	case a.conns[o.To] != nil:
+		a.sendTo(a.conns[o.To], msg)
+	case env.client != nil:
+		// not joined yet, or just left or removed
+		a.sendTo(env.client, msg)
+	}
+}
+
+func marshalOut(msg any) []byte {
+	switch m := msg.(type) {
+	case table.Error:
+		return marshal(ErrorOut{ActionError, m.Code, m.Message})
+	case table.ChatMessage:
+		return marshal(ChatOut{ActionChat, m})
+	case table.NewToken:
+		return marshal(TokenOut{ActionToken, m.Token})
+	case table.HandsPage:
+		return marshal(HandHistory{ActionHandHistory, m.Hands, m.More})
+	}
+	slog.Default().Warn("unknown table message", "type", fmt.Sprintf("%T", msg))
 	return nil
 }
 
-// reclaim returns the uuid and name of the player that token belongs to, if
-// they're still seated. Caller holds t.mu.
-func (t *table) reclaim(token string) (uuid string, name string, ok bool) {
-	uuid, ok = t.tokens[token]
-	if !ok || t.leaving[uuid] {
-		return "", "", false
+func marshal(v any) []byte {
+	b, err := json.Marshal(v)
+	if err != nil {
+		slog.Default().Warn("marshal", "error", err)
+		return nil
 	}
-	for _, p := range t.game.GenerateOmniView().Players {
-		if p.UUID == uuid {
-			return uuid, p.Username, true
+	return b
+}
+
+// welcome sends someone who just joined the table so far. password is what
+// they joined with, for sharing invite links.
+func (a *tableActor) welcome(id, password string, c *Client, now time.Time) {
+	s := a.state
+	p := s.People[id]
+	history, more := table.HistoryFor(s, p.Name, 0)
+	a.sendTo(c, marshal(Joined{ActionJoined, s.Name, p.Name, id, password}))
+	a.sendTo(c, marshal(Welcome{
+		Action:  ActionWelcome,
+		View:    table.ViewFor(s, id, now),
+		Logs:    nonNil(s.Logs),
+		Stats:   nonNil(s.Stats),
+		Totals:  table.TotalsView(s),
+		History: history,
+		More:    more,
+	}))
+}
+
+func nonNil[T any](s []T) []T {
+	if s == nil {
+		return []T{}
+	}
+	return s
+}
+
+// update sends everyone their view of the table and what happened.
+func (a *tableActor) update(events []table.Event, now time.Time) {
+	for id, c := range a.conns {
+		u := TableUpdate{Action: ActionTableUpdate, View: table.ViewFor(a.state, id, now), Events: []EventEnvel{}}
+		for _, e := range table.EventsFor(a.state, events, id) {
+			u.Events = append(u.Events, EventEnvel{e.EventType(), marshal(e)})
+		}
+		a.sendTo(c, marshal(u))
+	}
+}
+
+// sendTo queues msg for c, dropping a client too slow to keep up rather than
+// stalling the table. Its read pump then disconnects it.
+func (a *tableActor) sendTo(c *Client, msg []byte) {
+	if a.slow[c] {
+		return
+	}
+	select {
+	case c.send <- msg:
+	default:
+		slowClientDrops.Inc()
+		a.slow[c] = true
+		c.conn.Close()
+	}
+}
+
+func (a *tableActor) metrics(res table.Result) {
+	for _, e := range res.Events {
+		if _, ok := e.(holdem.HandStarted); ok {
+			handsTotal.Inc()
 		}
 	}
-	return "", "", false
-}
-
-// ended reports whether the session has ended. It takes t.mu.
-func (t *table) ended() bool {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return !t.endedAt.IsZero()
-}
-
-// closesIn is how many milliseconds an ended table has left, or 0 if the
-// session hasn't ended. Caller holds t.mu.
-func (t *table) closesIn() int64 {
-	if t.endedAt.IsZero() {
-		return 0
+	if res.Grace != "" {
+		seatGrace.WithLabelValues(res.Grace).Inc()
 	}
-	return max(time.Until(t.endedAt.Add(endedTableTTL)).Milliseconds(), 0)
 }
 
-// passHost gives the host role to a connected seated player, else to whoever
-// is at the table first by name, else nobody. Caller holds t.mu.
-func (t *table) passHost() {
-	t.host = ""
-	for _, p := range t.game.GenerateOmniView().Players {
-		if t.connected(p.Username) && !t.leaving[p.UUID] {
-			t.host = p.Username
-			return
+// arm sets a timer for each deadline in the state, replacing ones that moved
+// and stopping ones that went away.
+func (a *tableActor) arm() {
+	for t, armed := range a.armed {
+		if at, ok := a.state.Timers[t]; !ok || !at.Equal(armed.at) {
+			armed.timer.Stop()
+			delete(a.armed, t)
 		}
 	}
-	for u := range t.users {
-		if t.host == "" || u.username < t.host {
-			t.host = u.username
-		}
-	}
-}
-
-// connected reports whether a client named name is at the table. Caller holds t.mu.
-func (t *table) connected(name string) bool {
-	for u := range t.users {
-		if u.username == name {
-			return true
-		}
-	}
-	return false
-}
-
-// watchers are the names of the clients at the table without a seat, sorted.
-// Caller holds t.mu.
-func (t *table) watchers() []string {
-	names := []string{}
-	for u := range t.users {
-		if !isSeatedUUID(t, u.id()) {
-			names = append(names, u.username)
-		}
-	}
-	slices.Sort(names)
-	return names
-}
-
-// summary is what the home page shows of t. Caller holds t.mu.
-func (t *table) summary() tableSummary {
-	view := t.game.GenerateOmniView()
-	var players, bots uint
-	for _, p := range view.Players {
-		if p.Left {
+	for t, at := range a.state.Timers {
+		if _, ok := a.armed[t]; ok {
 			continue
 		}
-		players++
-		if _, ok := t.bots[p.UUID]; ok {
-			bots++
-		}
-	}
-	return tableSummary{
-		Name:        t.name,
-		SmallBlind:  t.settings.SmallBlind,
-		BigBlind:    t.settings.BigBlind,
-		MinBuy:      t.settings.MinBuy,
-		MaxBuy:      t.settings.MaxBuy,
-		Seats:       t.settings.Seats,
-		Players:     players,
-		Bots:        bots,
-		Watchers:    uint(len(t.watchers())),
-		Running:     view.Running,
-		Paused:      t.paused,
-		HasPassword: t.password != "",
+		t, at := t, at
+		a.armed[t] = armedTimer{at, time.AfterFunc(time.Until(at), func() {
+			a.post(table.TimerFired{Timer: t, At: at})
+		})}
 	}
 }
 
-// disconnected are the names of seated players waiting out their reconnect
-// grace period, sorted. Caller holds t.mu.
-func (t *table) disconnected() []string {
-	names := []string{}
-	for _, p := range t.game.GenerateOmniView().Players {
-		if _, ok := t.grace[p.UUID]; ok {
-			names = append(names, p.Username)
-		}
+// save stores the table, so a disk store could bring it back after a restart.
+func (a *tableActor) save() {
+	b, err := json.Marshal(a.state)
+	if err != nil {
+		slog.Default().Error("marshal table", "table", a.name, "error", err)
+		return
 	}
-	slices.Sort(names)
-	return names
-}
-
-// send queues message for every client, unless the table has been deleted.
-func (t *table) send(message []byte) {
-	select {
-	case t.broadcast <- message:
-	case <-t.done:
+	if err := a.hub.store.Save(a.name, b); err != nil {
+		slog.Default().Error("save table", "table", a.name, "error", err)
 	}
 }
 
-func (t *table) registerClient(client *Client) {
-	t.clients[client] = true
+// publish updates what the hub reads without asking the table.
+func (a *tableActor) publish() {
+	sum := table.Summarize(a.state)
+	a.summary.Store(&sum)
+	a.ended.Store(a.state.Ended())
 }
 
-func (t *table) unregisterClient(client *Client) {
-	if _, ok := t.clients[client]; ok {
-		delete(t.clients, client)
+// close tells everyone why the table is going, stops it and removes it from
+// the hub. forget deletes it from the store; a shutdown keeps it.
+func (a *tableActor) close(reason string, why table.Error, forget bool) {
+	msg := marshalOut(why)
+	for _, c := range a.conns {
+		a.sendTo(c, msg)
 	}
-}
-
-func (t *table) broadcastToClients(message []byte) {
-	for client := range t.clients {
-		t.sendTo(client, message)
+	for _, armed := range a.armed {
+		armed.timer.Stop()
 	}
-}
-
-func (t *table) sendUpdate(u stateUpdate) {
-	for client := range t.clients {
-		msg, ok := u.byUUID[client.id()]
-		if !ok {
-			msg = u.spectator
-		}
-		t.sendTo(client, msg)
+	a.closed = true
+	a.hub.removeTable(a, reason)
+	if forget {
+		a.hub.store.Delete(a.name)
 	}
-}
-
-func (t *table) sendTo(client *Client, message []byte) {
-	select {
-	case client.send <- message:
-	default:
-		// slow client: drop it and let its readPump unregister it,
-		// the hub is the only one that closes client.send
-		slowClientDrops.Inc()
-		delete(t.clients, client)
-		client.conn.Close()
-	}
+	close(a.done)
 }

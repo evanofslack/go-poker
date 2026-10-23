@@ -1,5 +1,5 @@
 import type { Dispatch } from "react";
-import { Game, LedgerRow } from "../interfaces/index";
+import { LedgerRow, View } from "../interfaces/index";
 
 export type PlayerStatus = "playing" | "sitting out" | "out of chips" | "disconnected" | "watching" | "left";
 
@@ -15,28 +15,20 @@ export type PlayerLine = {
 
 // playerLines lists everyone with a ledger row, in the order they first bought
 // in, then spectators who never did
-export function playerLines(game: Game): PlayerLine[] {
-    const status = (name: string): [PlayerStatus, number | null] => {
-        const p = game.players.find((p) => p.username === name);
+export function playerLines(view: View): PlayerLine[] {
+    const line = (name: string): PlayerLine => {
+        const p = view.players.find((p) => p.name === name && !p.leaving);
+        let status: PlayerStatus = view.watchers.includes(name) ? "watching" : "left";
         if (p) {
-            if (game.disconnected.includes(name)) return ["disconnected", p.seatID];
-            if (p.ready) return ["playing", p.seatID];
-            return [p.stack > 0 ? "sitting out" : "out of chips", p.seatID];
+            if (p.disconnected) status = "disconnected";
+            else if (!p.sittingOut) status = "playing";
+            else status = p.stack > 0 ? "sitting out" : "out of chips";
         }
-        return [game.watchers.includes(name) ? "watching" : "left", null];
+        return { name, status, seat: p?.seat ?? null, row: null, bot: p?.bot || null };
     };
-    const bot = (name: string) => {
-        const p = game.players.find((p) => p.username === name);
-        return (p && game.bots[p.uuid]) || null;
-    };
-    const lines: PlayerLine[] = game.ledger.rows.map((row) => {
-        const [s, seat] = status(row.name);
-        return { name: row.name, status: s, seat, row, bot: bot(row.name) };
-    });
-    for (const name of game.watchers) {
-        if (!lines.some((l) => l.name === name)) {
-            lines.push({ name, status: "watching", seat: null, row: null, bot: null });
-        }
+    const lines: PlayerLine[] = view.ledger.rows.map((row) => ({ ...line(row.name), row }));
+    for (const name of view.watchers) {
+        if (!lines.some((l) => l.name === name)) lines.push(line(name));
     }
     return lines;
 }
@@ -56,8 +48,8 @@ export function signed(n: number) {
 }
 
 // ledgerText is the ledger as plain text, for pasting into a group chat
-export function ledgerText(table: string, game: Game) {
-    const { rows, banker, balance } = game.ledger;
+export function ledgerText(table: string, view: View) {
+    const { rows, banker, balance } = view.ledger;
     const width = Math.max(0, ...rows.map((r) => r.name.length));
     const lines = rows.map(
         (r) => `${r.name.padEnd(width)}  ${signed(r.net).padStart(7)}  ${settleLine(r.name, r.net, banker)}`
@@ -67,9 +59,9 @@ export function ledgerText(table: string, game: Game) {
 }
 
 // copyLedger copies the ledger text and says whether it worked
-export async function copyLedger(table: string, game: Game, dispatch: Dispatch<any>) {
+export async function copyLedger(table: string, view: View, dispatch: Dispatch<any>) {
     try {
-        await navigator.clipboard.writeText(ledgerText(table, game));
+        await navigator.clipboard.writeText(ledgerText(table, view));
         dispatch({ type: "addToast", payload: { message: "ledger copied", kind: "info" } });
     } catch {
         dispatch({ type: "addToast", payload: { message: "couldn't copy the ledger", kind: "error" } });

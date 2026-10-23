@@ -6,17 +6,17 @@ const chip = "flex h-10 items-center justify-center rounded-full bg-green-900 px
 
 export default function Pot() {
     const { appState } = useContext(AppContext);
-    const game = appState.game;
-    if (!game || !game.running) {
+    const view = appState.view;
+    if (!view || !view.running) {
         return null;
     }
 
     // between hands, the winners' seats say what they won
-    if (settledPots(game).length) {
+    if (settledPots(view).length) {
         return null;
     }
 
     // every chip committed this hand, including the current street
-    const total = game.players.reduce((sum, p) => sum + p.totalBet, 0);
+    const total = view.players.reduce((sum, p) => sum + p.committed, 0);
     return <p className={chip + " min-w-24 text-2xl font-semibold short:min-w-16 short:text-base"}>{total}</p>;
 }

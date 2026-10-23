@@ -71,24 +71,14 @@ func (c hubCollector) Collect(ch chan<- prometheus.Metric) {
 	conns := c.h.total
 	c.h.connMu.Unlock()
 
-	// lock order is hub.mu, then table.mu; copy so they aren't held together
-	c.h.mu.Lock()
-	tables := make([]*table, 0, len(c.h.tables))
-	for _, t := range c.h.tables {
-		tables = append(tables, t)
-	}
-	c.h.mu.Unlock()
-
 	var active, ended, humans, bots float64
-	for _, t := range tables {
-		t.mu.Lock()
-		if t.endedAt.IsZero() {
-			active++
-		} else {
+	for _, a := range c.h.allTables() {
+		if a.ended.Load() {
 			ended++
+		} else {
+			active++
 		}
-		s := t.summary()
-		t.mu.Unlock()
+		s := a.summary.Load()
 		humans += float64(s.Players - s.Bots)
 		bots += float64(s.Bots)
 	}

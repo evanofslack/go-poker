@@ -13,12 +13,12 @@ function handleStartGame(socket: WebSocket | null) {
 export default function Start() {
     const socket = useSocket();
     const { appState, dispatch } = useContext(AppContext);
-    const game = appState.game;
+    const view = appState.view;
 
-    if (!game || game.ended) {
+    if (!view || view.ended) {
         return null;
     }
-    if (!game.running && game.paused) {
+    if (!view.running && view.paused) {
         return (
             <Button className="text-lg" title="the host paused the game" disabled>
                 start
@@ -26,7 +26,7 @@ export default function Start() {
         );
     }
 
-    if (!game.running && game.players.length < 2) {
+    if (!view.running && view.players.filter((p) => !p.sittingOut).length < 2) {
         return (
             <Button className="text-lg" title="need 2 or more players to start" disabled>
                 start
@@ -34,7 +34,7 @@ export default function Start() {
         );
     }
 
-    if (!game.running && game.players.length >= 2) {
+    if (!view.running && view.players.filter((p) => !p.sittingOut).length >= 2) {
         return (
             <Button className="text-lg" onClick={() => handleStartGame(socket)}>
                 start

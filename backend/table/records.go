@@ -72,6 +72,13 @@ type HandDone struct {
 	Totals map[string]Totals `json:"totals"`
 }
 
+// Log is a line in the table's log.
+type Log struct {
+	ID      int    `json:"id"`
+	Message string `json:"message"`
+	Time    int64  `json:"time"` // unix ms
+}
+
 // Logged is a new line in the table's log.
 type Logged struct {
 	Log Log `json:"log"`

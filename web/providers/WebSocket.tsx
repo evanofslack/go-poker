@@ -1,6 +1,7 @@
 import { createContext, ReactNode, useEffect, useState, useContext, useRef } from "react";
 import { AppContext } from "../providers/AppStore";
-import { Message, Game, Log, Pot } from "../interfaces";
+import { GameEvent } from "../interfaces";
+import type { ChatOut, ErrorOut, HandHistory, Joined, TableUpdate, Tables, TokenOut, Welcome } from "../interfaces/server";
 import { joinTable, leaveTable } from "../actions/actions";
 import { inviteLink } from "../lib/invite";
 
@@ -109,107 +110,69 @@ export function SocketProvider(props: SocketProviderProps) {
 
     if (socket) {
         socket.onmessage = (e) => {
-            let event = JSON.parse(e.data);
-            switch (event.action) {
-                case "new-message":
-                    let newMessage: Message = {
-                        name: event.username,
-                        message: event.message,
-                        timestamp: event.timestamp,
-                    };
-                    dispatch({ type: "addMessage", payload: newMessage });
+            const msg = JSON.parse(e.data);
+            switch (msg.action as string) {
+                case "chat": {
+                    const m = msg as ChatOut;
+                    dispatch({ type: "addMessage", payload: { name: m.name, message: m.message, time: m.time } });
                     return;
+                }
                 case "tables":
-                    dispatch({ type: "setTables", payload: event.tables ?? [] });
+                    dispatch({ type: "setTables", payload: (msg as Tables).tables });
                     return;
-                case "update-stats":
+                case "hand-history": {
+                    const m = msg as HandHistory;
+                    dispatch({ type: "addHistory", payload: { hands: m.hands, more: m.more } });
+                    return;
+                }
+                case "welcome": {
+                    const m = msg as Welcome;
                     dispatch({
-                        type: "addHands",
-                        payload: { hands: event.hands ?? [], full: event.full, totals: event.totals ?? {} },
+                        type: "welcome",
+                        payload: {
+                            view: m.view,
+                            logs: m.logs,
+                            hands: m.stats,
+                            totals: m.totals,
+                            history: m.history,
+                            more: m.more,
+                        },
                     });
                     return;
-                case "hand-history":
-                    dispatch({
-                        type: "addHistory",
-                        payload: { hands: event.hands ?? [], full: event.full, more: event.more },
-                    });
+                }
+                case "table-update": {
+                    const m = msg as TableUpdate;
+                    dispatch({ type: "updateView", payload: m.view });
+                    for (const ev of m.events as GameEvent[]) {
+                        if (ev.type === "log") {
+                            dispatch({ type: "addLog", payload: ev.data.log });
+                        } else if (ev.type === "hand-done") {
+                            dispatch({ type: "handDone", payload: ev.data });
+                        }
+                    }
                     return;
-                case "log-history":
-                    dispatch({
-                        type: "setLogs",
-                        payload: (event.logs ?? []).map((l: { uuid: string; message: string; timestamp: string }) => ({
-                            id: l.uuid,
-                            message: l.message,
-                            timestamp: l.timestamp,
-                        })),
-                    });
-                    return;
-                case "new-log":
-                    let newLog: Log = {
-                        id: event.uuid,
-                        message: event.message,
-                        timestamp: event.timestamp,
-                    };
-                    dispatch({ type: "addLog", payload: newLog });
-                    return;
-                case "update-game":
-                    let newGame: Game = {
-                        running: event.game.running,
-                        dealer: event.game.dealer,
-                        action: event.game.action,
-                        utg: event.game.utg,
-                        sb: event.game.sb,
-                        bb: event.game.bb,
-                        communityCards: event.game.communityCards,
-                        stage: event.game.stage,
-                        betting: event.game.betting,
-                        config: event.game.config,
-                        players: event.game.players,
-                        pots: (event.game.pots ?? []).map((p: Pot, i: number) => ({ ...p, hand: event.potHands?.[i] ?? "" })),
-                        minRaise: event.game.minRaise,
-                        readyCount: event.game.readyCount,
-                        host: event.host,
-                        turnEndsIn: event.turnEndsIn,
-                        sitOutNext: event.sitOutNext,
-                        settings: event.settings,
-                        buyRequests: event.buyRequests ?? [],
-                        hasPassword: event.hasPassword,
-                        paused: event.paused,
-                        ending: event.ending,
-                        ended: event.ended,
-                        closesIn: event.closesIn,
-                        watchers: event.watchers,
-                        disconnected: event.disconnected,
-                        bots: event.bots ?? {},
-                        ledger: event.ledger,
-                        acts: event.acts ?? {},
-                    };
-                    dispatch({ type: "updateGame", payload: newGame });
-                    return;
-                case "error":
+                }
+                case "error": {
+                    const m = msg as ErrorOut;
                     // rejected actions only go to this client, show them in the log
-                    let errorLog: Log = {
-                        message: "error: " + event.message,
-                        timestamp: event.timestamp,
-                    };
-                    dispatch({ type: "addLog", payload: errorLog });
-                    dispatch({ type: "setError", payload: event.message });
-                    if (event.code === "removed" || event.code === "closed") {
+                    dispatch({ type: "addLog", payload: { message: "error: " + m.message, time: Date.now() } });
+                    dispatch({ type: "setError", payload: m.message });
+                    if (m.code === "removed" || m.code === "closed") {
                         // the host removed us, or the table closed: leave, and don't rejoin on reconnect
                         if (appState.table) leaveTable(socket, appState.table);
                         saveSession(null);
                         window.history.replaceState(null, "", window.location.pathname);
                         dispatch({ type: "leftTable" });
                         // the join form shows why
-                        dispatch({ type: "setError", payload: event.message });
+                        dispatch({ type: "setError", payload: m.message });
                         return;
                     }
-                    if (event.code === "password-required" || event.code === "wrong-password") {
+                    if (m.code === "password-required" || m.code === "wrong-password") {
                         dispatch({ type: "setNeedPassword", payload: true });
                     }
                     // the join form shows its own errors
                     if (appState.table) {
-                        dispatch({ type: "addToast", payload: { message: event.message, kind: "error" } });
+                        dispatch({ type: "addToast", payload: { message: m.message, kind: "error" } });
                     }
                     if (rejoining.current) {
                         rejoining.current = false;
@@ -217,38 +180,38 @@ export function SocketProvider(props: SocketProviderProps) {
                         dispatch({ type: "resetGame" });
                     }
                     return;
+                }
                 case "joined-table": {
+                    const m = msg as Joined;
                     rejoining.current = false;
                     // keep the token when rejoining the same seat
                     const prev = loadSession();
-                    const same = prev?.table === event.tablename && prev?.username === event.username;
+                    const same = prev?.table === m.tablename && prev?.username === m.username;
                     saveSession({
-                        table: event.tablename,
-                        username: event.username,
+                        table: m.tablename,
+                        username: m.username,
                         token: same ? prev?.token : undefined,
-                        password: event.password,
+                        password: m.password,
                     });
                     dispatch({ type: "setError", payload: null });
                     dispatch({ type: "setNeedPassword", payload: false });
-                    dispatch({ type: "setPassword", payload: event.password ?? null });
-                    dispatch({ type: "setTablename", payload: event.tablename });
+                    dispatch({ type: "setPassword", payload: m.password ?? null });
+                    dispatch({ type: "setTablename", payload: m.tablename });
                     // the address bar doubles as the invite link
-                    window.history.replaceState(null, "", inviteLink(event.tablename));
-                    dispatch({ type: "updatePlayerID", payload: event.uuid });
-                    dispatch({ type: "setUsername", payload: event.username });
+                    window.history.replaceState(null, "", inviteLink(m.tablename));
+                    dispatch({ type: "setUsername", payload: m.username });
                     return;
                 }
-                case "update-player-uuid": {
+                case "token": {
                     // an empty token means the seat was given up
                     const session = loadSession();
                     if (session) {
-                        saveSession({ ...session, token: event.token || undefined });
+                        saveSession({ ...session, token: (msg as TokenOut).token || undefined });
                     }
-                    dispatch({ type: "updatePlayerID", payload: event.uuid });
                     return;
                 }
                 default:
-                    throw new Error();
+                    console.warn("unknown message", msg.action);
             }
         };
     }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { addBot } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
-import { Game } from "../interfaces/index";
+import { View } from "../interfaces/index";
 import { randomBotName } from "../lib/bots";
 import BuyIn from "./BuyIn";
 import Segmented from "./Segmented";
@@ -16,14 +16,14 @@ const levels = [
 
 type addBotProps = {
     seat: number;
-    game: Game;
+    view: View;
     onDone: () => void;
 };
 
 // AddBot is the host's form for sitting a bot down: its level, name and buy-in
-export default function AddBot({ seat, game, onDone }: addBotProps) {
+export default function AddBot({ seat, view: game, onDone }: addBotProps) {
     const socket = useSocket();
-    const [name, setName] = useState(() => randomBotName(game.players.map((p) => p.username)));
+    const [name, setName] = useState(() => randomBotName(game.players.map((p) => p.name)));
     const [level, setLevel] = useState("medium");
 
     return (
