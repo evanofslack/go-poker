@@ -37,15 +37,20 @@ export default function TurnAlert() {
         const started = myTurn && !wasMyTurn.current;
         wasMyTurn.current = myTurn;
         if (!started || !document.hidden) return;
-        if (!muted) beep();
 
         const title = document.title;
-        let on = false;
-        const id = setInterval(() => {
-            on = !on;
-            document.title = on ? "● your turn" : title;
-        }, 1000);
+        let id: ReturnType<typeof setInterval> | undefined;
+        // wait a moment first, since a pre-action can take the turn straight away
+        const wait = setTimeout(() => {
+            if (!muted) beep();
+            let on = false;
+            id = setInterval(() => {
+                on = !on;
+                document.title = on ? "● your turn" : title;
+            }, 1000);
+        }, 500);
         const stop = () => {
+            clearTimeout(wait);
             clearInterval(id);
             document.title = title;
             document.removeEventListener("visibilitychange", stop);
