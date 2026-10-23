@@ -1,5 +1,7 @@
 # Persistence
 
+**Status: done** (#115, #116).
+
 Tables survive a server restart. Builds on the engine/table refactor (`refactor.md`): `table.State`
 is plain JSON, each table actor already calls `Store.Save`, and `table.Restore` already readies a
 loaded table (seated people get the reconnect grace, watchers go, the player to act gets a fresh

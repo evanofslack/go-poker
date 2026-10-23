@@ -9,6 +9,7 @@
 | 5 | Host and table features | done |
 | 6 | UI consistency and mobile | done |
 | 7 | Operator tooling | done |
+| 8 | Persistence (`persistence.md`) | done |
 | - | Backlog | unranked |
 
 ## How items are ranked
