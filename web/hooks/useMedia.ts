@@ -5,7 +5,8 @@ import { useCallback, useSyncExternalStore } from "react";
 export const phone = "(orientation: portrait) and (max-width: 639px)";
 
 // tall is a screen much taller than wide, like a phone or tablet held upright, where seats
-// go down the sides of the table instead of around a ring
+// go down the sides of the table instead of around a ring, and the betting controls sit
+// in a taller footer. Keep it in step with the tall variant in styles/index.css.
 export const tall = "(max-aspect-ratio: 3/4)";
 
 // useMedia says whether query matches, and re-renders when that changes

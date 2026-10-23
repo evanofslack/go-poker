@@ -15,7 +15,7 @@ import BuyRequests from "./BuyRequests";
 // The widths are half a seat plus 0.5rem, so side seats don't touch the screen edge.
 // Short screens, like a phone on its side, get the small seats.
 const seatSize =
-    "[--seat-hw:3.5rem] [--seat-hh:2.75rem] sm:[--seat-hw:4.5rem] sm:[--seat-hh:3.4rem] lg:[--seat-hw:5.5rem] lg:[--seat-hh:4.4rem] phone:[--seat-hh:3.4rem] short:[--seat-hw:5.1rem] short:[--seat-hh:1.4rem]";
+    "[--seat-hw:3.5rem] [--seat-hh:2.75rem] sm:[--seat-hw:4.5rem] sm:[--seat-hh:3.4rem] lg:[--seat-hw:5.5rem] lg:[--seat-hh:4.4rem] phone:[--seat-hh:3.75rem] short:[--seat-hw:5.1rem] short:[--seat-hh:1.4rem]";
 
 // actStyle colors a player's last action by what it was
 function actStyle(act: string) {

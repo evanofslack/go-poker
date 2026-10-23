@@ -13,7 +13,10 @@ const views = {
 // overlap. Controls off to the side of the plate, like the raise presets on a wide screen, don't count.
 const footerGap = (p, name) =>
     p.evaluate((name) => {
-        const plate = [...document.querySelectorAll("p.truncate")].find((e) => e.textContent === name).parentElement.getBoundingClientRect();
+        // the plate, and the tag hanging off its bottom with your hand
+        const el = [...document.querySelectorAll("p.truncate")].find((e) => e.textContent === name).parentElement;
+        const tag = el.querySelector("[data-made-hand], [data-won]");
+        const plate = { ...el.getBoundingClientRect().toJSON(), bottom: Math.max(el.getBoundingClientRect().bottom, tag?.getBoundingClientRect().bottom ?? 0) };
         const controls = [...document.querySelectorAll("footer button, footer input")]
             .map((e) => e.getBoundingClientRect())
             .filter((r) => r.left < plate.right && r.right > plate.left)
@@ -174,6 +177,22 @@ for (const { p } of pages) await p.context().close();
 for (const [n, order] of [[6, [2, 5, 1, 4, 6, 3]], [8, [4, 8, 2, 6, 1, 7, 3, 5]], [9, [3, 1, 7, 5]]]) {
     const small = await seatTable(n, order.map((_, i) => (i % 2 ? "small" : "phone")), order);
     await checkLayout(small, order.length);
+    // whoever is to act raises: on a phone the presets and steppers fit in the footer
+    for (const { p, kind, name } of small) {
+        const r = p.locator('button:text-is("raise")');
+        if (!(await r.count())) continue;
+        await r.click();
+        const before = Number(await p.inputValue("#raise"));
+        await p.click('button[aria-label="more"]');
+        const after = Number(await p.inputValue("#raise"));
+        check(`${n} seats, ${kind}: + adds a big blind`, after === before + 20, `${before} to ${after}`);
+        check(`${n} seats, ${kind}: raise presets in the footer`, (await p.locator('footer button:text-is("pot")').count()) === 1);
+        check(`${n} seats, ${kind}: raise fits`, !(await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)));
+        const gap = await footerGap(p, name);
+        check(`${n} seats, ${kind}: own seat clear of the raise controls`, gap >= 0, `${gap}px`);
+        await shot(p, `lay-2-raise-${n}-${kind}`);
+        await p.keyboard.press("Escape");
+    }
     for (const { p } of small) await p.context().close();
 }
 
