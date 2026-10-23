@@ -53,6 +53,10 @@ const (
 	CodeClosed  = "closed"
 )
 
+// CodeRestarting is the server going down for a restart. The table is saved,
+// so the client keeps its seat and rejoins once it reconnects.
+const CodeRestarting = "restarting"
+
 func fail(format string, args ...any) error {
 	return &Error{Message: fmt.Sprintf(format, args...)}
 }

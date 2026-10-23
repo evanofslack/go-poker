@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"log/slog"
 	"mime"
 	"net"
@@ -47,11 +49,17 @@ func New() (*Server, error) {
 		return nil, err
 	}
 
-	hub := newHub(newMemStore())
+	store, err := openStore(context.Background(), databaseURL)
+	if err != nil {
+		ln.Close()
+		return nil, err
+	}
+	hub := newHub(store)
 	if err := hub.restore(context.Background()); err != nil {
 		ln.Close()
 		return nil, err
 	}
+	slog.Default().Info("restored tables", "store", fmt.Sprintf("%T", store), "count", len(hub.allTables()))
 
 	s := &Server{
 		listener: ln,
@@ -121,6 +129,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		s.stop()
 	}
 	s.hub.shutdown(ctx)
+	if c, ok := s.hub.store.(io.Closer); ok {
+		c.Close()
+	}
 	if s.metrics != nil {
 		s.metrics.Shutdown(ctx)
 	}

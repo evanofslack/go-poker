@@ -47,12 +47,14 @@ e2e *scripts: install
     bin="$(mktemp -d)/go-poker"
     (cd backend && go build -o "$bin" ./cmd/go-poker)
     # every browser connects from one address; seated players' tables outlive a script by the reconnect grace
-    PORT=8099 STATIC_DIR=web/out MAX_TABLES_PER_IP=100 "$bin" 2>/dev/null &
+    PORT=8099 STATIC_DIR=web/out MAX_TABLES_PER_IP=100 METRICS_ADDR= "$bin" 2>/dev/null &
+    # restart.mjs runs its own server from the same binary
+    export BIN="$bin"
     server=$!
     trap 'kill $server' EXIT
     for _ in $(seq 50); do curl -sf localhost:8099 >/dev/null && break; sleep 0.2; done
     failed=0
-    all="session betting showdown turn seat forms password players host endsession approval stats history settings ux layout bots lobby"
+    all="session betting showdown turn seat forms password players host endsession approval stats history settings ux layout bots lobby restart"
     for t in {{ if scripts == "" { "$all" } else { scripts } }}; do
         echo "== $t"
         (cd e2e && node "$t.mjs") || failed=1

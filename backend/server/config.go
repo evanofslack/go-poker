@@ -17,6 +17,7 @@ var (
 	trustProxy     = false   // take the client address from X-Forwarded-For
 	metricsAddr    = ":2112" // where /metrics is served, empty for off; never the public port
 	retainDays     = 30      // closed tables are kept this long
+	databaseURL    = ""      // postgres://… or sqlite:path; empty keeps tables in memory
 
 	timing = table.DefaultTiming // how long tables wait for things
 )
@@ -34,6 +35,7 @@ func loadConfig() {
 	envDuration("ENDED_TABLE_TTL", &timing.EndedTTL)
 	envDuration("IDLE_TABLE_TIMEOUT", &timing.IdleTimeout)
 	envBool("TRUST_PROXY", &trustProxy)
+	databaseURL = os.Getenv("DATABASE_URL")
 	if s, ok := os.LookupEnv("METRICS_ADDR"); ok {
 		metricsAddr = s
 	}

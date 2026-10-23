@@ -93,6 +93,8 @@ type Store interface {
 - Metrics: save errors and save duration.
 - Docker: `docker-compose.yaml` gains a Postgres service with a volume, and sets `DATABASE_URL`.
   SQLite needs only a volume and a path, documented as the alternative.
+- Shutdown tells clients `restarting` rather than `closed`, so they keep their seat token and
+  rejoin once the server is back.
 - Web: the "games aren't saved" line on the join page goes.
 
 ## Tests
@@ -102,8 +104,8 @@ type Store interface {
   the same store without shutting down. The table is back at the checkpoint, redeals the same
   hand, and a token reclaims the seat. A second test shuts down gracefully mid-hand and gets the
   hand back as it was.
-- e2e `restart.mjs`: run the server on SQLite, play a hand, restart the binary, check both
-  players are back in their seats with their stacks.
+- e2e `restart.mjs`: run the server on SQLite; restart it gracefully mid-hand and check the hand
+  carries on, then kill it after a hand and check seats and stacks are back at that hand's end.
 
 ## PRs
 1. **checkpoints** — `Result.Checkpoint`, `State.ID`, the hot/records split, the new `Store`

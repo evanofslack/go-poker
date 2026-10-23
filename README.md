@@ -12,19 +12,51 @@ https://poker.evanslack.dev
 
 ## getting started
 
-Can run from a prebuilt container: `evanofslack/go-poker:latest`
+Can run from a prebuilt container, `evanofslack/go-poker:latest`, with Postgres to keep tables
+across restarts:
 
 ```yaml
 services:
   go-poker:
     image: evanofslack/go-poker:latest
-    container_name: go-poker
     restart: unless-stopped
     ports:
       - 8080:8080
+    environment:
+      DATABASE_URL: postgres://poker:poker@postgres:5432/poker?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: poker
+      POSTGRES_PASSWORD: poker
+      POSTGRES_DB: poker
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "poker"]
+      interval: 2s
+      retries: 15
+
+volumes:
+  postgres:
 ```
 
-Tables, ledgers and hand history live in memory, so they're lost when the server restarts!
+## storage
+
+`DATABASE_URL` picks where tables are kept:
+
+- unset: in memory, so a restart ends every game
+- `postgres://user:pass@host:5432/db`: Postgres
+- `sqlite:/data/poker.db`: a SQLite file; mount a volume at its directory
+
+Tables are saved between hands and on shutdown. A graceful restart carries on mid-hand; a crash goes
+back to the end of the last hand, which is then dealt again. Closed tables are kept for
+`RETAIN_DAYS` (default 30) and then deleted.
 
 ## metrics
 
@@ -42,6 +74,8 @@ Prometheus metrics are served at `/metrics` on a separate port, `METRICS_ADDR` (
 | `poker_seat_grace_total` | `outcome`: reconnected, expired | dropped players who came back or lost their seat |
 | `poker_slow_client_drops_total` | | clients dropped for falling behind |
 | `poker_panics_total` | | panics recovered while handling a message |
+| `poker_save_errors_total` | | tables that failed to save |
+| `poker_save_seconds` | | how long saving a table took |
 
 Plus the standard `go_*` and `process_*` metrics.
 

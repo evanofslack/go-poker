@@ -154,6 +154,11 @@ export function SocketProvider(props: SocketProviderProps) {
                 }
                 case "error": {
                     const m = msg as ErrorOut;
+                    if (m.code === "restarting") {
+                        // the table is saved: keep the session and rejoin once reconnected
+                        dispatch({ type: "addToast", payload: { message: m.message, kind: "info" } });
+                        return;
+                    }
                     // rejected actions only go to this client, show them in the log
                     dispatch({ type: "addLog", payload: { message: "error: " + m.message, time: Date.now() } });
                     dispatch({ type: "setError", payload: m.message });

@@ -5,3 +5,26 @@ services:
     restart: unless-stopped
     ports:
       - 8080:8080
+    environment:
+      DATABASE_URL: postgres://poker:poker@postgres:5432/poker?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: go-poker-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: poker
+      POSTGRES_PASSWORD: poker
+      POSTGRES_DB: poker
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "poker"]
+      interval: 2s
+      retries: 15
+
+volumes:
+  postgres:
