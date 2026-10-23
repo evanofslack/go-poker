@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FiChevronDown } from "react-icons/fi";
+import AfterHand from "./AfterHand";
 import ChatLog from "./ChatLog";
 import Home from "./Home";
 import SessionEnded from "./SessionEnded";
@@ -37,6 +38,7 @@ export default function Game() {
                 <ChatLog />
                 <div className="flex min-w-0 flex-1 justify-end">
                     <Input />
+                    <AfterHand />
                     <Start />
                 </div>
             </footer>

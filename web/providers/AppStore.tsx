@@ -60,6 +60,7 @@ type ACTIONTYPE =
           };
       }
     | { type: "handDone"; payload: { record: HandRecord; stats: HandStats; totals: Record<string, PlayerTotals> } }
+    | { type: "handUpdated"; payload: HandRecord }
     | { type: "resetGame" }
     | { type: "leftTable" }
     | { type: "setTablename"; payload: string }
@@ -96,6 +97,11 @@ function reducer(state: AppState, action: ACTIONTYPE): AppState {
                 totals,
                 history: [...state.history.filter((h) => h.hand !== record.hand), record],
             };
+        }
+        case "handUpdated": {
+            // someone showed their cards after the hand
+            const record = action.payload;
+            return { ...state, history: state.history.map((h) => (h.hand === record.hand ? record : h)) };
         }
         case "addHistory": {
             // older hands, answering getHands

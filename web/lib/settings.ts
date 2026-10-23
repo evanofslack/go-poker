@@ -6,6 +6,7 @@ export const stakes = ["1/2", "5/10", "10/20", "25/50", "100/200"];
 export const seatCounts = [2, 6, 8, 9];
 export const turnTimes = [0, 15000, 30000, 60000, 120000]; // 0 is no turn timer
 export const handDelays = [2000, 3000, 5000, 8000, 10000, 15000];
+export const antes = [0, 0.1, 0.25, 0.5, 1]; // in big blinds, 0 is no ante
 export const maxBigBlind = 1_000_000;
 export const maxBuyInBB = 1000;
 export const maxPasswordLen = 32;
@@ -22,6 +23,8 @@ export type SettingsForm = {
     nextHandDelay: number;
     public: boolean;
     approveRebuys: boolean;
+    ante: number; // in big blinds
+    duckHunt: boolean;
 };
 
 // the server's defaults
@@ -36,6 +39,8 @@ export const defaultForm: SettingsForm = {
     nextHandDelay: 5000,
     public: true,
     approveRebuys: false,
+    ante: 0,
+    duckHunt: true,
 };
 
 // blinds are the form's small and big blind
@@ -56,6 +61,12 @@ export function settingsError(f: SettingsForm): string {
     return "";
 }
 
+// anteChips is an ante of a fraction of the big blind, in chips: at least 1
+// unless there's no ante
+export function anteChips(ante: number, bb: number): number {
+    return ante > 0 ? Math.max(1, Math.round(ante * bb)) : 0;
+}
+
 // toSettings converts a valid form to what create-table sends
 export function toSettings(f: SettingsForm): Settings {
     const [sb, bb] = blinds(f);
@@ -69,5 +80,7 @@ export function toSettings(f: SettingsForm): Settings {
         nextHandDelay: f.nextHandDelay,
         public: f.public,
         approveRebuys: f.approveRebuys,
+        ante: anteChips(f.ante, bb),
+        duckHunt: f.duckHunt,
     };
 }

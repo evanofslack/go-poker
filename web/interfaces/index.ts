@@ -32,7 +32,9 @@ export type GameEvent =
     | { type: "shown"; data: holdem.Shown }
     | { type: "pot-won"; data: holdem.PotWon }
     | { type: "hand-ended"; data: holdem.HandEnded }
+    | { type: "hunted"; data: holdem.Hunted }
     | { type: "hand-done"; data: table.HandDone }
+    | { type: "hand-updated"; data: table.HandUpdated }
     | { type: "log"; data: table.Logged };
 
 export type Message = {

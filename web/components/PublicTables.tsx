@@ -80,6 +80,7 @@ export default function PublicTables({ onPick }: publicTablesProps) {
                                 </span>
                                 <span className={`${stakesCol} text-muted`}>
                                     {chips(t.sb)}/{chips(t.bb)}
+                                    {t.ante > 0 && <span className="block text-xs text-subtle">ante {chips(t.ante)}</span>}
                                 </span>
                                 <span className={seatsCol}>
                                     {t.players}/{t.seats}
