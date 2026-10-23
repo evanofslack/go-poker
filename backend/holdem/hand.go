@@ -40,7 +40,9 @@ func (s *State) StartHand() ([]Event, error) {
 	}
 	s.Hands++
 	s.Board = nil
+	s.Hunted = nil
 	s.Pots = nil
+	s.Aggressor = 0
 	s.Deck = shuffle(s.Seed, s.Hands)
 	s.Street = Preflop
 	s.Betting = true
@@ -65,6 +67,13 @@ func (s *State) StartHand() ([]Event, error) {
 		}
 	}
 	events := append([]Event{started}, dealt...)
+	if s.Config.Ante > 0 {
+		for _, seat := range started.Seats {
+			p := s.Player(seat)
+			amt := p.putDead(s.Config.Ante)
+			events = append(events, Acted{Seat: seat, Street: Preflop, Kind: KindAnte, Amount: amt, AllIn: p.allIn()})
+		}
+	}
 	for _, b := range []struct {
 		seat int
 		kind string
@@ -90,6 +99,7 @@ func (s *State) NextStreet() ([]Event, error) {
 		s.Players[i].Acted = false
 	}
 	s.MinRaise = s.Config.BigBlind
+	s.Aggressor = 0
 
 	n := 1
 	switch s.Street {
@@ -172,20 +182,14 @@ func (s *State) foldWin() []Event {
 	return append(events, s.endHand()...)
 }
 
-// showdown turns up every hand still in and pays each pot to its best hand.
-// Split pots share evenly, with odd chips to the first winner left of the
-// button.
+// showdown pays each pot to its best hand. Split pots share evenly, with odd
+// chips to the first winner left of the button. Winners show, and so does the
+// last to bet or raise on the river, who was called; other hands are mucked.
 func (s *State) showdown() []Event {
 	s.Betting = false
 	s.ToAct = 0
-	var events []Event
-	for i := range s.Players {
-		if p := &s.Players[i]; p.In && !p.Shown {
-			p.Shown = true
-			events = append(events, Shown{p.Seat, p.Cards})
-		}
-	}
 
+	show := []int{s.Aggressor}
 	b := s.Board
 	for i := range s.Pots {
 		pot := &s.Pots[i]
@@ -201,7 +205,18 @@ func (s *State) showdown() []Event {
 			}
 		}
 		pot.Hand = HandName(pot.Score, pot.Cards)
+		show = append(show, pot.Winners...)
+	}
 
+	var events []Event
+	for i := range s.Players {
+		if p := &s.Players[i]; p.In && !p.Shown && slices.Contains(show, p.Seat) {
+			p.Shown = true
+			events = append(events, Shown{p.Seat, p.Cards})
+		}
+	}
+	for i := range s.Pots {
+		pot := &s.Pots[i]
 		share := pot.Amount / uint(len(pot.Winners))
 		for _, seat := range pot.Winners {
 			s.Player(seat).Stack += share
@@ -214,12 +229,11 @@ func (s *State) showdown() []Event {
 }
 
 // endHand clears the hand, keeping the cards, board and pots up to show the
-// result. Busted players sit out.
+// result, and the deck for Hunt. Busted players sit out.
 func (s *State) endHand() []Event {
 	s.Street = NoStreet
 	s.Betting = false
 	s.ToAct = 0
-	s.Deck = nil
 	for i := range s.Players {
 		p := &s.Players[i]
 		p.Bet, p.Committed, p.In, p.Acted = 0, 0, false, false
@@ -228,4 +242,39 @@ func (s *State) endHand() []Event {
 		}
 	}
 	return []Event{HandEnded{s.Hands}}
+}
+
+// Show turns up the cards of the player in seat, between hands, if they were
+// dealt into the last one.
+func (s *State) Show(seat int) ([]Event, error) {
+	p := s.Player(seat)
+	switch {
+	case p == nil:
+		return nil, ErrNoSeat
+	case s.InHand():
+		return nil, ErrInHand
+	case !p.Dealt || p.Shown || p.Cards == [2]Card{}:
+		return nil, ErrIllegal
+	}
+	p.Shown = true
+	return []Event{Shown{p.Seat, p.Cards}}, nil
+}
+
+// Hunt turns up the rest of the board after a hand that ended before the
+// river: the cards that would have come, dealt street by street from the
+// same deck. They count for nothing.
+func (s *State) Hunt() ([]Event, error) {
+	if s.InHand() || len(s.Board) == 5 || s.Hunted != nil || len(s.Deck) < 5-len(s.Board) {
+		return nil, ErrIllegal
+	}
+	var cards []Card
+	for len(s.Board)+len(cards) < 5 {
+		n := 1
+		if len(s.Board)+len(cards) == 0 {
+			n = 3
+		}
+		cards = append(cards, s.draw(n)...)
+	}
+	s.Hunted = cards
+	return []Event{Hunted{cards}}, nil
 }

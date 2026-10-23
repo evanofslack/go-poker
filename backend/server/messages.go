@@ -26,6 +26,8 @@ const (
 	ActionSitOut      = "sit-out"
 	ActionRebuy       = "rebuy"
 	ActionGetHands    = "get-hands"
+	ActionShowCards   = "show-cards" // between hands
+	ActionDuckHunt    = "duck-hunt"  // between hands, on tables that allow it
 
 	// host only
 	ActionAddBot          = "add-bot"

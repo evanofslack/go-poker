@@ -43,8 +43,8 @@ func check(t *testing.T, s *State, want uint) {
 	} else if s.ToAct != 0 {
 		t.Fatalf("seat %d to act while not betting", s.ToAct)
 	}
-	if !s.InHand() && (s.Betting || len(s.Deck) > 0) {
-		t.Fatal("between hands with betting or a deck")
+	if !s.InHand() && s.Betting {
+		t.Fatal("betting between hands")
 	}
 }
 
@@ -81,7 +81,7 @@ func try(t *testing.T, s *State, f func() error) {
 func TestRollout(t *testing.T) {
 	for game := range 300 {
 		r := rand.New(rand.NewPCG(uint64(game), 1))
-		s := New(Config{SmallBlind: 1 + r.UintN(10), BigBlind: 20}, [32]byte{byte(game), byte(game >> 8)})
+		s := New(Config{SmallBlind: 1 + r.UintN(10), BigBlind: 20, Ante: r.UintN(3) * 5}, [32]byte{byte(game), byte(game >> 8)})
 		seats := 2 + r.IntN(8)
 		for seat := 1; seat <= seats; seat++ {
 			if r.IntN(4) > 0 {
@@ -91,9 +91,13 @@ func TestRollout(t *testing.T) {
 		total := chips(&s)
 
 		for range 40 {
-			// between hands: people come and go
+			// between hands: people come and go, show and hunt
 			for _, p := range s.Players {
-				switch r.IntN(12) {
+				switch r.IntN(14) {
+				case 3:
+					try(t, &s, func() error { _, err := s.Show(p.Seat); return err })
+				case 4:
+					try(t, &s, func() error { _, err := s.Hunt(); return err })
 				case 0:
 					try(t, &s, func() error { return s.SetSittingOut(p.Seat, !p.SittingOut) })
 				case 1:
@@ -177,6 +181,9 @@ func normalize(s State) State {
 	}
 	if len(s.Deck) == 0 {
 		s.Deck = nil
+	}
+	if len(s.Hunted) == 0 {
+		s.Hunted = nil
 	}
 	if len(s.Pots) == 0 {
 		s.Pots = nil

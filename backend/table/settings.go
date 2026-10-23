@@ -17,6 +17,10 @@ type Settings struct {
 	NextHandDelay uint `json:"nextHandDelay"` // pause after a hand before dealing the next
 	Public        bool `json:"public"`        // listed on the home page
 	ApproveRebuys bool `json:"approveRebuys"` // rebuys, and sitting back down, wait for the host
+
+	// house rules
+	Ante     uint `json:"ante"`     // from every player each hand, 0 for none
+	DuckHunt bool `json:"duckHunt"` // players can turn up the rest of the board after a hand ends early
 }
 
 // DefaultSettings are used for anything create-table leaves out.
@@ -28,6 +32,7 @@ var DefaultSettings = Settings{
 	MaxBuy:        4000,
 	TurnTime:      30000,
 	NextHandDelay: 5000,
+	DuckHunt:      true,
 }
 
 // settings limits, mirrored by the create table form
@@ -54,6 +59,8 @@ func (s Settings) Validate() error {
 		return errors.New("min buy-in must be between 1 big blind and the max buy-in")
 	case s.MaxBuy > maxBuyInBB*s.BigBlind:
 		return fmt.Errorf("max buy-in can't be more than %d big blinds", maxBuyInBB)
+	case s.Ante > s.BigBlind:
+		return errors.New("ante can't be more than the big blind")
 	case s.TurnTime != 0 && (s.TurnTime < minTurnTime || s.TurnTime > maxTurnTime):
 		return fmt.Errorf("turn timer must be off or between %d and %d seconds", minTurnTime/1000, maxTurnTime/1000)
 	case s.NextHandDelay < minNextHandDelay || s.NextHandDelay > maxNextHandDelay:

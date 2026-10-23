@@ -429,6 +429,12 @@ func TestPlay(t *testing.T) {
 		t.Fatalf("a's stack %d", u.View.Players[0].Stack)
 	}
 
+	// between hands a shows their cards and b duck hunts
+	a.send(`{"action":"show-cards"}`)
+	w.update(func(v table.View) bool { return v.Players[0].Cards[0] != 0 })
+	b.send(`{"action":"duck-hunt"}`)
+	w.update(func(v table.View) bool { return len(v.Hunted) == 5 })
+
 	a.send(`{"action":"get-hands","before":5}`)
 	var h HandHistory
 	a.wait(ActionHandHistory, nil).decode(t, &h)

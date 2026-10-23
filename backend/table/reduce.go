@@ -109,6 +109,10 @@ func personOf(cmd Command) string {
 		return c.Person
 	case Rebuy:
 		return c.Person
+	case Show:
+		return c.Person
+	case Hunt:
+		return c.Person
 	case GetHands:
 		return c.Person
 	case AddBot:
@@ -186,6 +190,10 @@ func (r *reducer) do(cmd Command) error {
 		return r.sitOut(p)
 	case Rebuy:
 		return r.rebuy(p, c.Amount)
+	case Show:
+		return r.show(p)
+	case Hunt:
+		return r.hunt(p)
 	case GetHands:
 		r.quiet = true
 		hands, more := HistoryFor(r.s, p.Name, c.Before)

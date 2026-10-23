@@ -87,6 +87,7 @@ func (s *State) Act(seat int, a Action) ([]Event, error) {
 			}
 		}
 		e.Amount = p.put(a.To - p.Bet)
+		s.Aggressor = seat
 	case Fold:
 		e.Kind = KindFold
 		p.In = false

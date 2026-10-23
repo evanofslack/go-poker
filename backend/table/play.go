@@ -146,6 +146,45 @@ func (r *reducer) turnTimedOut() {
 	}
 }
 
+// show turns up the person's cards from the last hand.
+func (r *reducer) show(p *Person) error {
+	if p.Seat == 0 {
+		return fail("take a seat first")
+	}
+	events, err := r.s.Game.Show(p.Seat)
+	if err != nil {
+		return fail("you have no cards to show")
+	}
+	r.res.Events = append(r.res.Events, events...)
+	r.showInRecord(p.Seat, r.s.Game.Player(p.Seat).Cards)
+	return nil
+}
+
+// huntShow is how long hunted cards stay up at least, before the next hand.
+const huntShow = 3 * time.Second
+
+// hunt turns up the rest of the board after a hand that ended early, for a
+// player who was dealt in, on tables that allow it.
+func (r *reducer) hunt(p *Person) error {
+	s := r.s
+	if !s.Settings.DuckHunt {
+		return fail("duck hunting isn't allowed at this table")
+	}
+	if gp := s.Game.Player(p.Seat); p.Seat == 0 || gp == nil || !gp.Dealt {
+		return fail("only players dealt into the last hand can duck hunt")
+	}
+	events, err := s.Game.Hunt()
+	if err != nil {
+		return fail("there's nothing to hunt")
+	}
+	r.res.Events = append(r.res.Events, events...)
+	r.log("%s went duck hunting", p.Name)
+	if at, ok := s.Timers[TimerDeal]; ok && at.Sub(r.now) < huntShow {
+		r.schedule(TimerDeal, huntShow)
+	}
+	return nil
+}
+
 // botMove makes the move of the bot to act, from what its player can see.
 func (r *reducer) botMove() {
 	g := &r.s.Game

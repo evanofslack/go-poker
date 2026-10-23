@@ -20,6 +20,8 @@ func TestRandomCommands(t *testing.T) {
 		set := DefaultSettings
 		set.Seats = uint(2 + r.IntN(4))
 		set.ApproveRebuys = r.IntN(2) == 0
+		set.Ante = r.UintN(3) * set.BigBlind / 4
+		set.DuckHunt = r.IntN(2) == 0
 		if r.IntN(3) == 0 {
 			set.TurnTime = 0
 		}
@@ -84,6 +86,10 @@ func TestRandomCommands(t *testing.T) {
 				cmd = GetHands{Person: id, Before: r.IntN(5)}
 			case 17:
 				h.advance(time.Duration(r.IntN(40)) * time.Second)
+			case 18:
+				cmd = Show{Person: id}
+			case 19:
+				cmd = Hunt{Person: id}
 			default:
 				// whoever is to act moves, if they're a person
 				g := &h.s.Game

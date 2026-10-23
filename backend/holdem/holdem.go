@@ -40,6 +40,7 @@ var (
 type Config struct {
 	SmallBlind uint `json:"sb"`
 	BigBlind   uint `json:"bb"`
+	Ante       uint `json:"ante"` // from every player dealt in, 0 for none
 }
 
 // Player is someone in a seat.
@@ -53,7 +54,7 @@ type Player struct {
 	SittingOut bool    `json:"sittingOut"` // not dealt in; busted players sit out
 	Acted      bool    `json:"acted"`      // since the last full raise, so a short all-in can't be re-raised
 	Cards      [2]Card `json:"cards"`      // zero when not dealt, or hidden in a view
-	Shown      bool    `json:"shown"`      // face up, at showdown or once all in
+	Shown      bool    `json:"shown"`      // face up: once all in, at showdown if they must, or by choice after
 }
 
 // allIn reports whether p is in the hand with no chips left to bet.
@@ -74,6 +75,15 @@ func (p *Player) put(amt uint) uint {
 	return amt
 }
 
+// putDead moves up to amt chips from p's stack into the pot without betting
+// them, like an ante, and returns how many.
+func (p *Player) putDead(amt uint) uint {
+	amt = min(amt, p.Stack)
+	p.Stack -= amt
+	p.Committed += amt
+	return amt
+}
+
 // Pot is a main or side pot. Between hands it holds the last hand's result.
 type Pot struct {
 	Amount   uint   `json:"amount"`
@@ -86,20 +96,22 @@ type Pot struct {
 
 // State is a game of hold'em.
 type State struct {
-	Config   Config   `json:"config"`
-	Players  []Player `json:"players"` // by seat
-	Street   Street   `json:"street"`
-	Betting  bool     `json:"betting"` // someone has to act; false mid-hand means NextStreet is due
-	Button   int      `json:"button"`  // seats, 0 for none
-	SB       int      `json:"sb"`
-	BB       int      `json:"bb"`
-	ToAct    int      `json:"toAct"`
-	Board    []Card   `json:"board"`
-	Deck     []Card   `json:"deck"`
-	Pots     []Pot    `json:"pots"`
-	MinRaise uint     `json:"minRaise"` // the smallest raise, by how much it adds to the top bet
-	Hands    int      `json:"hands"`    // dealt so far
-	Seed     [32]byte `json:"seed"`     // decks come from this and the hand number
+	Config    Config   `json:"config"`
+	Players   []Player `json:"players"` // by seat
+	Street    Street   `json:"street"`
+	Betting   bool     `json:"betting"` // someone has to act; false mid-hand means NextStreet is due
+	Button    int      `json:"button"`  // seats, 0 for none
+	SB        int      `json:"sb"`
+	BB        int      `json:"bb"`
+	ToAct     int      `json:"toAct"`
+	Board     []Card   `json:"board"`
+	Hunted    []Card   `json:"hunted"` // the rest of the board, turned up for fun after a hand ended early
+	Deck      []Card   `json:"deck"`   // kept after the hand for Hunt
+	Pots      []Pot    `json:"pots"`
+	MinRaise  uint     `json:"minRaise"`  // the smallest raise, by how much it adds to the top bet
+	Aggressor int      `json:"aggressor"` // the last to bet or raise this street, 0 for none
+	Hands     int      `json:"hands"`     // dealt so far
+	Seed      [32]byte `json:"seed"`      // decks come from this and the hand number
 }
 
 // New returns a game with no players. Each hand's deck is shuffled from seed
@@ -112,6 +124,7 @@ func New(cfg Config, seed [32]byte) State {
 func (s State) Clone() State {
 	s.Players = slices.Clone(s.Players)
 	s.Board = slices.Clone(s.Board)
+	s.Hunted = slices.Clone(s.Hunted)
 	s.Deck = slices.Clone(s.Deck)
 	pots := make([]Pot, len(s.Pots))
 	for i, p := range s.Pots {
