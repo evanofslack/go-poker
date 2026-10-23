@@ -8,7 +8,8 @@ https://poker.evanslack.dev
 
 ## ui
 
-<img width="800" alt="gopoker-screenshot" src="https://github.com/evanofslack/go-poker/assets/51209817/08c93fd3-0814-40e8-ab10-74d613ad996a">
+<img width="950" alt="gopoker-screenshot" src="https://github.com/user-attachments/assets/dd306e9a-4b0e-4c6b-90e7-902216e41705" />
+
 
 ## getting started
 
