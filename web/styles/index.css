@@ -46,6 +46,14 @@
       transform: scale(0.6);
     }
   }
+
+  --animate-arm: arm 300ms; /* controls that ignore clicks as they appear */
+  @keyframes arm {
+    from,
+    to {
+      pointer-events: none;
+    }
+  }
 }
 
 /* chart series, in this fixed order. Checked with the dataviz palette

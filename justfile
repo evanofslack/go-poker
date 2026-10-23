@@ -54,7 +54,7 @@ e2e *scripts: install
     trap 'kill $server' EXIT
     for _ in $(seq 50); do curl -sf localhost:8099 >/dev/null && break; sleep 0.2; done
     failed=0
-    all="session betting showdown turn seat forms password players host endsession approval stats history settings ux layout bots lobby restart"
+    all="session betting preaction keys showdown turn seat forms password players host endsession approval stats history settings ux layout bots lobby restart"
     for t in {{ if scripts == "" { "$all" } else { scripts } }}; do
         echo "== $t"
         (cd e2e && node "$t.mjs") || failed=1

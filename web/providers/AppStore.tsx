@@ -13,6 +13,15 @@ import {
 } from "../interfaces";
 import { MaxHands } from "../interfaces/table";
 
+// loadShortcuts is the saved keyboard shortcuts setting, on by default
+function loadShortcuts() {
+    try {
+        return localStorage.getItem("shortcuts") !== "0";
+    } catch {
+        return true;
+    }
+}
+
 const initialState: AppState = {
     messages: [],
     logs: [],
@@ -29,6 +38,7 @@ const initialState: AppState = {
     history: [],
     moreHistory: false,
     tables: [],
+    shortcuts: loadShortcuts(),
 };
 
 let nextToastID = 0;
@@ -60,7 +70,8 @@ type ACTIONTYPE =
     | { type: "addToast"; payload: Omit<Toast, "id"> }
     | { type: "removeToast"; payload: number }
     | { type: "addHistory"; payload: { hands: HandRecord[]; more: boolean } }
-    | { type: "setTables"; payload: TableSummary[] };
+    | { type: "setTables"; payload: TableSummary[] }
+    | { type: "setShortcuts"; payload: boolean };
 
 function reducer(state: AppState, action: ACTIONTYPE): AppState {
     switch (action.type) {
@@ -102,6 +113,7 @@ function reducer(state: AppState, action: ACTIONTYPE): AppState {
                 connection: state.connection,
                 toasts: state.toasts,
                 tables: state.tables,
+                shortcuts: state.shortcuts,
             };
         case "setTablename":
             return { ...state, table: action.payload };
@@ -113,6 +125,11 @@ function reducer(state: AppState, action: ACTIONTYPE): AppState {
             return { ...state, error: action.payload };
         case "setTables":
             return { ...state, tables: action.payload };
+        case "setShortcuts":
+            try {
+                localStorage.setItem("shortcuts", action.payload ? "1" : "0");
+            } catch {}
+            return { ...state, shortcuts: action.payload };
         case "setConnection":
             return { ...state, connection: action.payload };
         case "addToast": {

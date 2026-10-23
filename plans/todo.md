@@ -552,7 +552,6 @@ Matters once the public demo gets real traffic.
   once it's enabled, retrying when the turn moves on; wait for a state rather than any update), trim
   checks that pin exact text or pixels, and consider a non-blocking CI job so the suite protects
   main. See the guidance in `e2e/README.md`.
-- Pre-action buttons (check/fold, call any) and keyboard shortcuts
 - Run it twice, straddles, antes, show/muck at showdown
 - Pot-limit Omaha
 - Sit-n-go / tournament mode with a blind schedule

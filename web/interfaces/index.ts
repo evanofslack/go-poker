@@ -72,4 +72,5 @@ export type AppState = {
     history: table.HandRecord[]; // hands as played, oldest first; older ones are fetched with getHands
     moreHistory: boolean; // the table keeps hands older than history's first
     tables: table.Summary[]; // public tables for the home page, best to join first
+    shortcuts: boolean; // keyboard shortcuts for the betting controls
 };
