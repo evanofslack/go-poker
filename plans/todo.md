@@ -158,6 +158,10 @@ Consider the light token pass from 6.1 first so new components aren't restyled t
 - [x] **Leave seat / sit out / rebuy** buttons (uses 2.4 engine work).
 - [x] **Join form** (`web/components/Join.tsx`): one `autoFocus`, use a real `<form onSubmit>` instead of a
   document-wide `keydown` listener. (Create/join buttons and disabling are done.)
+- [x] **Pre-actions** (`web/components/Input.tsx`): while waiting, pick check/fold, check, fold or call X; it
+  plays on your turn and clears if the price changes or the street ends. No "call any".
+- [x] **Keyboard shortcuts:** F fold, C check/call, R/B bet or raise, arrows move a bet by a big blind; before
+  your turn F and C pick. Hints on desktop, listed in the settings tab with an off switch.
 - The dealer button passing on when the dealer sits out is the engine's intended behavior; left as is.
 
 # Stage 5: host and table features
