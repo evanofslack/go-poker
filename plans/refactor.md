@@ -1,0 +1,110 @@
+# Engine and table refactor
+
+Replace the riverboat-derived engine and the mutex-guarded table with a pure engine, a pure table
+reducer and a thin runtime around them. No compatibility or migration: old code is deleted in the
+cutover. The web client stays the main interface. Saving tables to disk is out of scope, but
+everything is shaped so a disk `Store` is the only missing piece. `cmd/sim` is out of scope.
+
+`features.md` is the acceptance checklist.
+
+## Decisions
+- Packages, not modules: `holdem/` (engine), `table/` (table logic), `server/` (runtime), `bot/`.
+- Protocol: each change sends `table-update {view, events}`, both filtered per viewer. The view is
+  the source of truth; events drive the log and history on the client. Wire types are generated
+  to TypeScript with tygo.
+- Web: adapt only. Same UI, new types, stable seat numbers, server-sent legal actions.
+- Rules: parity with today, fixing bugs found on the way.
+- Storage: a `Store` interface with an in-memory implementation that keeps serialized bytes.
+
+## `holdem`: the engine
+Plain data, no locks, no clock, no global randomness.
+
+```go
+type State struct {          // exported and JSON-able
+    Config  Config           // blinds
+    Players []Player         // sorted by Seat (1-based)
+    Street  Street           // "" between hands, else preflop..river
+    Betting bool             // someone has to act; false mid-hand means the next street is due
+    Button, SB, BB, ToAct int // seats, 0 for none
+    Board   []Card
+    Deck    []Card
+    Pots    []Pot            // between hands, the last hand's result
+    MinRaise uint
+    Hands   int              // hands dealt
+    Seed    [32]byte         // deck for hand n is a ChaCha8 shuffle from Seed and n
+}
+
+func New(cfg Config, seed [32]byte) State
+func (s *State) Act(seat int, a Action) ([]Event, error) // Check, Call, Raise{To}, Fold
+func (s *State) Legal(seat int) Legal                    // what seat may do now
+func (s *State) StartHand() ([]Event, error)
+func (s *State) NextStreet() ([]Event, error)
+func (s *State) Sit / Leave / AddChips / RemoveChips / SetSittingOut(...)
+func (s *State) View(seat int) View                      // hides cards seat may not see
+```
+- Every method validates before it changes anything: an error leaves the state as it was.
+- Events: hand started, hole cards (private to the seat), blinds, acted, street dealt, chips
+  returned, cards shown, pot won, hand ended. `Visible(e, seat)` filters them.
+- Betting closing with no more decisions possible (all in) leaves `Betting` false so the table
+  runs the board out one street at a time with `NextStreet`.
+- Tests: rules unit tests, stacked decks, and random rollouts that check chips are conserved,
+  pots add up, the seat to act can act, failed actions change nothing, and every hand ends.
+
+## `table`: the table as data
+```go
+type State struct {
+    Version  int
+    Name     string
+    Settings Settings
+    Password string            // salted hash
+    Game     holdem.State
+    Running, Paused, Ending bool
+    EndedAt  time.Time
+    People   map[string]*Person // connected or in grace, by id: name, seat, conns, grace
+    Seats    map[int]*Seat      // table-side seat info: who, bot level, token hash, leaving, sit-out-next
+    Host, Banker string
+    Ledger   []LedgerEntry
+    Requests map[string]BuyRequest
+    History  []HandRecord; Current *HandRecord; Stats []HandStats; Totals map[string]*Totals
+    Logs     []Log
+    Acts     map[int]Act
+    Timers   map[Timer]time.Time // deal, street, turn, bot, grace:<id>, close
+    LastActive time.Time
+}
+
+func Reduce(s *State, now time.Time, cmd Command) Result
+type Result struct { Events []Event; Out []Out; Changed bool; Close *Close }
+func ViewFor(s *State, person string) View
+```
+- Commands: join, leave, connect, disconnect, every player and host action, `TimerFired`.
+- Timers are deadlines in state. The runtime arms a timer for each entry and posts
+  `TimerFired` back; an entry that changed or went away was cancelled. No sequence numbers.
+- Bots act from a scheduled `bot` timer with randomness derived from the game seed, so tables
+  replay deterministically.
+- Tests drive `Reduce` with a fake `now` through scripted commands.
+
+## `server`: the runtime
+- Hub: tables by name, limits, lobby summaries (pushed by tables), idle reaping, shutdown, metrics.
+- One goroutine per table: `inbox → Reduce → arm timers → send outs and views → Store.Save`.
+- Clients: websocket pumps, rate limit, decode and validate messages into commands.
+- `Store` interface (`Save`, `Delete`, `Load`) with `memStore`. A restore test saves a table
+  mid-hand, rebuilds the actor from the bytes and finishes the hand.
+
+## Protocol
+- Out: `joined`, `table-update {view, events}`, `welcome` backlog (logs, stats, totals, history
+  page), `hand-history` page, `chat`, `tables`, `error {code}`.
+- In: same actions as today, raise sends the total bet (`to`) instead of chips added.
+- Go types in `server/` and `table/`, TS generated by `go tool tygo generate` into
+  `web/interfaces/generated.ts`; event unions written by hand next to it.
+
+## PRs
+Stacked, each one runs `just check`.
+
+1. **holdem** (`refactor/holdem`): these docs, the engine and its tests. Nothing uses it yet.
+2. **table** (`refactor/table`): the reducer and its tests on top of `holdem`. Nothing uses it yet.
+3. **cutover** (`refactor/cutover`): server runtime, store, protocol, tygo, web, delete `poker/`
+   and the old server code, update CLAUDE.md, tick off `features.md`, all e2e scripts pass.
+
+Parallel work: once the `holdem` API is in (PR 1's first commit) the table reducer can be written
+against it, and once the protocol types are generated the web side can be adapted while the
+runtime is finished.
