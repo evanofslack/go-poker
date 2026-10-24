@@ -184,6 +184,16 @@ export function sessionAction(socket: WebSocket, action: "pause-game" | "resume-
     );
 }
 
+// startStandUp starts a stand-up round for payout chips each, from the next hand
+export function startStandUp(socket: WebSocket, payout: number) {
+    send(socket, { action: "start-stand-up", amount: payout });
+}
+
+// cancelStandUp ends the stand-up round without a payout, or dismisses running the last one again
+export function cancelStandUp(socket: WebSocket) {
+    send(socket, { action: "cancel-stand-up" });
+}
+
 // getHands asks for the hands played before hand number before, answered with hand-history
 export function getHands(socket: WebSocket, before: number) {
     socket?.send(JSON.stringify({ action: "get-hands", before: before }));

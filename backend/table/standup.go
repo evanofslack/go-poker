@@ -66,7 +66,7 @@ func (r *reducer) startStandUp(p *Person, payout uint) error {
 	case payout == 0 || payout > maxStandUpBB*s.Settings.BigBlind:
 		return fail("the payout must be between 1 chip and %d big blinds", maxStandUpBB)
 	}
-	s.StandUp = &StandUp{Payout: payout, Pending: true}
+	s.StandUp = &StandUp{Payout: payout, Pending: true, Players: []string{}, Sat: []string{}}
 	s.LastStandUp = 0
 	r.log("%s started a stand-up round for %d each, from the next hand", p.Name, payout)
 	return nil

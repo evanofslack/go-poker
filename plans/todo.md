@@ -10,7 +10,7 @@
 | 6 | UI consistency and mobile | done |
 | 7 | Operator tooling | done |
 | 8 | Persistence (`persistence.md`) | done |
-| 9 | House rules | in progress |
+| 9 | House rules | in progress (straddle, run it twice left) |
 | - | Backlog | unranked |
 
 ## How items are ranked
@@ -346,16 +346,17 @@ Differences from the plan:
 
 ## PR 3: stand-up game
 
-- [ ] **Rounds:** the host starts one with a payout; it begins with the next hand, and its players
+- [x] **Rounds:** the host starts one with a payout; it begins with the next hand, and its players
   are exactly those dealt into that hand. Anyone else isn't part of that round: doesn't pay, can't
   collect. The host can cancel a round, with no payout.
-- [ ] **Sitting down:** a round player who wins or splits any pot, with their cards face up, sits
+- [x] **Sitting down:** a round player who wins or splits any pot, with their cards face up, sits
   down. After an uncalled win they must show to sit ("show to sit down"); bots show to sit.
-- [ ] **Payout:** when one round player is left standing they pay each round player who sat down
+- [x] **Payout:** when one round player is left standing they pay each round player who sat down
   and is still seated, as much as they have. If the last ones standing all sit at once (a split),
   the round ends with no payout. The round then ends, the game keeps dealing, and the host gets a
-  "run it again" button: no prompt, no wait.
-- [ ] **Leaving while standing** counts as losing: they pay on leaving (host removals and grace
+  "stand-up again" button in the footer: no prompt, no wait. Payouts are 1 to 20 bb (1, 2, 5 or
+  10 bb in the host tab).
+- [x] **Leaving while standing** counts as losing: they pay on leaving (host removals and grace
   expiry too). If that leaves one standing, the round ends without them paying.
 
 ## Later

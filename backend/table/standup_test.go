@@ -1,7 +1,9 @@
 package table
 
 import (
+	"encoding/json"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -138,6 +140,11 @@ func TestStandUpCancel(t *testing.T) {
 	h.ok(CancelStandUp{Person: h.ids["a"]})
 	if h.s.StandUp != nil || h.s.LastStandUp != 0 {
 		t.Fatal("a cancelled round doesn't pay or offer a rerun")
+	}
+	// a pending round sends empty lists, not nulls
+	h.ok(StartStandUp{Person: h.ids["a"], Payout: 40})
+	if b, _ := json.Marshal(ViewFor(h.s, h.ids["a"], h.now).StandUp); !strings.Contains(string(b), `"players":[]`) {
+		t.Fatalf("pending round %s", b)
 	}
 	h.refused(StartStandUp{Person: h.ids["a"], Payout: 20*maxStandUpBB + 1})
 }

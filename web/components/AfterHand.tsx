@@ -22,7 +22,11 @@ export default function AfterHand() {
         <div role="group" aria-label="after the hand" className="flex gap-2">
             {canShow && (
                 <Button className="px-2 sm:px-4 sm:text-xl" onClick={() => showCards(socket)}>
-                    {view.showClaims.includes("7-2") ? "show to claim the 7-2" : "show cards"}
+                    {view.showClaims.includes("7-2")
+                        ? "show to claim the 7-2"
+                        : view.showClaims.includes("stand-up")
+                          ? "show to sit down"
+                          : "show cards"}
                 </Button>
             )}
             {canHunt && (
