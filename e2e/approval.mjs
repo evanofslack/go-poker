@@ -19,7 +19,6 @@ await alice.goto(URL);
 await alice.fill("#username", "alice");
 await alice.fill("#tablename", table);
 await alice.click('button:text-is("create")');
-await alice.click('summary:text-is("more settings")');
 await alice.check("#approveRebuys");
 await alice.click('button:text-is("create table")');
 await alice.waitForSelector("text=Open");

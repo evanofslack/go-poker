@@ -15,7 +15,6 @@ await alice.goto(URL);
 await alice.fill("#username", "alice");
 await alice.fill("#tablename", table);
 await alice.click('button:text-is("create")');
-await alice.click("text=more settings");
 check("duck hunt is allowed by default", await alice.locator("#duckHunt").isChecked());
 await alice.click('label:has(input[name="ante"]) >> text="25%"');
 await alice.click('label:has(input[name="sevenDeuce"]) >> text="2 bb"');

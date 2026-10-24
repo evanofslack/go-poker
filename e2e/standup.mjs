@@ -23,6 +23,7 @@ for (const [p, name, btn, seat] of [[alice, "alice", "create", 1], [bob, "bob", 
 // alice, hosting, starts a round for 2 big blinds from the host tab
 await alice.click('header button:has-text("table")');
 await alice.click('[aria-label="table"] button:text-is("host")');
+await shot(alice, "host-tab");
 await alice.click('label:has(input[name="standUpPayout"]) >> text="2 bb"');
 await alice.click('button:text-is("start stand-up")');
 check("the round waits for the next hand", await has(alice, "text=starts with the next hand"));
@@ -47,7 +48,7 @@ check("only the host", (await bob.locator('button:text-is("stand-up again")').co
 await alice.click('button:text-is("stand-up again")');
 await alice.click('header button:has-text("table")');
 await alice.click('[aria-label="table"] button:text-is("host")');
-check("a new round is set for the next hand", await has(alice, "text=stand-up round, 40 each"));
+check("a new round is set for the next hand", await has(alice, '[aria-label="stand-up round"] >> text=40 each'));
 await shot(alice, "standup-host");
 
 await browser.close();

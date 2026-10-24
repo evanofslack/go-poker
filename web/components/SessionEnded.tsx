@@ -15,7 +15,7 @@ export default function SessionEnded() {
     const { rows, banker, balance } = game.ledger;
 
     return (
-        <Dialog title="the session is over" onClose={() => setClosed(true)} wide>
+        <Dialog title="the session is over" onClose={() => setClosed(true)} size="md">
             <p className="mb-3 text-sm text-muted">
                 settle up with the banker, <span className="text-fg">{banker || "nobody"}</span>. amounts are in
                 chips.

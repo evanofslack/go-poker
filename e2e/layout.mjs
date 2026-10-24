@@ -121,7 +121,6 @@ async function seatTable(n, kinds, order) {
         await p.fill("#tablename", table);
         await p.click(`button:text-is("${i === 0 ? "create" : "join"}")`);
         if (i === 0) {
-            await p.click("text=more settings");
             await p.click(`fieldset:has-text("seats") label:has-text("${n}")`);
             await confirmCreate(p);
         }

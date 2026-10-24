@@ -1,10 +1,12 @@
 import { useContext, useState } from "react";
+import classNames from "classnames";
 import { cancelStandUp, sessionAction, startStandUp } from "../../actions/actions";
 import { standUpPayouts } from "../../lib/settings";
 import { useSocket } from "../../hooks/useSocket";
 import { AppContext } from "../../providers/AppStore";
 import Button from "../Button";
 import Confirm from "../Confirm";
+import Section from "../Section";
 import Segmented from "../Segmented";
 
 // Host holds the host's controls for the whole session. Controls for one
@@ -18,32 +20,33 @@ export default function Host() {
     if (!socket || !game) return null;
     const midHand = game.street !== "";
 
+    let status = "running";
+    if (game.ended) status = "session over";
+    else if (game.ending) status = "ending after this hand";
+    else if (game.paused) status = midHand ? "pausing after this hand" : "paused";
+
     return (
-        <div className="flex h-full flex-col gap-3 overflow-auto bg-surface p-3 text-sm">
-            <div className="flex items-center gap-3">
+        <div className="flex h-full flex-col gap-5 overflow-auto bg-surface p-3 text-sm">
+            <div className="flex items-center gap-2" aria-label="game status">
+                <span
+                    className={classNames(
+                        "size-2 shrink-0 rounded-full",
+                        status === "running" ? "bg-gain" : game.paused ? "bg-warn" : "bg-subtle"
+                    )}
+                />
+                <span className="text-fg">{status}</span>
                 <Button
-                    variant="primary"
-                    className="px-4 py-1.5"
+                    className="ml-auto px-4 py-1"
                     onClick={() => sessionAction(socket, game.paused ? "resume-game" : "pause-game")}
                 >
                     {game.paused ? "resume" : "pause"}
                 </Button>
-                <span className="text-subtle">
-                    {game.paused
-                        ? midHand
-                            ? "pausing after this hand"
-                            : "the game is paused"
-                        : "no new hands are dealt until you resume"}
-                </span>
             </div>
             {!game.ended && <StandUp payoutBB={payoutBB} setPayoutBB={setPayoutBB} />}
             {!game.ending && (
-                <div className="flex items-center gap-3 border-t border-raised pt-3">
-                    <Button variant="danger" className="px-4 py-1.5" onClick={() => setConfirming(true)}>
-                        end session
-                    </Button>
-                    <span className="text-subtle">settle up and close the table</span>
-                </div>
+                <Button variant="danger" className="mt-auto w-full py-1.5" onClick={() => setConfirming(true)}>
+                    end session
+                </Button>
             )}
             {confirming && (
                 <Confirm
@@ -64,6 +67,23 @@ export default function Host() {
     );
 }
 
+const rules =
+    "everyone dealt in stands until they win a pot and show. the last one standing pays each player who sat down. rounds begin on the next hand.";
+
+// Names lists players as small pills
+function Names({ label, names }: { label: string; names: string[] }) {
+    return (
+        <div className="flex flex-wrap items-center gap-1">
+            <span className="mr-1 text-xs text-subtle">{label}</span>
+            {names.map((n) => (
+                <span key={n} className="rounded bg-badge px-1.5 text-fg">
+                    {n}
+                </span>
+            ))}
+        </div>
+    );
+}
+
 // StandUp starts and cancels stand-up rounds: everyone dealt into the first
 // hand stands until they win a pot and show, and the last one standing pays
 // everyone who sat down.
@@ -78,49 +98,51 @@ function StandUp({ payoutBB, setPayoutBB }: { payoutBB: number; setPayoutBB: (n:
         const sat = u.sat ?? [];
         const standing = (u.players ?? []).filter((n) => !sat.includes(n));
         return (
-            <div className="flex flex-col gap-2 border-t border-raised pt-3" aria-label="stand-up round">
-                <p className="text-fg">
-                    stand-up round, {u.payout.toLocaleString("en")} each
-                    {u.pending && <span className="text-subtle"> · starts with the next hand</span>}
+            <Section title="stand-up" hint={rules}>
+                <p className="flex flex-wrap items-center gap-2 text-fg" aria-label="stand-up round">
+                    {u.payout.toLocaleString("en")} each
+                    <span className="rounded bg-badge px-1.5 text-xs text-muted">
+                        {u.pending ? "starts with the next hand" : "in play"}
+                    </span>
                 </p>
                 {!u.pending && (
-                    <p className="text-subtle">
-                        standing: <span className="text-fg">{standing.join(", ")}</span>
-                        {sat.length > 0 && (
-                            <>
-                                {" "}
-                                · sat down: <span className="text-fg">{sat.join(", ")}</span>
-                            </>
-                        )}
-                    </p>
+                    <>
+                        <Names label="still standing" names={standing} />
+                        {sat.length > 0 && <Names label="sat down" names={sat} />}
+                    </>
                 )}
-                <div>
-                    <Button className="px-4 py-1.5" onClick={() => cancelStandUp(socket)}>
-                        cancel round
-                    </Button>
-                </div>
-            </div>
+                <Button className="self-end px-4 py-1" onClick={() => cancelStandUp(socket)}>
+                    cancel round
+                </Button>
+            </Section>
         );
     }
     return (
-        <div className="flex flex-col gap-2 border-t border-raised pt-3">
+        <Section title="stand-up" hint={rules}>
             <Segmented
-                legend="stand-up: the last one standing pays each player who sat down"
+                legend="payout"
                 name="standUpPayout"
-                options={standUpPayouts.map((n) => ({ label: `${n} bb`, value: n }))}
+                options={standUpPayouts.map((n) => ({
+                    label: (
+                        <>
+                            <span>{n} bb</span>{" "}
+                            <span className="font-normal opacity-60">
+                                {(n * game.settings.bb).toLocaleString("en")}
+                            </span>
+                        </>
+                    ),
+                    value: n,
+                }))}
                 value={payoutBB}
                 onChange={setPayoutBB}
             />
-            <div className="flex items-center gap-3">
-                <Button
-                    variant="primary"
-                    className="px-4 py-1.5"
-                    onClick={() => startStandUp(socket, payoutBB * game.settings.bb)}
-                >
-                    start stand-up
-                </Button>
-                <span className="text-subtle">from the next hand</span>
-            </div>
-        </div>
+            <Button
+                variant="primary"
+                className="self-end px-4 py-1"
+                onClick={() => startStandUp(socket, payoutBB * game.settings.bb)}
+            >
+                start stand-up
+            </Button>
+        </Section>
     );
 }
