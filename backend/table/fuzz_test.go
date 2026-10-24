@@ -22,6 +22,7 @@ func TestRandomCommands(t *testing.T) {
 		set.ApproveRebuys = r.IntN(2) == 0
 		set.Ante = r.UintN(3) * set.BigBlind / 4
 		set.DuckHunt = r.IntN(2) == 0
+		set.SevenDeuce = r.UintN(3) * set.BigBlind
 		if r.IntN(3) == 0 {
 			set.TurnTime = 0
 		}

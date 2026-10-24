@@ -26,6 +26,8 @@ type HandRecord struct {
 	Actions []HandAction `json:"actions"` // antes and blinds first
 	Board   []string     `json:"board"`
 	Pots    []HandPot    `json:"pots"`
+	// Payments are side games paid out after the hand
+	Payments []Payment `json:"payments,omitempty"`
 }
 
 type HandPlayer struct {
@@ -208,6 +210,10 @@ func (r *reducer) finishHand() {
 			showdown[n] = showdown[n] || pot.Score != 0
 		}
 	}
+	// side games pay before the nets, so they count in them
+	for _, hp := range h.Players {
+		h.Payments = append(h.Payments, r.sevenDeuce(h, hp.Seat)...)
+	}
 	for i := range h.Players {
 		hp := &h.Players[i]
 		p := s.Game.Player(hp.Seat)
@@ -246,24 +252,6 @@ func (hp *HandPlayer) bestHand(c [2]holdem.Card, board []holdem.Card) {
 		cards, score := eval.BestFiveOfSeven(c[0], c[1], board[0], board[1], board[2], board[3], board[4])
 		hp.Hand, hp.Score = holdem.HandName(score, cards), score
 	}
-}
-
-// showInRecord marks seat's cards shown in the last hand's record, after it
-// ended, and tells everyone.
-func (r *reducer) showInRecord(seat int, cards [2]holdem.Card) {
-	s := r.s
-	n := len(s.History)
-	if n == 0 || s.History[n-1].Hand != s.Game.Hands {
-		return
-	}
-	h := &s.History[n-1]
-	hp := h.player(seat)
-	if hp == nil {
-		return
-	}
-	hp.Shown = true
-	hp.bestHand(cards, s.Game.Board)
-	r.res.Events = append(r.res.Events, HandUpdated{*h})
 }
 
 // played names everyone dealt into h.

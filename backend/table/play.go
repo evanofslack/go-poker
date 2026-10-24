@@ -156,7 +156,7 @@ func (r *reducer) show(p *Person) error {
 		return fail("you have no cards to show")
 	}
 	r.res.Events = append(r.res.Events, events...)
-	r.showInRecord(p.Seat, r.s.Game.Player(p.Seat).Cards)
+	r.lateShow(p.Seat)
 	return nil
 }
 
@@ -209,6 +209,7 @@ func (r *reducer) botMove() {
 // afterHand tidies up once a hand ends: players who left go, sit-outs take
 // effect, then the session ends or the next hand is scheduled.
 func (r *reducer) afterHand() {
+	r.botsShow()
 	r.removeLeavers()
 	r.applySitOuts()
 	if r.s.Ending {

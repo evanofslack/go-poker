@@ -94,6 +94,10 @@ export interface HandRecord {
   actions: HandAction[]; // antes and blinds first
   board: string[];
   pots: HandPot[];
+  /**
+   * Payments are side games paid out after the hand
+   */
+  payments?: Payment[];
 }
 export interface HandPlayer {
   name: string;
@@ -188,6 +192,34 @@ export interface Settings {
    */
   ante: number /* uint */; // from every player each hand, 0 for none
   duckHunt: boolean; // players can turn up the rest of the board after a hand ends early
+  /**
+   * SevenDeuce is the bounty everyone dealt in pays a player who wins the
+   * main pot with 7-2 and shows it, 0 for none
+   */
+  sevenDeuce: number /* uint */;
+}
+
+//////////
+// source: sidegames.go
+
+/**
+ * Side game kinds
+ */
+export const KindSevenDeuce = "7-2";
+/**
+ * Payment is chips one player paid another for a side game.
+ */
+export interface Payment {
+  kind: string; // one of the side game kinds
+  from: string;
+  to: string;
+  amount: number /* uint */;
+}
+/**
+ * Paid is a side game paying out.
+ */
+export interface Paid {
+  payments: Payment[];
 }
 
 //////////
@@ -254,6 +286,7 @@ export interface View {
   you: number /* int */; // your seat, 0 when watching
   legal: holdem.Legal; // what you can do now
   sitOutNext: boolean; // you asked to sit out once this hand ends
+  showClaims: string[]; // what showing your cards now would win you, like "7-2"
   settings: Settings;
   hasPassword: boolean;
   host: string;
