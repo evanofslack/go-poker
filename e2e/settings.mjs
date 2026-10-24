@@ -19,7 +19,6 @@ await host.fill("#bb", "50");
 await host.fill("#minBuy", "20");
 await host.fill("#maxBuy", "100");
 await host.fill("#tablePassword", "s3cret");
-await host.click("text=more settings");
 await host.click('fieldset:has-text("turn timer") label:has-text("off")');
 await host.click('button:text-is("create table")');
 await host.waitForSelector("text=Open");

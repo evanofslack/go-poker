@@ -17,7 +17,6 @@ const create = async (table, name, change = async () => {}) => {
     await p.fill("#username", name);
     await p.fill("#tablename", table);
     await p.click('button:text-is("create")');
-    await p.click('summary:text-is("more settings")');
     await change(p);
     await confirmCreate(p);
     await p.waitForSelector("text=Open");
@@ -38,8 +37,7 @@ const first = await page();
 await first.fill("#username", "ann");
 await first.fill("#tablename", full);
 await first.click('button:text-is("create")');
-await first.click('summary:text-is("more settings")');
-check("public is on by default", await first.locator('label:has-text("listed on the home page") input').isChecked());
+check("public is on by default", await first.locator("#public").isChecked());
 await first.click('fieldset:has-text("seats") label:has-text("2")');
 await confirmCreate(first);
 await first.waitForSelector("text=Open");
@@ -48,7 +46,7 @@ await sit(first);
 const second = await create(free, "cat");
 await sit(second);
 await create(locked, "dan", (p) => p.fill("#tablePassword", "s3cret"));
-await create(hidden, "eve", (p) => p.locator('label:has-text("listed on the home page") input').uncheck());
+await create(hidden, "eve", (p) => p.locator("#public").uncheck());
 
 // a second player fills the heads-up table by picking it from the list
 const bob = await page();
