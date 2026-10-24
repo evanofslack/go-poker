@@ -58,6 +58,7 @@ export default function Settings() {
         ["password", game.hasPassword ? "on" : "off"],
         ["rebuys", s.approveRebuys ? "host approves" : "automatic"],
         ["duck hunt", s.duckHunt ? "allowed" : "off"],
+        ["7-2 game", s.sevenDeuce ? `${chips(s.sevenDeuce)} each` : "off"],
         ["host", game.host],
     ];
 

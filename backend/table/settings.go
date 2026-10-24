@@ -21,6 +21,9 @@ type Settings struct {
 	// house rules
 	Ante     uint `json:"ante"`     // from every player each hand, 0 for none
 	DuckHunt bool `json:"duckHunt"` // players can turn up the rest of the board after a hand ends early
+	// SevenDeuce is the bounty everyone dealt in pays a player who wins the
+	// main pot with 7-2 and shows it, 0 for none
+	SevenDeuce uint `json:"sevenDeuce"`
 }
 
 // DefaultSettings are used for anything create-table leaves out.
@@ -44,6 +47,7 @@ const (
 	maxTurnTime      = 300_000
 	minNextHandDelay = 2000
 	maxNextHandDelay = 15_000
+	maxSevenDeuceBB  = 10 // the most a 7-2 bounty can be, in big blinds
 )
 
 // Validate returns why s can't be used for a new table, if it can't.
@@ -61,6 +65,8 @@ func (s Settings) Validate() error {
 		return fmt.Errorf("max buy-in can't be more than %d big blinds", maxBuyInBB)
 	case s.Ante > s.BigBlind:
 		return errors.New("ante can't be more than the big blind")
+	case s.SevenDeuce > maxSevenDeuceBB*s.BigBlind:
+		return fmt.Errorf("7-2 bounty can't be more than %d big blinds", maxSevenDeuceBB)
 	case s.TurnTime != 0 && (s.TurnTime < minTurnTime || s.TurnTime > maxTurnTime):
 		return fmt.Errorf("turn timer must be off or between %d and %d seconds", minTurnTime/1000, maxTurnTime/1000)
 	case s.NextHandDelay < minNextHandDelay || s.NextHandDelay > maxNextHandDelay:

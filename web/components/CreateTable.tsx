@@ -6,6 +6,7 @@ import {
     blinds,
     defaultForm,
     antes,
+    sevenDeuces,
     handDelays,
     maxPasswordLen,
     seatCounts,
@@ -184,6 +185,13 @@ export default function CreateTable({ tablename, username, onClose }: createTabl
                             options={antes.map((a) => ({ label: a ? `${a * 100}%` : "off", value: a }))}
                             value={form.ante}
                             onChange={(a) => set({ ante: a })}
+                        />
+                        <Segmented
+                            legend="7-2 bounty, from everyone dealt in"
+                            name="sevenDeuce"
+                            options={sevenDeuces.map((n) => ({ label: n ? `${n} bb` : "off", value: n }))}
+                            value={form.sevenDeuce}
+                            onChange={(n) => set({ sevenDeuce: n })}
                         />
                         <label className="flex items-center gap-2 text-sm">
                             <input

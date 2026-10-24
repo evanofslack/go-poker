@@ -30,6 +30,8 @@ func TestValidSettings(t *testing.T) {
 		{"hand delay too long", func(s *Settings) { s.NextHandDelay = maxNextHandDelay + 1 }, false},
 		{"ante of a big blind", func(s *Settings) { s.Ante = 20 }, true},
 		{"ante over the big blind", func(s *Settings) { s.Ante = 21 }, false},
+		{"7-2 at the cap", func(s *Settings) { s.SevenDeuce = 20 * maxSevenDeuceBB }, true},
+		{"7-2 over the cap", func(s *Settings) { s.SevenDeuce = 20*maxSevenDeuceBB + 1 }, false},
 	}
 	for _, tt := range tests {
 		s := ok

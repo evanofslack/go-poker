@@ -35,6 +35,7 @@ export type GameEvent =
     | { type: "hunted"; data: holdem.Hunted }
     | { type: "hand-done"; data: table.HandDone }
     | { type: "hand-updated"; data: table.HandUpdated }
+    | { type: "paid"; data: table.Paid }
     | { type: "log"; data: table.Logged };
 
 export type Message = {

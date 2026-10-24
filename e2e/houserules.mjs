@@ -1,4 +1,4 @@
-// House rules: antes, showing cards after the hand, and duck hunting.
+// House rules: antes, the 7-2 setting, showing cards after the hand, and duck hunting.
 import { URL, check, finish, launch, shot } from "./lib.mjs";
 
 const has = (p, sel, ms = 3000) => p.waitForSelector(sel, { timeout: ms }).then(() => true).catch(() => false);
@@ -18,6 +18,7 @@ await alice.click('button:text-is("create")');
 await alice.click("text=more settings");
 check("duck hunt is allowed by default", await alice.locator("#duckHunt").isChecked());
 await alice.click('label:has(input[name="ante"]) >> text="25%"');
+await alice.click('label:has(input[name="sevenDeuce"]) >> text="2 bb"');
 await alice.click('button:text-is("create table")');
 
 await bob.goto(URL);
@@ -37,6 +38,8 @@ const ante = await alice.locator('dl[aria-label="table settings"] > div', { hasT
 check("settings show the ante", /ante\s+5$/.test(ante.trim()), ante);
 const hunt = await alice.locator('dl[aria-label="table settings"] > div', { hasText: "duck hunt" }).innerText();
 check("and duck hunting", /allowed$/.test(hunt.trim()), hunt);
+const sevenDeuce = await alice.locator('dl[aria-label="table settings"] > div', { hasText: "7-2" }).innerText();
+check("and the 7-2 bounty", /40 each$/.test(sevenDeuce.trim()), sevenDeuce);
 await alice.click('[aria-label="close table panel"]');
 
 // blinds of 10 and 20, and two antes of 5

@@ -22,6 +22,7 @@ func TestRandomCommands(t *testing.T) {
 		set.ApproveRebuys = r.IntN(2) == 0
 		set.Ante = r.UintN(3) * set.BigBlind / 4
 		set.DuckHunt = r.IntN(2) == 0
+		set.SevenDeuce = r.UintN(3) * set.BigBlind
 		if r.IntN(3) == 0 {
 			set.TurnTime = 0
 		}
@@ -90,6 +91,10 @@ func TestRandomCommands(t *testing.T) {
 				cmd = Show{Person: id}
 			case 19:
 				cmd = Hunt{Person: id}
+			case 20:
+				cmd = StartStandUp{Person: id, Payout: 1 + r.UintN(100)}
+			case 21:
+				cmd = CancelStandUp{Person: id}
 			default:
 				// whoever is to act moves, if they're a person
 				g := &h.s.Game

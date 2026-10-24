@@ -97,6 +97,12 @@ type playerSeatProps = {
 
 // Badges put the dealer button and blind on a phone's seat plate, where there's
 // no room on the felt to set them in front of the seat
+// standing reports whether name hasn't sat down yet in the stand-up round
+function standing(view: View, name: string) {
+    const u = view.standUp;
+    return !!u && !u.pending && !!u.players?.includes(name) && !u.sat?.includes(name);
+}
+
 function Badges({ player, view, own }: { player: PlayerView; view: View; own: boolean }) {
     const dealer = view.running && view.button === player.seat;
     const label = view.running ? blind(view, player.seat) : "";
@@ -174,10 +180,19 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
                 {view.betting && view.toAct === player.seat && (
                     <span className="sr-only">to act</span>
                 )}
-                {player.sittingOut && (
+                {player.sittingOut ? (
                     <span className="absolute -top-2.5 left-1/2 z-20 -translate-x-1/2 rounded-full bg-badge px-2 text-xs whitespace-nowrap text-fg">
                         {player.stack > 0 ? "sitting out" : "out of chips"}
                     </span>
+                ) : (
+                    standing(view, player.name) && (
+                        <span
+                            className="absolute -top-2.5 left-1/2 z-20 -translate-x-1/2 rounded-full bg-accent px-2 text-xs whitespace-nowrap text-on-accent"
+                            title="still standing in the stand-up round"
+                        >
+                            standing
+                        </span>
+                    )
                 )}
                 <ResultTag player={player} view={view} own={own} />
                 {onPhone && <Badges player={player} view={view} own={own} />}

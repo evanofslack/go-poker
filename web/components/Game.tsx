@@ -6,6 +6,7 @@ import Home from "./Home";
 import SessionEnded from "./SessionEnded";
 import GameInfo from "./GameInfo";
 import Start from "./Start";
+import StandUpAgain from "./StandUpAgain";
 import Input from "./Input";
 import Table from "./Table";
 import TablePanel from "./TablePanel";
@@ -39,6 +40,7 @@ export default function Game() {
                 <div className="flex min-w-0 flex-1 justify-end">
                     <Input />
                     <AfterHand />
+                    <StandUpAgain />
                     <Start />
                 </div>
             </footer>

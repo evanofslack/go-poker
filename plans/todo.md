@@ -10,7 +10,7 @@
 | 6 | UI consistency and mobile | done |
 | 7 | Operator tooling | done |
 | 8 | Persistence (`persistence.md`) | done |
-| 9 | House rules | in progress |
+| 9 | House rules | in progress (straddle, run it twice left) |
 | - | Backlog | unranked |
 
 ## How items are ranked
@@ -333,255 +333,34 @@ Differences from the plan:
 - `backend/bot/sim_test.go` plays bots against each other on the real engine (`BOTSIM=1`). Medium beats
   easy by about +120 to +165 big blinds per 100 hands heads up.
 
-### Later: hard bot
+### PR 2: 7-2 game
 
-- [ ] **Position:** tighter ranges early, wider on the button and in the blinds.
-- [ ] **Ranges, not random hands:** run equity against the hands an opponent likely holds given how they
-  bet this hand (raised preflop: strong range; called: medium).
-- [ ] **Sizing:** pick bet sizes by board texture and stack depth; shove short stacks preflop.
-- [ ] **Balanced bluffing:** bluff with draws and blockers at a frequency matched to bet size, so it's
-  hard to exploit by always calling or always folding.
-- [ ] **Light opponent modelling:** track each player's VPIP/aggression at the table and adjust (bluff
-  tight players more, value bet loose ones).
-- [ ] Optional personalities on the same settings (tight-passive, loose-aggressive) for variety.
-- [ ] Check that hard beats medium in `bot/sim_test.go` (`BOTSIM=1 go test ./bot -run Sim -v`).
+- [x] **7-2:** a table setting, the bounty in chips (off, 1, 2 or 5 bb in the form, at most 10 bb).
+  Win or split the main pot holding a seven and a deuce, of any suits, and show it, and every other
+  player dealt in pays you the bounty. A side pot doesn't count. At showdown the winner already
+  shows; after an uncalled win you press "show to claim the 7-2" before the next hand (no extra
+  wait). Bots show to claim.
+- [x] **Side games:** payments go straight from stack to stack between hands, capped at what the
+  payer has; a payer left with nothing sits out. They're in the hand's record and nets, and the
+  ledger needs nothing since net follows the stack.
 
-## 5.3 Ledger, players panel and host controls
+## PR 3: stand-up game
 
-A ledger of who bought in and cashed out, settled through a banker; a players panel everyone can see;
-and host controls to run a home game without a reset button.
-
-Today: the only chip history is the engine's `TotalBuyIn`, which is lost when a player leaves their seat
-(`RemovePlayer` deletes them) or the host resets. A table is deleted as soon as it's empty. The host is a
-connection (`t.host *Client`), so a dropped connection hands it to someone else right away, even though
-the host's seat is kept for the reconnect grace period. Reset is the host menu's only item.
-
-Decided:
-- Chips only, no money conversion.
-- Everyone at the table sees the ledger, spectators included.
-- Ledger rows are by name. Someone who leaves and comes back under the same name continues their row,
-  and so would anyone else who takes that name later. Accepted for friends' tables; log "bob rejoined".
-- Settle up through a banker the host picks (the host by default, changeable any time). Each player's
-  line is against the banker: up means "request X from the banker", down means "send X to the banker".
-- The host role belongs to a player, not a connection, and the host can hand it to another player.
-- Remove reset. Kick, chip edits, end session and making a new table cover every use of it.
-- Rebuy approval is a table setting, off by default.
-- End session only takes effect after the current hand.
-- An ended table stays readable for 1 hour after it ends, so the invite link still shows the ledger.
-
-### PR 1: add ledger (server)
-
-- [x] Per-table ledger entries: time, name, kind (buy-in, rebuy, cash-out; host add and remove come
-  with PR 3), amount, and who did it. Totals come from the entries.
-- [x] Record entries where chips enter or leave: `handleTakeSeat` (buy-in), `handleRebuy`, and
-  `removeLeavers` for cash-outs (leaving a seat, leaving the table and grace expiry all end there).
-  Until PR 3 removes it, reset cashes everyone out, counting this hand's bets.
-- [x] Rows per name: bought in, cashed out, current stack, net. Mid-hand, chips bet this hand still
-  count as the player's, so net is live during a hand (and the balance stays zero mid-hand too).
-- [x] Banker: the host until PR 3 lets the host pick. The client works out each banker line from the
-  row's net, so it isn't sent.
-- [x] Balance check: the sum of nets, sent so the panel can show "balanced" or "off by N".
-- [x] `update-game` sends the rows, the banker, the balance and the names of spectators (`watchers`
-  replaces the `watching` count).
-- [x] Tests: buy-ins, rebuys, cash-out on leaving a seat, leaving and coming back by name, grace expiry,
-  live nets mid-hand, reset. Split pots aren't tested separately; the engine already gives odd chips out.
-- Moved to PR 5: stack snapshots per hand. State is in memory and a deploy restarts the server, so
-  recording before the chart ships keeps nothing.
-
-### PR 2: add players panel
-
-- [x] A "players" tab beside chat and log: every name with status (playing, sitting out,
-  disconnected, left, watching), seat, stack, bought in, net, and their banker line.
-- [x] Shows the banker, the balance check, and a "copy ledger" button with plain text for a group chat.
-- [x] e2e: rows update on buy-in, rebuy and leaving; copy text; phone layout (`players.mjs`).
-- Also: `update-game` sends `disconnected`, the names of seated players in their reconnect grace,
-  so the panel can tell disconnected from playing. "Out of chips" is its own status.
-
-### PR 3: add host controls
-
-- [x] Host is a name on the table. It passes on only when the host leaves for good: leaves the table,
-  is removed, or their reconnect grace runs out. Reconnecting within grace keeps it. A spectator host
-  has no seat to hold, so it passes on when they disconnect.
-- [x] Host actions, each host-only, validated in `validate.go`, logged to the table, and tested:
-  - make another player host
-  - pick the banker
-  - move a player to spectator, or remove them from the table (mid-hand they're folded on their turn,
-    like leaving). No bans.
-  - sit a player out (mid-hand it applies after the hand)
-  - add or remove chips, between hands only, recorded as a host add or host remove with a reason
-- [x] Per-player host actions live in a menu on each row of the players panel.
-- [x] Remove reset: `reset-game`, `handleResetGame`, the host menu item, its tests and the e2e uses
-  (`ux.mjs`, `session.mjs`, `betting.mjs`).
-
-Notes:
-- `update-game` sends the host's name instead of a uuid.
-- Removing tells the player's client to leave (error code `removed`); it leaves, forgets its session and
-  shows why on the join form. The seat is taken server-side either way.
-- Host chip adds still respect the max buy-in. The host can't remove themselves.
-- The host menu went with reset, since reset was its only item. PR 4 brings it back for pause and
-  end session. e2e: `host.mjs`.
-
-### PR 4: add session controls
-
-- [x] Pause and resume. Pausing mid-hand takes effect after the hand; no new hand is dealt while
-  paused. Logged.
-- [x] End session, after the current hand. Dealing stops, seats and rebuys close, the ledger is final,
-  and everyone sees the final settle-up. The table is deleted 1 hour after it ends, empty or not;
-  until then joining it (with its password) shows the final ledger.
-- [x] Rebuy approval setting (`approveRebuys`, off by default) in `tableSettings` and the create form.
-  When on, a rebuy waits for the host to approve or deny it. Sitting back down under a name that
-  already has ledger entries counts as a rebuy, so leaving and rejoining can't skip approval.
-  Split into its own PR (4b), stacked on this one. The host's own rebuys skip approval. A new request
-  replaces the player's last one; leaving the table or ending the session drops it. Approving checks
-  again, so a seat that got taken or a rebuy that no longer fits is dropped with a note to the host.
-  Requests show to the host above the table, and the player sees they're waiting. e2e: `approval.mjs`.
-
-Notes:
-- Both live in the host menu, which is back. End session asks first. Between hands it ends right away.
-- Once ended, the server refuses anything that deals, seats or moves chips, and the host menu, open
-  seats, start and rebuy disappear. Everyone, including late joiners, gets a settle-up dialog; the
-  players panel keeps the ledger after it's closed. A hint shows when the table closes.
-- When the hour is up, anyone still there gets error code `closed` and goes back to the join form.
-- e2e: `endsession.mjs`.
-
-### PR 5: add stats panel
-
-- [x] Snapshot every player's stack at the end of each hand, bounded (last 1000 hands).
-- [x] From the snapshots: chips over time per player, hands played and won, biggest pot won.
-- [x] Chart colors come from the design tokens in `web/styles/index.css`.
-- [x] Detailed stats (how often each player puts money in, etc.) need hand history. See PR 7.
-
-Notes:
-- Snapshots go out in their own `update-stats` message: everything kept on joining, then one per hand
-  as it ends. They don't ride on `update-game`.
-- A snapshot has the stacks after the hand, who was dealt in, and the pots each winner took (their own
-  chips included, matching the "wins N" log). Split pots share evenly; odd chips aren't tracked.
-- The stats tab: a line per player of their stack by hand, with a legend, end labels for up to 4
-  players, and a crosshair tooltip; then a table of hands, wins, win rate, biggest pot and stack.
-  Series colors are the dataviz reference's dark palette, validated against `panel`. Past 8 players,
-  lines go gray. e2e: `stats.mjs`.
-
-### PR 6: add table panel
-
-- [x] Players, stats and the host's session controls move out of the chat popover into a "table"
-  drawer, top left. Chat keeps chat and log. The header host menu becomes a host-only tab.
-- [x] Show the table config (stakes, starting stack, seats, timer, password on/off) in one of the
-  panel's tabs, read-only for everyone. Later, maybe editable by the host. A "settings" tab, with the
-  table name and invite link too; the header drops "nl texas holdem" and the lock icon, which moved
-  there. e2e: `settings.mjs`.
-
-### PR 7: add hand history and detailed stats
-
-- [x] Name hand ranks: "two pair, kings and sevens", in the log and per pot in `update-game`
-  (`potHands`). The client no longer mirrors `handName`.
-- [x] Record every hand on the server (`history.go`): players with start stacks and cards, actions by
-  street, board, pots and nets. Capped at 1000 hands, in memory like the rest.
-- [x] Records only leave through `viewFor`: your own cards, plus hands shown at showdown
-  (`ShownPlayerNums`, the same rule as `GeneratePlayerView`). Spectators see shown hands only.
-- [x] `hand-history` sends each hand as it ends, the last 20 on joining, and older pages for
-  `get-hands`.
-- [x] A "hands" tab: newest first and open, actions by street, a "hands I played" filter. e2e:
-  `history.mjs`.
-- [x] Play style stats from totals the server keeps by name (`tally`): VPIP, PFR, 3-bet, AF,
-  WTSD, W$SD and bb/100, plus each player's best hand shown. Shown once a player has 10 hands.
-- [x] Keep the last 200 log lines on the server so late joiners and reloads get them (`log-history`).
-- [x] The log keeps table events only (joins, sitting out, rebuys, host actions). Bets, folds, blinds
-  and winners are in the hands tab instead.
-
-# Stage 6: UI consistency and mobile
-
-## 6.1 Design tokens (light pass, can go before Stage 4)
-
-- [x] Pick one neutral palette (currently `zinc`, `neutral`, and `gray` are mixed), a radius scale
-  (currently `rounded-sm`/`xl`/`2xl` drift), and spacing. Put them in the CSS `@theme` (Tailwind 4, no config file).
-- [x] Button variants: primary, secondary, danger, ghost. Replace ad-hoc button classes.
-- [x] One voice for labels (currently lowercase "join"/"fold" but "Start").
-
-## 6.2 Feedback states
-
-- [x] Connection status indicator (connected / reconnecting / disconnected).
-- [x] Toasts for server errors (reusing 2.3/2.7 plumbing).
-- [x] Loading and empty states (new table shows six "Open" seats with no guidance).
-
-## 6.3 Layout and accessibility
-
-- [x] Responsive layout. Today it's absolutely positioned corners, fixed `w-96` chat and `w-56` seats,
-  and `GameInfo` hidden on small screens.
-- [x] Compute seat positions around an oval from seat count instead of hand-placed `chipPosition`
-  percentages (also unlocks 9-max tables from Stage 5 settings).
-- [x] Simplify `Seat.tsx` (four render branches, duplicated markup).
-- [x] Accessibility: labels for cards and buttons, turn state not conveyed only by glow/color,
-  visible focus styles.
-
-## 6.4 Drift from the 5.x features
-
-Stage 6 was done before host controls, bots, the ledger and stats, which brought some drift back.
-
-### PR 1: fix seats on phones
-
-- [x] Side seats sat flush against the screen edge: the seat ring was inset by exactly half a plate.
-  The inset is now half a seat plus 0.5rem at every breakpoint.
-- [x] The dealer button, blinds and bets sat 60% of the way to each seat, which on a narrow table put
-  them under a side seat's cards. They now stay far enough in to clear the seat (`markerAt`).
-- [x] Bot badges truncated to "mediu…" on phone plates, with the host's remove "×" on top. Small
-  plates show just "bot" (the level is on hover and in the players panel), a long name truncates
-  before the badge does, and "×" sits on the plate's corner.
-- [x] `layout.mjs` checks every whole seat keeps a margin from the screen edges and markers clear every
-  seat; `bots.mjs` checks phone badges are whole and "×" doesn't cover them.
-
-Not fixed: a full nine-seat table on a 360px phone still crowds at the top, with one seat's cards over
-the next seat's plate. That was already so on main and needs its own layout change.
-
-### PR 2: name the colors
-
-- [x] Semantic tokens for the colors 5.x repeats under raw names: `line`, `field`, `badge`,
-  `accent-hover`, `on-accent`, `error`, `warn`, `gain` and `loss`. Each is the shade it replaced, so
-  nothing looks different. Card suits, the felt, the table markers and the connection dot keep their
-  own colors.
-
-# Stage 7: operator tooling
-
-Matters once the public demo gets real traffic.
-
-- [x] **Health:** `/healthz`, and `/readyz`, which returns 503 once shutdown starts.
-- [x] **Lifecycle:** reap idle tables; on graceful shutdown, notify clients ("server restarting") before closing.
-- [x] **Config:** move hard-coded limits (`maxTables`, rate limits, timers; `maxSeats` stays fixed to match the form) to env vars and document
-  them in `.env.example`.
-- [x] **Per-IP limits:** cap connections and tables per IP so one client can't use up the server.
-- [x] Note in the UI and README that state is in-memory and lost on restart.
-- [x] **Metrics:** Prometheus metrics on their own port (`METRICS_ADDR`).
-
-# Stage 9: house rules
-
-Home-game rules, set per table when it's created (`table.Settings`, the create form's "house
-rules") and fixed after, like the other settings. Off by default unless noted.
-
-## PR 1: antes, show/muck, duck hunt
-
-- [x] **Settings:** `ante` (chips, at most the big blind) and `duckHunt` (on by default). Shown in
-  the settings tab, and the ante in the lobby.
-- [x] **Antes:** every player dealt in posts the ante before the blinds, as dead money: it isn't
-  part of their bet, so the call and min raise don't change. A short stack goes all in on it. Not
-  counted toward VPIP.
-- [x] **Muck by default:** at a river showdown only pot winners and the last river bettor or raiser
-  (who was called) show; all-in hands are already face up. Everyone else mucks. Between hands
-  anyone dealt in can show (`show-cards`), including a winner nobody called. Stats count mucked
-  hands as showdowns, but best hand only from shown ones; history marks them mucked.
-- [x] **Duck hunt:** after a hand ends before the river, a player dealt in can turn up the rest of
-  the board (`duck-hunt`), once a hand. The cards are the ones that would have come, faded on the
-  board, and count for nothing. The next hand waits at least 3s for them.
+- [x] **Rounds:** the host starts one with a payout; it begins with the next hand, and its players
+  are exactly those dealt into that hand. Anyone else isn't part of that round: doesn't pay, can't
+  collect. The host can cancel a round, with no payout.
+- [x] **Sitting down:** a round player who wins or splits any pot, with their cards face up, sits
+  down. After an uncalled win they must show to sit ("show to sit down"); bots show to sit.
+- [x] **Payout:** when one round player is left standing they pay each round player who sat down
+  and is still seated, as much as they have. If the last ones standing all sit at once (a split),
+  the round ends with no payout. The round then ends, the game keeps dealing, and the host gets a
+  "stand-up again" button in the footer: no prompt, no wait. Payouts are 1 to 20 bb (1, 2, 5 or
+  10 bb in the host tab).
+- [x] **Leaving while standing** counts as losing: they pay on leaving (host removals and grace
+  expiry too). If that leaves one standing, the round ends without them paying.
 
 ## Later
 
-- [ ] **7-2 game:** win a pot with 7-2 offsuit and every other player dealt in pays you a bounty
-  (chips, a setting). You must show to claim it, so a fold win needs a show.
-- [ ] **Stand-up game:** everyone starts standing and sits down by winning a pot; the last one
-  standing pays each other player a set amount, then a new round starts.
-  - You must show your cards (can't muck) to sit down.
-  - A split pot counts as a win, if you show.
-  - Players who join mid-round are exempt (already sitting) until the next round.
-  - Shares a side-bet helper with 7-2: stack-to-stack payments outside the pot, capped at what the
-    payer has. The ledger needs nothing; net is stack + cashed out - bought in.
 - [ ] **Straddle:** optional under-the-gun straddle of 2 big blinds, toggled before the deal. Action
   starts left of the straddler, who acts last preflop; min raise becomes the straddle. Not counted
   toward VPIP. Bots don't straddle.

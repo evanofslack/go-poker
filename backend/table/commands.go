@@ -119,6 +119,15 @@ type Pause struct {
 
 type EndSession struct{ Person string }
 
+// StartStandUp starts a stand-up round from the next hand.
+type StartStandUp struct {
+	Person string
+	Payout uint
+}
+
+// CancelStandUp ends the stand-up round without a payout.
+type CancelStandUp struct{ Person string }
+
 // TimerFired is a timer from State.Timers coming due. At is the deadline it
 // was armed for, so one that has since moved or gone is ignored.
 type TimerFired struct {
@@ -126,23 +135,25 @@ type TimerFired struct {
 	At    time.Time
 }
 
-func (Join) command()        {}
-func (Leave) command()       {}
-func (Disconnect) command()  {}
-func (Chat) command()        {}
-func (TakeSeat) command()    {}
-func (Start) command()       {}
-func (Play) command()        {}
-func (LeaveSeat) command()   {}
-func (SitOut) command()      {}
-func (Rebuy) command()       {}
-func (Show) command()        {}
-func (Hunt) command()        {}
-func (GetHands) command()    {}
-func (AddBot) command()      {}
-func (RemoveBot) command()   {}
-func (HostAction) command()  {}
-func (AdjustChips) command() {}
-func (Pause) command()       {}
-func (EndSession) command()  {}
-func (TimerFired) command()  {}
+func (Join) command()          {}
+func (Leave) command()         {}
+func (Disconnect) command()    {}
+func (Chat) command()          {}
+func (TakeSeat) command()      {}
+func (Start) command()         {}
+func (Play) command()          {}
+func (LeaveSeat) command()     {}
+func (SitOut) command()        {}
+func (Rebuy) command()         {}
+func (Show) command()          {}
+func (Hunt) command()          {}
+func (GetHands) command()      {}
+func (AddBot) command()        {}
+func (RemoveBot) command()     {}
+func (HostAction) command()    {}
+func (AdjustChips) command()   {}
+func (Pause) command()         {}
+func (EndSession) command()    {}
+func (StartStandUp) command()  {}
+func (CancelStandUp) command() {}
+func (TimerFired) command()    {}

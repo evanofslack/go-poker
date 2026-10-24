@@ -602,6 +602,29 @@ func TestRestore(t *testing.T) {
 	back.update(func(v table.View) bool { return v.Street == "" && v.Hand == 1 })
 }
 
+// TestLateShowSaved saves a hand's record again when cards are shown after it.
+// On SQLite, since the memory store shares the records the table changes.
+func TestLateShowSaved(t *testing.T) {
+	store := openTestStore(t, "sqlite:"+filepath.Join(t.TempDir(), "poker.db"))
+	srv, _ := newTestServerHub(t, store)
+	a := create(t, srv, "t", "a")
+	b := join(t, srv, "t", "b")
+	a.send(seatMsg(1))
+	b.send(seatMsg(2))
+	b.update(func(v table.View) bool { return len(v.Players) == 2 })
+	a.send(`{"action":"start-game"}`)
+	a.update(func(v table.View) bool { return v.Legal.Turn })
+	a.send(`{"action":"player-fold"}`)
+	b.update(func(v table.View) bool { return v.Street == "" && v.Hand == 1 })
+	b.send(`{"action":"show-cards"}`)
+	a.update(func(v table.View) bool { return v.Players[1].Shown })
+
+	eventually(t, func() bool {
+		saved, err := store.Open(context.Background())
+		return err == nil && len(saved) == 1 && len(saved[0].Hands) == 1 && saved[0].Hands[0].Record.Players[1].Shown
+	}, "the shown cards weren't saved")
+}
+
 // crashStore stops saving once cut, like a server that died.
 type crashStore struct {
 	Store

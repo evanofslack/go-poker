@@ -43,6 +43,7 @@ type View struct {
 	You        int          `json:"you"`        // your seat, 0 when watching
 	Legal      holdem.Legal `json:"legal"`      // what you can do now
 	SitOutNext bool         `json:"sitOutNext"` // you asked to sit out once this hand ends
+	ShowClaims []string     `json:"showClaims"` // what showing your cards now would win you, like "7-2" or "stand-up"
 
 	Settings    Settings       `json:"settings"`
 	HasPassword bool           `json:"hasPassword"`
@@ -57,6 +58,8 @@ type View struct {
 	Watchers    []string       `json:"watchers"`    // connected without a seat
 	Ledger      LedgerView     `json:"ledger"`
 	Acts        map[int]string `json:"acts"` // what each seat did this street
+	StandUp     *StandUp       `json:"standUp"`
+	LastStandUp uint           `json:"lastStandUp"` // the payout of the stand-up round that just ended
 }
 
 // ViewFor is the table as the person with id sees it, at now.
@@ -93,7 +96,10 @@ func ViewFor(s *State, id string, now time.Time) View {
 		Watchers:    Watchers(s),
 		Ledger:      Ledger(s),
 		Acts:        shownActs(s),
+		StandUp:     s.StandUp,
+		LastStandUp: s.LastStandUp,
 	}
+	v.ShowClaims = ShowClaims(s, you)
 	if you != 0 {
 		v.SitOutNext = s.Seats[you].SitOutNext
 	}

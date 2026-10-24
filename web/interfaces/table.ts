@@ -94,6 +94,10 @@ export interface HandRecord {
   actions: HandAction[]; // antes and blinds first
   board: string[];
   pots: HandPot[];
+  /**
+   * Payments are side games paid out after the hand
+   */
+  payments?: Payment[];
 }
 export interface HandPlayer {
   name: string;
@@ -188,6 +192,53 @@ export interface Settings {
    */
   ante: number /* uint */; // from every player each hand, 0 for none
   duckHunt: boolean; // players can turn up the rest of the board after a hand ends early
+  /**
+   * SevenDeuce is the bounty everyone dealt in pays a player who wins the
+   * main pot with 7-2 and shows it, 0 for none
+   */
+  sevenDeuce: number /* uint */;
+}
+
+//////////
+// source: sidegames.go
+
+/**
+ * Side game kinds
+ */
+export const KindSevenDeuce = "7-2";
+/**
+ * Payment is chips one player paid another for a side game.
+ */
+export interface Payment {
+  kind: string; // one of the side game kinds
+  from: string;
+  to: string;
+  amount: number /* uint */;
+}
+/**
+ * Paid is a side game paying out.
+ */
+export interface Paid {
+  payments: Payment[];
+}
+
+//////////
+// source: standup.go
+
+/**
+ * KindStandUp is the stand-up game, as a side game kind.
+ */
+export const KindStandUp = "stand-up";
+/**
+ * StandUp is a round of the stand-up game. Everyone dealt into its first
+ * hand starts standing, and sits down by winning or splitting a pot with
+ * their cards face up. The last one left standing pays everyone who sat down.
+ */
+export interface StandUp {
+  payout: number /* uint */; // from the last one standing to each player who sat
+  pending: boolean; // starts with the next hand
+  players: string[]; // names dealt into its first hand
+  sat: string[];
 }
 
 //////////
@@ -254,6 +305,7 @@ export interface View {
   you: number /* int */; // your seat, 0 when watching
   legal: holdem.Legal; // what you can do now
   sitOutNext: boolean; // you asked to sit out once this hand ends
+  showClaims: string[]; // what showing your cards now would win you, like "7-2" or "stand-up"
   settings: Settings;
   hasPassword: boolean;
   host: string;
@@ -267,6 +319,8 @@ export interface View {
   watchers: string[]; // connected without a seat
   ledger: LedgerView;
   acts: { [key: number /* int */]: string}; // what each seat did this street
+  standUp?: StandUp;
+  lastStandUp: number /* uint */; // the payout of the stand-up round that just ended
 }
 /**
  * Summary is what the home page shows of a public table.

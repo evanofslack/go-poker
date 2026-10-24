@@ -7,7 +7,7 @@ packages:
       eval.Card: "number"
   - path: "github.com/evanofslack/go-poker/table"
     output_path: "../web/interfaces/table.ts"
-    include_files: [settings.go, view.go, out.go, records.go, stats.go, ledger.go]
+    include_files: [settings.go, view.go, out.go, records.go, stats.go, ledger.go, sidegames.go, standup.go]
     frontmatter: |
       import type * as holdem from "./holdem";
     type_mappings:
