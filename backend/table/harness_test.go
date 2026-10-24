@@ -235,6 +235,12 @@ func (h *harness) checkInvariants() {
 			h.t.Fatal("a bot to act without a bot timer")
 		}
 	}
+	if s.Next != nil && !g.InHand() {
+		h.t.Fatal("settings left waiting between hands")
+	}
+	if s.Game.Config != (holdem.Config{SmallBlind: s.Settings.SmallBlind, BigBlind: s.Settings.BigBlind, Ante: s.Settings.Ante}) {
+		h.t.Fatalf("game config %+v doesn't match the settings", s.Game.Config)
+	}
 	if s.Ended() && (g.InHand() || len(s.Requests) > 0) {
 		h.t.Fatal("ended mid-hand or with requests")
 	}

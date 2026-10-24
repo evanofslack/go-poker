@@ -111,6 +111,27 @@ func TestBlindsAndOrder(t *testing.T) {
 	}
 }
 
+func TestSetConfigBetweenHands(t *testing.T) {
+	s := game(t, 1000, 1000, 1000)
+	start(t, s)
+	if err := s.SetConfig(Config{SmallBlind: 25, BigBlind: 50}); !errors.Is(err, ErrInHand) {
+		t.Fatalf("mid-hand: %v, want ErrInHand", err)
+	}
+	act(t, s, 1, Fold{})
+	act(t, s, 2, Fold{})
+	if err := s.SetConfig(Config{SmallBlind: 25, BigBlind: 50, Ante: 5}); err != nil {
+		t.Fatal(err)
+	}
+	// 1000, 990, 1010 after the first hand; now seat 3 posts 25 and seat 1 posts 50, plus antes
+	start(t, s)
+	if got := stacks(s); !slices.Equal(got, []uint{945, 985, 980}) {
+		t.Fatalf("stacks %v", got)
+	}
+	if l := s.Legal(s.ToAct); l.RaiseMin != 100 {
+		t.Fatalf("min raise to %d, want 100", l.RaiseMin)
+	}
+}
+
 func TestHeadsUpButtonPostsSmallBlind(t *testing.T) {
 	s := game(t, 1000, 1000)
 	start(t, s)

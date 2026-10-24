@@ -95,6 +95,16 @@ func TestRandomCommands(t *testing.T) {
 				cmd = StartStandUp{Person: id, Payout: 1 + r.UintN(100)}
 			case 21:
 				cmd = CancelStandUp{Person: id}
+			case 22:
+				// buy-ins stay put, so the commands above stay in range
+				next := h.s.Settings
+				next.BigBlind = 10 * (1 + r.UintN(4))
+				next.SmallBlind = next.BigBlind / 2
+				next.Ante = r.UintN(3) * next.BigBlind / 4
+				next.SevenDeuce = r.UintN(3) * next.BigBlind
+				next.ApproveRebuys = r.IntN(2) == 0
+				next.TurnTime = []uint{0, 15000, 30000}[r.IntN(3)]
+				cmd = UpdateSettings{Person: id, Settings: next}
 			default:
 				// whoever is to act moves, if they're a person
 				g := &h.s.Game

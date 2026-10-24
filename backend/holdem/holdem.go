@@ -36,7 +36,7 @@ var (
 	ErrBadAmount        = errors.New("invalid amount")
 )
 
-// Config is fixed for a game.
+// Config is the game's blinds and ante. It only changes between hands.
 type Config struct {
 	SmallBlind uint `json:"sb"`
 	BigBlind   uint `json:"bb"`
@@ -118,6 +118,15 @@ type State struct {
 // and the hand number, so a seed replays the same cards.
 func New(cfg Config, seed [32]byte) State {
 	return State{Config: cfg, Seed: seed}
+}
+
+// SetConfig changes the blinds and ante from the next hand.
+func (s *State) SetConfig(cfg Config) error {
+	if s.InHand() {
+		return ErrInHand
+	}
+	s.Config = cfg
+	return nil
 }
 
 // Clone returns a deep copy of s.

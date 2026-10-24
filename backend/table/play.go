@@ -216,6 +216,9 @@ func (r *reducer) afterHand() {
 		r.end()
 		return
 	}
+	if r.s.Next != nil {
+		r.applySettings("settings changed:", *r.s.Next)
+	}
 	r.rebuyBots()
 	r.scheduleDeal()
 }
@@ -227,11 +230,13 @@ func (r *reducer) rebuyBots() {
 		if seat.Bot == "" || seat.Leaving || r.s.Game.Player(n).Stack > 0 {
 			continue
 		}
-		if r.s.Game.AddChips(n, seat.BotBuyIn) != nil || r.s.Game.SetSittingOut(n, false) != nil {
+		// the buy-in limits may have changed since the bot sat down
+		buyIn := min(max(seat.BotBuyIn, r.s.Settings.MinBuy), r.s.Settings.MaxBuy)
+		if r.s.Game.AddChips(n, buyIn) != nil || r.s.Game.SetSittingOut(n, false) != nil {
 			continue
 		}
-		r.record(seat.Name, entryRebuy, seat.BotBuyIn, seat.Name, "")
-		r.log("%s rebuys for %d", seat.Name, seat.BotBuyIn)
+		r.record(seat.Name, entryRebuy, buyIn, seat.Name, "")
+		r.log("%s rebuys for %d", seat.Name, buyIn)
 	}
 }
 
@@ -242,6 +247,7 @@ func (r *reducer) end() {
 	s.Ending = false
 	s.EndedAt = r.now
 	clear(s.Requests)
+	s.Next = nil
 	s.StandUp, s.LastStandUp = nil, 0
 	r.cancel(TimerDeal, TimerTurn, TimerBot, TimerIdle)
 	r.schedule(TimerClose, s.Timing.EndedTTL)

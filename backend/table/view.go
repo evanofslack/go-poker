@@ -46,6 +46,7 @@ type View struct {
 	ShowClaims []string     `json:"showClaims"` // what showing your cards now would win you, like "7-2" or "stand-up"
 
 	Settings    Settings       `json:"settings"`
+	Next        *Settings      `json:"next"` // settings from the next hand, if the host changed them mid-hand
 	HasPassword bool           `json:"hasPassword"`
 	Host        string         `json:"host"`
 	Running     bool           `json:"running"`
@@ -84,6 +85,7 @@ func ViewFor(s *State, id string, now time.Time) View {
 		You:         you,
 		Legal:       s.Game.Legal(you),
 		Settings:    s.Settings,
+		Next:        s.Next,
 		HasPassword: s.Password != "",
 		Host:        s.Host,
 		Running:     s.Running,

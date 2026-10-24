@@ -128,6 +128,19 @@ type StartStandUp struct {
 // CancelStandUp ends the stand-up round without a payout.
 type CancelStandUp struct{ Person string }
 
+// UpdateSettings changes the table's settings, all but the seat count. Mid-hand
+// they wait for the hand to end.
+type UpdateSettings struct {
+	Person   string
+	Settings Settings
+}
+
+// SetPassword changes the table's password. Empty removes it.
+type SetPassword struct {
+	Person   string
+	Password string
+}
+
 // TimerFired is a timer from State.Timers coming due. At is the deadline it
 // was armed for, so one that has since moved or gone is ignored.
 type TimerFired struct {
@@ -135,25 +148,27 @@ type TimerFired struct {
 	At    time.Time
 }
 
-func (Join) command()          {}
-func (Leave) command()         {}
-func (Disconnect) command()    {}
-func (Chat) command()          {}
-func (TakeSeat) command()      {}
-func (Start) command()         {}
-func (Play) command()          {}
-func (LeaveSeat) command()     {}
-func (SitOut) command()        {}
-func (Rebuy) command()         {}
-func (Show) command()          {}
-func (Hunt) command()          {}
-func (GetHands) command()      {}
-func (AddBot) command()        {}
-func (RemoveBot) command()     {}
-func (HostAction) command()    {}
-func (AdjustChips) command()   {}
-func (Pause) command()         {}
-func (EndSession) command()    {}
-func (StartStandUp) command()  {}
-func (CancelStandUp) command() {}
-func (TimerFired) command()    {}
+func (Join) command()           {}
+func (Leave) command()          {}
+func (Disconnect) command()     {}
+func (Chat) command()           {}
+func (TakeSeat) command()       {}
+func (Start) command()          {}
+func (Play) command()           {}
+func (LeaveSeat) command()      {}
+func (SitOut) command()         {}
+func (Rebuy) command()          {}
+func (Show) command()           {}
+func (Hunt) command()           {}
+func (GetHands) command()       {}
+func (AddBot) command()         {}
+func (RemoveBot) command()      {}
+func (HostAction) command()     {}
+func (AdjustChips) command()    {}
+func (Pause) command()          {}
+func (EndSession) command()     {}
+func (StartStandUp) command()   {}
+func (CancelStandUp) command()  {}
+func (UpdateSettings) command() {}
+func (SetPassword) command()    {}
+func (TimerFired) command()     {}

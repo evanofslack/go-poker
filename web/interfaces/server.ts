@@ -133,6 +133,14 @@ export const ActionStartStandUp = "start-stand-up"; // amount is the payout
  */
 export const ActionCancelStandUp = "cancel-stand-up";
 /**
+ * inbound (client) actions
+ */
+export const ActionUpdateSettings = "update-settings"; // settings has all of them, but the seat count stays
+/**
+ * inbound (client) actions
+ */
+export const ActionSetPassword = "set-password";
+/**
  * Inbound is every message a client sends. Action says which fields are used.
  */
 export interface Inbound {
@@ -143,8 +151,8 @@ export interface Inbound {
   tablename?: string; // also leave-table
   username?: string;
   token?: string; // reclaims a seat after a disconnect
-  password?: string; // sets the table's password on create, else checked
-  settings?: Partial<table.Settings>; // create-table; missing fields get their default
+  password?: string; // sets the table's password on create or set-password, else checked
+  settings?: Partial<table.Settings>; // create-table, where missing fields get their default, or update-settings with all of them
   message?: string; // send-message
   seat?: number /* int */; // take-seat, add-bot, remove-bot
   amount?: number /* int64 */; // take-seat and add-bot buy-in, rebuy, adjust-chips
@@ -186,6 +194,10 @@ export const ActionError = "error";
  * outbound (server) actions
  */
 export const ActionTables = "tables";
+/**
+ * outbound (server) actions
+ */
+export const ActionPassword = "password";
 /**
  * Joined confirms a create-table or join-table.
  */
@@ -243,6 +255,14 @@ export interface ChatOut extends table.ChatMessage {
 export interface TokenOut {
   action: string;
   token: string;
+}
+/**
+ * PasswordOut is the table's new password after the host changed it, for
+ * invite links. Empty once removed.
+ */
+export interface PasswordOut {
+  action: string;
+  password: string;
 }
 /**
  * ErrorOut tells one client why its action was rejected.

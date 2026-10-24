@@ -509,6 +509,46 @@ func TestTablesList(t *testing.T) {
 	}
 }
 
+func TestUpdateSettings(t *testing.T) {
+	srv := newTestServer(t)
+	host := create(t, srv, "t", "host")
+	a := join(t, srv, "t", "a")
+
+	host.send(`{"action":"update-settings","settings":{"bb":20}}`)
+	if e := host.errorMsg(); !strings.Contains(e.Message, "small blind") {
+		t.Fatalf("partial settings: %+v", e)
+	}
+	set := table.DefaultSettings
+	set.SmallBlind, set.BigBlind, set.Public = 25, 50, true
+	b, _ := json.Marshal(set)
+	a.send(`{"action":"update-settings","settings":` + string(b) + `}`)
+	if e := a.errorMsg(); e.Message != "only the host can do that" {
+		t.Fatalf("not host: %+v", e)
+	}
+	host.send(`{"action":"update-settings","settings":` + string(b) + `}`)
+	a.update(func(v table.View) bool { return v.Settings.BigBlind == 50 })
+
+	// the table is listed once it's public
+	a.send(`{"action":"list-tables"}`)
+	var got Tables
+	a.wait(ActionTables, nil).decode(t, &got)
+	if len(got.Tables) != 1 || got.Tables[0].BigBlind != 50 {
+		t.Fatalf("tables %+v", got.Tables)
+	}
+
+	host.send(`{"action":"set-password","password":"pw"}`)
+	var pw PasswordOut
+	a.wait(ActionPassword, nil).decode(t, &pw)
+	if pw.Password != "pw" {
+		t.Fatalf("a got %+v", pw)
+	}
+	c := dial(t, srv)
+	c.send(joinMsg("t", "c"))
+	if e := c.errorMsg(); e.Code != "password-required" {
+		t.Fatalf("got %+v", e)
+	}
+}
+
 func TestEndedTableCloses(t *testing.T) {
 	srv, hub := newTestServerHub(t, newMemStore())
 	c := create(t, srv, "t", "host")
