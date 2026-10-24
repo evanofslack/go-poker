@@ -1,7 +1,9 @@
-import { ReactNode, useContext } from "react";
+import { ReactNode, useContext, useState } from "react";
 import { FiCopy } from "react-icons/fi";
 import { AppContext } from "../../providers/AppStore";
 import { copyInvite } from "../../lib/invite";
+import Button from "../Button";
+import EditSettings from "../EditSettings";
 
 const chips = (n: number) => n.toLocaleString("en");
 const seconds = (ms: number) => `${ms / 1000}s`;
@@ -15,13 +17,15 @@ const keys: [string, string][] = [
     ["Esc", "close the bet"],
 ];
 
-// Settings shows how the host set up the table. They're fixed once it exists.
+// Settings shows how the host set up the table, and lets the host change it.
 export default function Settings() {
     const { appState, dispatch } = useContext(AppContext);
+    const [editing, setEditing] = useState(false);
     const game = appState.view;
     const table = appState.table;
     if (!game || !table) return null;
     const s = game.settings;
+    const host = game.host === appState.username && !game.ended;
 
     const rows: [string, ReactNode][] = [
         [
@@ -64,6 +68,17 @@ export default function Settings() {
 
     return (
         <div className="h-full overflow-auto bg-surface p-2">
+            {(host || game.next) && (
+                <div className="flex min-h-8 items-center gap-2 pb-1.5 text-sm">
+                    {game.next && <span className="text-subtle">changes apply after this hand</span>}
+                    {host && (
+                        <Button className="ml-auto px-4 py-1" onClick={() => setEditing(true)}>
+                            edit
+                        </Button>
+                    )}
+                </div>
+            )}
+            {editing && <EditSettings onClose={() => setEditing(false)} />}
             <dl aria-label="table settings" className="text-sm">
                 {rows.map(([label, value]) => (
                     <div key={label} className="flex gap-2 border-b border-raised py-1.5 last:border-b-0">

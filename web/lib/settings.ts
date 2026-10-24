@@ -1,6 +1,6 @@
 import { Settings } from "../interfaces/index";
 
-// Presets for the create table form. The server takes any value within its
+// Presets for the settings form. The server takes any value within its
 // limits (backend/server/validate.go), which these mirror.
 export const stakes = ["1/2", "5/10", "10/20", "25/50", "100/200"];
 export const seatCounts = [2, 6, 8, 9];
@@ -87,5 +87,30 @@ export function toSettings(f: SettingsForm): Settings {
         ante: anteChips(f.ante, bb),
         sevenDeuce: f.sevenDeuce * bb,
         duckHunt: f.duckHunt,
+    };
+}
+
+// nearest is the preset whose amount in chips comes closest to n
+function nearest(presets: number[], n: number, chips: (preset: number) => number): number {
+    return presets.reduce((best, p) => (Math.abs(chips(p) - n) < Math.abs(chips(best) - n) ? p : best));
+}
+
+// fromSettings is the form for a table's settings, for the host to change them
+export function fromSettings(s: Settings): SettingsForm {
+    const preset = `${s.sb}/${s.bb}`;
+    return {
+        stakes: stakes.includes(preset) ? preset : "custom",
+        sb: String(s.sb),
+        bb: String(s.bb),
+        minBuyBB: String(Math.round(s.minBuy / s.bb)),
+        maxBuyBB: String(Math.round(s.maxBuy / s.bb)),
+        seats: s.seats,
+        turnTime: s.turnTime,
+        nextHandDelay: s.nextHandDelay,
+        public: s.public,
+        approveRebuys: s.approveRebuys,
+        ante: nearest(antes, s.ante, (a) => anteChips(a, s.bb)),
+        sevenDeuce: nearest(sevenDeuces, s.sevenDeuce, (n) => n * s.bb),
+        duckHunt: s.duckHunt,
     };
 }

@@ -467,9 +467,9 @@ Notes:
 - [x] Players, stats and the host's session controls move out of the chat popover into a "table"
   drawer, top left. Chat keeps chat and log. The header host menu becomes a host-only tab.
 - [x] Show the table config (stakes, starting stack, seats, timer, password on/off) in one of the
-  panel's tabs, read-only for everyone. Later, maybe editable by the host. A "settings" tab, with the
-  table name and invite link too; the header drops "nl texas holdem" and the lock icon, which moved
-  there. e2e: `settings.mjs`.
+  panel's tabs, read-only for everyone. A "settings" tab, with the table name and invite link too;
+  the header drops "nl texas holdem" and the lock icon, which moved there. The host can edit
+  everything but the seat count; mid-hand, changes wait for the hand to end. e2e: `settings.mjs`.
 
 ### PR 7: add hand history and detailed stats
 
@@ -555,7 +555,7 @@ Matters once the public demo gets real traffic.
 # Stage 9: house rules
 
 Home-game rules, set per table when it's created (`table.Settings`, the create form's "house
-rules") and fixed after, like the other settings. Off by default unless noted. Straddle and run it
+rules"), and changeable by the host later like the other settings. Off by default unless noted. Straddle and run it
 twice moved to stage 10.
 
 ## PR 1: antes, show/muck, duck hunt
