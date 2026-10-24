@@ -92,11 +92,18 @@ func (r *reducer) sevenDeuce(h *HandRecord, seat int) []Payment {
 }
 
 // ShowClaims are what the player in seat would collect by showing their
-// cards now, like "7-2".
+// cards now, like "7-2" or "stand-up".
 func ShowClaims(s *State, seat int) []string {
 	claims := []string{}
-	if p := s.Game.Player(seat); p != nil && !p.Shown && winsSevenDeuce(s, seat) {
+	p := s.Game.Player(seat)
+	if p == nil || p.Shown {
+		return claims
+	}
+	if winsSevenDeuce(s, seat) {
 		claims = append(claims, KindSevenDeuce)
+	}
+	if sitsDown(s, seat, s.Seats[seat].Name) {
+		claims = append(claims, KindStandUp)
 	}
 	return claims
 }
@@ -117,7 +124,7 @@ func (r *reducer) lateShow(seat int) {
 	}
 	hp.Shown = true
 	hp.bestHand(s.Game.Player(seat).Cards, s.Game.Board)
-	r.latePayments(h, r.sevenDeuce(h, seat))
+	r.latePayments(h, append(r.sevenDeuce(h, seat), r.standUp()...))
 	r.res.Events = append(r.res.Events, HandUpdated{*h})
 }
 

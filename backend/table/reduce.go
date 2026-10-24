@@ -127,6 +127,10 @@ func personOf(cmd Command) string {
 		return c.Person
 	case EndSession:
 		return c.Person
+	case StartStandUp:
+		return c.Person
+	case CancelStandUp:
+		return c.Person
 	}
 	return ""
 }
@@ -135,7 +139,7 @@ func personOf(cmd Command) string {
 // stops once the session ends so the ledger stays final.
 func closedWhenEnded(cmd Command) bool {
 	switch c := cmd.(type) {
-	case TakeSeat, Start, Rebuy, SitOut, AdjustChips, Pause, EndSession, AddBot, RemoveBot:
+	case TakeSeat, Start, Rebuy, SitOut, AdjustChips, Pause, EndSession, AddBot, RemoveBot, StartStandUp, CancelStandUp:
 		return true
 	case HostAction:
 		return c.Kind == SitOutPlayer || c.Kind == ApproveBuy || c.Kind == DenyBuy
@@ -210,6 +214,10 @@ func (r *reducer) do(cmd Command) error {
 		return r.pause(p, c.Pause)
 	case EndSession:
 		return r.endSession(p)
+	case StartStandUp:
+		return r.startStandUp(p, c.Payout)
+	case CancelStandUp:
+		return r.cancelStandUp(p)
 	default:
 		return fail("unknown command")
 	}

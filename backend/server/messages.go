@@ -43,6 +43,8 @@ const (
 	ActionPauseGame       = "pause-game"
 	ActionResumeGame      = "resume-game"
 	ActionEndSession      = "end-session"
+	ActionStartStandUp    = "start-stand-up" // amount is the payout
+	ActionCancelStandUp   = "cancel-stand-up"
 )
 
 // Inbound is every message a client sends. Action says which fields are used.

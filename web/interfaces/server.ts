@@ -125,6 +125,14 @@ export const ActionResumeGame = "resume-game";
  */
 export const ActionEndSession = "end-session";
 /**
+ * inbound (client) actions
+ */
+export const ActionStartStandUp = "start-stand-up"; // amount is the payout
+/**
+ * inbound (client) actions
+ */
+export const ActionCancelStandUp = "cancel-stand-up";
+/**
  * Inbound is every message a client sends. Action says which fields are used.
  */
 export interface Inbound {

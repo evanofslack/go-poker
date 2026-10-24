@@ -91,6 +91,10 @@ func TestRandomCommands(t *testing.T) {
 				cmd = Show{Person: id}
 			case 19:
 				cmd = Hunt{Person: id}
+			case 20:
+				cmd = StartStandUp{Person: id, Payout: 1 + r.UintN(100)}
+			case 21:
+				cmd = CancelStandUp{Person: id}
 			default:
 				// whoever is to act moves, if they're a person
 				g := &h.s.Game

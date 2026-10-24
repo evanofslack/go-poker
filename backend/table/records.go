@@ -137,6 +137,7 @@ func (r *reducer) recordEvent(e holdem.Event, timeout bool) {
 			h.Players = append(h.Players, HandPlayer{Name: name(n), Seat: n, Stack: p.Stack + p.Committed})
 		}
 		s.Current = h
+		r.beginStandUp(e.Seats)
 	case holdem.Dealt:
 		if hp := h.player(e.Seat); hp != nil {
 			hp.Cards = cardNames(e.Cards[:]...)
@@ -214,6 +215,7 @@ func (r *reducer) finishHand() {
 	for _, hp := range h.Players {
 		h.Payments = append(h.Payments, r.sevenDeuce(h, hp.Seat)...)
 	}
+	h.Payments = append(h.Payments, r.standUp()...)
 	for i := range h.Players {
 		hp := &h.Players[i]
 		p := s.Game.Player(hp.Seat)

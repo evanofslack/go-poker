@@ -242,6 +242,7 @@ func (r *reducer) end() {
 	s.Ending = false
 	s.EndedAt = r.now
 	clear(s.Requests)
+	s.StandUp, s.LastStandUp = nil, 0
 	r.cancel(TimerDeal, TimerTurn, TimerBot, TimerIdle)
 	r.schedule(TimerClose, s.Timing.EndedTTL)
 	r.log("the session has ended, the ledger is final")

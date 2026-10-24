@@ -111,6 +111,9 @@ type State struct {
 	LogSeq   int                   `json:"logSeq"`
 	Acts     map[int]Act           `json:"acts"` // by seat
 
+	StandUp     *StandUp `json:"standUp"`     // the stand-up round going, if any
+	LastStandUp uint     `json:"lastStandUp"` // the payout of the round that just ended, to run it again
+
 	Timers  map[Timer]time.Time `json:"timers"`
 	RandSeq uint64              `json:"randSeq"` // draws from the table's randomness so far
 }

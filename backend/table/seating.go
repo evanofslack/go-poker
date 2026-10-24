@@ -197,9 +197,13 @@ func (r *reducer) removeLeavers() {
 		if !seat.Leaving {
 			continue
 		}
+		if r.s.Game.InHand() {
+			return // mid-hand, after it then
+		}
+		r.leaveStandUp(seat.Name)
 		stack := r.s.Game.Player(n).Stack
 		if err := r.s.Game.Leave(n); err != nil {
-			return // mid-hand, after it then
+			return
 		}
 		delete(r.s.Seats, n)
 		delete(r.s.Acts, n)

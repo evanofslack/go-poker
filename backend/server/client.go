@@ -324,6 +324,13 @@ func (c *Client) command(in Inbound) (table.Command, error) {
 		return table.Pause{Person: p, Pause: in.Action == ActionPauseGame}, nil
 	case ActionEndSession:
 		return table.EndSession{Person: p}, nil
+	case ActionStartStandUp:
+		if !validBuyIn(in.Amount) {
+			return nil, c.refuse("invalid payout")
+		}
+		return table.StartStandUp{Person: p, Payout: uint(in.Amount)}, nil
+	case ActionCancelStandUp:
+		return table.CancelStandUp{Person: p}, nil
 	case ActionAdjustChips:
 		if !validLength(in.Name, maxUsernameLen) || !validAdjust(in.Amount) || !validReason(in.Reason) {
 			return nil, c.refuse("invalid chip change")
