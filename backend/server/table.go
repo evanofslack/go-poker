@@ -346,8 +346,10 @@ func (a *tableActor) save() {
 		return
 	}
 	c := Checkpoint{ID: s.ID, Name: s.Name, Version: s.Version, State: b, At: time.Now()}
+	// the last hand saved goes again: showing cards after it, and what that
+	// pays, change its record
 	for i, h := range s.History {
-		if h.Hand > a.savedHand {
+		if h.Hand >= a.savedHand {
 			c.Hands = append(c.Hands, Hand{h, s.Stats[i]})
 		}
 	}
