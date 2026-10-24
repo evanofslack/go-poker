@@ -3,9 +3,13 @@ package table
 import (
 	"errors"
 	"fmt"
+	"strings"
+
+	"github.com/evanofslack/go-poker/holdem"
 )
 
-// Settings are picked by the host when creating a table, and fixed after.
+// Settings are picked by the host when creating a table. The host can change
+// them later, all but the seat count.
 // Buy-ins are in chips, times in milliseconds.
 type Settings struct {
 	Seats         uint `json:"seats"`
@@ -72,5 +76,105 @@ func (s Settings) Validate() error {
 	case s.NextHandDelay < minNextHandDelay || s.NextHandDelay > maxNextHandDelay:
 		return fmt.Errorf("next hand delay must be between %d and %d seconds", minNextHandDelay/1000, maxNextHandDelay/1000)
 	}
+	return nil
+}
+
+// updateSettings changes the settings now between hands, or from the next
+// hand mid-hand.
+func (r *reducer) updateSettings(p *Person, set Settings) error {
+	s := r.s
+	if p.Name != s.Host {
+		return errNotHost
+	}
+	set.Seats = s.Settings.Seats
+	if err := set.Validate(); err != nil {
+		return fail("%s", err)
+	}
+	if !s.Game.InHand() {
+		r.applySettings(p.Name+" changed", set)
+		return nil
+	}
+	changes := settingsChanges(s.Settings, set)
+	if changes == "" {
+		if s.Next != nil {
+			s.Next = nil
+			r.log("%s undid the settings changes for the next hand", p.Name)
+		}
+		return nil
+	}
+	s.Next = &set
+	r.log("%s changed %s, from the next hand", p.Name, changes)
+	return nil
+}
+
+// applySettings switches to set between hands, logging what changed after who.
+func (r *reducer) applySettings(who string, set Settings) {
+	s := r.s
+	changes := settingsChanges(s.Settings, set)
+	s.Settings, s.Next = set, nil
+	s.Game.SetConfig(holdem.Config{SmallBlind: set.SmallBlind, BigBlind: set.BigBlind, Ante: set.Ante})
+	if changes != "" {
+		r.log("%s %s", who, changes)
+	}
+	r.scheduleDeal()
+}
+
+// settingsChanges lists what changed from old to set, like "the blinds to
+// 25/50, the turn timer to 60s", or "" for nothing.
+func settingsChanges(old, set Settings) string {
+	var c []string
+	add := func(changed bool, format string, args ...any) {
+		if changed {
+			c = append(c, fmt.Sprintf(format, args...))
+		}
+	}
+	onOff := func(on bool) string {
+		if on {
+			return "on"
+		}
+		return "off"
+	}
+	chips := func(n uint) string {
+		if n == 0 {
+			return "off"
+		}
+		return fmt.Sprint(n)
+	}
+	add(old.SmallBlind != set.SmallBlind || old.BigBlind != set.BigBlind, "the blinds to %d/%d", set.SmallBlind, set.BigBlind)
+	add(old.Ante != set.Ante, "the ante to %s", chips(set.Ante))
+	add(old.MinBuy != set.MinBuy || old.MaxBuy != set.MaxBuy, "the buy-in to %d-%d", set.MinBuy, set.MaxBuy)
+	if set.TurnTime == 0 {
+		add(old.TurnTime != 0, "the turn timer off")
+	} else {
+		add(old.TurnTime != set.TurnTime, "the turn timer to %ds", set.TurnTime/1000)
+	}
+	add(old.NextHandDelay != set.NextHandDelay, "the time between hands to %ds", set.NextHandDelay/1000)
+	add(old.Public != set.Public, "the table to %s", visibility(set.Public))
+	add(old.ApproveRebuys != set.ApproveRebuys, "rebuy approval %s", onOff(set.ApproveRebuys))
+	add(old.DuckHunt != set.DuckHunt, "duck hunt %s", onOff(set.DuckHunt))
+	add(old.SevenDeuce != set.SevenDeuce, "the 7-2 bounty to %s", chips(set.SevenDeuce))
+	return strings.Join(c, ", ")
+}
+
+func visibility(public bool) string {
+	if public {
+		return "public"
+	}
+	return "private"
+}
+
+func (r *reducer) setPassword(p *Person, password string) error {
+	s := r.s
+	if p.Name != s.Host {
+		return errNotHost
+	}
+	if password == "" {
+		s.Password = ""
+		r.log("%s removed the password", p.Name)
+	} else {
+		s.Password = hashPassword(password)
+		r.log("%s changed the password", p.Name)
+	}
+	r.send("", NewPassword{password})
 	return nil
 }

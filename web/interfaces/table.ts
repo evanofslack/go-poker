@@ -65,6 +65,13 @@ export interface NewToken {
   token: string;
 }
 /**
+ * NewPassword is the table's password after the host changed it, for
+ * everyone at the table to share in invite links. Empty when removed.
+ */
+export interface NewPassword {
+  password: string;
+}
+/**
  * HandsPage is a page of hand history.
  */
 export interface HandsPage {
@@ -174,7 +181,8 @@ export type Event = unknown;
 // source: settings.go
 
 /**
- * Settings are picked by the host when creating a table, and fixed after.
+ * Settings are picked by the host when creating a table. The host can change
+ * them later, all but the seat count.
  * Buy-ins are in chips, times in milliseconds.
  */
 export interface Settings {
@@ -307,6 +315,7 @@ export interface View {
   sitOutNext: boolean; // you asked to sit out once this hand ends
   showClaims: string[]; // what showing your cards now would win you, like "7-2" or "stand-up"
   settings: Settings;
+  next?: Settings; // settings from the next hand, if the host changed them mid-hand
   hasPassword: boolean;
   host: string;
   running: boolean;

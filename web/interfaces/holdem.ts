@@ -170,7 +170,7 @@ export const Flop: Street = "flop";
 export const Turn: Street = "turn";
 export const River: Street = "river";
 /**
- * Config is fixed for a game.
+ * Config is the game's blinds and ante. It only changes between hands.
  */
 export interface Config {
   sb: number /* uint */;

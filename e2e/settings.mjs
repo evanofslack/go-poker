@@ -1,4 +1,5 @@
-// Settings tab: everyone at the table can read how the host set it up.
+// Settings tab: everyone at the table can read how the host set it up, and the
+// host can change it.
 import { URL, check, finish, launch, shot } from "./lib.mjs";
 const table = "settings" + Date.now();
 const browser = await launch();
@@ -47,5 +48,62 @@ check("copies the invite link", invite.endsWith(`?table=${table}#pw=s3cret`), in
 check("the password itself isn't shown", !(await p.locator('[aria-label="table"]').innerText()).includes("s3cret"));
 await shot(host, "settings");
 await shot(p, "settings-phone");
+
+// the host edits the settings between hands
+const until = (fn, ms = 3000) => {
+    const end = Date.now() + ms;
+    const poll = async () => ((await fn()) ? true : Date.now() > end ? false : new Promise((r) => setTimeout(r, 100)).then(poll));
+    return poll();
+};
+const edit = '[aria-label="table"] button:text-is("edit")';
+check("a player can't edit", (await p.locator(edit).count()) === 0);
+await host.click(edit);
+check("the form starts from the table", (await host.inputValue("#minBuy")) === "20" && (await host.inputValue("#tablePassword")) === "s3cret");
+check("the seat count can't change", (await host.locator('input[name="seats"]').count()) === 0);
+await shot(host, "settings-edit");
+await host.click('label:has(input[name="stakes"]) >> text="10/20"');
+await host.fill("#tablePassword", "n3w");
+await host.click('button:text-is("save")');
+check("a player sees the new stakes", await until(async () => (await row(p, "stakes")) === "10/20"));
+check("buy-ins keep their big blinds", (await row(p, "buy-in")) === "400–2,000 (20–100 bb)", await row(p, "buy-in"));
+await host.click('[aria-label="table settings"] button[aria-label="copy invite link"]');
+const newInvite = await host.evaluate(() => navigator.clipboard.readText());
+check("the invite link has the new password", newInvite.endsWith("#pw=n3w"), newInvite);
+
+// a new player joins with it, and both sit down
+const eve = await (await browser.newContext()).newPage();
+await eve.goto(`${URL}/?table=${table}#pw=n3w`);
+await eve.fill("#username", "eve");
+await eve.press("#password", "Enter");
+await eve.waitForSelector("text=Open");
+check("the new password lets eve in", true);
+await host.click('[aria-label="close table panel"]');
+for (const [page, seat] of [[host, 1], [eve, 2]]) {
+    await page.locator("button", { hasText: "Open" }).filter({ hasText: String(seat) }).click();
+    await page.locator("#buyIn ~ button").first().click();
+    await page.waitForTimeout(300);
+}
+
+// mid-hand, a change waits for the hand to end
+await host.click('button:text-is("start")');
+await host.waitForSelector('button:text-is("fold")');
+await openSettings(host);
+await openSettings(eve);
+await host.click(edit);
+await host.click('label:has(input[name="stakes"]) >> text="25/50"');
+check("the form says when changes apply", await host.locator("text=changes apply after this hand").first().isVisible());
+await host.click('button:text-is("save")');
+check("eve sees a change is waiting", await until(() => eve.locator('text="changes apply after this hand"').isVisible()));
+check("the stakes stay for this hand", (await row(eve, "stakes")) === "10/20");
+await shot(eve, "settings-pending");
+const folded = await until(async () => {
+    for (const page of [host, eve]) {
+        if (await page.click('button:text-is("fold"):enabled', { timeout: 300 }).then(() => true).catch(() => false)) return true;
+    }
+    return false;
+});
+check("someone folds", folded);
+check("the change applies after the hand", await until(async () => (await row(eve, "stakes")) === "25/50"));
+check("and the note goes", (await eve.locator('text="changes apply after this hand"').count()) === 0);
 await browser.close();
 finish();

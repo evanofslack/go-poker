@@ -244,7 +244,7 @@ func (h *Hub) shutdown(ctx context.Context) {
 func (h *Hub) publicTables() []table.Summary {
 	tables := []table.Summary{}
 	for _, a := range h.allTables() {
-		if a.public && !a.ended.Load() {
+		if a.public.Load() && !a.ended.Load() {
 			tables = append(tables, *a.summary.Load())
 		}
 	}

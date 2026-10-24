@@ -1,6 +1,12 @@
 package table
 
-import "testing"
+import (
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/evanofslack/go-poker/holdem"
+)
 
 func TestValidSettings(t *testing.T) {
 	ok := Settings{Seats: 8, SmallBlind: 10, BigBlind: 20, MinBuy: 1000, MaxBuy: 4000, TurnTime: 30000, NextHandDelay: 5000}
@@ -39,5 +45,129 @@ func TestValidSettings(t *testing.T) {
 		if err := s.Validate(); (err == nil) != tt.valid {
 			t.Errorf("%s: Validate = %v, want valid %v", tt.name, err, tt.valid)
 		}
+	}
+}
+
+// blindBets are the small and big blinds posted this hand.
+func (h *harness) blindBets() (uint, uint) {
+	g := &h.s.Game
+	return g.Player(g.SB).Bet, g.Player(g.BB).Bet
+}
+
+func TestUpdateSettingsBetweenHands(t *testing.T) {
+	h := newHarness(t, DefaultSettings, "")
+	h.join("a")
+	h.join("b")
+	h.sit("a", 1, 1000)
+	h.sit("b", 2, 1000)
+
+	next := DefaultSettings
+	next.SmallBlind, next.BigBlind, next.Ante = 25, 50, 5
+	next.TurnTime = 60000
+	next.Seats = 2
+	h.refused(UpdateSettings{Person: h.ids["b"], Settings: next})
+	bad := next
+	bad.Ante = 51
+	if err := h.refused(UpdateSettings{Person: h.ids["a"], Settings: bad}); !strings.Contains(err, "ante") {
+		t.Fatalf("refused with %q", err)
+	}
+	h.ok(UpdateSettings{Person: h.ids["a"], Settings: next})
+	if set := h.s.Settings; set.Seats != DefaultSettings.Seats || set.BigBlind != 50 || h.s.Next != nil {
+		t.Fatalf("settings %+v, next %+v", set, h.s.Next)
+	}
+	h.mustLog("a changed the blinds to 25/50, the ante to 5, the turn timer to 60s")
+
+	h.ok(Start{Person: h.ids["a"]})
+	if sb, bb := h.blindBets(); sb != 25 || bb != 50 {
+		t.Fatalf("blinds %d/%d", sb, bb)
+	}
+	if got := h.s.Timers[TimerTurn]; !got.Equal(h.now.Add(time.Minute)) {
+		t.Fatalf("turn ends at %v, want a minute from now", got)
+	}
+}
+
+func TestUpdateSettingsMidHand(t *testing.T) {
+	h := newHarness(t, DefaultSettings, "")
+	for i, name := range []string{"a", "b", "c"} {
+		h.join(name)
+		h.sit(name, i+1, 1000)
+	}
+	h.ok(Start{Person: h.ids["a"]})
+
+	next := DefaultSettings
+	next.SmallBlind, next.BigBlind = 25, 50
+	h.ok(UpdateSettings{Person: h.ids["a"], Settings: next})
+	h.mustLog("a changed the blinds to 25/50, from the next hand")
+	if h.s.Settings.BigBlind != 20 || h.s.Game.Config.BigBlind != 20 || ViewFor(h.s, h.ids["b"], h.now).Next == nil {
+		t.Fatalf("settings %+v config %+v", h.s.Settings, h.s.Game.Config)
+	}
+	// changing it back drops the change, and a later one replaces it
+	h.ok(UpdateSettings{Person: h.ids["a"], Settings: DefaultSettings})
+	if h.s.Next != nil {
+		t.Fatalf("next %+v after undoing", h.s.Next)
+	}
+	h.mustLog("a undid the settings changes for the next hand")
+	h.ok(UpdateSettings{Person: h.ids["a"], Settings: next})
+	next.SmallBlind, next.BigBlind = 20, 40
+	h.ok(UpdateSettings{Person: h.ids["a"], Settings: next})
+
+	h.play(holdem.Fold{})
+	h.play(holdem.Fold{})
+	if h.s.Settings.BigBlind != 40 || h.s.Next != nil {
+		t.Fatalf("after the hand: settings %+v next %+v", h.s.Settings, h.s.Next)
+	}
+	h.mustLog("settings changed: the blinds to 20/40")
+	h.nextHand()
+	if sb, bb := h.blindBets(); sb != 20 || bb != 40 {
+		t.Fatalf("blinds %d/%d", sb, bb)
+	}
+}
+
+func TestUpdateSettingsAfterEnd(t *testing.T) {
+	h := newHarness(t, DefaultSettings, "")
+	h.join("a")
+	h.ok(EndSession{Person: h.ids["a"]})
+	h.refused(UpdateSettings{Person: h.ids["a"], Settings: DefaultSettings})
+	h.refused(SetPassword{Person: h.ids["a"], Password: "pw"})
+}
+
+func TestBotRebuyKeepsToBuyInLimits(t *testing.T) {
+	h := newHarness(t, DefaultSettings, "")
+	h.join("a")
+	h.ok(AddBot{Person: h.ids["a"], Seat: 2, BuyIn: 1000, Name: "bot", Level: "easy"})
+	next := DefaultSettings
+	next.MinBuy = 2000
+	h.ok(UpdateSettings{Person: h.ids["a"], Settings: next})
+	h.s.Game.Player(2).Stack = 0
+	(&reducer{s: h.s, now: h.now}).rebuyBots()
+	if got := h.s.Game.Player(2).Stack; got != 2000 {
+		t.Fatalf("bot rebought for %d, want the new min of 2000", got)
+	}
+}
+
+func TestSetPassword(t *testing.T) {
+	h := newHarness(t, DefaultSettings, "")
+	h.join("a")
+	h.join("b")
+	h.refused(SetPassword{Person: h.ids["b"], Password: "pw"})
+	h.ok(SetPassword{Person: h.ids["a"], Password: "pw"})
+	if got := sentTo[NewPassword](h, h.ids["b"]); len(got) != 1 || got[0].Password != "pw" {
+		t.Fatalf("b was sent %+v", got)
+	}
+	h.mustLog("a changed the password")
+	if res := h.do(Join{ID: "id-c", Name: "c", Password: "old"}); res.Joined != nil {
+		t.Fatal("joined with the wrong password")
+	}
+	if res := h.do(Join{ID: "id-c", Name: "c", Password: "pw"}); res.Joined == nil {
+		t.Fatal("couldn't join with the new password")
+	}
+
+	h.ok(SetPassword{Person: h.ids["a"], Password: ""})
+	h.mustLog("a removed the password")
+	if ViewFor(h.s, h.ids["a"], h.now).HasPassword {
+		t.Fatal("still has a password")
+	}
+	if res := h.do(Join{ID: "id-d", Name: "d"}); res.Joined == nil {
+		t.Fatal("couldn't join without a password")
 	}
 }

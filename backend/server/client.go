@@ -331,6 +331,18 @@ func (c *Client) command(in Inbound) (table.Command, error) {
 		return table.StartStandUp{Person: p, Payout: uint(in.Amount)}, nil
 	case ActionCancelStandUp:
 		return table.CancelStandUp{Person: p}, nil
+	case ActionUpdateSettings:
+		// the table checks them, once it has put in its seat count
+		var settings table.Settings
+		if in.Settings == nil || json.Unmarshal(in.Settings, &settings) != nil {
+			return nil, c.refuse("invalid settings")
+		}
+		return table.UpdateSettings{Person: p, Settings: settings}, nil
+	case ActionSetPassword:
+		if !validPassword(in.Password) {
+			return nil, c.refuse("invalid password")
+		}
+		return table.SetPassword{Person: p, Password: in.Password}, nil
 	case ActionAdjustChips:
 		if !validLength(in.Name, maxUsernameLen) || !validAdjust(in.Amount) || !validReason(in.Reason) {
 			return nil, c.refuse("invalid chip change")

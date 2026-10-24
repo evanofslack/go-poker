@@ -24,6 +24,12 @@ type NewToken struct {
 	Token string `json:"token"`
 }
 
+// NewPassword is the table's password after the host changed it, for
+// everyone at the table to share in invite links. Empty when removed.
+type NewPassword struct {
+	Password string `json:"password"`
+}
+
 // HandsPage is a page of hand history.
 type HandsPage struct {
 	Hands []HandRecord `json:"hands"`

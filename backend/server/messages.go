@@ -45,6 +45,8 @@ const (
 	ActionEndSession      = "end-session"
 	ActionStartStandUp    = "start-stand-up" // amount is the payout
 	ActionCancelStandUp   = "cancel-stand-up"
+	ActionUpdateSettings  = "update-settings" // settings has all of them, but the seat count stays
+	ActionSetPassword     = "set-password"
 )
 
 // Inbound is every message a client sends. Action says which fields are used.
@@ -55,8 +57,8 @@ type Inbound struct {
 	Tablename string          `json:"tablename,omitempty"` // also leave-table
 	Username  string          `json:"username,omitempty"`
 	Token     string          `json:"token,omitempty"`                                     // reclaims a seat after a disconnect
-	Password  string          `json:"password,omitempty"`                                  // sets the table's password on create, else checked
-	Settings  json.RawMessage `json:"settings,omitempty" tstype:"Partial<table.Settings>"` // create-table; missing fields get their default
+	Password  string          `json:"password,omitempty"`                                  // sets the table's password on create or set-password, else checked
+	Settings  json.RawMessage `json:"settings,omitempty" tstype:"Partial<table.Settings>"` // create-table, where missing fields get their default, or update-settings with all of them
 
 	Message string `json:"message,omitempty"` // send-message
 	Seat    int    `json:"seat,omitempty"`    // take-seat, add-bot, remove-bot
@@ -78,6 +80,7 @@ const (
 	ActionToken       = "token"
 	ActionError       = "error"
 	ActionTables      = "tables"
+	ActionPassword    = "password"
 )
 
 // Joined confirms a create-table or join-table.
@@ -132,6 +135,13 @@ type ChatOut struct {
 type TokenOut struct {
 	Action string `json:"action"`
 	Token  string `json:"token"`
+}
+
+// PasswordOut is the table's new password after the host changed it, for
+// invite links. Empty once removed.
+type PasswordOut struct {
+	Action   string `json:"action"`
+	Password string `json:"password"`
 }
 
 // ErrorOut tells one client why its action was rejected.

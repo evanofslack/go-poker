@@ -194,6 +194,16 @@ export function cancelStandUp(socket: WebSocket) {
     send(socket, { action: "cancel-stand-up" });
 }
 
+// updateSettings changes the table's settings, all but the seat count, from the next hand if one is being played
+export function updateSettings(socket: WebSocket, settings: Settings) {
+    send(socket, { action: "update-settings", settings: settings });
+}
+
+// setPassword changes the table's password, or removes it when empty
+export function setPassword(socket: WebSocket, password: string) {
+    send(socket, { action: "set-password", password: password });
+}
+
 // getHands asks for the hands played before hand number before, answered with hand-history
 export function getHands(socket: WebSocket, before: number) {
     socket?.send(JSON.stringify({ action: "get-hands", before: before }));

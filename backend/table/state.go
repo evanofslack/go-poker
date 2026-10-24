@@ -86,6 +86,7 @@ type State struct {
 	ID        string       `json:"id"` // names are reused once a table closes; IDs aren't
 	Name      string       `json:"name"`
 	Settings  Settings     `json:"settings"`
+	Next      *Settings    `json:"next,omitempty"` // settings changed mid-hand, for the next hand
 	Timing    Timing       `json:"timing"`
 	Password  string       `json:"password"` // salted hash, empty for none
 	CreatorIP string       `json:"creatorIP"`

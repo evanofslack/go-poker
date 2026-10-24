@@ -1,7 +1,17 @@
 import { createContext, ReactNode, useEffect, useState, useContext, useRef } from "react";
 import { AppContext } from "../providers/AppStore";
 import { GameEvent } from "../interfaces";
-import type { ChatOut, ErrorOut, HandHistory, Joined, TableUpdate, Tables, TokenOut, Welcome } from "../interfaces/server";
+import type {
+    ChatOut,
+    ErrorOut,
+    HandHistory,
+    Joined,
+    PasswordOut,
+    TableUpdate,
+    Tables,
+    TokenOut,
+    Welcome,
+} from "../interfaces/server";
 import { joinTable, leaveTable } from "../actions/actions";
 import { inviteLink } from "../lib/invite";
 
@@ -223,6 +233,16 @@ export function SocketProvider(props: SocketProviderProps) {
                     if (session) {
                         saveSession({ ...session, token: (msg as TokenOut).token || undefined });
                     }
+                    return;
+                }
+                case "password": {
+                    // the host changed the password, empty once removed
+                    const password = (msg as PasswordOut).password || undefined;
+                    const session = loadSession();
+                    if (session) {
+                        saveSession({ ...session, password });
+                    }
+                    dispatch({ type: "setPassword", payload: password ?? null });
                     return;
                 }
                 default:

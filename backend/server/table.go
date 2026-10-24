@@ -20,7 +20,6 @@ var errClosed = errors.New("table not found")
 type tableActor struct {
 	name      string
 	hub       *Hub
-	public    bool   // fixed at creation
 	creatorIP string // fixed at creation
 	inbox     chan envelope
 	done      chan struct{} // closed once the table has closed
@@ -28,6 +27,7 @@ type tableActor struct {
 	// read by the hub without going through the inbox
 	summary atomic.Pointer[table.Summary]
 	ended   atomic.Bool
+	public  atomic.Bool
 
 	// owned by run
 	state  *table.State
@@ -64,7 +64,6 @@ func newTableActor(h *Hub, s *table.State) *tableActor {
 	a := &tableActor{
 		name:      s.Name,
 		hub:       h,
-		public:    s.Settings.Public,
 		creatorIP: s.CreatorIP,
 		inbox:     make(chan envelope, 64),
 		done:      make(chan struct{}),
@@ -235,6 +234,8 @@ func marshalOut(msg any) []byte {
 		return marshal(ChatOut{ActionChat, m})
 	case table.NewToken:
 		return marshal(TokenOut{ActionToken, m.Token})
+	case table.NewPassword:
+		return marshal(PasswordOut{ActionPassword, m.Password})
 	case table.HandsPage:
 		return marshal(HandHistory{ActionHandHistory, m.Hands, m.More})
 	}
@@ -380,6 +381,7 @@ func (a *tableActor) publish() {
 	sum := table.Summarize(a.state)
 	a.summary.Store(&sum)
 	a.ended.Store(a.state.Ended())
+	a.public.Store(a.state.Settings.Public)
 }
 
 // close tells everyone why the table is going, stops it and removes it from
