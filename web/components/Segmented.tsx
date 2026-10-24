@@ -1,7 +1,11 @@
+import { ReactNode } from "react";
+import Hint from "./Hint";
+
 type segmentedProps<T> = {
     legend: string;
+    hint?: string;
     name: string;
-    options: { label: string; value: T }[];
+    options: { label: ReactNode; value: T }[];
     value: T;
     onChange: (value: T) => void;
 };
@@ -10,6 +14,7 @@ type segmentedProps<T> = {
 // arrow keys move between them.
 export default function Segmented<T extends string | number>({
     legend,
+    hint,
     name,
     options,
     value,
@@ -17,7 +22,10 @@ export default function Segmented<T extends string | number>({
 }: segmentedProps<T>) {
     return (
         <fieldset>
-            <legend className="mb-1 text-xs text-muted">{legend}</legend>
+            <legend className="mb-1 flex w-full flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-muted">
+                {legend}
+                {hint && <Hint about={legend} text={hint} />}
+            </legend>
             <div className="flex flex-wrap gap-1">
                 {options.map((o) => (
                     <label key={o.value} className="cursor-pointer">

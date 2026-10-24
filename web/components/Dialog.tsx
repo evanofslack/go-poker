@@ -6,12 +6,12 @@ type dialogProps = {
     title: string;
     onClose: () => void;
     children: ReactNode;
-    wide?: boolean; // for forms; scrolls when taller than the screen
+    size?: "sm" | "md" | "lg"; // md and lg are for forms; they scroll when taller than the screen
 };
 
 // Dialog is a modal over the page. It's a portal, since a seat's transform would
 // otherwise contain the fixed overlay. Escape or a click outside closes it.
-export default function Dialog({ title, onClose, children, wide }: dialogProps) {
+export default function Dialog({ title, onClose, children, size = "sm" }: dialogProps) {
     const id = useId();
     const ref = useRef<HTMLDivElement>(null);
     // callers pass onClose inline; a ref keeps game updates from re-running the effect
@@ -44,7 +44,9 @@ export default function Dialog({ title, onClose, children, wide }: dialogProps) 
                 aria-labelledby={id}
                 className={classNames(
                     "rounded-xl bg-panel p-4 text-fg shadow-xl",
-                    wide ? "max-h-full w-full max-w-sm overflow-y-auto" : "w-72"
+                    size === "sm" ? "w-72" : "max-h-full w-full overflow-y-auto",
+                    size === "md" && "max-w-sm",
+                    size === "lg" && "max-w-2xl"
                 )}
             >
                 <p id={id} className="mb-2 font-semibold">
