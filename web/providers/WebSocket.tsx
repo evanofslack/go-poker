@@ -148,6 +148,11 @@ export function SocketProvider(props: SocketProviderProps) {
                             dispatch({ type: "addLog", payload: ev.data.log });
                         } else if (ev.type === "hand-done") {
                             dispatch({ type: "handDone", payload: ev.data });
+                        } else if (ev.type === "paid") {
+                            const p = ev.data.payments;
+                            const total = p.reduce((sum, x) => sum + x.amount, 0);
+                            const message = `${p[0].to} wins the ${p[0].kind}: ${total}`;
+                            dispatch({ type: "addToast", payload: { message, kind: "info" } });
                         } else if (ev.type === "hand-updated") {
                             dispatch({ type: "handUpdated", payload: ev.data.record });
                         }

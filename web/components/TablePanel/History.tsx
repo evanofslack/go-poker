@@ -171,6 +171,16 @@ function HandDetail({ record: r, me }: { record: HandRecord; me: string | null }
                     </li>
                 ))}
             </ul>
+            {r.payments && r.payments.length > 0 && (
+                <ul aria-label="side games">
+                    {r.payments.map((p, i) => (
+                        <li key={i}>
+                            <span className="text-fg">{p.from}</span> paid <span className="text-fg">{p.to}</span>{" "}
+                            {p.amount} for the {p.kind}
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     );
 }
