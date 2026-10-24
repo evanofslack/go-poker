@@ -12,6 +12,7 @@ type View struct {
 	BB       int      `json:"bb"`
 	ToAct    int      `json:"toAct"`
 	Board    []Card   `json:"board"`
+	Hunted   []Card   `json:"hunted"`
 	Pots     []Pot    `json:"pots"`
 	MinRaise uint     `json:"minRaise"`
 	Hand     int      `json:"hand"`
@@ -33,6 +34,10 @@ func (s *State) View(seat int) View {
 	if board == nil {
 		board = []Card{}
 	}
+	hunted := c.Hunted
+	if hunted == nil {
+		hunted = []Card{}
+	}
 	pots := c.Pots
 	if pots == nil {
 		pots = []Pot{}
@@ -47,6 +52,7 @@ func (s *State) View(seat int) View {
 		BB:       c.BB,
 		ToAct:    c.ToAct,
 		Board:    board,
+		Hunted:   hunted,
 		Pots:     pots,
 		MinRaise: c.MinRaise,
 		Hand:     c.Hands,

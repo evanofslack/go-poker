@@ -22,6 +22,7 @@ export function streets(r: HandRecord): Street[] {
 export function actionText(a: HandAction): string {
     let text: string;
     switch (a.kind) {
+        case "ante":
         case "small blind":
         case "big blind":
             text = `posts ${a.kind} ${a.amount ?? 0}`;

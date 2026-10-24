@@ -88,25 +88,27 @@ export interface HandRecord {
   started: number /* int64 */; // unix ms
   sb: number /* uint */;
   bb: number /* uint */;
+  ante?: number /* uint */;
   dealer: string;
   players: HandPlayer[]; // dealt in, in seat order
-  actions: HandAction[]; // blinds first
+  actions: HandAction[]; // antes and blinds first
   board: string[];
   pots: HandPot[];
 }
 export interface HandPlayer {
   name: string;
   seat: number /* int */;
-  stack: number /* uint */; // before the blinds
+  stack: number /* uint */; // before the antes and blinds
   cards?: string[]; // hidden from others unless Shown
-  shown: boolean; // at showdown
+  shown: boolean; // face up: at showdown if they had to, or by choice
   hand?: string; // their best hand, if Shown
+  showdown: boolean; // reached showdown, shown or mucked
   net: number /* int */; // chips won or lost
 }
 export interface HandAction {
   street: string; // preflop, flop, turn or river
   name: string;
-  kind: string; // small blind, big blind, check, call, bet, raise or fold
+  kind: string; // ante, small blind, big blind, check, call, bet, raise or fold
   amount?: number /* uint */; // chips put in
   to?: number /* uint */; // their bet on this street after putting them in
   allIn?: boolean;
@@ -138,6 +140,13 @@ export interface HandDone {
   totals: { [key: string]: Totals};
 }
 /**
+ * HandUpdated is the last hand's record changing after it ended, when
+ * someone shows their cards.
+ */
+export interface HandUpdated {
+  record: HandRecord;
+}
+/**
  * Log is a line in the table's log.
  */
 export interface Log {
@@ -152,8 +161,8 @@ export interface Logged {
   log: Log;
 }
 /**
- * Event is something that happened at the table: a holdem.Event, HandDone or
- * Logged.
+ * Event is something that happened at the table: a holdem.Event, HandDone,
+ * HandUpdated or Logged.
  */
 export type Event = unknown;
 
@@ -174,6 +183,11 @@ export interface Settings {
   nextHandDelay: number /* uint */; // pause after a hand before dealing the next
   public: boolean; // listed on the home page
   approveRebuys: boolean; // rebuys, and sitting back down, wait for the host
+  /**
+   * house rules
+   */
+  ante: number /* uint */; // from every player each hand, 0 for none
+  duckHunt: boolean; // players can turn up the rest of the board after a hand ends early
 }
 
 //////////
@@ -233,6 +247,7 @@ export interface View {
   bb: number /* int */;
   toAct: number /* int */;
   board: number[];
+  hunted: number[]; // the rest of the board, from a duck hunt
   pots: holdem.Pot[];
   minRaise: number /* uint */;
   hand: number /* int */;
@@ -260,6 +275,7 @@ export interface Summary {
   name: string;
   sb: number /* uint */;
   bb: number /* uint */;
+  ante: number /* uint */;
   minBuy: number /* uint */;
   maxBuy: number /* uint */;
   seats: number /* uint */;

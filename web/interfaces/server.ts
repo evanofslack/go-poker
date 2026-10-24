@@ -65,6 +65,14 @@ export const ActionRebuy = "rebuy";
  */
 export const ActionGetHands = "get-hands";
 /**
+ * inbound (client) actions
+ */
+export const ActionShowCards = "show-cards"; // between hands
+/**
+ * inbound (client) actions
+ */
+export const ActionDuckHunt = "duck-hunt"; // between hands, on tables that allow it
+/**
  * host only
  */
 export const ActionAddBot = "add-bot";

@@ -10,6 +10,7 @@
 | 6 | UI consistency and mobile | done |
 | 7 | Operator tooling | done |
 | 8 | Persistence (`persistence.md`) | done |
+| 9 | House rules | in progress |
 | - | Backlog | unranked |
 
 ## How items are ranked
@@ -550,13 +551,52 @@ Matters once the public demo gets real traffic.
 - [x] Note in the UI and README that state is in-memory and lost on restart.
 - [x] **Metrics:** Prometheus metrics on their own port (`METRICS_ADDR`).
 
+# Stage 9: house rules
+
+Home-game rules, set per table when it's created (`table.Settings`, the create form's "house
+rules") and fixed after, like the other settings. Off by default unless noted.
+
+## PR 1: antes, show/muck, duck hunt
+
+- [x] **Settings:** `ante` (chips, at most the big blind) and `duckHunt` (on by default). Shown in
+  the settings tab, and the ante in the lobby.
+- [x] **Antes:** every player dealt in posts the ante before the blinds, as dead money: it isn't
+  part of their bet, so the call and min raise don't change. A short stack goes all in on it. Not
+  counted toward VPIP.
+- [x] **Muck by default:** at a river showdown only pot winners and the last river bettor or raiser
+  (who was called) show; all-in hands are already face up. Everyone else mucks. Between hands
+  anyone dealt in can show (`show-cards`), including a winner nobody called. Stats count mucked
+  hands as showdowns, but best hand only from shown ones; history marks them mucked.
+- [x] **Duck hunt:** after a hand ends before the river, a player dealt in can turn up the rest of
+  the board (`duck-hunt`), once a hand. The cards are the ones that would have come, faded on the
+  board, and count for nothing. The next hand waits at least 3s for them.
+
+## Later
+
+- [ ] **7-2 game:** win a pot with 7-2 offsuit and every other player dealt in pays you a bounty
+  (chips, a setting). You must show to claim it, so a fold win needs a show.
+- [ ] **Stand-up game:** everyone starts standing and sits down by winning a pot; the last one
+  standing pays each other player a set amount, then a new round starts.
+  - You must show your cards (can't muck) to sit down.
+  - A split pot counts as a win, if you show.
+  - Players who join mid-round are exempt (already sitting) until the next round.
+  - Shares a side-bet helper with 7-2: stack-to-stack payments outside the pot, capped at what the
+    payer has. The ledger needs nothing; net is stack + cashed out - bought in.
+- [ ] **Straddle:** optional under-the-gun straddle of 2 big blinds, toggled before the deal. Action
+  starts left of the straddler, who acts last preflop; min raise becomes the straddle. Not counted
+  toward VPIP. Bots don't straddle.
+- [ ] **Run it twice:** offered when every player left is all in; every all-in player must agree,
+  on a timer. Deals the rest of the board twice, scores each pot per run and splits it, odd chips
+  per run. Needs a second board in the view, history and UI. Biggest of these.
+- [ ] **Big blind ante:** the big blind posts the whole table's ante; a variant of the ante setting.
+
 # Backlog (unranked)
 
 - e2e cleanup: move the timing helpers each script reinvents into `e2e/lib.mjs` (act on a control
   once it's enabled, retrying when the turn moves on; wait for a state rather than any update), trim
   checks that pin exact text or pixels, and consider a non-blocking CI job so the suite protects
   main. See the guidance in `e2e/README.md`.
-- Run it twice, straddles, antes, show/muck at showdown
+- More house rules: see stage 9
 - Pot-limit Omaha
 - Sit-n-go / tournament mode with a blind schedule
 - Accounts and persistent stats (only if this should be more than a play-with-friends app)

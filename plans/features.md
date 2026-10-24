@@ -59,7 +59,8 @@ All ticked at the cutover: covered by the `table` tests, the `server` tests and 
 - [x] When no more betting is possible, uncalled chips go back and the board runs out; all-in
       players' cards are shown.
 - [x] Showdown: best five of seven, side pots per all-in level, split pots, odd chips to the
-      first winner left of the button. Hands still in at showdown are shown. Fold-win shows no
+      first winner left of the button. Winners and a called river bettor show; other hands are
+      mucked (stage 9 in `todo.md`). Fold-win shows no
       cards.
 - [x] Between hands the last result stays visible: winners, pot amounts, winning hand names
       ("two pair, kings and sevens") and cards.

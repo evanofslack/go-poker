@@ -58,6 +58,12 @@ type Rebuy struct {
 	Amount uint
 }
 
+// Show turns up the person's cards from the last hand, between hands.
+type Show struct{ Person string }
+
+// Hunt turns up the rest of the board after a hand that ended early.
+type Hunt struct{ Person string }
+
 // GetHands asks for the hands played before hand number Before.
 type GetHands struct {
 	Person string
@@ -130,6 +136,8 @@ func (Play) command()        {}
 func (LeaveSeat) command()   {}
 func (SitOut) command()      {}
 func (Rebuy) command()       {}
+func (Show) command()        {}
+func (Hunt) command()        {}
 func (GetHands) command()    {}
 func (AddBot) command()      {}
 func (RemoveBot) command()   {}

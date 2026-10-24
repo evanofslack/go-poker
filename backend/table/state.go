@@ -126,7 +126,7 @@ func New(name string, settings Settings, timing Timing, password, creatorIP stri
 		Settings:  settings,
 		Timing:    timing,
 		CreatorIP: creatorIP,
-		Game:      holdem.New(holdem.Config{SmallBlind: settings.SmallBlind, BigBlind: settings.BigBlind}, seed),
+		Game:      holdem.New(holdem.Config{SmallBlind: settings.SmallBlind, BigBlind: settings.BigBlind, Ante: settings.Ante}, seed),
 		People:    map[string]*Person{},
 		Seats:     map[int]*Seat{},
 		Requests:  map[string]BuyRequest{},

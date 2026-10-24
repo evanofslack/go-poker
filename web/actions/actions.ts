@@ -115,6 +115,16 @@ export function sitOut(socket: WebSocket) {
     );
 }
 
+// showCards turns up your cards from the last hand
+export function showCards(socket: WebSocket) {
+    send(socket, { action: "show-cards" });
+}
+
+// duckHunt turns up the rest of the board after a hand that ended early
+export function duckHunt(socket: WebSocket) {
+    send(socket, { action: "duck-hunt" });
+}
+
 export function rebuy(socket: WebSocket, amount: number) {
     socket?.send(
         JSON.stringify({

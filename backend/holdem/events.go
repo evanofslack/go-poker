@@ -23,6 +23,7 @@ type Dealt struct {
 
 // Action kinds
 const (
+	KindAnte       = "ante"
 	KindSmallBlind = "small blind"
 	KindBigBlind   = "big blind"
 	KindCheck      = "check"
@@ -32,7 +33,7 @@ const (
 	KindFold       = "fold"
 )
 
-// Acted is a player posting a blind or acting.
+// Acted is a player posting an ante or blind, or acting.
 type Acted struct {
 	Seat   int    `json:"seat"`
 	Street Street `json:"street"`
@@ -73,6 +74,12 @@ type HandEnded struct {
 	Hand int `json:"hand"`
 }
 
+// Hunted is the rest of the board turned up after a hand that ended early. It
+// counts for nothing.
+type Hunted struct {
+	Cards []Card `json:"cards"`
+}
+
 func (HandStarted) EventType() string { return "hand-started" }
 func (Dealt) EventType() string       { return "dealt" }
 func (Acted) EventType() string       { return "acted" }
@@ -81,6 +88,7 @@ func (Returned) EventType() string    { return "returned" }
 func (Shown) EventType() string       { return "shown" }
 func (PotWon) EventType() string      { return "pot-won" }
 func (HandEnded) EventType() string   { return "hand-ended" }
+func (Hunted) EventType() string      { return "hunted" }
 
 // Visible reports whether the player in seat may see e. Seat 0 is a spectator.
 func Visible(e Event, seat int) bool {

@@ -20,28 +20,30 @@ type HandRecord struct {
 	Started int64        `json:"started"` // unix ms
 	SB      uint         `json:"sb"`
 	BB      uint         `json:"bb"`
+	Ante    uint         `json:"ante,omitempty"`
 	Dealer  string       `json:"dealer"`
 	Players []HandPlayer `json:"players"` // dealt in, in seat order
-	Actions []HandAction `json:"actions"` // blinds first
+	Actions []HandAction `json:"actions"` // antes and blinds first
 	Board   []string     `json:"board"`
 	Pots    []HandPot    `json:"pots"`
 }
 
 type HandPlayer struct {
-	Name  string   `json:"name"`
-	Seat  int      `json:"seat"`
-	Stack uint     `json:"stack"`           // before the blinds
-	Cards []string `json:"cards,omitempty"` // hidden from others unless Shown
-	Shown bool     `json:"shown"`           // at showdown
-	Hand  string   `json:"hand,omitempty"`  // their best hand, if Shown
-	Net   int      `json:"net"`             // chips won or lost
-	Score int      `json:"-"`               // of Hand, lower is better
+	Name     string   `json:"name"`
+	Seat     int      `json:"seat"`
+	Stack    uint     `json:"stack"`           // before the antes and blinds
+	Cards    []string `json:"cards,omitempty"` // hidden from others unless Shown
+	Shown    bool     `json:"shown"`           // face up: at showdown if they had to, or by choice
+	Hand     string   `json:"hand,omitempty"`  // their best hand, if Shown
+	Showdown bool     `json:"showdown"`        // reached showdown, shown or mucked
+	Net      int      `json:"net"`             // chips won or lost
+	Score    int      `json:"-"`               // of Hand, lower is better
 }
 
 type HandAction struct {
 	Street  string `json:"street"` // preflop, flop, turn or river
 	Name    string `json:"name"`
-	Kind    string `json:"kind"`             // small blind, big blind, check, call, bet, raise or fold
+	Kind    string `json:"kind"`             // ante, small blind, big blind, check, call, bet, raise or fold
 	Amount  uint   `json:"amount,omitempty"` // chips put in
 	To      uint   `json:"to,omitempty"`     // their bet on this street after putting them in
 	AllIn   bool   `json:"allIn,omitempty"`
@@ -72,6 +74,12 @@ type HandDone struct {
 	Totals map[string]Totals `json:"totals"`
 }
 
+// HandUpdated is the last hand's record changing after it ended, when
+// someone shows their cards.
+type HandUpdated struct {
+	Record HandRecord `json:"record"`
+}
+
 // Log is a line in the table's log.
 type Log struct {
 	ID      int    `json:"id"`
@@ -84,11 +92,12 @@ type Logged struct {
 	Log Log `json:"log"`
 }
 
-func (HandDone) EventType() string { return "hand-done" }
-func (Logged) EventType() string   { return "log" }
+func (HandDone) EventType() string    { return "hand-done" }
+func (HandUpdated) EventType() string { return "hand-updated" }
+func (Logged) EventType() string      { return "log" }
 
-// Event is something that happened at the table: a holdem.Event, HandDone or
-// Logged.
+// Event is something that happened at the table: a holdem.Event, HandDone,
+// HandUpdated or Logged.
 type Event = holdem.Event
 
 func cardNames(cards ...holdem.Card) []string {
@@ -118,6 +127,7 @@ func (r *reducer) recordEvent(e holdem.Event, timeout bool) {
 			Started: r.now.UnixMilli(),
 			SB:      s.Game.Config.SmallBlind,
 			BB:      s.Game.Config.BigBlind,
+			Ante:    s.Game.Config.Ante,
 			Dealer:  name(e.Button),
 		}
 		for _, n := range e.Seats {
@@ -135,7 +145,7 @@ func (r *reducer) recordEvent(e holdem.Event, timeout bool) {
 			a.To = e.To
 		}
 		h.Actions = append(h.Actions, a)
-		if e.Kind != holdem.KindSmallBlind && e.Kind != holdem.KindBigBlind {
+		if e.Kind != holdem.KindAnte && e.Kind != holdem.KindSmallBlind && e.Kind != holdem.KindBigBlind {
 			s.Acts[e.Seat] = Act{e.Street, actLabel(e)}
 		}
 	case holdem.StreetDealt:
@@ -191,14 +201,20 @@ func (r *reducer) finishHand() {
 		return
 	}
 
-	board := s.Game.Board
+	// everyone who could win a pot that was scored reached showdown
+	showdown := map[int]bool{}
+	for _, pot := range s.Game.Pots {
+		for _, n := range pot.Eligible {
+			showdown[n] = showdown[n] || pot.Score != 0
+		}
+	}
 	for i := range h.Players {
 		hp := &h.Players[i]
 		p := s.Game.Player(hp.Seat)
 		hp.Net = int(p.Stack) - int(hp.Stack)
-		if hp.Shown && len(board) == 5 {
-			cards, score := eval.BestFiveOfSeven(p.Cards[0], p.Cards[1], board[0], board[1], board[2], board[3], board[4])
-			hp.Hand, hp.Score = holdem.HandName(score, cards), score
+		hp.Showdown = showdown[hp.Seat]
+		if hp.Shown {
+			hp.bestHand(p.Cards, s.Game.Board)
 		}
 	}
 	tally(s.Totals, h)
@@ -222,6 +238,32 @@ func (r *reducer) finishHand() {
 		s.Stats = s.Stats[len(s.Stats)-MaxHands:]
 	}
 	r.res.Events = append(r.res.Events, HandDone{Record: *h, Stats: st, Totals: TotalsView(s)})
+}
+
+// bestHand names hp's best hand, with a full board.
+func (hp *HandPlayer) bestHand(c [2]holdem.Card, board []holdem.Card) {
+	if len(board) == 5 {
+		cards, score := eval.BestFiveOfSeven(c[0], c[1], board[0], board[1], board[2], board[3], board[4])
+		hp.Hand, hp.Score = holdem.HandName(score, cards), score
+	}
+}
+
+// showInRecord marks seat's cards shown in the last hand's record, after it
+// ended, and tells everyone.
+func (r *reducer) showInRecord(seat int, cards [2]holdem.Card) {
+	s := r.s
+	n := len(s.History)
+	if n == 0 || s.History[n-1].Hand != s.Game.Hands {
+		return
+	}
+	h := &s.History[n-1]
+	hp := h.player(seat)
+	if hp == nil {
+		return
+	}
+	hp.Shown = true
+	hp.bestHand(cards, s.Game.Board)
+	r.res.Events = append(r.res.Events, HandUpdated{*h})
 }
 
 // played names everyone dealt into h.

@@ -35,6 +35,7 @@ type View struct {
 	BB       int           `json:"bb"`
 	ToAct    int           `json:"toAct"`
 	Board    []holdem.Card `json:"board"`
+	Hunted   []holdem.Card `json:"hunted"` // the rest of the board, from a duck hunt
 	Pots     []holdem.Pot  `json:"pots"`
 	MinRaise uint          `json:"minRaise"`
 	Hand     int           `json:"hand"`
@@ -73,6 +74,7 @@ func ViewFor(s *State, id string, now time.Time) View {
 		BB:          g.BB,
 		ToAct:       g.ToAct,
 		Board:       g.Board,
+		Hunted:      g.Hunted,
 		Pots:        g.Pots,
 		MinRaise:    g.MinRaise,
 		Hand:        g.Hand,
@@ -164,7 +166,11 @@ func EventsFor(s *State, events []Event, id string) []Event {
 	}
 	out := []Event{}
 	for _, e := range events {
-		if d, ok := e.(HandDone); ok {
+		switch d := e.(type) {
+		case HandDone:
+			d.Record = d.Record.viewFor(name)
+			e = d
+		case HandUpdated:
 			d.Record = d.Record.viewFor(name)
 			e = d
 		}
@@ -180,6 +186,7 @@ type Summary struct {
 	Name        string `json:"name"`
 	SmallBlind  uint   `json:"sb"`
 	BigBlind    uint   `json:"bb"`
+	Ante        uint   `json:"ante"`
 	MinBuy      uint   `json:"minBuy"`
 	MaxBuy      uint   `json:"maxBuy"`
 	Seats       uint   `json:"seats"`
@@ -197,6 +204,7 @@ func Summarize(s *State) Summary {
 		Name:        s.Name,
 		SmallBlind:  s.Settings.SmallBlind,
 		BigBlind:    s.Settings.BigBlind,
+		Ante:        s.Settings.Ante,
 		MinBuy:      s.Settings.MinBuy,
 		MaxBuy:      s.Settings.MaxBuy,
 		Seats:       s.Settings.Seats,

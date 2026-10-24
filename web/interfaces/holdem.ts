@@ -63,6 +63,10 @@ export interface Dealt {
 /**
  * Action kinds
  */
+export const KindAnte = "ante";
+/**
+ * Action kinds
+ */
 export const KindSmallBlind = "small blind";
 /**
  * Action kinds
@@ -89,7 +93,7 @@ export const KindRaise = "raise";
  */
 export const KindFold = "fold";
 /**
- * Acted is a player posting a blind or acting.
+ * Acted is a player posting an ante or blind, or acting.
  */
 export interface Acted {
   seat: number /* int */;
@@ -135,6 +139,13 @@ export interface PotWon {
 export interface HandEnded {
   hand: number /* int */;
 }
+/**
+ * Hunted is the rest of the board turned up after a hand that ended early. It
+ * counts for nothing.
+ */
+export interface Hunted {
+  cards: Card[];
+}
 
 //////////
 // source: holdem.go
@@ -164,6 +175,7 @@ export const River: Street = "river";
 export interface Config {
   sb: number /* uint */;
   bb: number /* uint */;
+  ante: number /* uint */; // from every player dealt in, 0 for none
 }
 /**
  * Player is someone in a seat.
@@ -178,7 +190,7 @@ export interface Player {
   sittingOut: boolean; // not dealt in; busted players sit out
   acted: boolean; // since the last full raise, so a short all-in can't be re-raised
   cards: Card[]; // zero when not dealt, or hidden in a view
-  shown: boolean; // face up, at showdown or once all in
+  shown: boolean; // face up: once all in, at showdown if they must, or by choice after
 }
 /**
  * Pot is a main or side pot. Between hands it holds the last hand's result.
@@ -204,9 +216,11 @@ export interface State {
   bb: number /* int */;
   toAct: number /* int */;
   board: Card[];
-  deck: Card[];
+  hunted: Card[]; // the rest of the board, turned up for fun after a hand ended early
+  deck: Card[]; // kept after the hand for Hunt
   pots: Pot[];
   minRaise: number /* uint */; // the smallest raise, by how much it adds to the top bet
+  aggressor: number /* int */; // the last to bet or raise this street, 0 for none
   hands: number /* int */; // dealt so far
   seed: string /* []byte */; // decks come from this and the hand number
 }
@@ -228,6 +242,7 @@ export interface View {
   bb: number /* int */;
   toAct: number /* int */;
   board: Card[];
+  hunted: Card[];
   pots: Pot[];
   minRaise: number /* uint */;
   hand: number /* int */;

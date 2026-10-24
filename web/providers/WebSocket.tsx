@@ -148,6 +148,8 @@ export function SocketProvider(props: SocketProviderProps) {
                             dispatch({ type: "addLog", payload: ev.data.log });
                         } else if (ev.type === "hand-done") {
                             dispatch({ type: "handDone", payload: ev.data });
+                        } else if (ev.type === "hand-updated") {
+                            dispatch({ type: "handUpdated", payload: ev.data.record });
                         }
                     }
                     return;

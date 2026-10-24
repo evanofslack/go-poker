@@ -10,6 +10,7 @@ protect what you run them on.
 | `preaction.mjs` | picking an action before your turn: offers, clearing, playing it |
 | `keys.mjs` | keyboard shortcuts, the raise panel's arrows, turning them off |
 | `showdown.mjs` | action tags and the showdown display |
+| `houserules.mjs` | antes, showing cards after the hand, duck hunting |
 | `turn.mjs` | turn countdown |
 | `seat.mjs` | seat menu: sit out and in, rebuy, sit out next hand, leave |
 | `forms.mjs` | join, create table and buy-in forms |
@@ -19,7 +20,7 @@ protect what you run them on.
 | `endsession.mjs` | host tab: pause, end session, settle-up |
 | `approval.mjs` | rebuy approval |
 | `stats.mjs` | table panel: stats tab |
-| `history.mjs` | table panel: hands tab, hidden and shown cards, late joiners and reloads |
+| `history.mjs` | table panel: hands tab, hidden, shown and mucked cards, late joiners and reloads |
 | `settings.mjs` | table panel: settings tab, for the host and a player |
 | `ux.mjs` | toasts, reconnecting, the header, leaving |
 | `layout.mjs` | nine seats on desktop, laptop, tablet and phone screens; six, eight and four players on phones |

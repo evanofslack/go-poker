@@ -40,6 +40,7 @@ export default function Settings() {
         ],
         ["game", "no limit texas hold'em"],
         ["stakes", `${chips(s.sb)}/${chips(s.bb)}`],
+        ["ante", s.ante ? chips(s.ante) : "none"],
         [
             "buy-in",
             <>
@@ -56,6 +57,7 @@ export default function Settings() {
         ["listing", s.public ? "public" : "private"],
         ["password", game.hasPassword ? "on" : "off"],
         ["rebuys", s.approveRebuys ? "host approves" : "automatic"],
+        ["duck hunt", s.duckHunt ? "allowed" : "off"],
         ["host", game.host],
     ];
 

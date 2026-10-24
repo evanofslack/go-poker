@@ -292,6 +292,10 @@ func (c *Client) command(in Inbound) (table.Command, error) {
 		return table.LeaveSeat{Person: p}, nil
 	case ActionSitOut:
 		return table.SitOut{Person: p}, nil
+	case ActionShowCards:
+		return table.Show{Person: p}, nil
+	case ActionDuckHunt:
+		return table.Hunt{Person: p}, nil
 	case ActionRebuy:
 		if !validBuyIn(in.Amount) {
 			return nil, c.refuse("rebuy amount must be more than 0")

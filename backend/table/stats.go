@@ -33,7 +33,7 @@ func tally(totals map[string]*Totals, r *HandRecord) {
 	vpip, pfr, spot, threeBet, foldedPreflop := map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}
 	raises := 0
 	for _, a := range r.Actions {
-		if a.Kind == "small blind" || a.Kind == "big blind" {
+		if a.Kind == "ante" || a.Kind == "small blind" || a.Kind == "big blind" {
 			continue
 		}
 		if a.Street == "preflop" {
@@ -75,9 +75,12 @@ func tally(totals map[string]*Totals, r *HandRecord) {
 		s.ThreeBetSpots += count(spot[p.Name])
 		s.ThreeBets += count(threeBet[p.Name])
 		s.SawFlop += count(len(r.Board) >= 3 && !foldedPreflop[p.Name])
-		if p.Shown {
+		if p.Showdown {
 			s.Showdowns++
 			s.ShowdownWins += count(won[p.Name])
+		}
+		// totals are public, so only hands that were shown
+		if p.Shown && p.Hand != "" {
 			if s.BestHand == "" || p.Score < s.BestScore {
 				s.BestHand, s.BestScore = p.Hand, p.Score
 			}

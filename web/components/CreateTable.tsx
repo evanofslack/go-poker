@@ -5,6 +5,7 @@ import { AppContext } from "../providers/AppStore";
 import {
     blinds,
     defaultForm,
+    antes,
     handDelays,
     maxPasswordLen,
     seatCounts,
@@ -175,6 +176,25 @@ export default function CreateTable({ tablename, username, onClose }: createTabl
                             />
                             approve rebuys{" "}
                             <span className="text-xs text-subtle">(you ok each rebuy and return to the table)</span>
+                        </label>
+                        <p className="text-xs text-muted">house rules</p>
+                        <Segmented
+                            legend="ante, of the big blind"
+                            name="ante"
+                            options={antes.map((a) => ({ label: a ? `${a * 100}%` : "off", value: a }))}
+                            value={form.ante}
+                            onChange={(a) => set({ ante: a })}
+                        />
+                        <label className="flex items-center gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                className="accent-cyan-500"
+                                id="duckHunt"
+                                checked={form.duckHunt}
+                                onChange={(e) => set({ duckHunt: e.target.checked })}
+                            />
+                            allow duck hunt{" "}
+                            <span className="text-xs text-subtle">(see the rest of the board after a fold)</span>
                         </label>
                     </div>
                 </details>

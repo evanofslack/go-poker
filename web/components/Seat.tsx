@@ -148,8 +148,9 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
                             key={i}
                             card={c}
                             placeholder={false}
-                            // everyone is out between hands; cards shown then reached showdown
-                            folded={!player.in && !(view.street === "" && c)}
+                            // everyone is out between hands; only shown cards stay up, and
+                            // your own mucked ones dim
+                            folded={!player.in && !(view.street === "" && player.shown)}
                             hidden={!c}
                             highlight={winning.has(c)}
                         />

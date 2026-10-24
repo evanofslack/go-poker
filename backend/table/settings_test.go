@@ -28,6 +28,8 @@ func TestValidSettings(t *testing.T) {
 		{"turn too long", func(s *Settings) { s.TurnTime = maxTurnTime + 1 }, false},
 		{"no hand delay", func(s *Settings) { s.NextHandDelay = 0 }, false},
 		{"hand delay too long", func(s *Settings) { s.NextHandDelay = maxNextHandDelay + 1 }, false},
+		{"ante of a big blind", func(s *Settings) { s.Ante = 20 }, true},
+		{"ante over the big blind", func(s *Settings) { s.Ante = 21 }, false},
 	}
 	for _, tt := range tests {
 		s := ok

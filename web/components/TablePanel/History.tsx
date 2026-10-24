@@ -140,6 +140,7 @@ function HandDetail({ record: r, me }: { record: HandRecord; me: string | null }
                         <span className="text-subtle tabular-nums">{p.stack}</span>
                         <Cards cards={p.cards} />
                         {p.hand && <span className="truncate">{p.hand}</span>}
+                        {p.showdown && !p.shown && <span className="text-subtle">mucked</span>}
                         <span className="ml-auto">
                             <Net net={p.net} />
                         </span>
