@@ -186,7 +186,7 @@ Needs the host role from 2.2.
 
 ## 5.1 Table settings
 
-The host picks settings in a dialog when creating a table. Settings are fixed once the table exists.
+The host picks settings in a dialog when creating a table, and can change all but the seat count later.
 
 Today: `poker.NewGame()` hard-codes 10/20 and a 10000 max buy-in with no minimum. `maxSeats`,
 `nextHandDelay` and `turnTimeout` are package constants in `backend/server/events.go`, and
@@ -254,6 +254,16 @@ Done in #56, #57, #58. Differences from the plan:
 - `layout.mjs` now fills a 9-seat table on every viewport. On a 360px phone the SB marker is partly
   covered by the next seat's cards; seats themselves don't overlap.
 - Not done: a per-table limit on wrong password attempts (only the per-connection rate limit applies).
+
+### PR 4: let the host edit settings
+
+- [x] `update-settings` and `set-password` (host only). Everything but the seat count can change.
+- [x] Mid-hand, changes wait in `State.Next` and apply when the hand ends; the settings tab says so.
+- [x] A new password goes to everyone at the table, so their invite links and sessions keep working.
+- [x] "edit" in the settings tab opens the create form, filled in, without seats (`EditSettings`).
+- [x] Tests: table, server and fuzz; e2e `settings.mjs` edits between hands and mid-hand.
+
+Done in #132.
 
 ## 5.2 Bots
 
@@ -555,8 +565,8 @@ Matters once the public demo gets real traffic.
 # Stage 9: house rules
 
 Home-game rules, set per table when it's created (`table.Settings`, the create form's "house
-rules"), and changeable by the host later like the other settings. Off by default unless noted. Straddle and run it
-twice moved to stage 10.
+rules"), and changeable by the host later like the other settings. Off by default unless noted.
+Straddle and run it twice moved to stage 10.
 
 ## PR 1: antes, show/muck, duck hunt
 
