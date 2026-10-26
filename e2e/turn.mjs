@@ -1,29 +1,20 @@
 // Turn countdown and background-tab alert.
-import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
+import { check, finish, join, launch, open, quiet, seat, shot, sit, until } from "./lib.mjs";
+
 const browser = await launch();
-const alice = await (await browser.newContext()).newPage();
-const bob = await (await browser.newContext()).newPage();
-// bob's tab is in the background
-await bob.addInitScript(() => Object.defineProperty(document, "hidden", { get: () => true }));
 const table = "turn" + Date.now();
-for (const [p, name, btn, seat] of [[alice, "alice", "create", 1], [bob, "bob", "join", 2]]) {
-    await p.goto(URL);
-    await p.fill("#username", name);
-    await p.fill("#tablename", table);
-    await p.click(`button:text-is("${btn}")`);
-    if (btn === "create") await confirmCreate(p);
-    await p.waitForSelector("text=Open");
-    await p.locator("button", { hasText: "Open" }).filter({ hasText: String(seat) }).click();
-    await p.locator("#buyIn ~ button").first().click();
-    await p.waitForTimeout(300);
-}
+const [alice] = await seat(browser, table, ["alice"]);
+// bob's tab is in the background
+const bob = await open(browser);
+await bob.addInitScript(() => Object.defineProperty(document, "hidden", { get: () => true }));
+await join(bob, "bob", table);
+await sit(bob, 2);
 const title = await bob.title();
 await alice.click('button:text-is("start")');
 await alice.waitForSelector('button:text-is("call 10")');
-const bar = alice.locator(".bg-accent, .bg-danger").filter({ has: alice.locator("xpath=.") });
 const width = () => alice.evaluate(() => document.querySelector('div[style*="width"]')?.style.width);
 const w1 = await width();
-await alice.waitForTimeout(1500);
+await quiet(1500);
 const w2 = await width();
 check("countdown shows on the active seat", !!w1, w1);
 check("countdown counts down", parseFloat(w2) < parseFloat(w1), `${w1} -> ${w2}`);
@@ -36,9 +27,8 @@ await bob.evaluate(() => {
     new MutationObserver(() => window.titles.push(document.title)).observe(document.querySelector("title"), { childList: true, characterData: true, subtree: true });
 });
 await alice.click('button:text-is("call 10")');
-await bob.waitForTimeout(3000);
-const titles = await bob.evaluate(() => window.titles);
-check("background tab title flashes on your turn", titles.includes("● your turn") && titles.includes(title), JSON.stringify(titles));
+const flashed = () => bob.evaluate((title) => window.titles.includes("● your turn") && window.titles.includes(title), title);
+check("background tab title flashes on your turn", await until(flashed, 5000), JSON.stringify(await bob.evaluate(() => window.titles)));
 check("mute toggle is shown", (await alice.locator('button[title="mute"]').count()) === 1);
 check("cards have names", (await alice.locator('[role=img][aria-label$=" of hearts"], [role=img][aria-label$=" of spades"], [role=img][aria-label$=" of clubs"], [role=img][aria-label$=" of diamonds"]').count()) === 2);
 check("opponent cards read as face down", (await alice.locator('[role=img][aria-label="face-down card"]').count()) === 2);

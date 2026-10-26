@@ -1,35 +1,13 @@
 // Pre-action picks: what's offered, what a raise clears, and what plays on your turn.
-import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
+import { check, finish, has, launch, quiet, seat, shot, until } from "./lib.mjs";
 
 const picks = async (p) => (await p.locator('[aria-label="before your turn"] label').allInnerTexts()).map((t) => t.trim());
 const pick = (p, label) => p.click(`label:text-is("${label}")`);
 const picked = (p, label) => p.locator(`label:text-is("${label}") input`).isChecked();
-const has = (p, sel, timeout = 3000) => p.waitForSelector(sel, { timeout }).then(() => true).catch(() => false);
-const until = async (ok, ms = 5000) => {
-    for (let t = 0; t < ms; t += 100) {
-        if (await ok()) return true;
-        await new Promise((r) => setTimeout(r, 100));
-    }
-    return false;
-};
 const myTurn = async (p, label) => (await p.locator(`button:text-is("${label}"):enabled`).count()) === 1;
 
 const browser = await launch();
-const alice = await (await browser.newContext()).newPage();
-const bob = await (await browser.newContext()).newPage();
-const carol = await (await browser.newContext()).newPage();
-const table = "pre" + Date.now();
-for (const [p, name, btn, seat] of [[alice, "alice", "create", 1], [bob, "bob", "join", 2], [carol, "carol", "join", 3]]) {
-    await p.goto(URL);
-    await p.fill("#username", name);
-    await p.fill("#tablename", table);
-    await p.click(`button:text-is("${btn}")`);
-    if (btn === "create") await confirmCreate(p);
-    await p.waitForSelector("text=Open");
-    await p.locator("button", { hasText: "Open" }).filter({ hasText: String(seat) }).click();
-    await p.locator("#buyIn ~ button").first().click();
-    await p.waitForTimeout(300);
-}
+const [alice, bob, carol] = await seat(browser, "pre" + Date.now(), ["alice", "bob", "carol"]);
 await alice.click('button:text-is("start")');
 
 // three handed, alice is on the button and acts first; bob is small blind, carol big blind
@@ -55,12 +33,12 @@ await alice.fill("#raise", "60");
 await alice.press("#raise", "Enter");
 
 check("a raise clears a call pick, and the turn waits for you", await has(bob, 'button:text-is("call 50"):enabled'));
-check("a bet clears a check pick", await has(carol, 'label:text-is("call 40")') && !(await picked(carol, "call 40")));
+check("a bet clears a check pick", (await has(carol, 'label:text-is("call 40")')) && !(await picked(carol, "call 40")));
 check("it's offered fold / call 40", JSON.stringify(await picks(carol)) === '["fold","call 40"]', JSON.stringify(await picks(carol)));
 
 await pick(carol, "call 40");
 await bob.click('button:text-is("fold")');
-check("a folded player sees just the waiting line", await has(bob, "text=/^waiting for/") && (await bob.locator("label").count()) === 0);
+check("a folded player sees just the waiting line", (await has(bob, "text=/^waiting for/")) && (await bob.locator("label").count()) === 0);
 
 // carol's call plays, and after the flop carol acts first
 check("a call pick plays on your turn", await has(carol, 'button:text-is("check"):enabled'));
@@ -69,7 +47,7 @@ await carol.click('button:text-is("check")');
 // alice's pick checks for her, so the turn card comes and carol acts first again
 check(
     "check/fold checks when it's free",
-    await until(async () => (await picks(alice)).length === 2 && !(await picked(alice, "check/fold")) && (await myTurn(carol, "check")))
+    await until(async () => (await picks(alice)).length === 2 && !(await picked(alice, "check/fold")) && (await myTurn(carol, "check")), 5000)
 );
 
 // after carol checks the turn, her pick is for the turn only
@@ -77,8 +55,8 @@ await carol.click('button:text-is("check")');
 await carol.waitForSelector('label:text-is("check")');
 await pick(carol, "check");
 await alice.click('button:text-is("check")');
-check("a pick doesn't carry to the next street", await until(() => myTurn(carol, "check")));
-await carol.waitForTimeout(1000);
+check("a pick doesn't carry to the next street", await until(() => myTurn(carol, "check"), 5000));
+await quiet(1000);
 check("so the turn waits for you", await myTurn(carol, "check"));
 
 await pick(alice, "check/fold");

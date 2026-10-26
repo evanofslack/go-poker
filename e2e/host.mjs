@@ -1,43 +1,16 @@
 // Host controls in the players panel: chips, banker, sit out, move to watching, remove, and passing host on.
-import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
-const has = (p, sel, ms = 3000) => p.waitForSelector(sel, { timeout: ms }).then(() => true).catch(() => false);
-const row = (p, name) =>
-    p.locator('ul[aria-label="players"] li').filter({ has: p.locator(`span.font-semibold:text-is("${name}")`) }).innerText().catch(() => "");
-const rowHas = async (p, name, text, ms = 3000) => {
-    const end = Date.now() + ms;
-    while (Date.now() < end) {
-        if ((await row(p, name)).includes(text)) return true;
-        await p.waitForTimeout(100);
-    }
-    return false;
-};
-const openPlayers = async (p) => {
-    await p.click('header button:has-text("table")');
-    await p.click('[aria-label="table"] button:text-is("players")');
-};
+import { check, finish, gone, has, launch, panel, playerRow, seat, shot, until } from "./lib.mjs";
+
+const rowHas = (p, name, text) => until(async () => (await playerRow(p, name)).includes(text));
 const manage = async (p, name, item) => {
     await p.click(`button[aria-label="manage ${name}"]`);
     if (item) await p.click(`[role=dialog] button:text-is("${item}")`);
 };
 
 const browser = await launch();
-const alice = await (await browser.newContext()).newPage();
-const bob = await (await browser.newContext()).newPage();
-const carol = await (await browser.newContext()).newPage();
-const table = "host" + Date.now();
-for (const [p, name, btn, seat] of [[alice, "alice", "create", 1], [bob, "bob", "join", 2], [carol, "carol", "join", 3]]) {
-    await p.goto(URL);
-    await p.fill("#username", name);
-    await p.fill("#tablename", table);
-    await p.click(`button:text-is("${btn}")`);
-    if (btn === "create") await confirmCreate(p);
-    await p.waitForSelector("text=Open");
-    await p.locator("button", { hasText: "Open" }).filter({ hasText: String(seat) }).click();
-    await p.locator("#buyIn ~ button").first().click();
-    await p.waitForTimeout(300);
-}
-await openPlayers(alice);
-await openPlayers(bob);
+const [alice, bob, carol] = await seat(browser, "host" + Date.now(), ["alice", "bob", "carol"]);
+await panel(alice, "players");
+await panel(bob, "players");
 check("the host is tagged", await rowHas(alice, "alice", "host"));
 check("the host can manage every row", (await alice.locator('button[aria-label^="manage "]').count()) === 3);
 check("others can't manage anyone", (await bob.locator('button[aria-label^="manage "]').count()) === 0);
@@ -57,12 +30,12 @@ check("taken chips count as cashed out", await rowHas(alice, "bob", "stack 2200 
 check("still balanced", await has(alice, "text=· balanced"));
 
 await manage(alice, "bob", "make banker");
-check("the host can pick the banker", await rowHas(bob, "bob", "banker") && (await rowHas(bob, "alice", "even")));
+check("the host can pick the banker", (await rowHas(bob, "bob", "banker")) && (await rowHas(bob, "alice", "even")));
 
 await manage(alice, "carol", "sit out");
 check("the host can sit a player out", await rowHas(alice, "carol", "sitting out"));
 await manage(alice, "carol", "move to watching");
-check("the host can move a player to watching", await rowHas(alice, "carol", "watching") && (await row(alice, "carol")).includes("out 2000"));
+check("the host can move a player to watching", (await rowHas(alice, "carol", "watching")) && (await playerRow(alice, "carol")).includes("out 2000"));
 
 // removing asks first
 await manage(alice, "bob", "remove from table");
@@ -80,8 +53,8 @@ check("a removed player doesn't rejoin on reload", await has(bob, "#username"));
 
 // handing the host role to carol
 await manage(alice, "carol", "make host");
-check("the old host can't manage anymore", await alice.waitForSelector('button[aria-label^="manage "]', { state: "detached", timeout: 3000 }).then(() => true).catch(() => false));
-await openPlayers(carol);
-check("the new host can", await rowHas(carol, "carol", "host") && (await carol.locator('button[aria-label^="manage "]').count()) === 3);
+check("the old host can't manage anymore", await gone(alice, 'button[aria-label^="manage "]'));
+await panel(carol, "players");
+check("the new host can", (await rowHas(carol, "carol", "host")) && (await carol.locator('button[aria-label^="manage "]').count()) === 3);
 await browser.close();
 finish();

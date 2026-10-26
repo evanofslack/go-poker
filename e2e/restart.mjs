@@ -4,10 +4,8 @@
 import { spawn } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { check, confirmCreate, finish, launch } from "./lib.mjs";
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+import path from "node:path";
+import { check, create, finish, fold, join, last, launch, open, record, sit, until } from "./lib.mjs";
 
 if (!process.env.BIN) {
     console.log("BIN must name a server binary; just e2e sets it");
@@ -15,7 +13,7 @@ if (!process.env.BIN) {
 }
 const PORT = 8097;
 const URL = `http://localhost:${PORT}`;
-const db = join(mkdtempSync(join(tmpdir(), "poker-")), "poker.db");
+const db = path.join(mkdtempSync(path.join(tmpdir(), "poker-")), "poker.db");
 
 let server;
 async function start() {
@@ -25,7 +23,7 @@ async function start() {
     });
     for (let i = 0; i < 50; i++) {
         if (await fetch(URL).then((r) => r.ok, () => false)) return;
-        await sleep(200);
+        await new Promise((r) => setTimeout(r, 200));
     }
     throw new Error("server didn't start");
 }
@@ -37,47 +35,7 @@ function stop(signal) {
     });
 }
 
-// record keeps the views, welcomes and finished hands a page receives
-function record(page) {
-    const rec = { views: [], welcomes: 0, done: [] };
-    page.on("websocket", (ws) => {
-        ws.on("framereceived", ({ payload }) => {
-            try {
-                const m = JSON.parse(payload);
-                if (m.action === "welcome") rec.welcomes++;
-                if (m.action === "welcome" || m.action === "table-update") rec.views.push(m.view);
-                for (const e of m.events ?? []) if (e.type === "hand-done") rec.done.push(e.data);
-            } catch {}
-        });
-    });
-    return rec;
-}
-
-async function waitFor(cond, ms, what) {
-    const end = Date.now() + ms;
-    while (Date.now() < end) {
-        if (cond()) return true;
-        await sleep(100);
-    }
-    console.log(`  timed out waiting for ${what}`);
-    return false;
-}
-
-const last = (rec) => rec.views.at(-1);
 const seats = (v) => v?.players.map((p) => `${p.name}@${p.seat}`).join(",");
-
-async function enter(page, name, table, button) {
-    await page.goto(URL);
-    await page.fill("#username", name);
-    await page.fill("#tablename", table);
-    await page.click(`button:text-is("${button}")`);
-    if (button === "create") await confirmCreate(page);
-}
-
-async function sit(page, seat) {
-    await page.locator("button", { hasText: "Open" }).filter({ hasText: String(seat) }).click();
-    await page.locator("#buyIn ~ button").first().click();
-}
 
 // restart stops the server with signal and starts it again, waiting for both
 // pages to rejoin
@@ -85,27 +43,25 @@ async function restart(signal, recs) {
     const before = recs.map((r) => r.welcomes);
     await stop(signal);
     await start();
-    return waitFor(() => recs.every((r, i) => r.welcomes > before[i]), 20000, "both players to rejoin");
+    return until(() => recs.every((r, i) => r.welcomes > before[i]), 20000);
 }
 
 await start();
 const browser = await launch();
-const alice = await (await browser.newContext()).newPage();
-const bob = await (await browser.newContext()).newPage();
+const alice = await open(browser);
+const bob = await open(browser);
 const aRec = record(alice);
 const bRec = record(bob);
-const TABLE = "restart" + Date.now();
+const table = "restart" + Date.now();
 
-await enter(alice, "alice", TABLE, "create");
-await alice.waitForSelector("text=Open");
+for (const p of [alice, bob]) await p.goto(URL);
+await create(alice, "alice", table);
 await sit(alice, 1);
-await waitFor(() => last(aRec)?.players.length === 1, 3000, "alice seated");
-await enter(bob, "bob", TABLE, "join");
-await bob.waitForSelector("text=Open");
+await join(bob, "bob", table);
 await sit(bob, 2);
-await waitFor(() => last(aRec)?.players.length === 2, 3000, "bob seated");
+await until(() => last(aRec)?.players.length === 2);
 await alice.click('button:text-is("start")');
-await waitFor(() => last(aRec)?.betting, 3000, "the first hand");
+await until(() => last(aRec)?.betting);
 
 // a graceful restart mid-hand carries the hand on
 const mid = last(aRec);
@@ -117,16 +73,12 @@ check("the hand carries on", back.hand === mid.hand && back.street === mid.stree
 check("still at the table", (await alice.locator("#username").count()) === 0 && (await bob.locator("#username").count()) === 0);
 
 // finish the hand, and crash once the next one is dealt
-for (let i = 0; i < 20 && aRec.done.length === 0; i++) {
-    for (const page of [alice, bob]) {
-        await page.click('button:text-is("fold"):enabled', { timeout: 300 }).catch(() => {});
-    }
-}
-await waitFor(() => aRec.done.length > 0, 5000, "the hand to end");
-const ended = aRec.done.at(-1);
-await waitFor(() => last(aRec)?.hand === ended.record.hand + 1 && last(aRec)?.betting, 10000, "the next hand");
+await fold([alice, bob]);
+await until(() => aRec.hands.length > 0, 5000);
+const ended = aRec.hands.at(-1);
+await until(() => last(aRec)?.hand === ended.record.hand + 1 && last(aRec)?.betting, 10000);
 check("rejoined after a crash", await restart("SIGKILL", [aRec, bRec]));
-await waitFor(() => last(aRec)?.betting, 5000, "the hand to be dealt again");
+await until(() => last(aRec)?.betting, 5000);
 const after = last(aRec);
 const total = (v) => Object.fromEntries(v.players.map((p) => [p.name, p.stack + p.committed]));
 check("seats kept after a crash", seats(after) === seats(mid), seats(after));

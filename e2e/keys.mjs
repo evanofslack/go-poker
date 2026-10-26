@@ -1,30 +1,16 @@
 // Keyboard shortcuts for the betting controls.
-import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
+import { check, finish, has, launch, panel, quiet, seat, shot } from "./lib.mjs";
 
 const picked = (p, label) => p.locator(`label:text-is("${label}") input`).isChecked();
 const myTurn = async (p, label) => (await p.locator(`button:text-is("${label}"):enabled`).count()) === 1;
-const has = (p, sel, timeout = 3000) => p.waitForSelector(sel, { timeout }).then(() => true).catch(() => false);
 // the buttons ignore input for a moment as they appear
-const settle = (p) => p.waitForTimeout(400);
+const settle = () => quiet(400);
 
 const browser = await launch();
-const alice = await (await browser.newContext()).newPage();
-const bob = await (await browser.newContext()).newPage();
-const table = "keys" + Date.now();
-for (const [p, name, btn, seat] of [[alice, "alice", "create", 1], [bob, "bob", "join", 2]]) {
-    await p.goto(URL);
-    await p.fill("#username", name);
-    await p.fill("#tablename", table);
-    await p.click(`button:text-is("${btn}")`);
-    if (btn === "create") await confirmCreate(p);
-    await p.waitForSelector("text=Open");
-    await p.locator("button", { hasText: "Open" }).filter({ hasText: String(seat) }).click();
-    await p.locator("#buyIn ~ button").first().click();
-    await p.waitForTimeout(300);
-}
+const [alice, bob] = await seat(browser, "keys" + Date.now(), ["alice", "bob"]);
 await alice.click('button:text-is("start")');
 await alice.waitForSelector('button:text-is("call 10"):enabled');
-await settle(alice);
+await settle();
 
 // heads up, alice is the small blind and acts first
 await bob.keyboard.press("c");
@@ -38,9 +24,9 @@ await shot(alice, "keys-1-hints");
 
 await alice.keyboard.press("c");
 check("c calls on your turn", await has(bob, 'button:text-is("check"):enabled'));
-await settle(bob);
+await settle();
 await bob.keyboard.press("f");
-await bob.waitForTimeout(500);
+await quiet(500);
 check("f doesn't fold when checking is free", await myTurn(bob, "check"));
 
 await bob.keyboard.press("r");
@@ -53,22 +39,21 @@ check("down can't go below the min raise", (await bob.inputValue("#raise")) === 
 await bob.keyboard.press("ArrowUp");
 await bob.keyboard.press("Enter");
 check("enter raises", await has(alice, 'button:text-is("call 40"):enabled'));
-await settle(alice);
+await settle();
 
 await alice.click('button:text-is("chat")');
 await alice.click("#input");
 await alice.keyboard.type("fcr");
-await alice.waitForTimeout(500);
+await quiet(500);
 check("typing in chat isn't a shortcut", (await myTurn(alice, "call 40")) && (await alice.inputValue("#input")) === "fcr");
 await alice.click('button:text-is("chat")');
 
-await alice.click('header button:has-text("table")');
-await alice.click('[aria-label="table"] button:text-is("settings")');
+await panel(alice, "settings");
 check("the settings tab lists the keys", await has(alice, '[aria-label="keyboard shortcuts"]'));
 await shot(alice, "keys-2-settings");
 await alice.click('label:text-is("keyboard shortcuts")');
 await alice.keyboard.press("c");
-await alice.waitForTimeout(500);
+await quiet(500);
 check("turned off, keys do nothing", await myTurn(alice, "call 40"));
 await alice.click('label:text-is("keyboard shortcuts")');
 await alice.keyboard.press("c");
