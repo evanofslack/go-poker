@@ -11,8 +11,8 @@
 | 7 | Operator tooling | done |
 | 8 | Persistence (`persistence.md`) | done |
 | 9 | House rules | done |
-| 10 | e2e cleanup | planned |
-| 11 | Straddle and run it N times | planned |
+| 10 | e2e cleanup (`e2e.md`) | planned |
+| 11 | Straddle and run it N times (`straddle.md`) | planned |
 | - | Backlog | unranked |
 
 ## How items are ranked
@@ -614,164 +614,23 @@ Straddle and run it twice moved to stage 10.
 
 # Stage 10: e2e cleanup
 
-Not started. The goal: a suite that's quick enough to run before every web PR without thinking about
-it, doesn't flake, and makes a new script short, since stage 11 adds timing-heavy ones (the
-straddle prompts, the run it vote). Done before stage 11 so those are written against the new
-helpers.
+Planned in `e2e.md`: shared helpers, short timers and parallel runs to get the suite from about four
+minutes to under one, then a CI job.
 
-Where it stands (2026-10-26): 23 scripts, about 2150 lines, 451 checks, all passing, 4m08s for
-`just e2e`. `session` (72s) and `bots` (51s) are half of that, waiting on real timers. The join and
-sit loop is copied into 22 scripts, `record`/`waitFor`/`enter`/`sit` into three or four, and there
-are about 30 fixed `waitForTimeout` sleeps.
-
-## PR 1: shared helpers
-
-- [ ] `lib.mjs` gets what the scripts each reinvent:
-  - `seat(browser, names, settings?)`: creates a table, joins and sits each player, returns their
-    pages. Replaces the copied loop.
-  - `record(page)`: every frame a page receives (views, logs, hand records, errors).
-  - `waitFor(cond, ms, what)` and `has(page, selector)` that return a bool for `check`.
-  - `act(page, label)`: click an enabled control, retrying while the turn moves on.
-- [ ] Move every script onto them. Replace fixed sleeps with waits for the state they stand in
-  for (an enabled button, a frame, a log line); keep only the few that wait out an animation, named
-  (`settle`).
-- [ ] Trim checks that pin exact text or pixels where the behaviour is what matters.
-
-## PR 2: faster
-
-- [ ] Short timers for e2e: `just e2e` sets `RECONNECT_GRACE=5s` and a new `BOT_DELAY` env
-  (`envDuration` like the others, `Timing.BotDelay`). `session` creates its table with the 10s
-  turn timer and reads the grace from the env; scripts that play several hands (`stats`,
-  `history`, `bots`) use the 2s next hand delay.
-- [ ] Run scripts in parallel (4 at a time) in `just e2e`, printing each script's output together
-  when it finishes. Raise `MAX_CONNS_PER_IP` for the e2e server. `lobby` (it checks the public list)
-  runs alone after the rest; `restart` already runs its own server.
-- [ ] Print each script's time, and the total.
-- [ ] Target: under a minute for the whole suite.
-
-## PR 3: CI
-
-- [ ] A non-blocking CI job (`continue-on-error`) that runs `just e2e` on PRs that touch `web/` or
-  `e2e/`, uploading screenshots when it fails. Make it blocking once it's been green for a while.
-- [ ] Update `e2e/README.md`: the helpers, the timers, parallel runs, CI.
+- [ ] PR 1: shared helpers in `lib.mjs`, every script moved onto them, fixed sleeps gone
+- [ ] PR 2: short timers for e2e, scripts in parallel
+- [ ] PR 3: e2e in CI, non-blocking at first
 
 # Stage 11: straddle and run it N times
 
-Not started. Both change the betting engine (`holdem/`), unlike stage 9, so each gets its own
-engine tests, including `rollout_test.go`'s random hands, before any table or web work. Suggested
-order: PR 1 split in two, then PR 2 split into three.
+Planned in `straddle.md`: straddles and re-straddles asked before the deal (or forced), and running
+an all-in board out up to as many times as the deck allows.
 
-## PR 1: straddles
-
-A straddle is a blind of twice the last one, posted before the cards are dealt. The first comes from
-the player after the big blind (under the gun), each re-straddle from the next player at double the
-one before. The chain stops at the button: the button never straddles. So it takes 4 dealt in for one
-straddle, 5 for a double, 6 for a triple, and heads up or 3 handed there are none.
-
-| Dealt in | Most straddles |
-| --- | --- |
-| 2-3 | 0 |
-| 4 | 1 (2 bb) |
-| 5 | 2 (4 bb) |
-| n | n - 3 |
-
-### PR 1a: engine
-
-- [ ] `StartHand(straddles int)` takes how many straddled; the engine works out who from the seats
-  after the big blind. It's illegal past the button or with a straddler who can't cover it. Each posts with a new kind `KindStraddle`, as part of the bet (like
-  the blinds, not dead), at 2 bb, 4 bb, 8 bb and so on.
-- [ ] `MinRaise` becomes the last straddle, so after a 2 bb straddle the smallest raise is to 4 bb,
-  after a 4 bb re-straddle it's to 8 bb.
-- [ ] Action starts after the last straddler, and the last straddler gets the option: like the big
-  blind, they haven't `Acted`, so `needsToAct` gives them a turn when it comes back unraised. Earlier
-  straddlers and the blinds act in order as usual.
-- [ ] `Positions()`: the button, blinds and straddle seats the next hand would have, without
-  changing anything, so the table can ask the right people before dealing.
-- [ ] Tests: action order and min raise with one, two and three straddles, the last straddler's
-  option, everyone folding to the straddler, no straddle heads up or 3 handed, none from the button,
-  a straddler who can't cover it is illegal; straddles in `rollout_test.go` and the table fuzz test.
-
-### PR 1b: table, server and web
-
-- [ ] Setting `straddle`: `off` / `optional` / `forced`, in the create form's house rules and the
-  settings tab. Forced means under the gun always posts the first straddle (no prompt, skipped if
-  they can't cover it); re-straddles after it are still optional.
-- [ ] Asking: before a hand is dealt, the table offers the next straddle to the next player in line
-  with `State.Straddle{Seat, Amount, Deadline}` and a `TimerStraddle` (5s). They answer with a
-  `Straddle{Person, Yes}` command (`straddle` inbound action, `yes` field). Yes logs it to everyone
-  ("alice straddles 40", a toast and the seat lights up) and offers the next re-straddle; no, the
-  timer, or reaching the button deals the hand with the straddles so far.
-- [ ] The first offer goes out during the pause between hands (`NextHandDelay`), so a table where
-  nobody straddles isn't slower; each yes adds up to 5s for the next player. On the first hand it
-  goes out when the host presses start.
-- [ ] Bots, disconnected and sitting-out players are skipped (bots do post a forced straddle). If
-  the seats change during the asking (someone leaves or sits out), the table deals with the straddles
-  that still line up, or none.
-- [ ] Records and stats: history reads "posts straddle 40"; `tally` (`stats.go`) skips `straddle`
-  like the blinds, so it isn't VPIP, and it isn't a raise for PFR or 3-bets. Seats show "STR"
-  next to SB/BB (`Seat.tsx` `Badges`, `blind()`).
-- [ ] Web: a footer prompt for the player being asked ("straddle 40?" yes / no with the countdown);
-  everyone else sees who's deciding. Settings shown in the settings tab.
-- [ ] Tests: the asking chain (yes, no, timeout, a re-straddle, stopping at the button), forced,
-  skipping bots and disconnected players, seats changing mid-ask, saving and restoring mid-ask.
-  e2e: four players, under the gun straddles, the next can't (button), the marker, preflop order.
-
-## PR 2: run it N times
-
-When a hand is all in before the river (fewer than two players can still bet), the players still in
-can agree to deal the rest of the board more than once. Each run wins an equal share of every pot.
-
-How many: each player picks a number from 1 to the most the deck allows, and the table runs it the
-smallest number picked. Picking 1 (or not answering) means once. The deck allows
-`len(Deck) / (5 - len(Board))` runs (no burns): heads up all in preflop that's 9, with 9 players
-preflop 6, on the turn far more. The picker offers up to that.
-
-### PR 2a: engine
-
-- [ ] `State.Runs` (1 by default) and `RunFrom` (the board cards before the extra runs).
-  `SetRuns(n)` is legal only mid-hand, not betting, fewer than two players who can bet, before the
-  river, and `n` within what the deck allows. `MaxRuns()` returns that limit.
-- [ ] With n runs, `NextStreet` deals the first run to the river as now, then each extra run into
-  `Boards [][]Card` from the same deck, starting from `Board[:RunFrom]`, then the showdown.
-- [ ] Showdown per run: each pot splits n ways, odd chips to the earlier runs; each share is scored
-  on its own board and paid like a pot now (odd chips left of the button). `Pot` gets per-run results
-  (`Runs []PotRun{Amount, Winners, Cards, Hand, Score}`); `PotWon` gets a run number. `View` gets
-  `Boards`.
-- [ ] Tests: pots split per run, the same winner on every run, different winners, side pots, odd
-  chips per run, the deck limit, legality, and several runs in `rollout_test.go`.
-
-### PR 2b: table and server
-
-- [ ] Setting `runIt` (bool, "allow running it more than once"), default off.
-- [ ] When a hand reaches the run out (in `played`, before `TimerStreet` deals), the table asks:
-  `State.RunVote{Seats, Picks, Max, Deadline}` and a `TimerRunVote` (5s). Only players still in the
-  hand vote, with a `RunIt{Person, Runs}` command (`run-it` inbound action, `runs` field). Once all
-  have answered, or the timer runs out, it runs the smallest pick (`SetRuns`). Unanswered and
-  disconnected count as 1; bots pick the max, so the humans decide.
-- [ ] Dealing: the first run street by street as now, each extra run all at once after a pause
-  (`StreetDelay`), so nine runs don't take 30 seconds.
-- [ ] Records: `HandRecord.Boards`, pots per run in history, stats count a showdown win on any run,
-  and `HandStats.Won` takes each run's share. Logs "running it 3 times".
-- [ ] Side games with more than one run: 7-2 pays the full bounty once if the 7-2 wins any run of
-  the main pot; stand-up sits you down for winning any run of any pot.
-- [ ] Tests: the vote (all pick 2, one picks 1, smallest wins, timeout, a voter disconnecting, a
-  player who folded can't vote), the pause before the run out, records, saving and restoring
-  mid-vote.
-
-### PR 2c: web
-
-- [ ] Prompt for players still in: "run it how many times?" with 1 to the max and the countdown,
-  and who has answered.
-- [ ] Each extra board under the first (`CommunityCards.tsx`, compact on phones), winners and hand
-  names per run, and every board in history.
-- [ ] e2e: two players all in preflop, both pick 2, two boards and split pots; one picks 1, one
-  board.
-
-## Open questions for stage 11
-
-- Straddle: should a player be able to pre-set "always" / "never" in the seat menu, to skip the
-  prompt? Is 5s per prompt right?
-- Run it: cap the picker (say at 4) even when the deck allows more?
+- [ ] PR 1: straddle engine
+- [ ] PR 2: straddle table and web
+- [ ] PR 3: run it engine
+- [ ] PR 4: run it table
+- [ ] PR 5: run it web
 
 # Backlog (unranked)
 
