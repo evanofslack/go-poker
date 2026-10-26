@@ -7,7 +7,7 @@ doesn't flake, and where a new script is short. Stage 11 adds the most timing-he
 (the straddle prompts, the run-it vote), so they should be written against the new helpers.
 
 ## Where it stands (2026-10-26)
-- 23 scripts, about 2150 lines, 451 checks. A full `just e2e` passed in 4m08s.
+- 23 scripts, about 2150 lines, 607 checks. A full `just e2e` passed in 4m08s.
 - Time per script: `session` 72s, `bots` 51s, `layout` 16s, `stats` 14s, `history` 13s, the rest
   1-8s each. `session` and `bots` are half the run, waiting on real timers: the 60s reconnect
   grace, the 30s turn timer, bots thinking 1-2s a move, 5s between hands.
