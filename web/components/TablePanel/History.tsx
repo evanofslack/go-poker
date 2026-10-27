@@ -2,7 +2,7 @@ import { useContext, useState } from "react";
 import classNames from "classnames";
 import { getHands } from "../../actions/actions";
 import { useSocket } from "../../hooks/useSocket";
-import { HandRecord } from "../../interfaces/index";
+import { HandPot, HandRecord } from "../../interfaces/index";
 
 // Card is a card as hand history spells it, like "Ks"
 type Card = string;
@@ -127,6 +127,14 @@ function Hand({ record: r, me, open, onToggle }: { record: HandRecord; me: strin
     );
 }
 
+// potName says which pot p is: the only one, the main pot or a side pot.
+// With the board run out more than once, each pot shows up once a run.
+function potName(pots: HandPot[], p: HandPot) {
+    const runs = new Set(pots.map((q) => q.run ?? 0)).size;
+    if (pots.length === runs) return "pot";
+    return pots.filter((q) => (q.run ?? 0) === (p.run ?? 0)).indexOf(p) === 0 ? "main pot" : "side pot";
+}
+
 function HandDetail({ record: r, me }: { record: HandRecord; me: string | null }) {
     return (
         <div className="mt-1.5 flex flex-col gap-1.5 pl-10 text-muted">
@@ -162,10 +170,17 @@ function HandDetail({ record: r, me }: { record: HandRecord; me: string | null }
                     </ul>
                 </div>
             ))}
+            {(r.boards ?? []).slice(1).map((b, i) => (
+                <p key={i} className="flex items-center gap-1.5 text-subtle" data-history-run>
+                    run {i + 2}
+                    <Cards cards={b} />
+                </p>
+            ))}
             <ul aria-label="pots">
                 {(r.pots ?? []).map((p, i, pots) => (
                     <li key={i}>
-                        {pots.length === 1 ? "pot" : i === 0 ? "main pot" : "side pot"} {p.amount} ·{" "}
+                        {r.boards && `run ${(p.run ?? 0) + 1}: `}
+                        {potName(pots, p)} {p.amount} ·{" "}
                         <span className="text-fg">{p.winners.join(", ")}</span>
                         {p.hand && `, ${p.hand}`}
                     </li>

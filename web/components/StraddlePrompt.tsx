@@ -1,23 +1,9 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext } from "react";
 import { straddle } from "../actions/actions";
+import { useSecondsLeft } from "../hooks/useSecondsLeft";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import Button from "./Button";
-
-// useSecondsLeft counts down locally from the server's endsIn, in whole seconds
-function useSecondsLeft(endsIn: number) {
-  const [left, setLeft] = useState(endsIn);
-  useEffect(() => {
-    const deadline = Date.now() + endsIn;
-    setLeft(endsIn);
-    const id = setInterval(
-      () => setLeft(Math.max(0, deadline - Date.now())),
-      200,
-    );
-    return () => clearInterval(id);
-  }, [endsIn]);
-  return Math.ceil(left / 1000);
-}
 
 // StraddlePrompt asks the player under the gun, then each re-straddler, whether
 // to straddle before the deal. Everyone else sees who's deciding.

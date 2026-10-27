@@ -10,6 +10,7 @@ protect what you run them on.
 | `preaction.mjs` | picking an action before your turn: offers, clearing, playing it |
 | `keys.mjs` | keyboard shortcuts, the raise panel's arrows, turning them off |
 | `showdown.mjs` | action tags and the showdown display |
+| `runit.mjs` | the run it vote, extra boards and their history |
 | `houserules.mjs` | antes, the 7-2 setting, showing cards after the hand, duck hunting |
 | `standup.mjs` | stand-up rounds: starting one, showing to sit down, the payout, running it again |
 | `turn.mjs` | turn countdown |

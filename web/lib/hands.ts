@@ -10,9 +10,21 @@ export function isWinner(view: View, seat: number) {
     return settledPots(view).some((p) => p.winners.includes(seat));
 }
 
-// winningCards are the cards that made a winning hand at showdown
-export function winningCards(view: View) {
-    return new Set(settledPots(view).flatMap((p) => p.runs.flatMap((r) => r.cards)));
+// winningCards are the cards that made a winning hand at showdown, on every
+// board or only the given run's
+export function winningCards(view: View, run?: number) {
+    return new Set(
+        settledPots(view).flatMap((p) => p.runs.filter((_, i) => run === undefined || i === run).flatMap((r) => r.cards))
+    );
+}
+
+// runWinners names who won each run of the main pot, like "alice" or "alice
+// and bob", once the board ran out more than once
+export function runWinners(view: View): { names: string; hand: string }[] {
+    const main = settledPots(view)[0];
+    if (!main || main.runs.length < 2) return [];
+    const name = (seat: number) => view.players.find((p) => p.seat === seat)?.name ?? "";
+    return main.runs.map((r) => ({ names: r.winners.map(name).join(" and "), hand: r.hand }));
 }
 
 // winningHand names the hand the player in seat won with at showdown, like
