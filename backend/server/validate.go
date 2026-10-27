@@ -60,6 +60,11 @@ func validPreset(s string) bool {
 	return s == table.PresetAsk || s == table.PresetAlways || s == table.PresetNever
 }
 
+// validRuns reports whether n is a pick in the run it vote.
+func validRuns(n int) bool {
+	return n >= 1 && n <= table.MaxRuns
+}
+
 // validBotLevel reports whether s is a level a bot can play at.
 func validBotLevel(s string) bool {
 	return bot.Valid(s)

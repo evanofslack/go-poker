@@ -117,3 +117,11 @@ func TestValidPreset(t *testing.T) {
 		}
 	}
 }
+
+func TestValidRuns(t *testing.T) {
+	for n, want := range map[int]bool{-1: false, 0: false, 1: true, 4: true, 5: false} {
+		if got := validRuns(n); got != want {
+			t.Errorf("validRuns(%d) = %v, want %v", n, got, want)
+		}
+	}
+}

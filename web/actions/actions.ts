@@ -130,6 +130,11 @@ export function straddlePreset(socket: WebSocket, preset: string) {
     send(socket, { action: "straddle-preset", preset });
 }
 
+// runIt is your pick in the run it vote: how many times to run the board out
+export function runIt(socket: WebSocket, runs: number) {
+    send(socket, { action: "run-it", runs });
+}
+
 // duckHunt turns up the rest of the board after a hand that ended early
 export function duckHunt(socket: WebSocket) {
     send(socket, { action: "duck-hunt" });

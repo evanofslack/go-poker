@@ -6,7 +6,7 @@ export const stakes = ["1/2", "5/10", "10/20", "25/50", "100/200"];
 export const seatCounts = [2, 6, 8, 9];
 export const turnTimes = [0, 15000, 30000, 60000, 120000]; // 0 is no turn timer
 export const handDelays = [2000, 3000, 5000, 8000, 10000, 15000];
-export const decisionTimes = [3000, 5000, 8000, 15000, 30000]; // to answer a straddle ask
+export const decisionTimes = [3000, 5000, 8000, 15000, 30000]; // to answer a straddle ask or a run it vote
 export const straddleModes = ["off", "optional", "forced"];
 export const antes = [0, 0.1, 0.25, 0.5, 1]; // in big blinds, 0 is no ante
 export const sevenDeuces = [0, 1, 2, 5]; // 7-2 bounties in big blinds, 0 is off
@@ -32,6 +32,7 @@ export type SettingsForm = {
     duckHunt: boolean;
     straddle: string; // off, optional or forced
     decisionTime: number;
+    runIt: boolean;
 };
 
 // the server's defaults
@@ -51,6 +52,7 @@ export const defaultForm: SettingsForm = {
     duckHunt: true,
     straddle: "off",
     decisionTime: 5000,
+    runIt: false,
 };
 
 // blinds are the form's small and big blind
@@ -95,6 +97,7 @@ export function toSettings(f: SettingsForm): Settings {
         duckHunt: f.duckHunt,
         straddle: f.straddle,
         decisionTime: f.decisionTime,
+        runIt: f.runIt,
     };
 }
 
@@ -122,5 +125,6 @@ export function fromSettings(s: Settings): SettingsForm {
         duckHunt: s.duckHunt,
         straddle: s.straddle,
         decisionTime: s.decisionTime,
+        runIt: s.runIt,
     };
 }

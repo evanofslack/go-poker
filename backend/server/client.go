@@ -303,6 +303,11 @@ func (c *Client) command(in Inbound) (table.Command, error) {
 			return nil, c.refuse("invalid straddle preset")
 		}
 		return table.StraddlePreset{Person: p, Preset: in.Preset}, nil
+	case ActionRunIt:
+		if !validRuns(in.Runs) {
+			return nil, c.refuse("invalid run it pick")
+		}
+		return table.RunIt{Person: p, Runs: in.Runs}, nil
 	case ActionRebuy:
 		if !validBuyIn(in.Amount) {
 			return nil, c.refuse("rebuy amount must be more than 0")
