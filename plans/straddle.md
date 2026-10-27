@@ -130,11 +130,12 @@ tests, including `rollout_test.go`'s random hands, before any table or web work.
   `TimerRunVote` (`DecisionTime`). `Max` is `min(4, MaxRuns())`. `Seats` are the players still in. They answer with
   `RunIt{Person, Runs int}`. Once everyone has answered, or the timer runs out, the table calls
   `SetRuns(smallest pick)` and deals on. Unanswered and disconnected count as 1. Bots pick the max,
-  so the humans decide.
+  so the humans decide. A pick of 1 ends the vote at once, since it's the smallest. Disconnected
+  means at the vote's start; someone who drops mid-vote just doesn't answer before the timer.
 - Dealing: the first run street by street as now; each extra run all at once, one `StreetDelay`
   apart.
 - Inbound action `run-it` with a `runs` field. `RunVote` goes on the view.
-- Records: `HandRecord.Boards`; pots per run in history ("run 2: bob wins 200 with a flush");
+- Records: `HandRecord.Boards`, only when it ran more than once; pots per run in history ("run 2: bob wins 200 with a flush");
   `HandStats.Won` adds up each run's share (`records.go` splits by run, not by `Winners`); stats
   count a showdown win on any run. Logs "running it 3 times" or "running it once".
 - 7-2: unchanged rule, the 7-2 must be in `Pots[0].Winners`, which with runs means it won the main

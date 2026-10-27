@@ -118,6 +118,9 @@ func (r *reducer) played(events []holdem.Event, timeout bool) {
 			r.schedule(TimerBot, s.Timing.BotDelay+time.Duration(s.rand().Int64N(int64(s.Timing.BotDelay)+1)))
 		}
 	case s.Game.InHand():
+		if r.askRuns() {
+			break
+		}
 		// show the street's last action before dealing the next
 		r.schedule(TimerStreet, s.Timing.StreetDelay)
 	default:

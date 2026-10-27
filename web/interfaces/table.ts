@@ -100,6 +100,7 @@ export interface HandRecord {
   players: HandPlayer[]; // dealt in, in seat order
   actions: HandAction[]; // antes and blinds first
   board: string[];
+  boards?: string[][]; // every board, when it ran out more than once
   pots: HandPot[];
   /**
    * Payments are side games paid out after the hand
@@ -129,6 +130,7 @@ export interface HandPot {
   amount: number /* uint */;
   winners: string[];
   hand?: string; // empty when won without a showdown
+  run?: number /* int */; // which board it was won on, from 0, when it ran out more than once
 }
 /**
  * HandStats is a snapshot taken as a hand ends. Stats are worked out from
@@ -178,6 +180,24 @@ export interface Logged {
 export type Event = unknown;
 
 //////////
+// source: runit.go
+
+/**
+ * MaxRuns caps how many times a table runs the board out.
+ */
+export const MaxRuns = 4;
+/**
+ * RunVote asks the players still in a hand that's all in before the river how
+ * many times to run the board out. The smallest pick wins, so anyone can keep
+ * it to once.
+ */
+export interface RunVote {
+  seats: number /* int */[]; // still in the hand, who vote
+  picks: { [key: number /* int */]: number /* int */}; // by seat, once they answer
+  max: number /* int */; // the most runs on offer
+}
+
+//////////
 // source: settings.go
 
 /**
@@ -207,6 +227,7 @@ export interface Settings {
    */
   sevenDeuce: number /* uint */;
   straddle: string; // StraddleOff, StraddleOptional or StraddleForced
+  runIt: boolean; // players all in before the river vote to run the board out more than once
 }
 /**
  * Straddle settings. Forced posts under the gun's straddle for them;
@@ -353,6 +374,9 @@ export interface View {
   toAct: number /* int */;
   board: number[];
   hunted: number[]; // the rest of the board, from a duck hunt
+  runs: number /* int */; // times the board runs out, 0 until decided
+  runFrom: number /* int */; // board cards dealt before the runs split
+  boards: number[][]; // every finished runout, the first being Board
   pots: holdem.Pot[];
   minRaise: number /* uint */;
   hand: number /* int */;
@@ -378,6 +402,8 @@ export interface View {
   straddleAsk?: StraddleAsk;
   straddleEndsIn: number /* int64 */; // ms the player asked to straddle has left
   straddlePreset: string; // yours: ask, always or never
+  runVote?: RunVote;
+  runVoteEndsIn: number /* int64 */; // ms the run it vote has left
   lastStandUp: number /* uint */; // the payout of the stand-up round that just ended
 }
 /**

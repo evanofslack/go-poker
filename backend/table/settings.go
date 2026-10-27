@@ -30,6 +30,7 @@ type Settings struct {
 	// main pot with 7-2 and shows it, 0 for none
 	SevenDeuce uint   `json:"sevenDeuce"`
 	Straddle   string `json:"straddle"` // StraddleOff, StraddleOptional or StraddleForced
+	RunIt      bool   `json:"runIt"`    // players all in before the river vote to run the board out more than once
 }
 
 // Straddle settings. Forced posts under the gun's straddle for them;
@@ -175,6 +176,7 @@ func settingsChanges(old, set Settings) string {
 	add(old.DuckHunt != set.DuckHunt, "duck hunt %s", onOff(set.DuckHunt))
 	add(old.SevenDeuce != set.SevenDeuce, "the 7-2 bounty to %s", chips(set.SevenDeuce))
 	add(old.Straddle != set.Straddle, "straddles %s", set.Straddle)
+	add(old.RunIt != set.RunIt, "run it %s", onOff(set.RunIt))
 	add(old.DecisionTime != set.DecisionTime, "the decision time to %ds", set.DecisionTime/1000)
 	return strings.Join(c, ", ")
 }

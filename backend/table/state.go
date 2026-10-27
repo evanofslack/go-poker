@@ -68,6 +68,7 @@ const (
 	TimerTurn     Timer = "turn"     // act for the player to act
 	TimerBot      Timer = "bot"      // a bot to act moves
 	TimerStraddle Timer = "straddle" // the player asked to straddle runs out of time
+	TimerRunVote  Timer = "run-vote" // the run it vote closes
 	TimerClose    Timer = "close"    // an ended table closes
 	TimerIdle     Timer = "idle"     // the table closes for lack of players
 )
@@ -116,6 +117,7 @@ type State struct {
 
 	StandUp     *StandUp     `json:"standUp"`     // the stand-up round going, if any
 	StraddleAsk *StraddleAsk `json:"straddleAsk"` // the straddles for the next hand, being asked
+	RunVote     *RunVote     `json:"runVote"`     // how many times to run the board out, being voted on
 	LastStandUp uint         `json:"lastStandUp"` // the payout of the round that just ended, to run it again
 
 	Timers  map[Timer]time.Time `json:"timers"`
@@ -236,7 +238,8 @@ func hashToken(token string) string {
 
 // Restore readies a table loaded from storage after a restart. Nobody is
 // connected anymore: seated people get the reconnect grace and watchers are
-// gone. The player to act, or asked to straddle, gets a fresh turn.
+// gone. The player to act, asked to straddle, or voting to run it gets a
+// fresh turn.
 func Restore(s *State, now time.Time) {
 	for id, p := range s.People {
 		if p.Seat == 0 {
@@ -256,7 +259,9 @@ func Restore(s *State, now time.Time) {
 	if _, ok := s.Timers[TimerTurn]; ok {
 		s.Timers[TimerTurn] = now.Add(time.Duration(s.Settings.TurnTime) * time.Millisecond)
 	}
-	if _, ok := s.Timers[TimerStraddle]; ok {
-		s.Timers[TimerStraddle] = now.Add(time.Duration(s.Settings.DecisionTime) * time.Millisecond)
+	for _, t := range []Timer{TimerStraddle, TimerRunVote} {
+		if _, ok := s.Timers[t]; ok {
+			s.Timers[t] = now.Add(time.Duration(s.Settings.DecisionTime) * time.Millisecond)
+		}
 	}
 }
