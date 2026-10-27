@@ -68,6 +68,15 @@ func TestMaxRuns(t *testing.T) {
 		t.Fatalf("heads up preflop: %d, want 9", n) // 48 cards, 5 a run
 	}
 
+	// the big stack has chips left, but nobody to bet against
+	s = game(t, 2000, 1000)
+	start(t, s)
+	act(t, s, 1, Raise{To: 2000})
+	act(t, s, 2, Call{})
+	if n := s.MaxRuns(); n != 9 {
+		t.Fatalf("covered preflop: %d, want 9", n)
+	}
+
 	s = game(t, 1000, 1000)
 	start(t, s)
 	act(t, s, 1, Call{})
