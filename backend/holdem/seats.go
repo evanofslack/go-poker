@@ -31,6 +31,9 @@ func (s *State) Leave(seat int) error {
 		pot := &s.Pots[i]
 		pot.Eligible = slices.DeleteFunc(pot.Eligible, func(n int) bool { return n == seat })
 		pot.Winners = slices.DeleteFunc(pot.Winners, func(n int) bool { return n == seat })
+		for k := range pot.Runs {
+			pot.Runs[k].Winners = slices.DeleteFunc(pot.Runs[k].Winners, func(n int) bool { return n == seat })
+		}
 	}
 	return nil
 }

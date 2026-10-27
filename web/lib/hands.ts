@@ -12,21 +12,24 @@ export function isWinner(view: View, seat: number) {
 
 // winningCards are the cards that made a winning hand at showdown
 export function winningCards(view: View) {
-    return new Set(settledPots(view).flatMap((p) => p.cards));
+    return new Set(settledPots(view).flatMap((p) => p.runs.flatMap((r) => r.cards)));
 }
 
 // winningHand names the hand the player in seat won with at showdown, like
 // "two pair, kings and sevens", or is empty if they won without showing
 export function winningHand(view: View, seat: number) {
-    const pot = settledPots(view).find((p) => p.hand && p.winners.includes(seat));
-    return pot?.hand ?? "";
+    const runs = settledPots(view).flatMap((p) => p.runs);
+    return runs.find((r) => r.hand && r.winners.includes(seat))?.hand ?? "";
 }
 
-// winnings are the chips the player in seat took from the pots last hand
+// winnings are the chips the player in seat took from the pots last hand: a
+// share of each run they won at showdown, or the pot when everyone else folded
 export function winnings(view: View, seat: number) {
-    return settledPots(view)
-        .filter((p) => p.winners.includes(seat))
-        .reduce((sum, p) => sum + Math.floor(p.amount / p.winners.length), 0);
+    type share = { amount: number; winners: number[] };
+    const shares = settledPots(view).flatMap((p): share[] => (p.runs.length ? p.runs : [p]));
+    return shares
+        .filter((s) => s.winners.includes(seat))
+        .reduce((sum, s) => sum + Math.floor(s.amount / s.winners.length), 0);
 }
 
 // hasStraight says whether ranks (0 for a deuce to 12 for an ace) hold five in a row,

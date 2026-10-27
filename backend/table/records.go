@@ -208,7 +208,7 @@ func (r *reducer) finishHand() {
 	showdown := map[int]bool{}
 	for _, pot := range s.Game.Pots {
 		for _, n := range pot.Eligible {
-			showdown[n] = showdown[n] || pot.Score != 0
+			showdown[n] = showdown[n] || len(pot.Runs) > 0
 		}
 	}
 	// side games pay before the nets, so they count in them

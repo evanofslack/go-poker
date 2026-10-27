@@ -77,6 +77,7 @@ func (s *State) StartHand(straddles int) ([]Event, error) {
 	s.Hands++
 	s.Board = nil
 	s.Hunted = nil
+	s.Runs, s.RunFrom, s.Boards = 0, 0, nil
 	s.Pots = nil
 	s.Aggressor = 0
 	s.Deck = shuffle(s.Seed, s.Hands)
@@ -125,10 +126,37 @@ func (s *State) StartHand(straddles int) ([]Event, error) {
 	return append(events, s.advance()...), nil
 }
 
-// NextStreet deals the next street once betting on the last has closed.
+// MaxRuns is how many times the deck lets the rest of the board run out, or
+// 0 when SetRuns isn't legal. There are no burn cards, so each run takes only
+// the cards still to come.
+func (s *State) MaxRuns() int {
+	if !s.InHand() || s.Betting || s.count((*Player).canBet) >= 2 || len(s.Board) == 5 || s.Runs != 0 {
+		return 0
+	}
+	return len(s.Deck) / (5 - len(s.Board))
+}
+
+// SetRuns runs the rest of the board out n times, once nobody can bet before
+// the river. Each pot splits between the runs. Only once a hand.
+func (s *State) SetRuns(n int) error {
+	if n < 1 || n > s.MaxRuns() {
+		return ErrIllegal
+	}
+	s.Runs, s.RunFrom = n, len(s.Board)
+	return nil
+}
+
+// runsLeft is how many runs of the board are still to deal.
+func (s *State) runsLeft() int { return max(s.Runs, 1) - len(s.Boards) }
+
+// NextStreet deals the next street once betting on the last has closed. On
+// the river, with the board running out more than once, it deals the next run.
 func (s *State) NextStreet() ([]Event, error) {
 	if !s.InHand() || s.Betting {
 		return nil, ErrIllegal
+	}
+	if s.Street == River {
+		return s.nextRun()
 	}
 	for i := range s.Players {
 		s.Players[i].Bet = 0
@@ -145,19 +173,35 @@ func (s *State) NextStreet() ([]Event, error) {
 		s.Street = Turn
 	case Turn:
 		s.Street = River
-	default:
-		return nil, ErrIllegal
 	}
 	cards := s.draw(n)
 	s.Board = append(s.Board, cards...)
-	events := []Event{StreetDealt{s.Street, cards}}
+	events := []Event{StreetDealt{Street: s.Street, Cards: cards}}
+	if s.Street == River {
+		s.Boards = append(s.Boards, slices.Clone(s.Board))
+	}
 
 	if s.count((*Player).canBet) >= 2 {
 		s.Betting = true
 		s.ToAct = s.Button
 		return append(events, s.advance()...), nil
 	}
-	if s.Street == River {
+	if s.Street == River && s.runsLeft() == 0 {
+		events = append(events, s.showdown()...)
+	}
+	return events, nil
+}
+
+// nextRun deals another whole run of the board: the cards before the runs
+// split, then fresh ones. After the last, the showdown.
+func (s *State) nextRun() ([]Event, error) {
+	if s.runsLeft() <= 0 {
+		return nil, ErrIllegal
+	}
+	cards := s.draw(5 - s.RunFrom)
+	s.Boards = append(s.Boards, append(slices.Clone(s.Board[:s.RunFrom]), cards...))
+	events := []Event{StreetDealt{Street: River, Cards: cards, Run: len(s.Boards) - 1}}
+	if s.runsLeft() == 0 {
 		events = append(events, s.showdown()...)
 	}
 	return events, nil
@@ -218,30 +262,45 @@ func (s *State) foldWin() []Event {
 	return append(events, s.endHand()...)
 }
 
-// showdown pays each pot to its best hand. Split pots share evenly, with odd
-// chips to the first winner left of the button. Winners show, and so does the
-// last to bet or raise on the river, who was called; other hands are mucked.
+// showdown pays each pot to its best hand on each board. A pot splits evenly
+// between the boards, odd chips to the earlier runs, and each run's share
+// between its winners, odd chips to the first winner left of the button.
+// Winners show, and so does the last to bet or raise on the river, who was
+// called; other hands are mucked.
 func (s *State) showdown() []Event {
 	s.Betting = false
 	s.ToAct = 0
 
 	show := []int{s.Aggressor}
-	b := s.Board
+	n := uint(len(s.Boards))
 	for i := range s.Pots {
 		pot := &s.Pots[i]
-		pot.Score = worstScore + 1
-		for _, seat := range pot.Eligible {
-			c := s.Player(seat).Cards
-			cards, score := eval.BestFiveOfSeven(c[0], c[1], b[0], b[1], b[2], b[3], b[4])
-			switch {
-			case score < pot.Score:
-				pot.Score, pot.Cards, pot.Winners = score, cards, []int{seat}
-			case score == pot.Score:
-				pot.Winners = append(pot.Winners, seat)
+		pot.Runs, pot.Winners = nil, nil
+		for k, b := range s.Boards {
+			run := PotRun{Amount: pot.Amount / n, Score: worstScore + 1}
+			if uint(k) < pot.Amount%n {
+				run.Amount++
+			}
+			for _, seat := range pot.Eligible {
+				c := s.Player(seat).Cards
+				cards, score := eval.BestFiveOfSeven(c[0], c[1], b[0], b[1], b[2], b[3], b[4])
+				switch {
+				case score < run.Score:
+					run.Score, run.Cards, run.Winners = score, cards, []int{seat}
+				case score == run.Score:
+					run.Winners = append(run.Winners, seat)
+				}
+			}
+			run.Hand = HandName(run.Score, run.Cards)
+			pot.Runs = append(pot.Runs, run)
+			show = append(show, run.Winners...)
+		}
+		// everyone who won any run, by seat
+		for _, p := range s.Players {
+			if slices.ContainsFunc(pot.Runs, func(r PotRun) bool { return slices.Contains(r.Winners, p.Seat) }) {
+				pot.Winners = append(pot.Winners, p.Seat)
 			}
 		}
-		pot.Hand = HandName(pot.Score, pot.Cards)
-		show = append(show, pot.Winners...)
 	}
 
 	var events []Event
@@ -251,20 +310,21 @@ func (s *State) showdown() []Event {
 			events = append(events, Shown{p.Seat, p.Cards})
 		}
 	}
-	for i := range s.Pots {
-		pot := &s.Pots[i]
-		share := pot.Amount / uint(len(pot.Winners))
-		for _, seat := range pot.Winners {
-			s.Player(seat).Stack += share
+	for i, pot := range s.Pots {
+		for k, run := range pot.Runs {
+			share := run.Amount / uint(len(run.Winners))
+			for _, seat := range run.Winners {
+				s.Player(seat).Stack += share
+			}
+			odd := s.next(s.Button, func(p *Player) bool { return slices.Contains(run.Winners, p.Seat) })
+			s.Player(odd).Stack += run.Amount % uint(len(run.Winners))
+			events = append(events, PotWon{Pot: i, Run: k, Amount: run.Amount, Winners: run.Winners, Hand: run.Hand})
 		}
-		odd := s.next(s.Button, func(p *Player) bool { return slices.Contains(pot.Winners, p.Seat) })
-		s.Player(odd).Stack += pot.Amount % uint(len(pot.Winners))
-		events = append(events, PotWon{Pot: i, Amount: pot.Amount, Winners: pot.Winners, Hand: pot.Hand})
 	}
 	return append(events, s.endHand()...)
 }
 
-// endHand clears the hand, keeping the cards, board and pots up to show the
+// endHand clears the hand, keeping the cards, boards and pots up to show the
 // result, and the deck for Hunt. Busted players sit out.
 func (s *State) endHand() []Event {
 	s.Street = NoStreet

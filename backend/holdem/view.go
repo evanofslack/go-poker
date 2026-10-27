@@ -14,6 +14,9 @@ type View struct {
 	ToAct     int      `json:"toAct"`
 	Board     []Card   `json:"board"`
 	Hunted    []Card   `json:"hunted"`
+	Runs      int      `json:"runs"`
+	RunFrom   int      `json:"runFrom"`
+	Boards    [][]Card `json:"boards"`
 	Pots      []Pot    `json:"pots"`
 	MinRaise  uint     `json:"minRaise"`
 	Hand      int      `json:"hand"`
@@ -43,9 +46,18 @@ func (s *State) View(seat int) View {
 	if hunted == nil {
 		hunted = []Card{}
 	}
+	boards := c.Boards
+	if boards == nil {
+		boards = [][]Card{}
+	}
 	pots := c.Pots
 	if pots == nil {
 		pots = []Pot{}
+	}
+	for i := range pots {
+		if pots[i].Runs == nil {
+			pots[i].Runs = []PotRun{}
+		}
 	}
 	return View{
 		Config:    c.Config,
@@ -59,6 +71,9 @@ func (s *State) View(seat int) View {
 		ToAct:     c.ToAct,
 		Board:     board,
 		Hunted:    hunted,
+		Runs:      c.Runs,
+		RunFrom:   c.RunFrom,
+		Boards:    boards,
 		Pots:      pots,
 		MinRaise:  c.MinRaise,
 		Hand:      c.Hands,

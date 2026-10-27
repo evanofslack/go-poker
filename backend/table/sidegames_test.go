@@ -47,6 +47,7 @@ func (h *harness) checkDown(river string) {
 		}
 	}
 	h.s.Game.Board = board(river)
+	h.s.Game.Boards = [][]holdem.Card{h.s.Game.Board}
 	for h.s.Game.InHand() {
 		h.play(holdem.Check{})
 	}
