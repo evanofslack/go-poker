@@ -11,7 +11,8 @@
 | 7 | Operator tooling | done |
 | 8 | Persistence (`persistence.md`) | done |
 | 9 | House rules | done |
-| 10 | Straddle and run it twice | planned |
+| 10 | e2e cleanup (`e2e.md`) | planned |
+| 11 | Straddle and run it N times (`straddle.md`) | planned |
 | - | Backlog | unranked |
 
 ## How items are ranked
@@ -611,96 +612,31 @@ Straddle and run it twice moved to stage 10.
 - [x] **Leaving while standing** counts as losing: they pay on leaving (host removals and grace
   expiry too). If that leaves one standing, the round ends without them paying.
 
-# Stage 10: straddle and run it twice
+# Stage 10: e2e cleanup
 
-Not started. Both change the betting engine (`holdem/`), unlike stage 9, so each gets its own
-engine tests, including `rollout_test.go`'s random hands, before any table or web work. Suggested
-order: PR 1, then PR 2 split into three.
+Planned in `e2e.md`: shared helpers, short timers and parallel runs to get the suite from about four
+minutes to under one, then a CI job.
 
-## PR 1: straddle and big blind ante
+- [ ] PR 1: shared helpers in `lib.mjs`, every script moved onto them, fixed sleeps gone
+- [ ] PR 2: short timers for e2e, scripts in parallel
+- [ ] PR 3: e2e in CI, non-blocking at first
 
-Both change how the blinds go in, in `StartHand` (`holdem/hand.go`).
+# Stage 11: straddle and run it N times
 
-- [ ] **Settings:** `straddle` (bool, "allow straddles") and `bbAnte` (bool: the ante setting is
-  posted by the big blind for everyone). Shown in the create form's house rules and the settings tab.
-- [ ] **Straddle (engine):** an optional blind of 2 big blinds from the first player after the big
-  blind, only with 3 or more dealt in (heads up that's the button). It's posted like the blinds, with
-  a new kind `KindStraddle`, as part of the bet, so it raises the price to 2 bb. `MinRaise` becomes
-  2 bb, so the smallest raise is to 4 bb. Action starts after the straddler, and the straddler gets
-  the last option preflop: like the big blind, they haven't `Acted`, so `needsToAct` already gives
-  them a turn when it comes back to them unraised. A short stack straddles all in for what they have.
-  Who straddles is passed in: `StartHand` takes the seats that want to (or a field on `State` the
-  table sets), and the engine checks the straddler is one of them.
-- [ ] **Big blind ante (engine):** with `Config.BBAnte`, only the big blind posts antes, the ante
-  times the players dealt in, as dead money (`putDead`). The big blind goes in first and the ante
-  from what's left, so a short big blind keeps their blind.
-- [ ] **Straddle (table):** a per-player "straddle when under the gun" toggle (`ToggleStraddle`
-  command, `straddle` inbound action, on `Seat`), sticky until turned off, in the seat menu when the
-  table allows it. The table passes the toggled seats to `StartHand`. Bots never straddle.
-- [ ] **Records and stats:** history reads "posts straddle 40"; `tally` (`stats.go`) skips
-  `straddle` like the blinds, so it isn't VPIP, and it isn't a raise for PFR or 3-bets. Seats show a
-  "STR" marker next to SB/BB (`Seat.tsx` `Badges`, `blind()`).
-- [ ] **Tests:** order and min raise with a straddle, the straddler's option, everyone folding to
-  the straddler, a short all-in straddle, no straddle heads up, BB ante amounts and a short big
-  blind; add straddles and BB antes to `rollout_test.go` and the table fuzz test. e2e: toggle, the
-  marker, preflop action order.
+Planned in `straddle.md`: straddles and re-straddles asked before the deal (or forced), and running
+an all-in board out up to as many times as the deck allows.
 
-## PR 2: run it twice
-
-When nobody can bet any more before the river, the players still in can agree to deal the rest of
-the board twice, each run winning half of every pot. The biggest of these: split it in three.
-
-### PR 2a: engine
-
-- [ ] `State.Runs` (1 or 2) and `RunFrom` (board cards before the second run). `SetRuns(2)` is
-  legal only mid-hand, not betting, with fewer than two players who can bet, before the river.
-- [ ] With two runs, `NextStreet` deals the first run to the river as now, then a second run into
-  `Board2` from the same deck, starting from `Board[:RunFrom]`, then the showdown.
-- [ ] Showdown per run: each pot splits in half, the odd chip to the first run; each half is scored
-  on its own board and paid like a pot now (odd chips left of the button). `Pot` gets per-run
-  results (`Runs []PotRun{Amount, Winners, Cards, Hand, Score}`); `PotWon` gets a run number.
-  `View` gets `Board2`.
-- [ ] Tests: pots split per run, the same winner on both, different winners, side pots, odd chips
-  per run, legality, and two runs in `rollout_test.go`.
-
-### PR 2b: table and server
-
-- [ ] Setting `runItTwice` (bool, "allow run it twice").
-- [ ] When a hand reaches the run out (in `played`, before `TimerStreet` deals), the table offers it:
-  `State.RunVote{Seats, Yes, Deadline}` and a `TimerRunVote` (10s). Everyone still in votes with a
-  `RunItTwice{Person, Yes}` command (`run-it-twice` inbound action, `yes` field). All yes runs it
-  twice (`SetRuns(2)`); any no, or the timer, runs it once. Bots vote yes. Disconnected players
-  count as no when the timer runs out.
-- [ ] Records: `HandRecord.Board2`, pots per run in history, stats count a showdown win on either
-  run, and `HandStats.Won` takes each run's share. Logs "run it twice: everyone agreed".
-- [ ] Side games with two runs: 7-2 pays if the 7-2 wins or splits the main pot on either run;
-  stand-up sits you down for winning any run of any pot (check with the user).
-- [ ] Tests: the vote (all yes, one no, timeout, a voter disconnecting), the pause before the run
-  out, records, saving and restoring mid-vote.
-
-### PR 2c: web
-
-- [ ] Footer prompt for players still in: "run it twice?" yes / no with the countdown, and who has
-  answered.
-- [ ] A second board under the first (`CommunityCards.tsx`), dealt street by street like the first,
-  winners and hand names per run, and both boards in history.
-- [ ] e2e: two players all in preflop, both agree, two boards and split pots; one says no, one board.
-
-## Open questions for stage 10
-
-- Straddle: a sticky toggle (as planned) or one hand at a time? Button or Mississippi straddles
-  (from any seat), or only under the gun? Re-straddles (4 bb after a straddle)?
-- Run it twice: who has to agree, everyone still in (planned) or only players all in? How long to
-  vote? Run it three times? Should the table setting default on?
-- With two runs, which wins count for 7-2 and stand-up (planned: either run)?
+- [ ] PR 1: straddle engine
+- [ ] PR 2: straddle table and web
+- [ ] PR 3: run it engine
+- [ ] PR 4: run it table
+- [ ] PR 5: run it web
 
 # Backlog (unranked)
 
-- e2e cleanup: move the timing helpers each script reinvents into `e2e/lib.mjs` (act on a control
-  once it's enabled, retrying when the turn moves on; wait for a state rather than any update), trim
-  checks that pin exact text or pixels, and consider a non-blocking CI job so the suite protects
-  main. See the guidance in `e2e/README.md`.
-- More house rules: see stages 9 and 10
+- More house rules: see stages 9 and 11
+- Big blind ante: only the big blind posts the antes (the ante times the players dealt in) as dead
+  money, the blind first so a short big blind keeps their blind
 - Pot-limit Omaha
 - Sit-n-go / tournament mode with a blind schedule
 - Accounts and persistent stats (only if this should be more than a play-with-friends app)
