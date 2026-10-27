@@ -34,6 +34,7 @@ func loadConfig() {
 	envDuration("RECONNECT_GRACE", &timing.ReconnectGrace)
 	envDuration("ENDED_TABLE_TTL", &timing.EndedTTL)
 	envDuration("IDLE_TABLE_TIMEOUT", &timing.IdleTimeout)
+	envDuration("BOT_DELAY", &timing.BotDelay)
 	envBool("TRUST_PROXY", &trustProxy)
 	databaseURL = os.Getenv("DATABASE_URL")
 	if s, ok := os.LookupEnv("METRICS_ADDR"); ok {

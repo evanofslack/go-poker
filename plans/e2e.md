@@ -1,6 +1,6 @@
 # e2e cleanup
 
-**Status: planned.** Stage 10 in `todo.md`, before straddles and run it (`straddle.md`).
+**Status: done** (#135, #136). PR 3, CI, was dropped. Stage 10 in `todo.md`, before straddles and run it (`straddle.md`).
 
 The goal: a suite that's quick enough to run before every web PR without thinking about it, that
 doesn't flake, and where a new script is short. Stage 11 adds the most timing-heavy scripts yet
@@ -70,13 +70,15 @@ quiet(page, ms)                  // a named wait for checks that nothing happens
 - Print each script's time and the total.
 - Target: under a minute for the whole suite, from about four.
 
-## PR 3: CI
-- A CI job, `e2e`, on PRs that touch `web/`, `e2e/` or `backend/`: build the web app and server,
-  install Chromium (cached), run `just e2e`, upload screenshots and output when it fails.
-- Non-blocking at first (`continue-on-error`); blocking once it's been green for a couple of
-  weeks of PRs.
-- Update `e2e/README.md`: the helpers, the short timers, parallel runs, CI. Update CLAUDE.md's
-  e2e line if CI runs it.
+Differences from the plan:
+- `RECONNECT_GRACE=20s`, not 5s: the turn timer has to run out before the grace does, or bob is
+  folded for leaving instead of timing out. The create form's shortest turn timer is 15s, not 10s.
+- `standup` keeps the 5s pause between hands, since it acts between them.
+- The suite takes about 40s (37s of scripts); `session` is the long pole at 35s.
+
+## PR 3: CI (dropped)
+Decided against it on 2026-10-27; the suite stays a local check (`just e2e`), as CLAUDE.md says.
+The idea was a job on every PR except docs-only ones, about 3 minutes, non-blocking at first.
 
 ## Checking it worked
 - Run the whole suite 5 times in a row after PR 2; every run passes.

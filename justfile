@@ -46,20 +46,16 @@ e2e *scripts: install
     (cd web && npm run build)
     bin="$(mktemp -d)/go-poker"
     (cd backend && go build -o "$bin" ./cmd/go-poker)
+    # short timers, which the scripts read too
+    export RECONNECT_GRACE=20s BOT_DELAY=100ms
     # every browser connects from one address; seated players' tables outlive a script by the reconnect grace
-    PORT=8099 STATIC_DIR=web/out MAX_TABLES_PER_IP=100 METRICS_ADDR= "$bin" 2>/dev/null &
+    PORT=8099 STATIC_DIR=web/out MAX_TABLES_PER_IP=200 MAX_CONNS_PER_IP=200 METRICS_ADDR= "$bin" >/dev/null 2>&1 &
     # restart.mjs runs its own server from the same binary
     export BIN="$bin"
     server=$!
     trap 'kill $server' EXIT
     for _ in $(seq 50); do curl -sf localhost:8099 >/dev/null && break; sleep 0.2; done
-    failed=0
-    all="session betting preaction keys showdown houserules standup turn seat forms password players host endsession approval stats history settings ux layout bots lobby restart"
-    for t in {{ if scripts == "" { "$all" } else { scripts } }}; do
-        echo "== $t"
-        (cd e2e && node "$t.mjs") || failed=1
-    done
-    exit $failed
+    cd e2e && node run.mjs {{ scripts }}
 
 # same checks as ci
 check: install

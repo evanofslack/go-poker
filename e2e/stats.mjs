@@ -1,9 +1,9 @@
 // Stats tab: chips over time and per-player totals, built from a snapshot per hand.
-import { check, finish, fold, has, join, launch, open, panel, seat, shot } from "./lib.mjs";
+import { check, finish, fold, has, join, launch, open, panel, quick, seat, shot } from "./lib.mjs";
 
 const browser = await launch();
 const table = "stats" + Date.now();
-const [alice, bob] = await seat(browser, table, ["alice", "bob"]);
+const [alice, bob] = await seat(browser, table, ["alice", "bob"], quick);
 await panel(alice, "stats");
 check("no stats before a hand", await has(alice, "text=stats start after the first hand"));
 

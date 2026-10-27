@@ -36,14 +36,23 @@ protect what you run them on.
 
 ## Running
 
-- `just e2e` builds the web app and server, runs the server on :8099 and runs every script.
+- `just e2e` builds the web app and server, runs the server on :8099 and runs every script, about
+  40s in all.
 - `just e2e host stats` does the same for just those scripts.
 - With a server already on :8099, run one script directly: `cd e2e && node host.mjs`. Rebuild
   `web/out` first if you changed the web app; the server serves the last build.
 - `URL=<url>` points the scripts at another server. `SHOTS=<dir>` saves screenshots.
 
+`just e2e` runs the server with short timers, `RECONNECT_GRACE=20s` and `BOT_DELAY=100ms`, and the
+scripts read `RECONNECT_GRACE` to know how long to wait. Against a server with the defaults, set it
+to `60s` (or leave it unset) for `session.mjs`.
+
+`run.mjs` runs the scripts 4 at a time (`JOBS` changes it), the slowest first, and prints each
+script's output in one piece when it finishes, then which failed and the slowest three. `lobby.mjs`
+runs on its own at the end, since it checks the list of public tables.
+
 Each script prints PASS or FAIL per check and a tally, and exits nonzero on any failure.
-`session.mjs` takes about 100s, since it waits on the real 30s turn timer and 60s grace period.
+`session.mjs` is the slowest at about 35s: it waits for the 15s turn timer and the grace period.
 
 ## When to run what
 
@@ -67,6 +76,8 @@ check("bob sees the waiting line", await has(bob, "text=waiting for alice"));
 - Tables and players: `seat` (create, join and sit everyone; a player can be
   `{ name, seat, context }`, and a setup function adjusts the create dialog), or `open`, `create`,
   `join` and `sit` one at a time.
+- Pace: pass `quick` as the setup for the 2s pause between hands, in scripts that play several and
+  don't act between them. `grace` is the server's reconnect grace in ms.
 - Waiting: `has` and `gone` for a selector, `until` for any condition, `quiet` for checks that
   something doesn't happen.
 - Playing: `act` clicks whichever page has a control, `fold` folds for whoever's turn it is,

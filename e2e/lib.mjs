@@ -51,6 +51,17 @@ async function enter(page, name, table, setup) {
     if (setup) await confirmCreate(page);
 }
 
+// quick sets the shortest pause between hands in the create dialog, for scripts
+// that play several. Not for ones that act between hands.
+export const quick = (page) => page.click('label:has(input[name="nextHandDelay"]) >> text="2s"');
+
+// grace is the server's reconnect grace in ms, from RECONNECT_GRACE (as just
+// e2e sets it) or the default
+export const grace = (() => {
+    const [, n, unit] = (process.env.RECONNECT_GRACE || "60s").match(/^(\d+)(ms|s|m)$/);
+    return Number(n) * { ms: 1, s: 1000, m: 60000 }[unit];
+})();
+
 // create makes table as name and waits for the seats
 export async function create(page, name, table, setup = true) {
     await enter(page, name, table, setup);
