@@ -42,6 +42,7 @@ check("header counts the spectator", await has(alice, "text=watching 1"));
 await sit(bob, 2);
 check("watching count clears once seated", await gone(alice, "text=watching 1"));
 check("hint clears when two are ready", await gone(alice, "text=waiting for another player"));
+check("the invite stays until the game starts", await has(alice, "text=invite friends before you start"));
 
 aliceWS.send(JSON.stringify({ action: "error", message: "can't rebuy during a hand" }));
 check("server errors show as a toast", await has(alice, "[role=alert] >> text=can't rebuy during a hand"));

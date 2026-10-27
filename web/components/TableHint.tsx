@@ -20,6 +20,7 @@ function hint(seated: boolean, players: number, ready: number, running: boolean)
     if (players === 0) return "pick a seat to start · invite friends to join";
     if (!seated) return "pick an open seat to play";
     if (ready < 2) return running ? "waiting for another player to sit in" : "waiting for another player";
+    if (!running) return "invite friends before you start";
     return "";
 }
 
@@ -42,7 +43,7 @@ export default function TableHint() {
     return (
         <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2 rounded-xl bg-panel/80 px-3 py-1.5 text-center text-xs text-muted sm:text-sm">
             <span>{text}</span>
-            {ready < 2 && !session && <InviteButton />}
+            {(ready < 2 || !game.running) && !session && <InviteButton />}
         </div>
     );
 }
