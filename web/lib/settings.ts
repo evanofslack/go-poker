@@ -52,7 +52,7 @@ export const defaultForm: SettingsForm = {
     duckHunt: true,
     straddle: "off",
     decisionTime: 5000,
-    runIt: false,
+    runIt: true,
 };
 
 // blinds are the form's small and big blind

@@ -124,8 +124,8 @@ tests, including `rollout_test.go`'s random hands, before any table or web work.
 - `View` gets `Boards`, `Runs` and `RunFrom`.
 
 ### Table (`table/`)
-- Setting `RunIt bool`, "allow running it more than once", default off.
-- When the hand is all in before the river (in `played`, where it schedules `TimerStreet` with no
+- Setting `RunIt bool`, "allow running it more than once", default on.
+- When betting is over with cards to come (everyone left all in, or all but one) (in `played`, where it schedules `TimerStreet` with no
   betting), the table asks instead: `State.RunVote *RunVote{Seats, Picks map[int]int, Max}` plus
   `TimerRunVote` (`DecisionTime`). `Max` is `min(4, MaxRuns())`. `Seats` are the players still in. They answer with
   `RunIt{Person, Runs int}`. Once everyone has answered, or the timer runs out, the table calls

@@ -30,7 +30,7 @@ type Settings struct {
 	// main pot with 7-2 and shows it, 0 for none
 	SevenDeuce uint   `json:"sevenDeuce"`
 	Straddle   string `json:"straddle"` // StraddleOff, StraddleOptional or StraddleForced
-	RunIt      bool   `json:"runIt"`    // players all in before the river vote to run the board out more than once
+	RunIt      bool   `json:"runIt"`    // once everyone left is all in, or all but one, they vote to run the rest of the board out more than once
 }
 
 // Straddle settings. Forced posts under the gun's straddle for them;
@@ -52,6 +52,7 @@ var DefaultSettings = Settings{
 	NextHandDelay: 5000,
 	DecisionTime:  5000,
 	DuckHunt:      true,
+	RunIt:         true,
 	Straddle:      StraddleOff,
 }
 

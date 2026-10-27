@@ -9,8 +9,8 @@ import (
 // MaxRuns caps how many times a table runs the board out.
 const MaxRuns = 4
 
-// RunVote asks the players still in a hand that's all in before the river how
-// many times to run the board out. The smallest pick wins, so anyone can keep
+// RunVote asks the players still in a hand how many times to run the rest of
+// the board out, once everyone is all in, or all but one, with cards to come. The smallest pick wins, so anyone can keep
 // it to once.
 type RunVote struct {
 	Seats []int       `json:"seats"` // still in the hand, who vote
@@ -18,8 +18,8 @@ type RunVote struct {
 	Max   int         `json:"max"`   // the most runs on offer
 }
 
-// askRuns starts the vote when the hand has just gone all in before the
-// river on a table that runs it. Bots pick the most, so the people decide,
+// askRuns starts the vote when betting is over for the hand, with cards to
+// come, on a table that runs it. Bots pick the most, so the people decide,
 // and anyone disconnected picks once. It reports whether the hand waits for
 // the vote.
 func (r *reducer) askRuns() bool {

@@ -94,6 +94,24 @@ func TestRunItOnceEndsTheVote(t *testing.T) {
 	}
 }
 
+func TestRunItCovered(t *testing.T) {
+	// a covers b, so once b calls all in, a has chips left but nobody to bet with
+	h := newHarness(t, DefaultSettings, "")
+	h.join("a")
+	h.join("b")
+	h.sit("a", 1, 2000)
+	h.sit("b", 2, 1000)
+	h.ok(Start{Person: h.ids["a"]})
+	h.play(holdem.Raise{To: 2000})
+	h.play(holdem.Call{})
+	if v := h.s.RunVote; v == nil || len(v.Seats) != 2 {
+		t.Fatalf("vote %+v", v)
+	}
+	h.pick("a", 2)
+	h.pick("b", 2)
+	h.mustLog("running it 2 times")
+}
+
 func TestRunItSmallestPick(t *testing.T) {
 	h := runItTable(t, "a", "b", "c")
 	h.shove(2)
@@ -165,7 +183,13 @@ func TestRunItBotsPickTheMost(t *testing.T) {
 }
 
 func TestRunItOff(t *testing.T) {
-	h := straddleTable(t, StraddleOff, "a", "b")
+	set := DefaultSettings
+	set.RunIt = false
+	h := newHarness(t, set, "")
+	for i, name := range []string{"a", "b"} {
+		h.join(name)
+		h.sit(name, i+1, 1000)
+	}
 	h.ok(Start{Person: h.ids["a"]})
 	h.shove(1)
 	if h.s.RunVote != nil {

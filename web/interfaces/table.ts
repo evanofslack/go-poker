@@ -187,8 +187,8 @@ export type Event = unknown;
  */
 export const MaxRuns = 4;
 /**
- * RunVote asks the players still in a hand that's all in before the river how
- * many times to run the board out. The smallest pick wins, so anyone can keep
+ * RunVote asks the players still in a hand how many times to run the rest of
+ * the board out, once everyone is all in, or all but one, with cards to come. The smallest pick wins, so anyone can keep
  * it to once.
  */
 export interface RunVote {
@@ -227,7 +227,7 @@ export interface Settings {
    */
   sevenDeuce: number /* uint */;
   straddle: string; // StraddleOff, StraddleOptional or StraddleForced
-  runIt: boolean; // players all in before the river vote to run the board out more than once
+  runIt: boolean; // once everyone left is all in, or all but one, they vote to run the rest of the board out more than once
 }
 /**
  * Straddle settings. Forced posts under the gun's straddle for them;
