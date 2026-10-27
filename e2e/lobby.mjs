@@ -1,32 +1,21 @@
 // Public tables on the home page: which are listed, their order, the lock, and joining from the list.
 // No table name contains "open", which other scripts match to find empty seats.
-import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
+import { URL, check, confirmCreate, create, finish, has, launch, open, shot, sit, until } from "./lib.mjs";
 const browser = await launch();
 const id = Date.now();
 const [full, free, locked, hidden] = ["full", "free", "locked", "hidden"].map((s) => `lob${s}${id}`);
 
 const page = async () => {
-    const p = await (await browser.newContext()).newPage();
+    const p = await open(browser);
     await p.goto(URL);
     return p;
 };
 
-// create opens the settings dialog, change adjusts it, and the table shows once made
-const create = async (table, name, change = async () => {}) => {
-    const p = await page();
-    await p.fill("#username", name);
-    await p.fill("#tablename", table);
-    await p.click('button:text-is("create")');
-    await change(p);
-    await confirmCreate(p);
-    await p.waitForSelector("text=Open");
+// make creates table as name; change adjusts the settings dialog
+const make = async (table, name, change = true) => {
+    const p = await open(browser);
+    await create(p, name, table, change);
     return p;
-};
-
-const sit = async (p) => {
-    await p.locator("button", { hasText: "Open" }).first().click();
-    await p.press("#buyIn", "Enter");
-    await p.waitForSelector("#buyIn", { state: "detached", timeout: 3000 });
 };
 
 const row = (p, table) => p.locator(`[data-table="${table}"]`);
@@ -41,20 +30,19 @@ check("public is on by default", await first.locator("#public").isChecked());
 await first.click('fieldset:has-text("seats") label:has-text("2")');
 await confirmCreate(first);
 await first.waitForSelector("text=Open");
-await sit(first);
+await sit(first, 1);
 
-const second = await create(free, "cat");
-await sit(second);
-await create(locked, "dan", (p) => p.fill("#tablePassword", "s3cret"));
-await create(hidden, "eve", (p) => p.locator("#public").uncheck());
+await sit(await make(free, "cat"), 1);
+await make(locked, "dan", (p) => p.fill("#tablePassword", "s3cret"));
+await make(hidden, "eve", (p) => p.locator("#public").uncheck());
 
 // a second player fills the heads-up table by picking it from the list
 const bob = await page();
 await bob.fill("#username", "bob");
 await row(bob, full).waitFor({ timeout: 7000 });
 await row(bob, full).click();
-check("picking a table with a name joins it", !!(await bob.waitForSelector("text=Open", { timeout: 3000 }).catch(() => null)));
-await sit(bob);
+check("picking a table with a name joins it", await has(bob, "text=Open"));
+await sit(bob, 2);
 
 // a visitor sees the listed tables, refreshed by the poll
 const v = await page();
@@ -62,9 +50,7 @@ const listed = async () => {
     const names = await rows(v);
     return names.includes(free) && names.includes(locked) && names.includes(full) && (await row(v, full).textContent()).includes("full");
 };
-const deadline = Date.now() + 8000;
-while (!(await listed()) && Date.now() < deadline) await v.waitForTimeout(250);
-check("public tables are listed", await listed());
+check("public tables are listed", await until(listed, 8000));
 const names = await rows(v);
 check("private tables aren't listed", !names.includes(hidden));
 check("more players sort first", names.indexOf(free) < names.indexOf(locked), names.join(", "));
@@ -81,11 +67,11 @@ await shot(v, "lobby-phone");
 // a locked table asks for the password instead of joining
 await v.fill("#username", "vic");
 await row(v, locked).click();
-check("picking a locked table asks for the password", !!(await v.waitForSelector("#password", { timeout: 3000 }).catch(() => null)));
+check("picking a locked table asks for the password", await has(v, "#password"));
 check("it fills in the table", (await v.inputValue("#tablename")) === locked);
 await v.fill("#password", "s3cret");
 await v.press("#password", "Enter");
-check("the password then joins", !!(await v.waitForSelector("text=Open", { timeout: 3000 }).catch(() => null)));
+check("the password then joins", await has(v, "text=Open"));
 
 await browser.close();
 finish();

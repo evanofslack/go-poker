@@ -1,18 +1,18 @@
 // Join form, create table dialog and buy-in form behavior.
-import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
+import { URL, check, confirmCreate, finish, has, launch, open, shot } from "./lib.mjs";
 const browser = await launch();
-const p = await (await browser.newContext()).newPage();
+const p = await open(browser);
 const table = "forms" + Date.now();
 await p.goto(URL);
 check("username has focus", await p.evaluate(() => document.activeElement?.id === "username"));
 await p.fill("#username", "carol");
 await p.fill("#tablename", table);
 await p.press("#tablename", "Enter");
-check("enter joins (no such table yet)", !!(await p.waitForSelector("text=/no table|not found|doesn't exist|does not exist/i", { timeout: 3000 }).catch(() => null)));
+check("enter joins (no such table yet)", await has(p, "text=/no table|not found|doesn't exist|does not exist/i"));
 
 // the create dialog
 await p.click('button:text-is("create")');
-check("create opens the settings dialog", !!(await p.waitForSelector(`text=create table ${table}`, { timeout: 3000 }).catch(() => null)));
+check("create opens the settings dialog", await has(p, `text=create table ${table}`));
 check("old join error is cleared", (await p.locator('[role="dialog"] >> text=/not found/i').count()) === 0);
 check("buy-in shows chips", (await p.locator("text=1,000–4,000 chips").count()) === 1);
 await p.click('[aria-label="about ante"]');
@@ -38,19 +38,19 @@ check("escape cancels buy-in", (await p.locator("#buyIn").count()) === 0);
 await p.locator("button", { hasText: "Open" }).filter({ hasText: "3" }).click();
 await p.fill("#buyIn", "1500");
 await p.press("#buyIn", "Enter");
-check("enter sits down with the amount", !!(await p.waitForSelector("text=1500", { timeout: 3000 }).catch(() => null)));
+check("enter sits down with the amount", await has(p, "text=1500"));
 
 // a taken name keeps the dialog open with the server's error
-const q = await (await browser.newContext()).newPage();
+const q = await open(browser);
 await q.goto(URL);
 await q.fill("#username", "dave");
 await q.fill("#tablename", table);
 await q.click('button:text-is("create")');
 await confirmCreate(q);
-check("taken table name shows in the dialog", !!(await q.waitForSelector('[role="dialog"] >> text=table already exists', { timeout: 3000 }).catch(() => null)));
+check("taken table name shows in the dialog", await has(q, '[role="dialog"] >> text=table already exists'));
 
 // custom settings carry through to the table, at phone width
-const r = await (await browser.newContext({ viewport: { width: 375, height: 667 } })).newPage();
+const r = await open(browser, { viewport: { width: 375, height: 667 } });
 await r.goto(URL);
 await r.fill("#username", "erin");
 await r.fill("#tablename", table + "c");

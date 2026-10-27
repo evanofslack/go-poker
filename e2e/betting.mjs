@@ -1,24 +1,11 @@
 // Betting controls: labels, presets, raise, and the waiting line.
-import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
+import { check, finish, has, launch, seat, shot } from "./lib.mjs";
 
 const buttons = async (p) =>
     (await p.locator("button").allInnerTexts()).map((t) => t.trim()).filter((t) => /^(fold|check|call|bet|raise|all in)/.test(t));
 
 const browser = await launch();
-const alice = await (await browser.newContext()).newPage();
-const bob = await (await browser.newContext()).newPage();
-const table = "bet" + Date.now();
-for (const [p, name, btn, seat] of [[alice, "alice", "create", 1], [bob, "bob", "join", 2]]) {
-    await p.goto(URL);
-    await p.fill("#username", name);
-    await p.fill("#tablename", table);
-    await p.click(`button:text-is("${btn}")`);
-    if (btn === "create") await confirmCreate(p);
-    await p.waitForSelector("text=Open");
-    await p.locator("button", { hasText: "Open" }).filter({ hasText: String(seat) }).click();
-    await p.locator("#buyIn ~ button").first().click();
-    await p.waitForTimeout(300);
-}
+const [alice, bob] = await seat(browser, "bet" + Date.now(), ["alice", "bob"]);
 await alice.click('button:text-is("start")');
 await alice.waitForSelector('button:text-is("call 10")');
 
@@ -38,13 +25,13 @@ await shot(alice, "bet-1-raise-input");
 await alice.fill("#raise", "60");
 await alice.press("#raise", "Enter");
 
-await bob.waitForSelector('button:text-is("call 40")', { timeout: 3000 }).catch(() => null);
+await has(bob, 'button:text-is("call 40")');
 check("big blind faces call 40 after raise to 60", JSON.stringify(await buttons(bob)) === '["fold","call 40","raise"]', JSON.stringify(await buttons(bob)));
 await shot(bob, "bet-2-bob-facing-raise");
 await bob.click('button:text-is("call 40")');
 
 // heads up, the big blind acts first after the flop
-await bob.waitForSelector('button:text-is("check")', { timeout: 3000 }).catch(() => null);
+await has(bob, 'button:text-is("check")');
 check("flop opens with check / bet", JSON.stringify(await buttons(bob)) === '["fold","check","bet"]', JSON.stringify(await buttons(bob)));
 await bob.click('button:text-is("bet")');
 await bob.click('button:text-is("pot")');

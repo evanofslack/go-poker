@@ -1,5 +1,5 @@
 // A full nine-seat table on desktop, tablet and phone viewports, then smaller tables on phones.
-import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
+import { check, create, finish, join, launch, open, quiet, shot, sit } from "./lib.mjs";
 
 const views = {
     desktop: { viewport: { width: 1280, height: 720 } },
@@ -115,26 +115,24 @@ async function seatTable(n, kinds, order) {
     const table = `lay${n}` + String(Date.now()).slice(1);
     const pages = [];
     for (let i = 0; i < order.length; i++) {
-        const p = await (await browser.newContext(views[kinds[i]])).newPage();
-        await p.goto(URL);
-        await p.fill("#username", names[i]);
-        await p.fill("#tablename", table);
-        await p.click(`button:text-is("${i === 0 ? "create" : "join"}")`);
-        if (i === 0) {
-            await p.click(`fieldset:has-text("seats") label:has-text("${n}")`);
-            await confirmCreate(p);
-        }
-        await p.waitForSelector("text=Open");
+        const p = await open(browser, views[kinds[i]]);
+        if (i === 0) await create(p, names[i], table, (p) => p.click(`fieldset:has-text("seats") label:has-text("${n}")`));
+        else await join(p, names[i], table);
         if (order.length === 9 && i === 0) await shot(p, `lay-0-empty-desktop`);
-        if (order.length === 9 && i === 1) await shot(p, `lay-0-empty-phone`);
-        await p.locator("button", { hasText: "Open" }).filter({ hasText: String(order[i]) }).click();
-        if (order.length === 9 && i === 1) await shot(p, `lay-0-buyin-phone`);
-        await p.locator("#buyIn ~ button").first().click();
-        await p.waitForTimeout(200);
+        if (order.length === 9 && i === 1) {
+            await shot(p, `lay-0-empty-phone`);
+            await p.locator("button", { hasText: "Open" }).filter({ hasText: String(order[i]) }).click();
+            await shot(p, `lay-0-buyin-phone`);
+            await p.press("#buyIn", "Escape");
+        }
+        await sit(p, order[i]);
         pages.push({ p, kind: kinds[i], name: names[i] });
     }
     await pages[0].p.click('button:text-is("start")');
-    await pages[0].p.waitForTimeout(800);
+    // everyone is dealt in
+    for (const { p } of pages) await p.waitForSelector("text=/^(waiting for .+|fold)$/");
+    // and the deal has settled
+    await quiet(500);
     return pages;
 }
 

@@ -1,11 +1,9 @@
 // Invite links, table hints, error toasts, connection status, header and leaving.
-import { URL, check, confirmCreate, finish, launch, shot } from "./lib.mjs";
-const has = (p, sel, ms = 3000) => p.waitForSelector(sel, { timeout: ms }).then(() => true).catch(() => false);
+import { URL, check, confirmCreate, finish, gone, has, launch, open, shot, sit } from "./lib.mjs";
 
 const browser = await launch();
-const actx = await browser.newContext({ permissions: ["clipboard-read", "clipboard-write"] });
-const alice = await actx.newPage();
-const bob = await (await browser.newContext()).newPage();
+const alice = await open(browser, { permissions: ["clipboard-read", "clipboard-write"] });
+const bob = await open(browser);
 
 // alice's socket goes through a route so the test can inject messages and drop the connection
 let aliceWS;
@@ -31,8 +29,7 @@ check("copy shows a toast", await has(alice, "text=invite link copied"));
 const copied = await alice.evaluate(() => navigator.clipboard.readText());
 check("clipboard holds the invite link", copied === `${URL}/?table=${table}`, copied);
 
-await alice.locator("button", { hasText: "Open" }).filter({ hasText: "1" }).click();
-await alice.locator("#buyIn ~ button").first().click();
+await sit(alice, 1);
 check("one player hint", await has(alice, "text=waiting for another player"));
 
 // bob opens the invite link: only a name is needed
@@ -42,15 +39,14 @@ await bob.fill("#username", "bob");
 await bob.press("#username", "Enter");
 check("spectator hint before sitting", await has(bob, "text=pick an open seat to play"));
 check("header counts the spectator", await has(alice, "text=watching 1"));
-await bob.locator("button", { hasText: "Open" }).filter({ hasText: "2" }).click();
-await bob.locator("#buyIn ~ button").first().click();
-check("watching count clears once seated", await alice.waitForSelector("text=watching 1", { state: "detached", timeout: 3000 }).then(() => true).catch(() => false));
-check("hint clears when two are ready", await alice.waitForSelector("text=waiting for another player", { state: "detached", timeout: 3000 }).then(() => true).catch(() => false));
+await sit(bob, 2);
+check("watching count clears once seated", await gone(alice, "text=watching 1"));
+check("hint clears when two are ready", await gone(alice, "text=waiting for another player"));
 
 aliceWS.send(JSON.stringify({ action: "error", message: "can't rebuy during a hand" }));
 check("server errors show as a toast", await has(alice, "[role=alert] >> text=can't rebuy during a hand"));
 await shot(alice, `ux-2-toast`);
-check("toast goes away", await alice.waitForSelector("button[role=alert]", { state: "detached", timeout: 6000 }).then(() => true).catch(() => false));
+check("toast goes away", await gone(alice, "button[role=alert]", 6000));
 
 await aliceWS.close();
 check("dropped connection shows reconnecting", await has(alice, "text=reconnecting…", 2000));
@@ -69,7 +65,7 @@ await shot(bob, `ux-5-leave-confirm`);
 await bob.click('[role=dialog] button:text-is("leave")');
 check("leaving shows the join form", await has(bob, "#username"));
 check("leaving clears the invite from the url", !bob.url().includes("?table="), bob.url());
-check("bob's seat is freed", await alice.waitForSelector('p:text-is("bob")', { state: "detached", timeout: 3000 }).then(() => true).catch(() => false));
+check("bob's seat is freed", await gone(alice, 'p:text-is("bob")'));
 await bob.reload();
 check("a reload stays on the join form", await has(bob, "#username"));
 
