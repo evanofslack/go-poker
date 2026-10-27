@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { leaveSeat, rebuy, sitOut } from "../actions/actions";
+import { leaveSeat, rebuy, sitOut, straddlePreset } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { useDismiss } from "../hooks/useDismiss";
 import { PlayerView, View } from "../interfaces/index";
@@ -10,7 +10,14 @@ type seatMenuProps = {
     view: View;
 };
 
-// SeatMenu holds your own seat's controls: leave, sit out or in, and rebuy
+const presets = [
+    { value: "ask", label: "ask me to straddle" },
+    { value: "always", label: "always straddle" },
+    { value: "never", label: "never straddle" },
+];
+
+// SeatMenu holds your own seat's controls: leave, sit out or in, rebuy, and
+// whether to straddle
 export default function SeatMenu({ player, view }: seatMenuProps) {
     const socket = useSocket();
     const [open, setOpen] = useState(false);
@@ -90,6 +97,23 @@ export default function SeatMenu({ player, view }: seatMenuProps) {
                                     rebuy
                                 </button>
                             )}
+                            {view.settings.straddle !== "off" &&
+                                !view.ended &&
+                                presets.map((p) => (
+                                    <button
+                                        key={p.value}
+                                        role="menuitemradio"
+                                        aria-checked={view.straddlePreset === p.value}
+                                        className={item + " flex justify-between"}
+                                        onClick={() => {
+                                            straddlePreset(socket, p.value);
+                                            close();
+                                        }}
+                                    >
+                                        {p.label}
+                                        {view.straddlePreset === p.value && <span aria-hidden>✓</span>}
+                                    </button>
+                                ))}
                             <button
                                 role="menuitem"
                                 className={item + " text-danger"}

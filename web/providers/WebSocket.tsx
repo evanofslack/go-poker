@@ -156,6 +156,10 @@ export function SocketProvider(props: SocketProviderProps) {
                     for (const ev of m.events as GameEvent[]) {
                         if (ev.type === "log") {
                             dispatch({ type: "addLog", payload: ev.data.log });
+                        } else if (ev.type === "acted" && ev.data.kind === "straddle") {
+                            const name = m.view.players.find((p) => p.seat === ev.data.seat)?.name;
+                            const message = `${name} straddles ${ev.data.to}`;
+                            dispatch({ type: "addToast", payload: { message, kind: "info" } });
                         } else if (ev.type === "hand-done") {
                             dispatch({ type: "handDone", payload: ev.data });
                         } else if (ev.type === "paid") {

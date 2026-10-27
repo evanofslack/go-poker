@@ -63,6 +63,8 @@ export default function Settings() {
         ["rebuys", s.approveRebuys ? "host approves" : "automatic"],
         ["duck hunt", s.duckHunt ? "allowed" : "off"],
         ["7-2 game", s.sevenDeuce ? `${chips(s.sevenDeuce)} each` : "off"],
+        ["straddles", s.straddle],
+        ["to decide", seconds(s.decisionTime)],
         ["host", game.host],
     ];
 

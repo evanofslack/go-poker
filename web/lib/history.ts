@@ -25,6 +25,7 @@ export function actionText(a: HandAction): string {
         case "ante":
         case "small blind":
         case "big blind":
+        case "straddle":
             text = `posts ${a.kind} ${a.amount ?? 0}`;
             break;
         case "check":
