@@ -93,8 +93,8 @@ function color(card: string, highlight = false, big = false) {
     );
 }
 
-// MiniCards stand in for another player's face-down cards, tucked into the
-// corner of their seat
+// MiniCards stand in for another player's face-down cards on a phone, tucked into
+// the corner of their seat
 export function MiniCards({ count }: { count: number }) {
     return (
         <div
@@ -103,7 +103,7 @@ export function MiniCards({ count }: { count: number }) {
             className="absolute -top-2 right-3 z-20 flex gap-0.5"
         >
             {Array.from({ length: count }, (_, i) => (
-                <div key={i} className="h-5 w-3.5 rounded-sm border border-white bg-red-900 lg:h-6 lg:w-4" />
+                <div key={i} className="h-5 w-3.5 rounded-sm border border-white bg-red-900" />
             ))}
         </div>
     );

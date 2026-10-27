@@ -138,9 +138,9 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
     const onPhone = useMedia(phone);
     const winning = winningCards(view);
     const bot = player.bot;
-    // other players' face-down cards shrink onto the plate, so your own stand
-    // out, and only cards you can read, like at showdown, take the full size
-    const mini = !own && player.dealt && player.cards.every((c) => !c);
+    // on a phone, other players' face-down cards shrink onto the plate, and only
+    // cards you can read, like at showdown, take the full size
+    const mini = onPhone && !own && player.dealt && player.cards.every((c) => !c);
     return (
         <div className="flex flex-col items-center short:flex-row">
             <div
