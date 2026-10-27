@@ -62,10 +62,11 @@ tests, including `rollout_test.go`'s random hands, before any table or web work.
   The player answers with a `Straddle{Person, Yes bool}` command. Yes appends to `Yes`, logs "alice
   straddles 40" and asks the next seat in `Positions().Straddle`; no, the timer, or running out of
   seats ends the asking. The hand then deals with `StartHand(len(Yes))`.
-- When: the first ask goes out as the pause between hands starts (`afterHand`, alongside
-  `scheduleDeal`), with the pause as its deadline, so a table where nobody straddles plays at the
-  same speed. Each yes gives the next player `DecisionTime`. If `TimerDeal` fires while someone is still being
-  asked, it waits for the answer. On the first hand the ask goes out when the host presses start.
+- When: the first ask goes out as the pause between hands starts, so a table where nobody is
+  asked plays at the same speed. Each ask gives the player `DecisionTime`. If `TimerDeal` fires
+  while someone is still being asked, the deal waits for the answer (`StraddleAsk.Waiting`). On
+  the first hand the ask goes out when the host presses start. `askStraddles` runs after every
+  command and keeps the ask in step with the table.
 - Who's skipped: bots, disconnected players and players sitting out (or sitting out next hand) end
   the chain at their seat, as a no. Bots still post a forced straddle.
 - Forced: under the gun's straddle is in `Yes` from the start, without asking, if they can cover it;
