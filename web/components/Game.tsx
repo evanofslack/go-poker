@@ -38,11 +38,11 @@ export default function Game() {
                 elsewhere. */}
             <footer className="relative flex h-16 shrink-0 items-end gap-2 p-2 sm:h-20 sm:p-4 tall:h-28">
                 <ChatLog />
+                <StandUpAgain />
                 <div className="flex min-w-0 flex-1 justify-end">
                     <Input />
                     <StraddlePrompt />
                     <AfterHand />
-                    <StandUpAgain />
                     <Start />
                 </div>
             </footer>

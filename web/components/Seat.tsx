@@ -3,7 +3,7 @@ import { AppContext } from "../providers/AppStore";
 import { removeBot, takeSeat } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { PlayerView, View } from "../interfaces/index";
-import Card, { MiniCards, cardSize } from "./Card";
+import Card, { MiniCards, bigCardSize, cardSize } from "./Card";
 import BuyIn from "./BuyIn";
 import Dialog from "./Dialog";
 import AddBot from "./AddBot";
@@ -138,15 +138,15 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
     const onPhone = useMedia(phone);
     const winning = winningCards(view);
     const bot = player.bot;
-    // on a phone, other players' face-down cards shrink onto the plate, and only
-    // cards you can read, like at showdown, take the full size
-    const mini = onPhone && !own && player.dealt && player.cards.every((c) => !c);
+    // other players' face-down cards shrink onto the plate, so your own stand
+    // out, and only cards you can read, like at showdown, take the full size
+    const mini = !own && player.dealt && player.cards.every((c) => !c);
     return (
         <div className="flex flex-col items-center short:flex-row">
             <div
                 className={classNames(
                     "relative z-10 -mb-2 flex gap-0.5 short:-mr-2 short:mb-0",
-                    cardSize.h,
+                    own ? bigCardSize.h : cardSize.h,
                     mini && "hidden"
                 )}
             >
@@ -161,6 +161,7 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
                             folded={!player.in && !(view.street === "" && player.shown)}
                             hidden={!c}
                             highlight={winning.has(c)}
+                            big={own}
                         />
                     ))}
             </div>

@@ -7,6 +7,7 @@ type cardProps = {
     folded: boolean;
     hidden: boolean;
     highlight?: boolean;
+    big?: boolean; // your own cards, a size up from a tablet on
 };
 
 function cardToString(c: CardType) {
@@ -70,9 +71,14 @@ export const cardSize = {
     h: "h-14 sm:h-[4.5rem] lg:h-24 phone:h-[4.5rem] short:h-10",
     box: "w-10 h-14 sm:w-12 sm:h-[4.5rem] lg:w-16 lg:h-24 phone:w-12 phone:h-[4.5rem] short:w-7 short:h-10",
 };
-const rank = "text-lg sm:text-xl lg:text-3xl phone:text-xl short:text-sm";
+export const bigCardSize = {
+    h: "h-14 sm:h-24 lg:h-28 phone:h-[4.5rem] short:h-10",
+    box: "w-10 h-14 sm:w-16 sm:h-24 lg:w-20 lg:h-28 phone:w-12 phone:h-[4.5rem] short:w-7 short:h-10",
+};
+const rankSize = "text-lg sm:text-xl lg:text-3xl phone:text-xl short:text-sm";
+const bigRankSize = "text-lg sm:text-3xl lg:text-4xl phone:text-xl short:text-sm";
 
-function color(card: string, highlight = false) {
+function color(card: string, highlight = false, big = false) {
     return classNames(
         {
             "ring-2 ring-amber-300 lg:ring-4": highlight,
@@ -82,12 +88,13 @@ function color(card: string, highlight = false) {
             "text-black": card[1] == "S",
         },
         "rounded-md border border-zinc-100 shadow-2xl bg-white pt-0.5 px-1 text-2xl sm:text-3xl lg:pt-1 lg:px-2.5 lg:text-5xl phone:text-3xl short:text-base short:px-0.5 short:pt-0 font-normal flex items-center justify-start flex-col",
-        cardSize.box
+        big ? "sm:text-5xl lg:text-6xl phone:text-3xl short:text-base" : "",
+        big ? bigCardSize.box : cardSize.box
     );
 }
 
-// MiniCards stand in for another player's face-down cards on a phone, tucked into
-// the corner of their seat
+// MiniCards stand in for another player's face-down cards, tucked into the
+// corner of their seat
 export function MiniCards({ count }: { count: number }) {
     return (
         <div
@@ -96,13 +103,15 @@ export function MiniCards({ count }: { count: number }) {
             className="absolute -top-2 right-3 z-20 flex gap-0.5"
         >
             {Array.from({ length: count }, (_, i) => (
-                <div key={i} className="h-5 w-3.5 rounded-sm border border-white bg-red-900" />
+                <div key={i} className="h-5 w-3.5 rounded-sm border border-white bg-red-900 lg:h-6 lg:w-4" />
             ))}
         </div>
     );
 }
 
-export default function Card({ card, placeholder, folded, hidden, highlight }: cardProps) {
+export default function Card({ card, placeholder, folded, hidden, highlight, big = false }: cardProps) {
+    const box = big ? bigCardSize.box : cardSize.box;
+    const rank = big ? bigRankSize : rankSize;
     if (placeholder) {
         return (
             <div
@@ -120,14 +129,14 @@ export default function Card({ card, placeholder, folded, hidden, highlight }: c
     }
     if (hidden) {
         if (folded) {
-            return <div aria-hidden className={cardSize.box}></div>;
+            return <div aria-hidden className={box}></div>;
         }
         return (
             <div
                 role="img"
                 aria-label="face-down card"
                 className={classNames(
-                    cardSize.box,
+                    box,
                     "rounded-md border-2 border-white bg-red-900 lg:border-4"
                 )}
             ></div>
@@ -135,7 +144,7 @@ export default function Card({ card, placeholder, folded, hidden, highlight }: c
     }
     if (folded) {
         return (
-            <div role="img" aria-label={cardName(c) + ", folded"} className={color(c)}>
+            <div role="img" aria-label={cardName(c) + ", folded"} className={color(c, false, big)}>
                 <div
                     className={classNames(
                         "flex w-full items-start justify-start font-semibold opacity-40",
@@ -152,7 +161,7 @@ export default function Card({ card, placeholder, folded, hidden, highlight }: c
         <div
             role="img"
             aria-label={cardName(c) + (highlight ? ", in the winning hand" : "")}
-            className={color(c, highlight)}
+            className={color(c, highlight, big)}
         >
             <div
                 className={classNames("flex w-full items-start justify-start font-semibold", rank)}

@@ -85,6 +85,11 @@ export default function Table() {
     const ids = Array.from({ length: seats }, (_, i) => i + 1);
     const point = (id: number) =>
         onTall ? tallPoint(id, seats, view.you || 1) : ringPoint(seatAngle(id, seats, view.you || 1));
+    // your own cards are bigger, so your markers sit further in to clear them
+    const markerPoint = (id: number) => {
+        const p = point(id);
+        return id === view.you ? { x: p.x * 0.75, y: p.y * 0.75 } : p;
+    };
 
     return (
         <div className={"absolute inset-0 " + seatSize}>
@@ -106,7 +111,7 @@ export default function Table() {
                     <div
                         key={p.seat}
                         className="absolute z-10 -translate-1/2"
-                        style={markerAt(point(p.seat))}
+                        style={markerAt(markerPoint(p.seat))}
                     >
                         {/* the action goes on the side away from the seat */}
                         <Markers view={view} player={p} above={point(p.seat).y > 0.1} badges />
