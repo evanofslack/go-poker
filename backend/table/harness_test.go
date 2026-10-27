@@ -227,8 +227,14 @@ func (h *harness) checkInvariants() {
 	if !g.Betting && turn {
 		h.t.Fatal("turn timer while nobody is betting")
 	}
-	if _, ok := s.Timers[TimerStreet]; ok != (g.InHand() && !g.Betting) {
-		h.t.Fatalf("street timer %v, in hand %v, betting %v", ok, g.InHand(), g.Betting)
+	if _, ok := s.Timers[TimerStreet]; ok != (g.InHand() && !g.Betting && s.RunVote == nil) {
+		h.t.Fatalf("street timer %v, in hand %v, betting %v, run vote %+v", ok, g.InHand(), g.Betting, s.RunVote)
+	}
+	if _, ok := s.Timers[TimerRunVote]; ok != (s.RunVote != nil) {
+		h.t.Fatalf("run vote timer %v, vote %+v", ok, s.RunVote)
+	}
+	if v := s.RunVote; v != nil && (g.Betting || !g.InHand() || g.Runs != 0 || len(v.Seats) < 2) {
+		h.t.Fatalf("run vote %+v, betting %v, in hand %v, runs %d", v, g.Betting, g.InHand(), g.Runs)
 	}
 	if g.Betting && s.Seats[g.ToAct].Bot != "" {
 		if _, ok := s.Timers[TimerBot]; !ok {
