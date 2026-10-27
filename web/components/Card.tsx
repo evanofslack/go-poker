@@ -8,6 +8,7 @@ type cardProps = {
     hidden: boolean;
     highlight?: boolean;
     big?: boolean; // your own cards, a size up from a tablet on
+    small?: boolean; // the extra boards when the board runs out more than once
 };
 
 function cardToString(c: CardType) {
@@ -75,10 +76,14 @@ export const bigCardSize = {
     h: "h-14 sm:h-24 lg:h-28 phone:h-[4.5rem] short:h-10",
     box: "w-10 h-14 sm:w-16 sm:h-24 lg:w-20 lg:h-28 phone:w-12 phone:h-[4.5rem] short:w-7 short:h-10",
 };
+export const smallCardSize = {
+    box: "w-7 h-10 sm:w-9 sm:h-12 lg:w-11 lg:h-16 phone:w-8 phone:h-11 short:w-5 short:h-7",
+};
 const rankSize = "text-lg sm:text-xl lg:text-3xl phone:text-xl short:text-sm";
+const smallRankSize = "text-sm sm:text-base lg:text-xl phone:text-sm short:text-[0.6rem]";
 const bigRankSize = "text-lg sm:text-3xl lg:text-4xl phone:text-xl short:text-sm";
 
-function color(card: string, highlight = false, big = false) {
+function color(card: string, highlight = false, big = false, small = false) {
     return classNames(
         {
             "ring-2 ring-amber-300 lg:ring-4": highlight,
@@ -89,7 +94,8 @@ function color(card: string, highlight = false, big = false) {
         },
         "rounded-md border border-zinc-100 shadow-2xl bg-white pt-0.5 px-1 text-2xl sm:text-3xl lg:pt-1 lg:px-2.5 lg:text-5xl phone:text-3xl short:text-base short:px-0.5 short:pt-0 font-normal flex items-center justify-start flex-col",
         big ? "sm:text-5xl lg:text-6xl phone:text-3xl short:text-base" : "",
-        big ? bigCardSize.box : cardSize.box
+        small ? "text-base sm:text-xl lg:text-3xl phone:text-lg short:text-[0.6rem] lg:pt-0.5 lg:px-1.5" : "",
+        big ? bigCardSize.box : small ? smallCardSize.box : cardSize.box
     );
 }
 
@@ -109,14 +115,14 @@ export function MiniCards({ count }: { count: number }) {
     );
 }
 
-export default function Card({ card, placeholder, folded, hidden, highlight, big = false }: cardProps) {
-    const box = big ? bigCardSize.box : cardSize.box;
-    const rank = big ? bigRankSize : rankSize;
+export default function Card({ card, placeholder, folded, hidden, highlight, big = false, small = false }: cardProps) {
+    const box = big ? bigCardSize.box : small ? smallCardSize.box : cardSize.box;
+    const rank = big ? bigRankSize : small ? smallRankSize : rankSize;
     if (placeholder) {
         return (
             <div
                 aria-hidden
-                className={classNames(cardSize.box, "rounded-md bg-green-900 opacity-20")}
+                className={classNames(small ? smallCardSize.box : cardSize.box, "rounded-md bg-green-900 opacity-20")}
             ></div>
         );
     }
@@ -161,7 +167,7 @@ export default function Card({ card, placeholder, folded, hidden, highlight, big
         <div
             role="img"
             aria-label={cardName(c) + (highlight ? ", in the winning hand" : "")}
-            className={color(c, highlight, big)}
+            className={color(c, highlight, big, small)}
         >
             <div
                 className={classNames("flex w-full items-start justify-start font-semibold", rank)}

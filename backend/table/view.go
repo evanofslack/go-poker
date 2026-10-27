@@ -28,19 +28,22 @@ type PlayerView struct {
 
 // View is the table as one person sees it.
 type View struct {
-	Players   []PlayerView  `json:"players"`
-	Street    holdem.Street `json:"street"`
-	Betting   bool          `json:"betting"`
-	Button    int           `json:"button"`
-	SB        int           `json:"sb"`
-	BB        int           `json:"bb"`
-	Straddles []int         `json:"straddles"` // seats that straddled this hand, in order
-	ToAct     int           `json:"toAct"`
-	Board     []holdem.Card `json:"board"`
-	Hunted    []holdem.Card `json:"hunted"` // the rest of the board, from a duck hunt
-	Pots      []holdem.Pot  `json:"pots"`
-	MinRaise  uint          `json:"minRaise"`
-	Hand      int           `json:"hand"`
+	Players   []PlayerView    `json:"players"`
+	Street    holdem.Street   `json:"street"`
+	Betting   bool            `json:"betting"`
+	Button    int             `json:"button"`
+	SB        int             `json:"sb"`
+	BB        int             `json:"bb"`
+	Straddles []int           `json:"straddles"` // seats that straddled this hand, in order
+	ToAct     int             `json:"toAct"`
+	Board     []holdem.Card   `json:"board"`
+	Hunted    []holdem.Card   `json:"hunted"`  // the rest of the board, from a duck hunt
+	Runs      int             `json:"runs"`    // times the board runs out, 0 until decided
+	RunFrom   int             `json:"runFrom"` // board cards dealt before the runs split
+	Boards    [][]holdem.Card `json:"boards"`  // every finished runout, the first being Board
+	Pots      []holdem.Pot    `json:"pots"`
+	MinRaise  uint            `json:"minRaise"`
+	Hand      int             `json:"hand"`
 
 	You        int          `json:"you"`        // your seat, 0 when watching
 	Legal      holdem.Legal `json:"legal"`      // what you can do now
@@ -65,7 +68,9 @@ type View struct {
 	StraddleAsk    *StraddleAsk   `json:"straddleAsk"`
 	StraddleEndsIn int64          `json:"straddleEndsIn"` // ms the player asked to straddle has left
 	StraddlePreset string         `json:"straddlePreset"` // yours: ask, always or never
-	LastStandUp    uint           `json:"lastStandUp"`    // the payout of the stand-up round that just ended
+	RunVote        *RunVote       `json:"runVote"`
+	RunVoteEndsIn  int64          `json:"runVoteEndsIn"` // ms the run it vote has left
+	LastStandUp    uint           `json:"lastStandUp"`   // the payout of the stand-up round that just ended
 }
 
 // ViewFor is the table as the person with id sees it, at now.
@@ -85,6 +90,9 @@ func ViewFor(s *State, id string, now time.Time) View {
 		ToAct:          g.ToAct,
 		Board:          g.Board,
 		Hunted:         g.Hunted,
+		Runs:           g.Runs,
+		RunFrom:        g.RunFrom,
+		Boards:         g.Boards,
 		Pots:           g.Pots,
 		MinRaise:       g.MinRaise,
 		Hand:           g.Hand,
@@ -107,6 +115,8 @@ func ViewFor(s *State, id string, now time.Time) View {
 		StandUp:        s.StandUp,
 		StraddleAsk:    s.StraddleAsk,
 		StraddleEndsIn: until(s.Timers, TimerStraddle, now),
+		RunVote:        s.RunVote,
+		RunVoteEndsIn:  until(s.Timers, TimerRunVote, now),
 		LastStandUp:    s.LastStandUp,
 	}
 	v.ShowClaims = ShowClaims(s, you)

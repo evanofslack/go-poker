@@ -77,6 +77,13 @@ type StraddlePreset struct {
 	Preset string
 }
 
+// RunIt is the person's pick in the run it vote: how many times to run the
+// board out.
+type RunIt struct {
+	Person string
+	Runs   int
+}
+
 // GetHands asks for the hands played before hand number Before.
 type GetHands struct {
 	Person string
@@ -176,6 +183,7 @@ func (Hunt) command()           {}
 func (GetHands) command()       {}
 func (Straddle) command()       {}
 func (StraddlePreset) command() {}
+func (RunIt) command()          {}
 func (AddBot) command()         {}
 func (RemoveBot) command()      {}
 func (HostAction) command()     {}

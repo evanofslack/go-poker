@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FiChevronDown } from "react-icons/fi";
 import AfterHand from "./AfterHand";
 import StraddlePrompt from "./StraddlePrompt";
+import RunItPrompt from "./RunItPrompt";
 import ChatLog from "./ChatLog";
 import Home from "./Home";
 import SessionEnded from "./SessionEnded";
@@ -42,6 +43,7 @@ export default function Game() {
                 <div className="flex min-w-0 flex-1 justify-end">
                     <Input />
                     <StraddlePrompt />
+                    <RunItPrompt />
                     <AfterHand />
                     <Start />
                 </div>

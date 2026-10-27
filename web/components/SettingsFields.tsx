@@ -145,10 +145,10 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                         value={form.nextHandDelay}
                         onChange={(ms) => set({ nextHandDelay: ms })}
                     />
-                    {form.straddle !== "off" && (
+                    {(form.straddle !== "off" || form.runIt) && (
                         <Segmented
                             legend="to decide"
-                            hint="how long a player has to answer whether to straddle"
+                            hint="how long a player has to answer whether to straddle, or how many times to run it"
                             name="decisionTime"
                             options={decisionTimes.map((ms) => ({ label: `${ms / 1000}s`, value: ms }))}
                             value={form.decisionTime}
@@ -205,6 +205,13 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                         options={straddleModes.map((m) => ({ label: m, value: m }))}
                         value={form.straddle}
                         onChange={(m) => set({ straddle: m })}
+                    />
+                    <Toggle
+                        id="runIt"
+                        label="run it"
+                        hint="when everyone left is all in, or all but one, they can run the rest of the board out up to 4 times"
+                        checked={form.runIt}
+                        onChange={(on) => set({ runIt: on })}
                     />
                     <Toggle
                         id="duckHunt"

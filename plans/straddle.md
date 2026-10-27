@@ -104,33 +104,38 @@ tests, including `rollout_test.go`'s random hands, before any table or web work.
 ## Run it N times
 
 ### Engine (`holdem/`)
-- `State.Runs` (1 by default) and `RunFrom`, the board cards before the extra runs. `MaxRuns()`
-  is how many runs the deck allows now. `SetRuns(n)` is legal only mid-hand, not betting, with
-  fewer than two players who can bet, before the river, `n` from 1 to `MaxRuns()`, and only once a
-  hand.
+- `State.Runs` (0 until set, meaning once), `RunFrom`, the board cards before the runs split, and
+  `Boards [][]Card`, every finished runout: `Boards[0]` is `Board`, then each extra run. A normal
+  hand ends with `Boards = [Board]`.
+- `MaxRuns()` is how many runs the deck allows now (`len(Deck) / (5 - len(Board))`), 0 when
+  `SetRuns` isn't legal. `SetRuns(n)` is legal only mid-hand, not betting, with fewer than two
+  players who can bet, before the river, `n` from 1 to `MaxRuns()`, and only once a hand.
 - `NextStreet` deals the first run street by street as now. Once it reaches the river, with more
   runs to go, each further call deals a whole run (`Board[:RunFrom]` plus fresh cards) into
-  `Boards [][]Card` instead of showing down. `StreetDealt` gets a `Run` number. After the last run,
-  the showdown.
-- Showdown per run: each pot splits into n shares, odd chips to the earlier runs. Each share is
-  scored on its own board and paid like a pot now (odd chips left of the button).
-  `Pot.Runs []PotRun{Amount, Winners, Cards, Hand, Score}` holds each run; `Pot.Winners` is everyone
-  who won any run, so code that asks "did they win this pot" (7-2, stand-up) works unchanged.
-  `PotWon` gets a `Run` number, one per pot per run.
-- `View` gets `Boards` and `Runs`.
+  `Boards` instead of showing down. `StreetDealt` gets `Run`, its index in `Boards`. After the last
+  run, the showdown.
+- Showdown per run: each pot splits into a share per board, odd chips to the earlier runs. Each
+  share is scored on its own board and paid like a pot now (odd chips left of the button).
+- A pot records every runout: `Pot.Runs []PotRun{Amount, Winners, Cards, Hand, Score}`, one per
+  board whenever it's scored, even with one run, and empty when it went to the last player in.
+  `Cards`, `Hand` and `Score` live only there. `Pot.Winners` is everyone who won any run, so code
+  that asks "did they win this pot" (7-2, stand-up) works unchanged. `PotWon` gets `Run`, one per
+  pot per run.
+- `View` gets `Boards`, `Runs` and `RunFrom`.
 
 ### Table (`table/`)
-- Setting `RunIt bool`, "allow running it more than once", default off.
-- When the hand is all in before the river (in `played`, where it schedules `TimerStreet` with no
+- Setting `RunIt bool`, "allow running it more than once", default on.
+- When betting is over with cards to come (everyone left all in, or all but one) (in `played`, where it schedules `TimerStreet` with no
   betting), the table asks instead: `State.RunVote *RunVote{Seats, Picks map[int]int, Max}` plus
   `TimerRunVote` (`DecisionTime`). `Max` is `min(4, MaxRuns())`. `Seats` are the players still in. They answer with
   `RunIt{Person, Runs int}`. Once everyone has answered, or the timer runs out, the table calls
   `SetRuns(smallest pick)` and deals on. Unanswered and disconnected count as 1. Bots pick the max,
-  so the humans decide.
+  so the humans decide. A pick of 1 ends the vote at once, since it's the smallest. Disconnected
+  means at the vote's start; someone who drops mid-vote just doesn't answer before the timer.
 - Dealing: the first run street by street as now; each extra run all at once, one `StreetDelay`
   apart.
 - Inbound action `run-it` with a `runs` field. `RunVote` goes on the view.
-- Records: `HandRecord.Boards`; pots per run in history ("run 2: bob wins 200 with a flush");
+- Records: `HandRecord.Boards`, only when it ran more than once; pots per run in history ("run 2: bob wins 200 with a flush");
   `HandStats.Won` adds up each run's share (`records.go` splits by run, not by `Winners`); stats
   count a showdown win on any run. Logs "running it 3 times" or "running it once".
 - 7-2: unchanged rule, the 7-2 must be in `Pots[0].Winners`, which with runs means it won the main

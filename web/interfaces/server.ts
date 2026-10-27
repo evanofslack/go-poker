@@ -81,6 +81,10 @@ export const ActionStraddle = "straddle"; // yes answers the straddle ask
  */
 export const ActionPreset = "straddle-preset";
 /**
+ * inbound (client) actions
+ */
+export const ActionRunIt = "run-it"; // runs is the pick in the run it vote
+/**
  * host only
  */
 export const ActionAddBot = "add-bot";
@@ -171,6 +175,7 @@ export interface Inbound {
   reason?: string; // adjust-chips
   yes?: boolean; // straddle
   preset?: string; // straddle-preset: ask, always or never
+  runs?: number /* int */; // run-it
 }
 /**
  * outbound (server) actions

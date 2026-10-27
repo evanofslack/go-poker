@@ -86,12 +86,20 @@ func (p *Player) putDead(amt uint) uint {
 
 // Pot is a main or side pot. Between hands it holds the last hand's result.
 type Pot struct {
-	Amount   uint   `json:"amount"`
-	Eligible []int  `json:"eligible"` // seats that can win it
-	Winners  []int  `json:"winners"`
-	Cards    []Card `json:"cards"` // the winning five, empty without a showdown
-	Hand     string `json:"hand"`  // like "two pair, kings and sevens", empty without a showdown
-	Score    int    `json:"score"` // of the winning hand, lower is better; 0 without a showdown
+	Amount   uint     `json:"amount"`
+	Eligible []int    `json:"eligible"` // seats that can win it
+	Winners  []int    `json:"winners"`  // seats that won it, or any run of it
+	Runs     []PotRun `json:"runs"`     // the result on each board, in order; empty without a showdown
+}
+
+// PotRun is a pot's share on one board at showdown. A board run out more than
+// once splits each pot between the runs.
+type PotRun struct {
+	Amount  uint   `json:"amount"`
+	Winners []int  `json:"winners"`
+	Cards   []Card `json:"cards"` // the winning five
+	Hand    string `json:"hand"`  // like "two pair, kings and sevens"
+	Score   int    `json:"score"` // of the winning hand, lower is better
 }
 
 // Positions are the button, blinds and possible straddles for a hand.
@@ -114,8 +122,11 @@ type State struct {
 	Straddles []int    `json:"straddles"` // seats that straddled this hand, in order
 	ToAct     int      `json:"toAct"`
 	Board     []Card   `json:"board"`
-	Hunted    []Card   `json:"hunted"` // the rest of the board, turned up for fun after a hand ended early
-	Deck      []Card   `json:"deck"`   // kept after the hand for Hunt
+	Hunted    []Card   `json:"hunted"`  // the rest of the board, turned up for fun after a hand ended early
+	Runs      int      `json:"runs"`    // times the board runs out, 0 until SetRuns, which means once
+	RunFrom   int      `json:"runFrom"` // board cards dealt before the runs split
+	Boards    [][]Card `json:"boards"`  // every finished runout, in order; Boards[0] is Board
+	Deck      []Card   `json:"deck"`    // kept after the hand for Hunt
 	Pots      []Pot    `json:"pots"`
 	MinRaise  uint     `json:"minRaise"`  // the smallest raise, by how much it adds to the top bet
 	Aggressor int      `json:"aggressor"` // the last to bet or raise this street, 0 for none
@@ -144,12 +155,27 @@ func (s State) Clone() State {
 	s.Straddles = slices.Clone(s.Straddles)
 	s.Board = slices.Clone(s.Board)
 	s.Hunted = slices.Clone(s.Hunted)
+	if s.Boards != nil {
+		boards := make([][]Card, len(s.Boards))
+		for i, b := range s.Boards {
+			boards[i] = slices.Clone(b)
+		}
+		s.Boards = boards
+	}
 	s.Deck = slices.Clone(s.Deck)
 	pots := make([]Pot, len(s.Pots))
 	for i, p := range s.Pots {
 		p.Eligible = slices.Clone(p.Eligible)
 		p.Winners = slices.Clone(p.Winners)
-		p.Cards = slices.Clone(p.Cards)
+		if p.Runs != nil {
+			runs := make([]PotRun, len(p.Runs))
+			for k, r := range p.Runs {
+				r.Winners = slices.Clone(r.Winners)
+				r.Cards = slices.Clone(r.Cards)
+				runs[k] = r
+			}
+			p.Runs = runs
+		}
 		pots[i] = p
 	}
 	if s.Pots == nil {

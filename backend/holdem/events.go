@@ -44,10 +44,12 @@ type Acted struct {
 	AllIn  bool   `json:"allIn"`
 }
 
-// StreetDealt is the board cards for a new street.
+// StreetDealt is the board cards for a new street, or for another run of the
+// board after the first.
 type StreetDealt struct {
 	Street Street `json:"street"`
 	Cards  []Card `json:"cards"`
+	Run    int    `json:"run"` // index in State.Boards
 }
 
 // Returned is chips nobody called going back to the player who bet them.
@@ -62,9 +64,10 @@ type Shown struct {
 	Cards [2]Card `json:"cards"`
 }
 
-// PotWon is a pot paid out.
+// PotWon is a pot, or one run's share of it, paid out.
 type PotWon struct {
 	Pot     int    `json:"pot"` // index in State.Pots
+	Run     int    `json:"run"` // index in the pot's Runs, 0 without a showdown
 	Amount  uint   `json:"amount"`
 	Winners []int  `json:"winners"`
 	Hand    string `json:"hand"` // empty without a showdown

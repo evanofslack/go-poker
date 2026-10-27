@@ -232,7 +232,7 @@ func TestShowdownSidePots(t *testing.T) {
 	if got := stacks(s); !slices.Equal(got, []uint{300, 400, 200}) {
 		t.Fatalf("stacks %v", got)
 	}
-	if s.Pots[0].Hand != "a pair of aces" || s.Pots[1].Hand != "a pair of kings" {
+	if s.Pots[0].Runs[0].Hand != "a pair of aces" || s.Pots[1].Runs[0].Hand != "a pair of kings" {
 		t.Fatalf("pots %+v", s.Pots)
 	}
 }

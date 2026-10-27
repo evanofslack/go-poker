@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math/rand/v2"
 	"reflect"
+	"slices"
 	"testing"
 )
 
@@ -135,6 +136,13 @@ func TestRollout(t *testing.T) {
 					t.Fatalf("game %d: hand didn't end", game)
 				}
 				if !s.Betting {
+					// sometimes run the rest of the board out more than once
+					if m := s.MaxRuns(); m > 0 && r.IntN(2) == 0 {
+						if err := s.SetRuns(1 + r.IntN(m)); err != nil {
+							t.Fatalf("game %d: set runs: %v", game, err)
+						}
+					}
+					try(t, &s, func() error { return s.SetRuns(r.IntN(12)) })
 					if _, err := s.NextStreet(); err != nil {
 						t.Fatalf("game %d: next street: %v", game, err)
 					}
@@ -154,6 +162,18 @@ func TestRollout(t *testing.T) {
 				// mid-hand seat changes are refused
 				if p := s.Player(s.ToAct); p != nil {
 					try(t, &s, func() error { return s.Leave(p.Seat) })
+				}
+			}
+
+			// a showdown scores every board, each one from the same start
+			if len(s.Pots) > 0 && len(s.Pots[0].Runs) > 0 {
+				if len(s.Boards) != max(s.Runs, 1) || len(s.Pots[0].Runs) != len(s.Boards) {
+					t.Fatalf("game %d: runs %d, boards %d, pot runs %d", game, s.Runs, len(s.Boards), len(s.Pots[0].Runs))
+				}
+				for _, b := range s.Boards {
+					if len(b) != 5 || !slices.Equal(b[:s.RunFrom], s.Board[:s.RunFrom]) {
+						t.Fatalf("game %d: board %v doesn't start from %v", game, b, s.Board[:s.RunFrom])
+					}
 				}
 			}
 
@@ -185,6 +205,9 @@ func normalize(s State) State {
 	if len(s.Hunted) == 0 {
 		s.Hunted = nil
 	}
+	if len(s.Boards) == 0 {
+		s.Boards = nil
+	}
 	if len(s.Pots) == 0 {
 		s.Pots = nil
 	}
@@ -193,8 +216,8 @@ func normalize(s State) State {
 		if len(p.Winners) == 0 {
 			p.Winners = nil
 		}
-		if len(p.Cards) == 0 {
-			p.Cards = nil
+		if len(p.Runs) == 0 {
+			p.Runs = nil
 		}
 		if len(p.Eligible) == 0 {
 			p.Eligible = nil

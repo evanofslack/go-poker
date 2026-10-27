@@ -120,6 +120,8 @@ func personOf(cmd Command) string {
 		return c.Person
 	case StraddlePreset:
 		return c.Person
+	case RunIt:
+		return c.Person
 	case AddBot:
 		return c.Person
 	case RemoveBot:
@@ -212,6 +214,8 @@ func (r *reducer) do(cmd Command) error {
 		return r.straddle(p, c.Yes)
 	case StraddlePreset:
 		return r.straddlePreset(p, c.Preset)
+	case RunIt:
+		return r.runIt(p, c.Runs)
 	case GetHands:
 		r.quiet = true
 		hands, more := HistoryFor(r.s, p.Name, c.Before)
@@ -289,6 +293,10 @@ func (r *reducer) timer(t TimerFired) error {
 		r.botMove()
 	case TimerStraddle:
 		r.endStraddles()
+	case TimerRunVote:
+		if r.s.RunVote != nil {
+			r.endRunVote()
+		}
 	case TimerClose:
 		r.res.Close = &Close{"ended", "the table has closed"}
 	case TimerIdle:

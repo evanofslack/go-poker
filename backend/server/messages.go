@@ -30,6 +30,7 @@ const (
 	ActionDuckHunt    = "duck-hunt"  // between hands, on tables that allow it
 	ActionStraddle    = "straddle"   // yes answers the straddle ask
 	ActionPreset      = "straddle-preset"
+	ActionRunIt       = "run-it" // runs is the pick in the run it vote
 
 	// host only
 	ActionAddBot          = "add-bot"
@@ -72,6 +73,7 @@ type Inbound struct {
 	Reason  string `json:"reason,omitempty"`  // adjust-chips
 	Yes     bool   `json:"yes,omitempty"`     // straddle
 	Preset  string `json:"preset,omitempty"`  // straddle-preset: ask, always or never
+	Runs    int    `json:"runs,omitempty"`    // run-it
 }
 
 // outbound (server) actions

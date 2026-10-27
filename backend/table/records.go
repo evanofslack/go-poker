@@ -25,6 +25,7 @@ type HandRecord struct {
 	Players []HandPlayer `json:"players"` // dealt in, in seat order
 	Actions []HandAction `json:"actions"` // antes and blinds first
 	Board   []string     `json:"board"`
+	Boards  [][]string   `json:"boards,omitempty"` // every board, when it ran out more than once
 	Pots    []HandPot    `json:"pots"`
 	// Payments are side games paid out after the hand
 	Payments []Payment `json:"payments,omitempty"`
@@ -56,6 +57,7 @@ type HandPot struct {
 	Amount  uint     `json:"amount"`
 	Winners []string `json:"winners"`
 	Hand    string   `json:"hand,omitempty"` // empty when won without a showdown
+	Run     int      `json:"run,omitempty"`  // which board it was won on, from 0, when it ran out more than once
 }
 
 // HandStats is a snapshot taken as a hand ends. Stats are worked out from
@@ -152,7 +154,9 @@ func (r *reducer) recordEvent(e holdem.Event, timeout bool) {
 			s.Acts[e.Seat] = Act{e.Street, actLabel(e)}
 		}
 	case holdem.StreetDealt:
-		h.Board = append(h.Board, cardNames(e.Cards...)...)
+		if e.Run == 0 {
+			h.Board = append(h.Board, cardNames(e.Cards...)...)
+		}
 	case holdem.Shown:
 		if hp := h.player(e.Seat); hp != nil {
 			hp.Shown = true
@@ -161,7 +165,7 @@ func (r *reducer) recordEvent(e holdem.Event, timeout bool) {
 		if e.Amount == 0 || len(e.Winners) == 0 {
 			break
 		}
-		pot := HandPot{Amount: e.Amount, Hand: e.Hand}
+		pot := HandPot{Amount: e.Amount, Hand: e.Hand, Run: e.Run}
 		for _, n := range e.Winners {
 			pot.Winners = append(pot.Winners, name(n))
 		}
@@ -208,7 +212,7 @@ func (r *reducer) finishHand() {
 	showdown := map[int]bool{}
 	for _, pot := range s.Game.Pots {
 		for _, n := range pot.Eligible {
-			showdown[n] = showdown[n] || pot.Score != 0
+			showdown[n] = showdown[n] || len(pot.Runs) > 0
 		}
 	}
 	// side games pay before the nets, so they count in them
@@ -223,6 +227,11 @@ func (r *reducer) finishHand() {
 		hp.Showdown = showdown[hp.Seat]
 		if hp.Shown {
 			hp.bestHand(p.Cards, s.Game.Board)
+		}
+	}
+	if len(s.Game.Boards) > 1 {
+		for _, b := range s.Game.Boards {
+			h.Boards = append(h.Boards, cardNames(b...))
 		}
 	}
 	tally(s.Totals, h)

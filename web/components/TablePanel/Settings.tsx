@@ -64,6 +64,7 @@ export default function Settings() {
         ["duck hunt", s.duckHunt ? "allowed" : "off"],
         ["7-2 game", s.sevenDeuce ? `${chips(s.sevenDeuce)} each` : "off"],
         ["straddles", s.straddle],
+        ["run it", s.runIt ? "up to 4 times" : "off"],
         ["to decide", seconds(s.decisionTime)],
         ["host", game.host],
     ];

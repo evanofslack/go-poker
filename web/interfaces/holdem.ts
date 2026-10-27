@@ -108,11 +108,13 @@ export interface Acted {
   allIn: boolean;
 }
 /**
- * StreetDealt is the board cards for a new street.
+ * StreetDealt is the board cards for a new street, or for another run of the
+ * board after the first.
  */
 export interface StreetDealt {
   street: Street;
   cards: Card[];
+  run: number /* int */; // index in State.Boards
 }
 /**
  * Returned is chips nobody called going back to the player who bet them.
@@ -129,10 +131,11 @@ export interface Shown {
   cards: Card[];
 }
 /**
- * PotWon is a pot paid out.
+ * PotWon is a pot, or one run's share of it, paid out.
  */
 export interface PotWon {
   pot: number /* int */; // index in State.Pots
+  run: number /* int */; // index in the pot's Runs, 0 without a showdown
   amount: number /* uint */;
   winners: number /* int */[];
   hand: string; // empty without a showdown
@@ -202,10 +205,19 @@ export interface Player {
 export interface Pot {
   amount: number /* uint */;
   eligible: number /* int */[]; // seats that can win it
+  winners: number /* int */[]; // seats that won it, or any run of it
+  runs: PotRun[]; // the result on each board, in order; empty without a showdown
+}
+/**
+ * PotRun is a pot's share on one board at showdown. A board run out more than
+ * once splits each pot between the runs.
+ */
+export interface PotRun {
+  amount: number /* uint */;
   winners: number /* int */[];
-  cards: Card[]; // the winning five, empty without a showdown
-  hand: string; // like "two pair, kings and sevens", empty without a showdown
-  score: number /* int */; // of the winning hand, lower is better; 0 without a showdown
+  cards: Card[]; // the winning five
+  hand: string; // like "two pair, kings and sevens"
+  score: number /* int */; // of the winning hand, lower is better
 }
 /**
  * Positions are the button, blinds and possible straddles for a hand.
@@ -231,6 +243,9 @@ export interface State {
   toAct: number /* int */;
   board: Card[];
   hunted: Card[]; // the rest of the board, turned up for fun after a hand ended early
+  runs: number /* int */; // times the board runs out, 0 until SetRuns, which means once
+  runFrom: number /* int */; // board cards dealt before the runs split
+  boards: Card[][]; // every finished runout, in order; Boards[0] is Board
   deck: Card[]; // kept after the hand for Hunt
   pots: Pot[];
   minRaise: number /* uint */; // the smallest raise, by how much it adds to the top bet
@@ -258,6 +273,9 @@ export interface View {
   toAct: number /* int */;
   board: Card[];
   hunted: Card[];
+  runs: number /* int */;
+  runFrom: number /* int */;
+  boards: Card[][];
   pots: Pot[];
   minRaise: number /* uint */;
   hand: number /* int */;
