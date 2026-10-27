@@ -19,6 +19,7 @@ type Settings struct {
 	MaxBuy        uint `json:"maxBuy"`
 	TurnTime      uint `json:"turnTime"`      // time to act before checking or folding for you, 0 for no limit
 	NextHandDelay uint `json:"nextHandDelay"` // pause after a hand before dealing the next
+	DecisionTime  uint `json:"decisionTime"`  // to answer a straddle ask or a run-it vote
 	Public        bool `json:"public"`        // listed on the home page
 	ApproveRebuys bool `json:"approveRebuys"` // rebuys, and sitting back down, wait for the host
 
@@ -27,8 +28,17 @@ type Settings struct {
 	DuckHunt bool `json:"duckHunt"` // players can turn up the rest of the board after a hand ends early
 	// SevenDeuce is the bounty everyone dealt in pays a player who wins the
 	// main pot with 7-2 and shows it, 0 for none
-	SevenDeuce uint `json:"sevenDeuce"`
+	SevenDeuce uint   `json:"sevenDeuce"`
+	Straddle   string `json:"straddle"` // StraddleOff, StraddleOptional or StraddleForced
 }
+
+// Straddle settings. Forced posts under the gun's straddle for them;
+// re-straddles stay optional.
+const (
+	StraddleOff      = "off"
+	StraddleOptional = "optional"
+	StraddleForced   = "forced"
+)
 
 // DefaultSettings are used for anything create-table leaves out.
 var DefaultSettings = Settings{
@@ -39,7 +49,9 @@ var DefaultSettings = Settings{
 	MaxBuy:        4000,
 	TurnTime:      30000,
 	NextHandDelay: 5000,
+	DecisionTime:  5000,
 	DuckHunt:      true,
+	Straddle:      StraddleOff,
 }
 
 // settings limits, mirrored by the create table form
@@ -51,6 +63,8 @@ const (
 	maxTurnTime      = 300_000
 	minNextHandDelay = 2000
 	maxNextHandDelay = 15_000
+	minDecisionTime  = 2000
+	maxDecisionTime  = 30_000
 	maxSevenDeuceBB  = 10 // the most a 7-2 bounty can be, in big blinds
 )
 
@@ -75,6 +89,10 @@ func (s Settings) Validate() error {
 		return fmt.Errorf("turn timer must be off or between %d and %d seconds", minTurnTime/1000, maxTurnTime/1000)
 	case s.NextHandDelay < minNextHandDelay || s.NextHandDelay > maxNextHandDelay:
 		return fmt.Errorf("next hand delay must be between %d and %d seconds", minNextHandDelay/1000, maxNextHandDelay/1000)
+	case s.DecisionTime < minDecisionTime || s.DecisionTime > maxDecisionTime:
+		return fmt.Errorf("decision time must be between %d and %d seconds", minDecisionTime/1000, maxDecisionTime/1000)
+	case s.Straddle != StraddleOff && s.Straddle != StraddleOptional && s.Straddle != StraddleForced:
+		return errors.New("straddle must be off, optional or forced")
 	}
 	return nil
 }
@@ -111,6 +129,9 @@ func (r *reducer) updateSettings(p *Person, set Settings) error {
 func (r *reducer) applySettings(who string, set Settings) {
 	s := r.s
 	changes := settingsChanges(s.Settings, set)
+	if s.Settings.SmallBlind != set.SmallBlind || s.Settings.BigBlind != set.BigBlind || s.Settings.Ante != set.Ante {
+		r.dropStraddles() // asked at the old blinds
+	}
 	s.Settings, s.Next = set, nil
 	s.Game.SetConfig(holdem.Config{SmallBlind: set.SmallBlind, BigBlind: set.BigBlind, Ante: set.Ante})
 	if changes != "" {
@@ -153,6 +174,8 @@ func settingsChanges(old, set Settings) string {
 	add(old.ApproveRebuys != set.ApproveRebuys, "rebuy approval %s", onOff(set.ApproveRebuys))
 	add(old.DuckHunt != set.DuckHunt, "duck hunt %s", onOff(set.DuckHunt))
 	add(old.SevenDeuce != set.SevenDeuce, "the 7-2 bounty to %s", chips(set.SevenDeuce))
+	add(old.Straddle != set.Straddle, "straddles %s", set.Straddle)
+	add(old.DecisionTime != set.DecisionTime, "the decision time to %ds", set.DecisionTime/1000)
 	return strings.Join(c, ", ")
 }
 

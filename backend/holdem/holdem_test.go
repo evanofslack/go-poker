@@ -62,7 +62,7 @@ func must(t *testing.T, events []Event, err error) []Event {
 
 func start(t *testing.T, s *State) []Event {
 	t.Helper()
-	events, err := s.StartHand()
+	events, err := s.StartHand(0)
 	return must(t, events, err)
 }
 
@@ -249,7 +249,7 @@ func TestBustedSitsOut(t *testing.T) {
 	if !s.Player(1).SittingOut || s.Player(2).SittingOut {
 		t.Fatal("the busted player should sit out")
 	}
-	if _, err := s.StartHand(); !errors.Is(err, ErrNotEnoughPlayers) {
+	if _, err := s.StartHand(0); !errors.Is(err, ErrNotEnoughPlayers) {
 		t.Fatalf("one player left with chips: %v", err)
 	}
 }
@@ -373,7 +373,7 @@ func TestOutOfTurnAndBetweenHands(t *testing.T) {
 	if err := s.AddChips(1, 100); !errors.Is(err, ErrInHand) {
 		t.Fatalf("adding chips mid-hand: %v", err)
 	}
-	if _, err := s.StartHand(); !errors.Is(err, ErrInHand) {
+	if _, err := s.StartHand(0); !errors.Is(err, ErrInHand) {
 		t.Fatalf("starting a hand mid-hand: %v", err)
 	}
 	act(t, s, 1, Fold{})
@@ -388,7 +388,7 @@ func TestOutOfTurnAndBetweenHands(t *testing.T) {
 
 func TestNotEnoughPlayers(t *testing.T) {
 	s := game(t, 1000, 0)
-	if _, err := s.StartHand(); !errors.Is(err, ErrNotEnoughPlayers) {
+	if _, err := s.StartHand(0); !errors.Is(err, ErrNotEnoughPlayers) {
 		t.Fatalf("got %v", err)
 	}
 	if err := s.SetSittingOut(2, false); !errors.Is(err, ErrBadAmount) {

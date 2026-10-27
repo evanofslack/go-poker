@@ -119,7 +119,7 @@ export interface HandPlayer {
 export interface HandAction {
   street: string; // preflop, flop, turn or river
   name: string;
-  kind: string; // ante, small blind, big blind, check, call, bet, raise or fold
+  kind: string; // ante, small blind, big blind, straddle, check, call, bet, raise or fold
   amount?: number /* uint */; // chips put in
   to?: number /* uint */; // their bet on this street after putting them in
   allIn?: boolean;
@@ -193,6 +193,7 @@ export interface Settings {
   maxBuy: number /* uint */;
   turnTime: number /* uint */; // time to act before checking or folding for you, 0 for no limit
   nextHandDelay: number /* uint */; // pause after a hand before dealing the next
+  decisionTime: number /* uint */; // to answer a straddle ask or a run-it vote
   public: boolean; // listed on the home page
   approveRebuys: boolean; // rebuys, and sitting back down, wait for the host
   /**
@@ -205,7 +206,23 @@ export interface Settings {
    * main pot with 7-2 and shows it, 0 for none
    */
   sevenDeuce: number /* uint */;
+  straddle: string; // StraddleOff, StraddleOptional or StraddleForced
 }
+/**
+ * Straddle settings. Forced posts under the gun's straddle for them;
+ * re-straddles stay optional.
+ */
+export const StraddleOff = "off";
+/**
+ * Straddle settings. Forced posts under the gun's straddle for them;
+ * re-straddles stay optional.
+ */
+export const StraddleOptional = "optional";
+/**
+ * Straddle settings. Forced posts under the gun's straddle for them;
+ * re-straddles stay optional.
+ */
+export const StraddleForced = "forced";
 
 //////////
 // source: sidegames.go
@@ -273,6 +290,34 @@ export interface Totals {
 }
 
 //////////
+// source: straddle.go
+
+/**
+ * Straddle presets: how a seated player answers straddle asks.
+ */
+export const PresetAsk = "ask";
+/**
+ * Straddle presets: how a seated player answers straddle asks.
+ */
+export const PresetAlways = "always";
+/**
+ * Straddle presets: how a seated player answers straddle asks.
+ */
+export const PresetNever = "never";
+/**
+ * StraddleAsk is the straddles for the next hand, asked one seat at a time
+ * from under the gun while the table waits between hands. Each yes asks the
+ * next seat to double it; a no, the timer, or running out of seats ends it.
+ */
+export interface StraddleAsk {
+  seat: number /* int */; // being asked, 0 once the asking is over
+  amount: number /* uint */; // what Seat would straddle
+  asked: number /* int */[]; // seats asked so far, in order, Seat included
+  yes: number /* int */[]; // seats straddling, in order
+  waiting: boolean; // the deal is due and waits for the answer
+}
+
+//////////
 // source: view.go
 
 /**
@@ -304,6 +349,7 @@ export interface View {
   button: number /* int */;
   sb: number /* int */;
   bb: number /* int */;
+  straddles: number /* int */[]; // seats that straddled this hand, in order
   toAct: number /* int */;
   board: number[];
   hunted: number[]; // the rest of the board, from a duck hunt
@@ -329,6 +375,9 @@ export interface View {
   ledger: LedgerView;
   acts: { [key: number /* int */]: string}; // what each seat did this street
   standUp?: StandUp;
+  straddleAsk?: StraddleAsk;
+  straddleEndsIn: number /* int64 */; // ms the player asked to straddle has left
+  straddlePreset: string; // yours: ask, always or never
   lastStandUp: number /* uint */; // the payout of the stand-up round that just ended
 }
 /**

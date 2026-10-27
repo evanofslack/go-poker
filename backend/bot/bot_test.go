@@ -108,7 +108,7 @@ func TestSpotOf(t *testing.T) {
 	for seat := 1; seat <= 3; seat++ {
 		must(t, g.Sit(seat, 1000))
 	}
-	_, err := g.StartHand()
+	_, err := g.StartHand(0)
 	must(t, err)
 	s := spotOf(g.View(g.ToAct), g.ToAct)
 	if len(s.board) != 0 || s.top != 20 || s.pot != 30 || s.others != 2 || s.bb != 20 || s.hole[0] == 0 {

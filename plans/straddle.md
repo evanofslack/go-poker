@@ -1,6 +1,6 @@
 # Straddles and run it N times
 
-**Status: planned.** Stage 11 in `todo.md`, after the e2e cleanup (`e2e.md`).
+**Status: in progress.** Stage 11 in `todo.md`, after the e2e cleanup (`e2e.md`).
 
 Two house rules that change the betting engine (`holdem/`), unlike stage 9's. Each gets engine
 tests, including `rollout_test.go`'s random hands, before any table or web work.
@@ -12,11 +12,13 @@ tests, including `rollout_test.go`'s random hands, before any table or web work.
   up or 3 handed, one 4 handed, two 5 handed.
 - The host picks `off`, `optional` or `forced`. Forced posts the first straddle for under the gun;
   re-straddles stay optional.
-- You can only straddle for the full amount. No all-in straddles.
+- You can only straddle for the full amount, with chips left behind. No all-in straddles.
+- Players can preset ask, always or never in the seat menu, so they skip the prompt.
+- One host setting, `DecisionTime`, is how long the straddle prompt and the run-it vote wait.
 - Run it N times only when the hand is all in before the river, only if the table allows it. Only
   players still in the hand vote. Each picks a number of runs; the table runs the smallest pick,
   so everyone agreed to at least that many.
-- N goes as high as the deck allows. There are no burn cards, so that's
+- N goes up to 4, or fewer if the deck runs out. There are no burn cards, so the deck allows
   `len(Deck) / (5 - len(Board))`: 9 heads up all in preflop, 6 with nine players preflop.
 - 7-2 and stand-up count a win on any run. The 7-2 bounty is paid in full once, not per run.
 
@@ -33,7 +35,8 @@ tests, including `rollout_test.go`'s random hands, before any table or web work.
 ### Engine (`holdem/`)
 - `Positions()` returns what the next hand would be without changing anything: `Button`, `SB`,
   `BB` and `Straddle []int`, the seats that could straddle in order, from under the gun up to the
-  seat before the button, cut off at the first who can't cover their straddle (after the ante).
+  seat before the button, cut off at the first who can't put in their straddle and still have chips behind (after the
+  ante).
   `StartHand` uses the same code to place the button and blinds, so the two can't disagree.
 - `StartHand(straddles int)` deals as now, then posts `Positions().Straddle[:straddles]` after the
   blinds: the k-th straddle (from 0) is `BigBlind << (k+1)`, put in with `put` like the blinds, as an
@@ -48,14 +51,22 @@ tests, including `rollout_test.go`'s random hands, before any table or web work.
 ### Table (`table/`)
 - Setting `Straddle string`: `"off"` (default), `"optional"`, `"forced"`. Validated in
   `Settings.Validate`, editable between hands like the other house rules, logged when changed.
-- Asking: `State.StraddleAsk *StraddleAsk{Seat, Amount, Yes []int}` plus `TimerStraddle` (5s).
+- Setting `DecisionTime uint` (ms), default 5000, 2 to 30s, editable between hands: how long the
+  straddle ask and the run-it vote wait.
+- Preset `Seat.Straddle string`: `"ask"` (default), `"always"`, `"never"`, set from the seat menu
+  with a `StraddlePreset{Person, Straddle}` command and cleared when the player stands. always
+  answers yes as soon as they're asked, never ends the chain at them, ask prompts. Forced still
+  posts for under the gun on never.
+- Asking: `State.StraddleAsk *StraddleAsk{Seat, Amount, Yes []int}` plus `TimerStraddle`
+  (`DecisionTime`).
   The player answers with a `Straddle{Person, Yes bool}` command. Yes appends to `Yes`, logs "alice
   straddles 40" and asks the next seat in `Positions().Straddle`; no, the timer, or running out of
   seats ends the asking. The hand then deals with `StartHand(len(Yes))`.
-- When: the first ask goes out as the pause between hands starts (`afterHand`, alongside
-  `scheduleDeal`), with the pause as its deadline, so a table where nobody straddles plays at the
-  same speed. Each yes gives the next player 5s. If `TimerDeal` fires while someone is still being
-  asked, it waits for the answer. On the first hand the ask goes out when the host presses start.
+- When: the first ask goes out as the pause between hands starts, so a table where nobody is
+  asked plays at the same speed. Each ask gives the player `DecisionTime`. If `TimerDeal` fires
+  while someone is still being asked, the deal waits for the answer (`StraddleAsk.Waiting`). On
+  the first hand the ask goes out when the host presses start. `askStraddles` runs after every
+  command and keeps the ask in step with the table.
 - Who's skipped: bots, disconnected players and players sitting out (or sitting out next hand) end
   the chain at their seat, as a no. Bots still post a forced straddle.
 - Forced: under the gun's straddle is in `Yes` from the start, without asking, if they can cover it;
@@ -78,6 +89,7 @@ tests, including `rollout_test.go`'s random hands, before any table or web work.
 - A toast and log line for each straddle; seats show "STR" next to SB/BB (`Seat.tsx` `Badges`,
   `blind()`).
 - The setting in the create form's house rules and the settings tab, as a three-way choice.
+- The preset in the seat menu (ask / always / never), and `DecisionTime` next to the turn timer.
 
 ### Tests
 - Engine: `Positions` at 2, 3, 4, 5 and 9 handed; action order and min raise with one, two and three
@@ -111,7 +123,7 @@ tests, including `rollout_test.go`'s random hands, before any table or web work.
 - Setting `RunIt bool`, "allow running it more than once", default off.
 - When the hand is all in before the river (in `played`, where it schedules `TimerStreet` with no
   betting), the table asks instead: `State.RunVote *RunVote{Seats, Picks map[int]int, Max}` plus
-  `TimerRunVote` (5s). `Seats` are the players still in. They answer with
+  `TimerRunVote` (`DecisionTime`). `Max` is `min(4, MaxRuns())`. `Seats` are the players still in. They answer with
   `RunIt{Person, Runs int}`. Once everyone has answered, or the timer runs out, the table calls
   `SetRuns(smallest pick)` and deals on. Unanswered and disconnected count as 1. Bots pick the max,
   so the humans decide.
@@ -151,7 +163,3 @@ tests, including `rollout_test.go`'s random hands, before any table or web work.
 
 Straddles and run it don't touch each other, so 3 can be written alongside 1 or 2.
 
-## Open questions
-- Should a player be able to pre-set "always" / "never" in the seat menu, to skip the prompt?
-- Is 5s right for the straddle prompt and the vote?
-- Cap the run-it picker (say at 4) even when the deck allows more?

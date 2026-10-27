@@ -33,7 +33,7 @@ func tally(totals map[string]*Totals, r *HandRecord) {
 	vpip, pfr, spot, threeBet, foldedPreflop := map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}
 	raises := 0
 	for _, a := range r.Actions {
-		if a.Kind == "ante" || a.Kind == "small blind" || a.Kind == "big blind" {
+		if a.Kind == "ante" || a.Kind == "small blind" || a.Kind == "big blind" || a.Kind == "straddle" {
 			continue
 		}
 		if a.Street == "preflop" {

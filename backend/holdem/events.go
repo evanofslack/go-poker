@@ -26,6 +26,7 @@ const (
 	KindAnte       = "ante"
 	KindSmallBlind = "small blind"
 	KindBigBlind   = "big blind"
+	KindStraddle   = "straddle"
 	KindCheck      = "check"
 	KindCall       = "call"
 	KindBet        = "bet"
@@ -33,7 +34,7 @@ const (
 	KindFold       = "fold"
 )
 
-// Acted is a player posting an ante or blind, or acting.
+// Acted is a player posting an ante, blind or straddle, or acting.
 type Acted struct {
 	Seat   int    `json:"seat"`
 	Street Street `json:"street"`

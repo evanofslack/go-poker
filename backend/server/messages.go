@@ -28,6 +28,8 @@ const (
 	ActionGetHands    = "get-hands"
 	ActionShowCards   = "show-cards" // between hands
 	ActionDuckHunt    = "duck-hunt"  // between hands, on tables that allow it
+	ActionStraddle    = "straddle"   // yes answers the straddle ask
+	ActionPreset      = "straddle-preset"
 
 	// host only
 	ActionAddBot          = "add-bot"
@@ -68,6 +70,8 @@ type Inbound struct {
 	Name    string `json:"name,omitempty"`    // add-bot, and the host actions that name a player
 	Level   string `json:"level,omitempty"`   // add-bot
 	Reason  string `json:"reason,omitempty"`  // adjust-chips
+	Yes     bool   `json:"yes,omitempty"`     // straddle
+	Preset  string `json:"preset,omitempty"`  // straddle-preset: ask, always or never
 }
 
 // outbound (server) actions

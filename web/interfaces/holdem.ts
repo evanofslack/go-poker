@@ -75,6 +75,10 @@ export const KindBigBlind = "big blind";
 /**
  * Action kinds
  */
+export const KindStraddle = "straddle";
+/**
+ * Action kinds
+ */
 export const KindCheck = "check";
 /**
  * Action kinds
@@ -93,7 +97,7 @@ export const KindRaise = "raise";
  */
 export const KindFold = "fold";
 /**
- * Acted is a player posting an ante or blind, or acting.
+ * Acted is a player posting an ante, blind or straddle, or acting.
  */
 export interface Acted {
   seat: number /* int */;
@@ -204,6 +208,15 @@ export interface Pot {
   score: number /* int */; // of the winning hand, lower is better; 0 without a showdown
 }
 /**
+ * Positions are the button, blinds and possible straddles for a hand.
+ */
+export interface Positions {
+  button: number /* int */;
+  sb: number /* int */;
+  bb: number /* int */;
+  straddle: number /* int */[]; // seats that may straddle, in order, from under the gun
+}
+/**
  * State is a game of hold'em.
  */
 export interface State {
@@ -214,6 +227,7 @@ export interface State {
   button: number /* int */; // seats, 0 for none
   sb: number /* int */;
   bb: number /* int */;
+  straddles: number /* int */[]; // seats that straddled this hand, in order
   toAct: number /* int */;
   board: Card[];
   hunted: Card[]; // the rest of the board, turned up for fun after a hand ended early
@@ -240,6 +254,7 @@ export interface View {
   button: number /* int */;
   sb: number /* int */;
   bb: number /* int */;
+  straddles: number /* int */[];
   toAct: number /* int */;
   board: Card[];
   hunted: Card[];

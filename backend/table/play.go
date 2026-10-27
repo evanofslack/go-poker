@@ -36,20 +36,34 @@ func (r *reducer) scheduleDeal() {
 	}
 }
 
-// dealHand deals a new hand. waiting logs why it can't, for a hand that was
-// due.
+// dealHand deals a new hand, once nobody is being asked to straddle.
+// waiting logs why it can't, for a hand that was due.
 func (r *reducer) dealHand(waiting bool) {
 	s := r.s
 	if !s.Running || s.Paused || s.Ended() || s.Game.InHand() {
 		return
 	}
-	events, err := s.Game.StartHand()
+	r.askStraddles()
+	if s.Game.InHand() {
+		return // the asking ended and dealt
+	}
+	straddles := 0
+	if a := s.StraddleAsk; a != nil {
+		if a.Seat != 0 {
+			a.Waiting = true
+			return
+		}
+		straddles = len(a.Yes)
+	}
+	events, err := s.Game.StartHand(straddles)
 	if err != nil {
 		if waiting {
 			r.log("waiting for players")
 		}
 		return
 	}
+	r.cancel(TimerDeal)
+	r.dropStraddles()
 	clear(s.Acts)
 	r.played(events, false)
 }

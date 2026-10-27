@@ -1,6 +1,8 @@
 import {
     blinds,
     antes,
+    decisionTimes,
+    straddleModes,
     sevenDeuces,
     handDelays,
     maxPasswordLen,
@@ -143,6 +145,16 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                         value={form.nextHandDelay}
                         onChange={(ms) => set({ nextHandDelay: ms })}
                     />
+                    {form.straddle !== "off" && (
+                        <Segmented
+                            legend="to decide"
+                            hint="how long a player has to answer whether to straddle"
+                            name="decisionTime"
+                            options={decisionTimes.map((ms) => ({ label: `${ms / 1000}s`, value: ms }))}
+                            value={form.decisionTime}
+                            onChange={(ms) => set({ decisionTime: ms })}
+                        />
+                    )}
                 </Section>
             </div>
             <div className="flex flex-col gap-5">
@@ -185,6 +197,14 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                         options={sevenDeuces.map((n) => ({ label: n ? `${n} bb` : "off", value: n }))}
                         value={form.sevenDeuce}
                         onChange={(n) => set({ sevenDeuce: n })}
+                    />
+                    <Segmented
+                        legend="straddles"
+                        hint="under the gun can post 2 bb before the deal, and each next player double that; forced posts the first one"
+                        name="straddle"
+                        options={straddleModes.map((m) => ({ label: m, value: m }))}
+                        value={form.straddle}
+                        onChange={(m) => set({ straddle: m })}
                     />
                     <Toggle
                         id="duckHunt"

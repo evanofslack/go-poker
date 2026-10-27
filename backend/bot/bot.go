@@ -68,12 +68,12 @@ type spot struct {
 	minRaise uint
 	called   bool // already acted, so it can't raise unless someone raised
 	pot      uint // every chip bet this hand, this street included
-	bb       uint // the big blind
+	bb       uint // the big blind, or the last straddle
 	others   int  // opponents still in the hand
 }
 
 func spotOf(view holdem.View, seat int) spot {
-	s := spot{board: view.Board, bb: view.Config.BigBlind, minRaise: view.MinRaise}
+	s := spot{board: view.Board, bb: view.Config.BigBlind << len(view.Straddles), minRaise: view.MinRaise}
 	for _, p := range view.Players {
 		s.top = max(s.top, p.Bet)
 		s.pot += p.Committed

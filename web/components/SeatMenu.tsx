@@ -1,16 +1,18 @@
 import { useRef, useState } from "react";
-import { leaveSeat, rebuy, sitOut } from "../actions/actions";
+import { leaveSeat, rebuy, sitOut, straddlePreset } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { useDismiss } from "../hooks/useDismiss";
 import { PlayerView, View } from "../interfaces/index";
 import BuyIn from "./BuyIn";
+import Toggle from "./Toggle";
 
 type seatMenuProps = {
     player: PlayerView;
     view: View;
 };
 
-// SeatMenu holds your own seat's controls: leave, sit out or in, and rebuy
+// SeatMenu holds your own seat's controls: leave, sit out or in, rebuy, and
+// whether to straddle
 export default function SeatMenu({ player, view }: seatMenuProps) {
     const socket = useSocket();
     const [open, setOpen] = useState(false);
@@ -89,6 +91,17 @@ export default function SeatMenu({ player, view }: seatMenuProps) {
                                 >
                                     rebuy
                                 </button>
+                            )}
+                            {view.settings.straddle !== "off" && !view.ended && (
+                                // off asks you each time
+                                <div className="px-3 py-1.5">
+                                    <Toggle
+                                        id="alwaysStraddle"
+                                        label="always straddle"
+                                        checked={view.straddlePreset === "always"}
+                                        onChange={(on) => straddlePreset(socket, on ? "always" : "ask")}
+                                    />
+                                </div>
                             )}
                             <button
                                 role="menuitem"

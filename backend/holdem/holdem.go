@@ -94,6 +94,14 @@ type Pot struct {
 	Score    int    `json:"score"` // of the winning hand, lower is better; 0 without a showdown
 }
 
+// Positions are the button, blinds and possible straddles for a hand.
+type Positions struct {
+	Button   int   `json:"button"`
+	SB       int   `json:"sb"`
+	BB       int   `json:"bb"`
+	Straddle []int `json:"straddle"` // seats that may straddle, in order, from under the gun
+}
+
 // State is a game of hold'em.
 type State struct {
 	Config    Config   `json:"config"`
@@ -103,6 +111,7 @@ type State struct {
 	Button    int      `json:"button"`  // seats, 0 for none
 	SB        int      `json:"sb"`
 	BB        int      `json:"bb"`
+	Straddles []int    `json:"straddles"` // seats that straddled this hand, in order
 	ToAct     int      `json:"toAct"`
 	Board     []Card   `json:"board"`
 	Hunted    []Card   `json:"hunted"` // the rest of the board, turned up for fun after a hand ended early
@@ -132,6 +141,7 @@ func (s *State) SetConfig(cfg Config) error {
 // Clone returns a deep copy of s.
 func (s State) Clone() State {
 	s.Players = slices.Clone(s.Players)
+	s.Straddles = slices.Clone(s.Straddles)
 	s.Board = slices.Clone(s.Board)
 	s.Hunted = slices.Clone(s.Hunted)
 	s.Deck = slices.Clone(s.Deck)

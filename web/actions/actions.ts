@@ -120,6 +120,16 @@ export function showCards(socket: WebSocket) {
     send(socket, { action: "show-cards" });
 }
 
+// straddle answers the ask to straddle before the deal
+export function straddle(socket: WebSocket, yes: boolean) {
+    send(socket, { action: "straddle", yes });
+}
+
+// straddlePreset sets how you answer straddle asks: ask, always or never
+export function straddlePreset(socket: WebSocket, preset: string) {
+    send(socket, { action: "straddle-preset", preset });
+}
+
 // duckHunt turns up the rest of the board after a hand that ended early
 export function duckHunt(socket: WebSocket) {
     send(socket, { action: "duck-hunt" });

@@ -3,7 +3,7 @@ import { AppContext } from "../providers/AppStore";
 import { removeBot, takeSeat } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { PlayerView, View } from "../interfaces/index";
-import Card, { MiniCards, cardSize } from "./Card";
+import Card, { MiniCards, bigCardSize, cardSize } from "./Card";
 import BuyIn from "./BuyIn";
 import Dialog from "./Dialog";
 import AddBot from "./AddBot";
@@ -28,6 +28,8 @@ function plateStyle(player: PlayerView, view: View) {
         "opacity-50": player.sittingOut && !action && !winner,
         // folded this hand
         "opacity-60": !player.sittingOut && !player.in && view.street !== "",
+        // opacity would trap your seat menu under the cards above the plate
+        "has-[[role=menu]]:opacity-100": true,
         // clear the cards that overlap the top of the plate
         "pt-2.5 short:py-0.5 short:pl-3": true,
         // room for the countdown along the bottom
@@ -144,7 +146,7 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
             <div
                 className={classNames(
                     "relative z-10 -mb-2 flex gap-0.5 short:-mr-2 short:mb-0",
-                    cardSize.h,
+                    own ? bigCardSize.h : cardSize.h,
                     mini && "hidden"
                 )}
             >
@@ -159,6 +161,7 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
                             folded={!player.in && !(view.street === "" && player.shown)}
                             hidden={!c}
                             highlight={winning.has(c)}
+                            big={own}
                         />
                     ))}
             </div>

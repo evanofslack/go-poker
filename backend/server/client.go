@@ -296,6 +296,13 @@ func (c *Client) command(in Inbound) (table.Command, error) {
 		return table.Show{Person: p}, nil
 	case ActionDuckHunt:
 		return table.Hunt{Person: p}, nil
+	case ActionStraddle:
+		return table.Straddle{Person: p, Yes: in.Yes}, nil
+	case ActionPreset:
+		if !validPreset(in.Preset) {
+			return nil, c.refuse("invalid straddle preset")
+		}
+		return table.StraddlePreset{Person: p, Preset: in.Preset}, nil
 	case ActionRebuy:
 		if !validBuyIn(in.Amount) {
 			return nil, c.refuse("rebuy amount must be more than 0")

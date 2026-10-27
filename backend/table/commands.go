@@ -64,6 +64,19 @@ type Show struct{ Person string }
 // Hunt turns up the rest of the board after a hand that ended early.
 type Hunt struct{ Person string }
 
+// Straddle answers the straddle ask.
+type Straddle struct {
+	Person string
+	Yes    bool
+}
+
+// StraddlePreset sets how the person answers straddle asks: PresetAsk,
+// PresetAlways or PresetNever.
+type StraddlePreset struct {
+	Person string
+	Preset string
+}
+
 // GetHands asks for the hands played before hand number Before.
 type GetHands struct {
 	Person string
@@ -161,6 +174,8 @@ func (Rebuy) command()          {}
 func (Show) command()           {}
 func (Hunt) command()           {}
 func (GetHands) command()       {}
+func (Straddle) command()       {}
+func (StraddlePreset) command() {}
 func (AddBot) command()         {}
 func (RemoveBot) command()      {}
 func (HostAction) command()     {}

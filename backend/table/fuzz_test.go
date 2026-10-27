@@ -23,6 +23,7 @@ func TestRandomCommands(t *testing.T) {
 		set.Ante = r.UintN(3) * set.BigBlind / 4
 		set.DuckHunt = r.IntN(2) == 0
 		set.SevenDeuce = r.UintN(3) * set.BigBlind
+		set.Straddle = []string{StraddleOff, StraddleOptional, StraddleForced}[r.IntN(3)]
 		if r.IntN(3) == 0 {
 			set.TurnTime = 0
 		}
@@ -47,7 +48,7 @@ func TestRandomCommands(t *testing.T) {
 			id := h.ids[name]
 			other := names[r.IntN(len(names))]
 			var cmd Command
-			switch r.IntN(30) {
+			switch r.IntN(33) {
 			case 0, 1:
 				joins++
 				newID := fmt.Sprintf("%s-%d", name, joins)
@@ -104,7 +105,12 @@ func TestRandomCommands(t *testing.T) {
 				next.SevenDeuce = r.UintN(3) * next.BigBlind
 				next.ApproveRebuys = r.IntN(2) == 0
 				next.TurnTime = []uint{0, 15000, 30000}[r.IntN(3)]
+				next.Straddle = []string{StraddleOff, StraddleOptional, StraddleForced}[r.IntN(3)]
 				cmd = UpdateSettings{Person: id, Settings: next}
+			case 23, 24:
+				cmd = Straddle{Person: id, Yes: r.IntN(3) > 0}
+			case 25:
+				cmd = StraddlePreset{Person: id, Preset: []string{PresetAsk, PresetAlways, PresetNever}[r.IntN(3)]}
 			default:
 				// whoever is to act moves, if they're a person
 				g := &h.s.Game

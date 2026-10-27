@@ -73,6 +73,14 @@ export const ActionShowCards = "show-cards"; // between hands
  */
 export const ActionDuckHunt = "duck-hunt"; // between hands, on tables that allow it
 /**
+ * inbound (client) actions
+ */
+export const ActionStraddle = "straddle"; // yes answers the straddle ask
+/**
+ * inbound (client) actions
+ */
+export const ActionPreset = "straddle-preset";
+/**
  * host only
  */
 export const ActionAddBot = "add-bot";
@@ -161,6 +169,8 @@ export interface Inbound {
   name?: string; // add-bot, and the host actions that name a player
   level?: string; // add-bot
   reason?: string; // adjust-chips
+  yes?: boolean; // straddle
+  preset?: string; // straddle-preset: ask, always or never
 }
 /**
  * outbound (server) actions
