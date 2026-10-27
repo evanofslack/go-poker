@@ -1,5 +1,5 @@
 // Two-player session: hidden cards, next hand, reload, turn timer and grace period.
-import { URL, check, create, finish, gone, has, join, last, launch, open, quiet, record, shot, sit, until } from "./lib.mjs";
+import { URL, check, create, finish, gone, grace, has, join, last, launch, open, quick, quiet, record, shot, sit, until } from "./lib.mjs";
 
 // dealt counts the hands dealt, from updates where betting starts
 const dealt = (rec) => rec.views.filter((g, i) => g.betting && !rec.views[i - 1]?.betting).length;
@@ -12,8 +12,15 @@ const bob = await open(browser);
 const aRec = record(alice);
 const bRec = record(bob);
 
+// the shortest turn timer, which has to run out before the reconnect grace
+const turnTime = 15000;
+const setup = async (p) => {
+    await p.click(`label:has(input[name="turnTime"]) >> text="${turnTime / 1000}s"`);
+    await quick(p);
+};
+
 // create, join, sit, start
-await create(alice, "alice", table);
+await create(alice, "alice", table, setup);
 await sit(alice, 1);
 await until(() => last(aRec)?.players.length === 1);
 await join(bob, "bob", table);
@@ -64,11 +71,9 @@ await shot(bob, "4-bob-after-reload");
 
 // close bob's tab; bob acts first in hand 2 (dealer), so the turn timer acts for him
 await bob.context().close();
-console.log("  waiting for the 30s turn timer...");
-const timedOut = await until(() => aRec.hands.some((h) => h.record.actions.some((a) => a.name === "bob" && a.timeout)), 40000);
+const timedOut = await until(() => aRec.hands.some((h) => h.record.actions.some((a) => a.name === "bob" && a.timeout)), turnTime + 5000);
 check("turn timer acts for a closed tab", timedOut, JSON.stringify(aRec.hands.at(-1)?.record.actions));
-console.log("  waiting for the 60s grace period...");
-check("closed tab is removed after the grace period", await until(() => aRec.logs.includes("bob left the table"), 70000));
+check("closed tab is removed after the grace period", await until(() => aRec.logs.includes("bob left the table"), grace + 5000));
 await shot(alice, "5-alice-after-bob-left");
 
 await browser.close();

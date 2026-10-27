@@ -1,6 +1,6 @@
 // Bots: the host adds bots of each level, plays a hand against them, removes one, and starts
 // a game of only bots without taking a seat.
-import { check, checkDown, create, finish, has, join, last, launch, open, panel, record, shot, sit, until } from "./lib.mjs";
+import { check, checkDown, create, finish, has, join, last, launch, open, panel, quick, record, shot, sit, until } from "./lib.mjs";
 
 const names = ["harper", "eric", "yasmin", "robert", "gus", "rishi", "venetia", "kenny", "daria", "sweetpea", "henry", "jesse"];
 
@@ -13,7 +13,7 @@ const browser = await launch();
 const alice = await open(browser);
 const aRec = record(alice);
 const table = "bots" + Date.now();
-await create(alice, "alice", table);
+await create(alice, "alice", table, quick);
 await sit(alice, 1);
 await alice.waitForSelector("text=+ bot");
 
@@ -88,7 +88,7 @@ check("host removes a bot", await until(() => !last(aRec)?.players.some((p) => p
 // a host without a seat runs a game of only bots
 const bob = await open(browser);
 const bRec = record(bob);
-await create(bob, "bob", "botsonly" + Date.now());
+await create(bob, "bob", "botsonly" + Date.now(), quick);
 for (const seat of ["1", "2"]) {
     await bob.locator("button", { hasText: "Open" }).filter({ hasText: seat }).click();
     await bob.click('button:text-is("add a bot here instead")');
@@ -96,7 +96,7 @@ for (const seat of ["1", "2"]) {
     await until(() => last(bRec)?.players.length === Number(seat));
 }
 await bob.click('button:text-is("start")');
-// bots think 1-2s per move, streets pause 1s and hands are 5s apart, so two hands take over a minute
+// at the default BOT_DELAY bots think 1-2s a move, so two hands can take most of a minute
 check("bots-only game plays hands", await until(() => bRec.hands.length >= 2, 90000));
 check("spectating host sees no bot cards mid-hand", bRec.views.filter((g) => g.betting && g.street !== "preflop").every((g) => g.players.every((p) => p.cards[0] === 0) || g.players.every((p) => !p.in || p.stack === 0)));
 await shot(bob, "bots-3-alone");

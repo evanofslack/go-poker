@@ -1,5 +1,5 @@
 // Hands tab: the hands played, with only your own and shown cards, and mucked hands marked.
-import { check, checkDown, finish, has, join, launch, open, panel, seat, shot } from "./lib.mjs";
+import { check, checkDown, finish, has, join, launch, open, panel, quick, seat, shot } from "./lib.mjs";
 
 const hand = (p, n) => p.locator('[aria-label="hand history"] > li').filter({ has: p.locator(`button[aria-label="hand ${n}"]`) });
 // cards shown in a hand's player list, once it's open
@@ -11,7 +11,7 @@ const cardsIn = async (p, n) => {
 
 const browser = await launch();
 const table = "hist" + Date.now();
-const [alice, bob] = await seat(browser, table, ["alice", "bob"]);
+const [alice, bob] = await seat(browser, table, ["alice", "bob"], quick);
 await panel(alice, "hands");
 check("no hands before the first", await has(alice, "text=hands show up here once they're played"));
 

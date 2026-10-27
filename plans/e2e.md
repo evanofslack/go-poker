@@ -1,6 +1,6 @@
 # e2e cleanup
 
-**Status: planned.** Stage 10 in `todo.md`, before straddles and run it (`straddle.md`).
+**Status: PRs 1 and 2 done; CI next.** Stage 10 in `todo.md`, before straddles and run it (`straddle.md`).
 
 The goal: a suite that's quick enough to run before every web PR without thinking about it, that
 doesn't flake, and where a new script is short. Stage 11 adds the most timing-heavy scripts yet
@@ -69,6 +69,12 @@ quiet(page, ms)                  // a named wait for checks that nothing happens
   already runs its own server on :8097.
 - Print each script's time and the total.
 - Target: under a minute for the whole suite, from about four.
+
+Differences from the plan:
+- `RECONNECT_GRACE=20s`, not 5s: the turn timer has to run out before the grace does, or bob is
+  folded for leaving instead of timing out. The create form's shortest turn timer is 15s, not 10s.
+- `standup` keeps the 5s pause between hands, since it acts between them.
+- The suite takes about 40s (37s of scripts); `session` is the long pole at 35s.
 
 ## PR 3: CI
 - A CI job, `e2e`, on PRs that touch `web/`, `e2e/` or `backend/`: build the web app and server,

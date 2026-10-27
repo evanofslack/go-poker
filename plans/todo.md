@@ -617,8 +617,8 @@ Straddle and run it twice moved to stage 10.
 Planned in `e2e.md`: shared helpers, short timers and parallel runs to get the suite from about four
 minutes to under one, then a CI job.
 
-- [ ] PR 1: shared helpers in `lib.mjs`, every script moved onto them, fixed sleeps gone
-- [ ] PR 2: short timers for e2e, scripts in parallel
+- [x] PR 1: shared helpers in `lib.mjs`, every script moved onto them, fixed sleeps gone (#135)
+- [x] PR 2: short timers for e2e, scripts in parallel (4m08s to about 40s)
 - [ ] PR 3: e2e in CI, non-blocking at first
 
 # Stage 11: straddle and run it N times
