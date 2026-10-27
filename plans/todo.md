@@ -12,7 +12,7 @@
 | 8 | Persistence (`persistence.md`) | done |
 | 9 | House rules | done |
 | 10 | e2e cleanup (`e2e.md`) | done |
-| 11 | Straddle and run it N times (`straddle.md`) | planned |
+| 11 | Straddle and run it N times (`straddle.md`) | done |
 | - | Backlog | unranked |
 
 ## How items are ranked
@@ -624,13 +624,14 @@ minutes to under one, then a CI job.
 # Stage 11: straddle and run it N times
 
 Planned in `straddle.md`: straddles and re-straddles asked before the deal (or forced), and running
-an all-in board out up to as many times as the deck allows.
+the rest of the board out up to 4 times once everyone left is all in, or all but one, by a vote
+where the smallest pick wins. Run it is on by default.
 
-- [ ] PR 1: straddle engine
-- [ ] PR 2: straddle table and web
-- [ ] PR 3: run it engine
-- [ ] PR 4: run it table
-- [ ] PR 5: run it web
+- [x] PR 1: straddle engine (#137)
+- [x] PR 2: straddle table and web (#138, #139), with bigger cards of your own (#141)
+- [x] PR 3: run it engine (#142)
+- [x] PR 4: run it table (#143)
+- [x] PR 5: run it web (#145)
 
 # Backlog (unranked)
 
