@@ -28,6 +28,8 @@ function plateStyle(player: PlayerView, view: View) {
         "opacity-50": player.sittingOut && !action && !winner,
         // folded this hand
         "opacity-60": !player.sittingOut && !player.in && view.street !== "",
+        // opacity would trap your seat menu under the cards above the plate
+        "has-[[role=menu]]:opacity-100": true,
         // clear the cards that overlap the top of the plate
         "pt-2.5 short:py-0.5 short:pl-3": true,
         // room for the countdown along the bottom
