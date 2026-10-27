@@ -43,7 +43,7 @@ func (r *reducer) dealHand(waiting bool) {
 	if !s.Running || s.Paused || s.Ended() || s.Game.InHand() {
 		return
 	}
-	events, err := s.Game.StartHand()
+	events, err := s.Game.StartHand(0)
 	if err != nil {
 		if waiting {
 			r.log("waiting for players")

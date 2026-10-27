@@ -23,15 +23,51 @@ func (s *State) draw(n int) []Card {
 	return cards
 }
 
-// StartHand deals a hand to every player who isn't sitting out and has chips.
-// The button moves to the next of them; heads up, the button posts the small
-// blind and acts first preflop.
-func (s *State) StartHand() ([]Event, error) {
+// Positions is where the button, blinds and straddles would go in the next
+// hand, without changing anything. The button moves to the next player who
+// isn't sitting out and has chips; heads up, the button posts the small blind.
+// Straddles go from under the gun up to the seat before the button, each
+// double the last, and stop at the first player who can't put theirs in and
+// still have chips behind after the ante. Zero without two players to deal in.
+func (s *State) Positions() Positions {
+	if s.ReadyCount() < 2 {
+		return Positions{}
+	}
+	ready := (*Player).ready
+	var pos Positions
+	pos.Button = s.next(s.Button, ready)
+	pos.SB = s.next(pos.Button, ready)
+	if s.ReadyCount() == 2 {
+		pos.SB = pos.Button
+	}
+	pos.BB = s.next(pos.SB, ready)
+	for seat := s.next(pos.BB, ready); seat != pos.Button; seat = s.next(seat, ready) {
+		p := s.Player(seat)
+		if p.Stack-min(p.Stack, s.Config.Ante) <= s.straddle(len(pos.Straddle)) {
+			break
+		}
+		pos.Straddle = append(pos.Straddle, seat)
+	}
+	return pos
+}
+
+// straddle is the k-th straddle, from 0: two big blinds, then double each time.
+func (s *State) straddle(k int) uint { return s.Config.BigBlind << (k + 1) }
+
+// StartHand deals a hand to every player who isn't sitting out and has chips,
+// with the first straddles of Positions().Straddle straddling. The button
+// moves to the next of them; heads up, the button posts the small blind and
+// acts first preflop.
+func (s *State) StartHand(straddles int) ([]Event, error) {
 	if s.InHand() {
 		return nil, ErrInHand
 	}
 	if s.ReadyCount() < 2 {
 		return nil, ErrNotEnoughPlayers
+	}
+	pos := s.Positions()
+	if straddles < 0 || straddles > len(pos.Straddle) {
+		return nil, ErrIllegal
 	}
 
 	for i := range s.Players {
@@ -46,15 +82,9 @@ func (s *State) StartHand() ([]Event, error) {
 	s.Deck = shuffle(s.Seed, s.Hands)
 	s.Street = Preflop
 	s.Betting = true
-	s.MinRaise = s.Config.BigBlind
-
-	ready := (*Player).ready
-	s.Button = s.next(s.Button, ready)
-	s.SB = s.next(s.Button, ready)
-	if s.ReadyCount() == 2 {
-		s.SB = s.Button
-	}
-	s.BB = s.next(s.SB, ready)
+	s.MinRaise = s.Config.BigBlind << straddles
+	s.Button, s.SB, s.BB = pos.Button, pos.SB, pos.BB
+	s.Straddles = slices.Clone(pos.Straddle[:straddles])
 
 	started := HandStarted{Hand: s.Hands, Button: s.Button, SB: s.SB, BB: s.BB}
 	var dealt []Event
@@ -74,18 +104,24 @@ func (s *State) StartHand() ([]Event, error) {
 			events = append(events, Acted{Seat: seat, Street: Preflop, Kind: KindAnte, Amount: amt, AllIn: p.allIn()})
 		}
 	}
-	for _, b := range []struct {
+	type blind struct {
 		seat int
 		kind string
 		amt  uint
-	}{{s.SB, KindSmallBlind, s.Config.SmallBlind}, {s.BB, KindBigBlind, s.Config.BigBlind}} {
+	}
+	blinds := []blind{{s.SB, KindSmallBlind, s.Config.SmallBlind}, {s.BB, KindBigBlind, s.Config.BigBlind}}
+	for k, seat := range s.Straddles {
+		blinds = append(blinds, blind{seat, KindStraddle, s.straddle(k)})
+	}
+	for _, b := range blinds {
 		p := s.Player(b.seat)
 		amt := p.put(b.amt)
 		events = append(events, Acted{Seat: b.seat, Street: Preflop, Kind: b.kind, Amount: amt, To: p.Bet, AllIn: p.allIn()})
 	}
 
-	// action starts after the big blind
-	s.ToAct = s.BB
+	// action starts after the big blind or the last straddle, who gets the
+	// option since they haven't acted
+	s.ToAct = blinds[len(blinds)-1].seat
 	return append(events, s.advance()...), nil
 }
 

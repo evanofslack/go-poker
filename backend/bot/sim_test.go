@@ -48,7 +48,7 @@ func sim(t *testing.T, levels []string, hands int, buyIn uint) []int {
 					bought[i] += buyIn
 				}
 			}
-			_, err := g.StartHand()
+			_, err := g.StartHand(0)
 			must(t, err)
 		case !g.Betting:
 			_, err := g.NextStreet()

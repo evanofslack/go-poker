@@ -114,7 +114,7 @@ func TestRollout(t *testing.T) {
 					}
 				}
 			}
-			if _, err := s.StartHand(); err != nil {
+			if _, err := s.StartHand(r.IntN(len(s.Positions().Straddle) + 1)); err != nil {
 				// sit everyone with chips back in and top up
 				for _, p := range s.Players {
 					if p.Stack == 0 {
