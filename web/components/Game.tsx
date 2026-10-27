@@ -12,6 +12,7 @@ import StandUpAgain from "./StandUpAgain";
 import Input from "./Input";
 import Table from "./Table";
 import TablePanel from "./TablePanel";
+import { Button } from "@mantine/core";
 
 export default function Game() {
     const [tableOpen, setTableOpen] = useState(false);
@@ -20,13 +21,15 @@ export default function Game() {
             <header className="flex items-start justify-between gap-2 px-2 pt-1 sm:px-4 sm:pt-2">
                 <div className="flex items-center gap-1 sm:gap-2">
                     <Home />
-                    <button
-                        className="flex items-center gap-1 rounded-md px-2 py-1 text-sm text-subtle hover:text-fg"
+                    <Button
+                        variant="subtle"
+                        size="compact-sm"
+                        rightSection={<FiChevronDown />}
                         aria-expanded={tableOpen}
                         onClick={() => setTableOpen(!tableOpen)}
                     >
-                        table <FiChevronDown />
-                    </button>
+                        table
+                    </Button>
                 </div>
                 <GameInfo />
             </header>

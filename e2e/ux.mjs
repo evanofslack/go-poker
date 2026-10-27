@@ -1,5 +1,5 @@
 // Invite links, table hints, error toasts, connection status, header and leaving.
-import { URL, check, confirmCreate, finish, gone, has, launch, open, shot, sit } from "./lib.mjs";
+import { URL, btn, check, confirmCreate, finish, gone, has, launch, open, shot, sit } from "./lib.mjs";
 
 const browser = await launch();
 const alice = await open(browser, { permissions: ["clipboard-read", "clipboard-write"] });
@@ -17,14 +17,14 @@ await alice.goto(URL);
 check("join waits for the connection", await has(alice, "text=connecting to server…", 500) || true);
 await alice.fill("#username", "alice");
 await alice.fill("#tablename", table);
-await alice.click('button:text-is("create")');
+await alice.click(btn("create"));
 await confirmCreate(alice);
 await alice.waitForSelector("text=Open");
 check("url becomes the invite link", alice.url().endsWith(`?table=${table}`), alice.url());
 check("empty table hint", await has(alice, "text=pick a seat to start"));
 await shot(alice, `ux-1-empty`);
 
-await alice.locator('button:text-is("copy invite link")').first().click();
+await alice.locator(btn("copy invite link")).first().click();
 check("copy shows a toast", await has(alice, "text=invite link copied"));
 const copied = await alice.evaluate(() => navigator.clipboard.readText());
 check("clipboard holds the invite link", copied === `${URL}/?table=${table}`, copied);
@@ -60,10 +60,10 @@ check("header copy icon copies the link", await has(alice, "text=invite link cop
 await shot(alice, `ux-4-header`);
 
 // bob goes home: seated, so it asks first
-await bob.click('button:text-is("GoPoker")');
+await bob.click(btn("GoPoker"));
 check("home asks before leaving a seat", await has(bob, "[role=dialog] >> text=leave the table?"));
 await shot(bob, `ux-5-leave-confirm`);
-await bob.click('[role=dialog] button:text-is("leave")');
+await bob.click(`[role=dialog] ${btn("leave")}`);
 check("leaving shows the join form", await has(bob, "#username"));
 check("leaving clears the invite from the url", !bob.url().includes("?table="), bob.url());
 check("bob's seat is freed", await gone(alice, 'p:text-is("bob")'));

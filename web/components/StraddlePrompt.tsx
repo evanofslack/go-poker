@@ -3,7 +3,8 @@ import { straddle } from "../actions/actions";
 import { useSecondsLeft } from "../hooks/useSecondsLeft";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
-import Button from "./Button";
+import { Button } from "@mantine/core";
+import { bar } from "../lib/theme";
 
 // StraddlePrompt asks the player under the gun, then each re-straddler, whether
 // to straddle before the deal. Everyone else sees who's deciding.
@@ -40,16 +41,14 @@ export default function StraddlePrompt() {
     >
       <span className="text-sm text-subtle tabular-nums">{left}s</span>
       <Button
-        variant="primary"
-        className="px-2 sm:px-4 sm:text-xl"
+        variant="filled"
+        size="md"
+        className={bar}
         onClick={() => straddle(socket, true)}
       >
         straddle {ask.amount}
       </Button>
-      <Button
-        className="px-2 sm:px-4 sm:text-xl"
-        onClick={() => straddle(socket, false)}
-      >
+      <Button size="md" className={bar} onClick={() => straddle(socket, false)}>
         no
       </Button>
     </div>

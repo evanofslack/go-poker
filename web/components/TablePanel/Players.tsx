@@ -2,7 +2,8 @@ import { useContext, useState } from "react";
 import classNames from "classnames";
 import { AppContext } from "../../providers/AppStore";
 import { copyLedger, playerLines, settleLine, signed } from "../../lib/ledger";
-import Button from "../Button";
+import { ActionIcon, Button } from "@mantine/core";
+import { FiMoreHorizontal } from "react-icons/fi";
 import ManagePlayer from "./ManagePlayer";
 
 // Players lists everyone at the table with their chips in and out, and how
@@ -43,14 +44,15 @@ export default function Players() {
                                 </span>
                             )}
                             {host && (
-                                <button
-                                    className={classNames("px-1 leading-none text-subtle hover:text-fg", !row && "ml-auto")}
+                                <ActionIcon
+                                    size="sm"
+                                    className={classNames(!row && "ml-auto")}
                                     title={`manage ${name}`}
                                     aria-label={`manage ${name}`}
                                     onClick={() => setManaging(name)}
                                 >
-                                    ⋯
-                                </button>
+                                    <FiMoreHorizontal />
+                                </ActionIcon>
                             )}
                         </div>
                         {row && (
@@ -71,7 +73,7 @@ export default function Players() {
                 <span className={balance === 0 ? "text-subtle" : "text-error"}>
                     {balance === 0 ? "· balanced" : `· off by ${balance}`}
                 </span>
-                <Button className="ml-auto px-2 py-0.5 text-xs" onClick={() => copyLedger(appState.table ?? "", game, dispatch)}>
+                <Button size="xs" className="ml-auto" onClick={() => copyLedger(appState.table ?? "", game, dispatch)}>
                     copy ledger
                 </Button>
             </div>

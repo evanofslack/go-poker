@@ -1,6 +1,6 @@
 // Bots: the host adds bots of each level, plays a hand against them, removes one, and starts
 // a game of only bots without taking a seat.
-import { check, checkDown, create, finish, has, join, last, launch, open, panel, quick, record, shot, sit, until } from "./lib.mjs";
+import { btn, check, checkDown, create, finish, has, join, last, launch, open, panel, quick, record, shot, sit, until } from "./lib.mjs";
 
 const names = ["harper", "eric", "yasmin", "robert", "gus", "rishi", "venetia", "kenny", "daria", "sweetpea", "henry", "jesse"];
 
@@ -22,14 +22,14 @@ const suggested = await alice.inputValue('input[maxlength="20"]');
 check("bot name is suggested from the list", names.includes(suggested), suggested);
 await alice.fill('input[maxlength="20"]', "harper");
 await shot(alice, "bots-1-dialog");
-await alice.click('button:text-is("add bot")');
+await alice.click(btn("add bot"));
 check("bots default to medium, with an icon", await has(alice, 'p:has-text("harper") >> [data-bot-badge][title="medium bot"]'));
 
 await alice.locator("button", { hasText: "+ bot" }).filter({ hasText: "3" }).click();
 const second = await alice.inputValue('input[maxlength="20"]');
 check("suggested name skips taken ones", second !== "harper", second);
 await alice.click('label:has-text("easy")');
-await alice.click('button:text-is("add bot")');
+await alice.click(btn("add bot"));
 await until(() => last(aRec)?.players.length === 3);
 check("server sends each bot's level", JSON.stringify(levels(aRec)) === '["easy","medium"]', JSON.stringify(levels(aRec)));
 check("easy bot shows its level on hover", await alice.locator('[data-seat] [title="easy bot"]').count() === 1);
@@ -73,7 +73,7 @@ await alice.keyboard.press("Escape");
 await alice.click('button[aria-label="close table panel"]');
 
 // alice checks or calls on her turns until a hand finishes
-await alice.click('button:text-is("start")');
+await alice.click(btn("start"));
 check("a hand against bots finishes", await checkDown([alice], () => playedHand(aRec), 30000));
 check(
     "bots act on their own",
@@ -91,11 +91,11 @@ const bRec = record(bob);
 await create(bob, "bob", "botsonly" + Date.now(), quick);
 for (const seat of ["1", "2"]) {
     await bob.locator("button", { hasText: "Open" }).filter({ hasText: seat }).click();
-    await bob.click('button:text-is("add a bot here instead")');
-    await bob.click('button:text-is("add bot")');
+    await bob.click(btn("add a bot here instead"));
+    await bob.click(btn("add bot"));
     await until(() => last(bRec)?.players.length === Number(seat));
 }
-await bob.click('button:text-is("start")');
+await bob.click(btn("start"));
 // at the default BOT_DELAY bots think 1-2s a move, so two hands can take most of a minute
 check("bots-only game plays hands", await until(() => bRec.hands.length >= 2, 90000));
 check("spectating host sees no bot cards mid-hand", bRec.views.filter((g) => g.betting && g.street !== "preflop").every((g) => g.players.every((p) => p.cards[0] === 0) || g.players.every((p) => !p.in || p.stack === 0)));

@@ -34,6 +34,21 @@ Realtime multiplayer poker: Go websocket server (`backend/`) + Next.js client (`
   No API routes, SSR, or middleware.
 - Tailwind 4: config lives in CSS, there is no tailwind.config.js.
 
+## UI
+- Mantine 8 for controls (`Button`, `ActionIcon`, …); Tailwind for layout, the table and the
+  `phone:`/`tall:`/`short:` variants. Utility classes beat Mantine's styles (CSS layers), so
+  `className` can adjust a Mantine component.
+- One palette: the Mantine theme (`web/lib/theme.ts`), with the role tokens in
+  `styles/index.css` pointing at its variables. Use tokens, not raw Tailwind colors.
+- Buttons: `filled` is the one main action in a group (join, start, save, approve), at most one
+  per group. `default` (the theme's default) is everything else, the betting buttons included.
+  `subtle` backs out (cancel, close). `outline` red opens something destructive, `filled` red
+  confirms it. Icon-only is an `ActionIcon`.
+- Sizes: `sm` (default); `xs` or `compact-*` in rows and headers; `md` with `bar` in the footer.
+- Placement: an action that finishes a section sits left under what it acts on; a small action
+  in a header or row sits at its right end; dialog footers are right-aligned.
+- e2e: select buttons with `btn(text)` from `e2e/lib.mjs`, since Mantine nests the label.
+
 ## Websocket protocol
 - `backend/server/messages.go` defines the messages; the types they carry live in `table` and
   `holdem`. `just types` (tygo) generates `web/interfaces/{holdem,table,server}.ts` from them;

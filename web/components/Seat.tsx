@@ -12,6 +12,8 @@ import SeatMenu from "./SeatMenu";
 import { blind, isWinner, madeHand, winningCards, winningHand, winnings } from "../lib/hands";
 import { phone, useMedia } from "../hooks/useMedia";
 import classNames from "classnames";
+import { ActionIcon, Anchor } from "@mantine/core";
+import { FiX } from "react-icons/fi";
 
 const plate =
     "w-24 rounded-xl px-2 py-1 text-center sm:w-32 lg:w-40 lg:py-1.5 short:w-24 short:py-0.5";
@@ -203,14 +205,17 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
                 {own && <SeatMenu player={player} view={view} />}
                 {bot && host && socket && !view.ended && (
                     // on the top corner, clear of the name, icon and result tag
-                    <button
-                        className="absolute -top-2 -right-2 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-raised text-sm leading-none text-muted hover:text-fg"
+                    <ActionIcon
+                        variant="default"
+                        size="sm"
+                        radius="xl"
+                        className="absolute -top-2 -right-2 z-20"
                         title="remove bot"
                         aria-label={`remove ${player.name}`}
                         onClick={() => removeBot(socket, player.seat)}
                     >
-                        ×
-                    </button>
+                        <FiX />
+                    </ActionIcon>
                 )}
                 {view.betting && view.toAct === player.seat && view.turnEndsIn > 0 && (
                     <Countdown endsIn={view.turnEndsIn} total={view.settings.turnTime} />
@@ -255,12 +260,9 @@ function OpenSeat({ id, view, host }: { id: number; view: View; host: boolean })
                         onCancel={close}
                     />
                     {host && (
-                        <button
-                            className="mt-2 px-3 text-sm text-subtle underline hover:text-fg"
-                            onClick={() => setOpen("bot")}
-                        >
+                        <Anchor component="button" size="sm" c="dimmed" className="mt-2 px-3" onClick={() => setOpen("bot")}>
                             add a bot here instead
-                        </button>
+                        </Anchor>
                     )}
                 </Dialog>
             )}

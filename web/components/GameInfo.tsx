@@ -4,6 +4,7 @@ import classNames from "classnames";
 import { AppContext } from "../providers/AppStore";
 import { copyInvite } from "../lib/invite";
 import TurnAlert from "./TurnAlert";
+import { ActionIcon } from "@mantine/core";
 
 // GameInfo shows the stakes, table and connection, and copies the invite link
 export default function GameInfo() {
@@ -44,14 +45,14 @@ export default function GameInfo() {
                     table <span className="text-muted">{table}</span>
                 </span>
                 {table && (
-                    <button
-                        className="p-1 hover:text-fg"
+                    <ActionIcon
+                        size="sm"
                         title="copy invite link"
                         aria-label="copy invite link"
                         onClick={() => copyInvite(table, appState.password, dispatch)}
                     >
                         <FiCopy />
-                    </button>
+                    </ActionIcon>
                 )}
                 <TurnAlert />
             </div>

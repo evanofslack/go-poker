@@ -3,6 +3,10 @@ import { chromium } from "playwright-core";
 
 export const URL = process.env.URL || "http://localhost:8099";
 
+// btn selects a button by its exact text. :text-is only sees an element's own text, and a
+// Mantine button keeps its label in a span, so it also matches a button holding one.
+export const btn = (text) => `button:is(:text-is("${text}"), :has(:text-is("${text}")))`;
+
 // launch uses CHROMIUM_PATH if set, else playwright's own chromium
 export function launch() {
     const exe = process.env.CHROMIUM_PATH;
@@ -36,7 +40,7 @@ export async function open(browser, context = {}) {
 
 // confirmCreate creates the table from the settings dialog
 export async function confirmCreate(page) {
-    await page.click('button:text-is("create table")');
+    await page.click(btn("create table"));
 }
 
 // enter fills in the join form and joins table, or creates it when setup is
@@ -46,7 +50,7 @@ async function enter(page, name, table, setup) {
     if (page.url() === "about:blank") await page.goto(URL);
     await page.fill("#username", name);
     await page.fill("#tablename", table);
-    await page.click(`button:text-is("${setup ? "create" : "join"}")`);
+    await page.click(btn(setup ? "create" : "join"));
     if (typeof setup === "function") await setup(page);
     if (setup) await confirmCreate(page);
 }
@@ -130,12 +134,13 @@ export function act(pages, selector, ms = 5000) {
 }
 
 // fold folds for whoever is to act
-export const fold = (pages) => act(pages, 'button:text-is("fold"):enabled', 15000);
+export const fold = (pages) => act(pages, `${btn("fold")}:enabled`, 15000);
 
 // checkDown checks or calls for whoever is to act until done(), which may be
 // async: the showdown, say, or the next hand
 export function checkDown(pages, done, ms = 15000) {
-    const call = 'button:text-matches("^(check|call \\\\d+|all in \\\\d+)$"):enabled';
+    const text = ':text-matches("^(check|call \\\\d+|all in \\\\d+)$")';
+    const call = `button:is(${text}, :has(${text})):enabled`;
     return until(async () => {
         if (await done()) return true;
         for (const p of pages) await p.click(call, { timeout: 200 }).catch(() => {});
@@ -170,13 +175,13 @@ export const last = (rec) => rec.views.at(-1);
 // panel opens tab in the table panel, opening the panel if it isn't
 export async function panel(page, tab) {
     if (!(await page.locator('[aria-label="table"]').count())) await page.click('header button:has-text("table")');
-    await page.click(`[aria-label="table"] button:text-is("${tab}")`);
+    await page.click(`[aria-label="table"] ${btn(tab)}`);
 }
 
 // seatMenu picks item from your seat's menu
 export async function seatMenu(page, item) {
     await page.click('button[title="seat options"]');
-    await page.click(`button:text-is("${item}")`);
+    await page.click(btn(item));
 }
 
 // playerRow is the text of name's line in the open players tab

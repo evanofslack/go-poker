@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Button from "./Button";
+import { Button } from "@mantine/core";
 
 type buyInProps = {
     min: number;
@@ -34,20 +34,10 @@ export default function BuyIn({ min, max, initial, label, onSubmit, onCancel }: 
                     value={text}
                     onChange={(e) => setText(e.target.value.replace(/\D/g, ""))}
                 />
-                <Button
-                    type="submit"
-                    variant="primary"
-                    className="px-2 py-1 text-sm whitespace-nowrap"
-                    disabled={!valid}
-                >
+                <Button type="submit" variant="filled" size="xs" disabled={!valid}>
                     {label}
                 </Button>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    className="px-1 py-1 text-sm"
-                    onClick={onCancel}
-                >
+                <Button type="button" variant="subtle" size="xs" onClick={onCancel}>
                     cancel
                 </Button>
             </div>

@@ -2,7 +2,8 @@ import { useContext } from "react";
 import { duckHunt, showCards } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
-import Button from "./Button";
+import { Button } from "@mantine/core";
+import { bar } from "../lib/theme";
 
 // AfterHand is what a player dealt into the last hand can do before the next:
 // show their cards, and duck hunt the rest of the board if it ended early.
@@ -21,7 +22,7 @@ export default function AfterHand() {
     return (
         <div role="group" aria-label="after the hand" className="flex gap-2">
             {canShow && (
-                <Button className="px-2 sm:px-4 sm:text-xl" onClick={() => showCards(socket)}>
+                <Button size="md" className={bar} onClick={() => showCards(socket)}>
                     {view.showClaims.includes("7-2")
                         ? "show to claim the 7-2"
                         : view.showClaims.includes("stand-up")
@@ -30,7 +31,7 @@ export default function AfterHand() {
                 </Button>
             )}
             {canHunt && (
-                <Button className="px-2 sm:px-4 sm:text-xl" onClick={() => duckHunt(socket)}>
+                <Button size="md" className={bar} onClick={() => duckHunt(socket)}>
                     duck hunt
                 </Button>
             )}

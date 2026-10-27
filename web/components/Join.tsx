@@ -3,7 +3,7 @@ import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import Footer from "./Footer";
 import { joinTable } from "../actions/actions";
-import Button from "./Button";
+import { Button } from "@mantine/core";
 import { invitedPassword, invitedTable } from "../lib/invite";
 import CreateTable from "./CreateTable";
 import PublicTables from "./PublicTables";
@@ -106,8 +106,9 @@ export default function Join() {
                         />
                         <Button
                             type="button"
-                            variant="ghost"
-                            className="mx-2 my-2 bg-surface px-1 py-1 text-xs"
+                            variant="subtle"
+                            size="xs"
+                            className="m-1.5 shrink-0"
                             onClick={() => setTablename(randomTableGen(5))}
                         >
                             random
@@ -128,14 +129,14 @@ export default function Join() {
                     )}
                     <Button
                         type="button"
-                        variant="primary"
+                        size="md"
                         className="sm:my-2 sm:mr-2"
                         disabled={invalid}
                         onClick={handleCreate}
                     >
                         create
                     </Button>
-                    <Button type="submit" variant="primary" className="sm:my-2" disabled={invalid}>
+                    <Button type="submit" variant="filled" size="md" className="sm:my-2" disabled={invalid}>
                         join
                     </Button>
                 </form>

@@ -1,4 +1,4 @@
-import Button from "./Button";
+import { Button } from "@mantine/core";
 import Dialog from "./Dialog";
 
 type confirmProps = {
@@ -15,10 +15,10 @@ export default function Confirm({ title, message, action, onConfirm, onCancel }:
         <Dialog title={title} onClose={onCancel}>
             <p className="mb-4 text-sm text-muted">{message}</p>
             <div className="flex justify-end gap-2">
-                <Button variant="ghost" className="px-2 py-1 text-sm" onClick={onCancel}>
+                <Button variant="subtle" onClick={onCancel}>
                     cancel
                 </Button>
-                <Button variant="danger" className="px-3 py-1 text-sm" onClick={onConfirm}>
+                <Button variant="filled" color="red" onClick={onConfirm}>
                     {action}
                 </Button>
             </div>

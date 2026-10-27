@@ -1,8 +1,13 @@
+/* mantine sits between tailwind's base and utilities: its components beat the
+   preflight, and utility classes beat its components */
+@layer theme, base, mantine, components, utilities;
 @import 'tailwindcss';
+@import '@mantine/core/styles.layer.css';
 
 /*
   Design tokens. One neutral palette (zinc), named by role so components don't
-  pick shades ad hoc. Radius scale: rounded-md for controls, rounded-xl for
+  pick shades ad hoc. The colors come from the Mantine theme (lib/theme.ts), so
+  both draw on one palette. Radius scale: rounded-md for controls, rounded-xl for
   seats and panels, rounded-full for chips and pills.
 */
 /* a phone held upright; matches phone in hooks/useMedia.ts */
@@ -21,23 +26,23 @@
 }
 
 @theme {
-  --color-surface: var(--color-zinc-800); /* page background */
-  --color-panel: var(--color-zinc-900); /* seats */
-  --color-raised: var(--color-zinc-700); /* inputs, chat panel */
-  --color-fg: var(--color-zinc-100);
-  --color-muted: var(--color-zinc-400);
-  --color-subtle: var(--color-zinc-500);
-  --color-line: var(--color-zinc-600); /* borders of controls and menus */
-  --color-field: var(--color-zinc-600); /* small inputs on a panel */
-  --color-badge: var(--color-zinc-600); /* "bot", "sitting out" */
-  --color-accent: var(--color-cyan-500);
-  --color-accent-hover: var(--color-cyan-400);
-  --color-on-accent: var(--color-zinc-950); /* text on accent */
-  --color-danger: var(--color-rose-600);
-  --color-error: var(--color-rose-400); /* error text */
+  --color-surface: var(--mantine-color-dark-7); /* page background */
+  --color-panel: var(--mantine-color-dark-8); /* seats */
+  --color-raised: var(--mantine-color-dark-6); /* inputs, chat panel */
+  --color-fg: var(--mantine-color-dark-0);
+  --color-muted: var(--mantine-color-dark-2);
+  --color-subtle: var(--mantine-color-dark-3);
+  --color-line: var(--mantine-color-dark-4); /* borders of controls and menus */
+  --color-field: var(--mantine-color-dark-4); /* small inputs on a panel */
+  --color-badge: var(--mantine-color-dark-4); /* "bot", "sitting out" */
+  --color-accent: var(--mantine-color-cyan-5);
+  --color-accent-hover: var(--mantine-color-cyan-4);
+  --color-on-accent: var(--mantine-color-dark-9); /* text on accent */
+  --color-danger: var(--mantine-color-red-6);
+  --color-error: var(--mantine-color-red-4); /* error text */
   --color-warn: var(--color-amber-400);
   --color-gain: var(--color-green-400); /* chips won */
-  --color-loss: var(--color-rose-400); /* chips lost */
+  --color-loss: var(--mantine-color-red-4); /* chips lost */
   --color-highlight: var(--color-amber-200); /* winning seat */
 
   /* panels floating over the table; dark enough to read on zinc */

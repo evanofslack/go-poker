@@ -1,5 +1,5 @@
 // Hands tab: the hands played, with only your own and shown cards, and mucked hands marked.
-import { check, checkDown, finish, has, join, launch, open, panel, quick, seat, shot } from "./lib.mjs";
+import { btn, check, checkDown, finish, has, join, launch, open, panel, quick, seat, shot } from "./lib.mjs";
 
 const hand = (p, n) => p.locator('[aria-label="hand history"] > li').filter({ has: p.locator(`button[aria-label="hand ${n}"]`) });
 // cards shown in a hand's player list, once it's open
@@ -16,8 +16,8 @@ await panel(alice, "hands");
 check("no hands before the first", await has(alice, "text=hands show up here once they're played"));
 
 // hand 1: alice, first to act, folds
-await alice.click('button:text-is("start")');
-await alice.click('button:text-is("fold"):enabled', { timeout: 5000 });
+await alice.click(btn("start"));
+await alice.click(`${btn("fold")}:enabled`, { timeout: 5000 });
 check("the hand shows up", await has(alice, 'button[aria-label="hand 1"]'));
 
 // hand 2: check or call down to showdown
@@ -54,7 +54,7 @@ check("a reload keeps the hands", await has(bob, "text=2 hands"));
 check("and your own folded-against cards", (await cardsIn(bob, 1)) === 2);
 await bob.click('[aria-label="close table panel"]');
 await bob.click('button[aria-label^="chat"]');
-await bob.click('button:text-is("log")');
+await bob.click(btn("log"));
 check("a reload keeps the log", await has(bob, "text=alice sits down with"));
 check("without repeating lines", (await bob.locator("text=alice sits down with").count()) === 1);
 check("and no poker actions", (await bob.locator("text=alice folds").count()) === 0);

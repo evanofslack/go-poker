@@ -3,7 +3,7 @@ import { createTable } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import { defaultForm, settingsError, SettingsForm, toSettings } from "../lib/settings";
-import Button from "./Button";
+import { Button } from "@mantine/core";
 import Dialog from "./Dialog";
 import SettingsFields from "./SettingsFields";
 
@@ -65,10 +65,10 @@ export default function CreateTable({ tablename, username, onClose }: createTabl
                             {summary(form, password)}
                         </p>
                     )}
-                    <Button type="button" variant="ghost" className="px-2 py-1 text-sm" onClick={onClose}>
+                    <Button type="button" variant="subtle" onClick={onClose}>
                         cancel
                     </Button>
-                    <Button type="submit" variant="primary" className="px-3 py-1 text-sm" disabled={!!invalid}>
+                    <Button type="submit" variant="filled" disabled={!!invalid}>
                         create table
                     </Button>
                 </div>

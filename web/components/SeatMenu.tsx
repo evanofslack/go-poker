@@ -5,6 +5,8 @@ import { useDismiss } from "../hooks/useDismiss";
 import { PlayerView, View } from "../interfaces/index";
 import BuyIn from "./BuyIn";
 import Toggle from "./Toggle";
+import { ActionIcon } from "@mantine/core";
+import { FiMoreHorizontal } from "react-icons/fi";
 
 type seatMenuProps = {
     player: PlayerView;
@@ -40,16 +42,19 @@ export default function SeatMenu({ player, view }: seatMenuProps) {
     const item = "px-3 py-1.5 text-left text-sm hover:bg-raised";
     return (
         <div ref={ref}>
-            <button
-                className="absolute top-1/2 right-1 z-20 -translate-y-1/2 px-1 text-lg leading-none opacity-60 hover:opacity-100"
+            {/* the plate changes color as the hand goes, so the icon takes the plate's text color */}
+            <ActionIcon
+                variant="transparent"
+                size="sm"
+                className="absolute top-1/2 right-1 z-20 -translate-y-1/2 text-inherit opacity-60 hover:opacity-100"
                 title="seat options"
                 aria-label="seat options"
                 aria-haspopup="menu"
                 aria-expanded={open}
                 onClick={() => (open ? close() : setOpen(true))}
             >
-                ⋯
-            </button>
+                <FiMoreHorizontal />
+            </ActionIcon>
             {open && (
                 <div
                     role="menu"

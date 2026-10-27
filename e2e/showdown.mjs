@@ -1,10 +1,10 @@
 // Play a hand to showdown and check the result display.
-import { check, checkDown, finish, gone, launch, seat, shot } from "./lib.mjs";
+import { btn, check, checkDown, finish, gone, launch, seat, shot } from "./lib.mjs";
 
 const browser = await launch();
 const [alice, bob] = await seat(browser, "sd" + Date.now(), ["alice", "bob"]);
-await alice.click('button:text-is("start")');
-await alice.waitForSelector('button:text-is("call 10")');
+await alice.click(btn("start"));
+await alice.waitForSelector(btn("call 10"));
 check("the invite goes once the game starts", (await alice.locator("text=invite friends before you start").count()) === 0);
 
 check("dealer shows D and SB", (await alice.locator("text=SB").count()) === 1 && (await alice.locator("text=BB").count()) === 1);
@@ -14,12 +14,12 @@ await shot(alice, "sd-1-preflop");
 const made = await alice.locator("[data-made-hand]").innerText().catch(() => "");
 check("you see your own best hand on your turn", ["high card", "pair"].includes(made), made);
 check("others don't see it", (await bob.locator("[data-made-hand]").count()) === 1);
-await alice.click('button:text-is("call 10")');
+await alice.click(btn("call 10"));
 const tagged = await bob.locator("[data-markers] [data-act]", { hasText: /^call$/ }).waitFor({ timeout: 2000 }).then(() => true, () => false);
 check("others see a player's action by their bet", tagged);
 
 // the big blind checks their option and the flop comes
-await bob.click('button:text-is("check")');
+await bob.click(btn("check"));
 check("blind labels go after preflop", (await gone(alice, "text=SB")) && (await alice.locator("text=BB").count()) === 0);
 
 const won = alice.locator("[data-won]");

@@ -1,10 +1,10 @@
 // Host controls in the players panel: chips, banker, sit out, move to watching, remove, and passing host on.
-import { check, finish, gone, has, launch, panel, playerRow, seat, shot, until } from "./lib.mjs";
+import { btn, check, finish, gone, has, launch, panel, playerRow, seat, shot, until } from "./lib.mjs";
 
 const rowHas = (p, name, text) => until(async () => (await playerRow(p, name)).includes(text));
 const manage = async (p, name, item) => {
     await p.click(`button[aria-label="manage ${name}"]`);
-    if (item) await p.click(`[role=dialog] button:text-is("${item}")`);
+    if (item) await p.click(`[role=dialog] ${btn(item)}`);
 };
 
 const browser = await launch();
@@ -20,12 +20,12 @@ await manage(alice, "bob");
 await alice.fill("#chipAmount", "500");
 await alice.fill("#chipReason", "miscount");
 await shot(alice, "host-manage");
-await alice.click('[role=dialog] button:text-is("add chips")');
+await alice.click(`[role=dialog] ${btn("add chips")}`);
 check("added chips count as bought in", await rowHas(alice, "bob", "stack 2500 · in 2500"));
 await manage(alice, "bob");
 await alice.click('[role=dialog] label:has-text("take")');
 await alice.fill("#chipAmount", "300");
-await alice.click('[role=dialog] button:text-is("take chips")');
+await alice.click(`[role=dialog] ${btn("take chips")}`);
 check("taken chips count as cashed out", await rowHas(alice, "bob", "stack 2200 · in 2500 · out 300"));
 check("still balanced", await has(alice, "text=· balanced"));
 
@@ -44,7 +44,7 @@ check("the dialog takes keyboard focus", await alice.evaluate(() => !!document.a
 await alice.keyboard.press("Escape");
 check("escape cancels removing", (await alice.locator("[role=dialog]").count()) === 0 && (await rowHas(alice, "bob", "playing")));
 await manage(alice, "bob", "remove from table");
-await alice.click('[role=dialog] button:text-is("remove")');
+await alice.click(`[role=dialog] ${btn("remove")}`);
 check("a removed player is back at the join form", await has(bob, "#username"));
 check("they're told why", await has(bob, "text=the host removed you from the table"));
 check("they're listed as left", await rowHas(alice, "bob", "left"));

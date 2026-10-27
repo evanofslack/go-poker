@@ -1,6 +1,6 @@
 // Public tables on the home page: which are listed, their order, the lock, and joining from the list.
 // No table name contains "open", which other scripts match to find empty seats.
-import { URL, check, confirmCreate, create, finish, has, launch, open, shot, sit, until } from "./lib.mjs";
+import { URL, btn, check, confirmCreate, create, finish, has, launch, open, shot, sit, until } from "./lib.mjs";
 const browser = await launch();
 const id = Date.now();
 const [full, free, locked, hidden] = ["full", "free", "locked", "hidden"].map((s) => `lob${s}${id}`);
@@ -25,7 +25,7 @@ const rows = (p) => p.locator("[data-table]").evaluateAll((els) => els.map((e) =
 const first = await page();
 await first.fill("#username", "ann");
 await first.fill("#tablename", full);
-await first.click('button:text-is("create")');
+await first.click(btn("create"));
 check("public is on by default", await first.locator("#public").isChecked());
 await first.click('fieldset:has-text("seats") label:has-text("2")');
 await confirmCreate(first);

@@ -6,6 +6,8 @@ import Host from "./Host";
 import Players from "./Players";
 import Settings from "./Settings";
 import Stats from "./Stats";
+import { ActionIcon } from "@mantine/core";
+import { FiX } from "react-icons/fi";
 
 type tab = "players" | "hands" | "stats" | "settings" | "host";
 const tabs: tab[] = ["players", "hands", "stats", "settings", "host"];
@@ -79,14 +81,9 @@ export default function TablePanel({ onClose }: { onClose: () => void }) {
                         </button>
                     )}
                 </div>
-                <button
-                    className="ml-auto shrink-0 px-2 text-subtle hover:text-fg"
-                    title="close"
-                    aria-label="close table panel"
-                    onClick={onClose}
-                >
-                    ✕
-                </button>
+                <ActionIcon className="ml-auto shrink-0" title="close" aria-label="close table panel" onClick={onClose}>
+                    <FiX />
+                </ActionIcon>
             </div>
             <div className="min-h-0 flex-1">
                 {tab === "players" && <Players />}

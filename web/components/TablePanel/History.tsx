@@ -8,6 +8,7 @@ import { HandPot, HandRecord } from "../../interfaces/index";
 type Card = string;
 import { actionText, netText, streets, winnersText } from "../../lib/history";
 import { AppContext } from "../../providers/AppStore";
+import { Button } from "@mantine/core";
 
 const suits: Record<string, { glyph: string; name: string; color: string }> = {
     s: { glyph: "♠", name: "spades", color: "text-black" },
@@ -90,12 +91,9 @@ export default function History() {
                 {hands.length === 0 && <li className="text-sm text-subtle">you haven't played a hand yet</li>}
                 {appState.moreHistory && socket && (
                     <li className="pt-2 text-center">
-                        <button
-                            className="rounded-md px-2 py-0.5 text-xs text-muted hover:bg-raised hover:text-fg"
-                            onClick={() => getHands(socket, history[0].hand)}
-                        >
+                        <Button variant="subtle" size="compact-xs" onClick={() => getHands(socket, history[0].hand)}>
                             load older hands
-                        </button>
+                        </Button>
                     </li>
                 )}
             </ol>

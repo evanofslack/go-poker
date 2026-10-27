@@ -36,7 +36,7 @@ export default function Segmented<T extends string | number>({
                             checked={o.value === value}
                             onChange={() => onChange(o.value)}
                         />
-                        <span className="block rounded-md border-2 border-line px-2 py-0.5 text-sm hover:bg-raised peer-checked:border-accent peer-checked:bg-accent peer-checked:font-semibold peer-checked:hover:bg-accent peer-checked:text-on-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent">
+                        <span className="block rounded-md border border-line px-2 py-0.5 text-sm hover:bg-raised peer-checked:border-accent peer-checked:bg-accent peer-checked:font-semibold peer-checked:hover:bg-accent peer-checked:text-on-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent">
                             {o.label}
                         </span>
                     </label>

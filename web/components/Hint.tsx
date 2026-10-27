@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { ActionIcon } from "@mantine/core";
 import { FiInfo } from "react-icons/fi";
 
 type hintProps = {
@@ -13,9 +14,9 @@ export default function Hint({ about, text }: hintProps) {
     const [open, setOpen] = useState(false);
     return (
         <>
-            <button
-                type="button"
-                className="rounded-full text-subtle hover:text-fg focus-visible:outline-2 focus-visible:outline-accent"
+            <ActionIcon
+                size="xs"
+                radius="xl"
                 aria-label={`about ${about}`}
                 aria-expanded={open}
                 aria-controls={id}
@@ -23,7 +24,7 @@ export default function Hint({ about, text }: hintProps) {
                 onClick={() => setOpen(!open)}
             >
                 <FiInfo className="size-3.5" />
-            </button>
+            </ActionIcon>
             <span
                 id={id}
                 hidden={!open}

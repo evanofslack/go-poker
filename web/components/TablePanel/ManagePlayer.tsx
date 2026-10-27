@@ -3,7 +3,7 @@ import { adjustChips, hostAction, HostAction } from "../../actions/actions";
 import { useSocket } from "../../hooks/useSocket";
 import { PlayerLine } from "../../lib/ledger";
 import { AppContext } from "../../providers/AppStore";
-import Button from "../Button";
+import { Button } from "@mantine/core";
 import Dialog from "../Dialog";
 import Segmented from "../Segmented";
 
@@ -46,10 +46,10 @@ export default function ManagePlayer({ line, onClose }: { line: PlayerLine; onCl
                     they leave the table and cash out. they can join again.
                 </p>
                 <div className="flex justify-end gap-2">
-                    <Button variant="ghost" className="px-2 py-1 text-sm" onClick={onClose}>
+                    <Button variant="subtle" onClick={onClose}>
                         cancel
                     </Button>
-                    <Button variant="danger" className="px-3 py-1 text-sm" onClick={() => act("remove-player")}>
+                    <Button variant="filled" color="red" onClick={() => act("remove-player")}>
                         remove
                     </Button>
                 </div>
@@ -63,12 +63,12 @@ export default function ManagePlayer({ line, onClose }: { line: PlayerLine; onCl
                 {actions
                     .filter(([, , show]) => show)
                     .map(([label, action]) => (
-                        <Button key={action} className="px-3 py-1 text-left text-sm" onClick={() => act(action)}>
+                        <Button key={action} justify="flex-start" onClick={() => act(action)}>
                             {label}
                         </Button>
                     ))}
                 {!self && status !== "left" && (
-                    <Button variant="danger" className="px-3 py-1 text-left text-sm" onClick={() => setRemoving(true)}>
+                    <Button variant="outline" color="red" justify="flex-start" onClick={() => setRemoving(true)}>
                         remove from table
                     </Button>
                 )}
@@ -113,8 +113,7 @@ export default function ManagePlayer({ line, onClose }: { line: PlayerLine; onCl
                     {player.in && <p className="text-xs text-subtle">chips can change once this hand ends</p>}
                     <Button
                         type="submit"
-                        variant="primary"
-                        className="px-3 py-1 text-sm"
+                        variant="filled"
                         disabled={!(chips > 0) || player.in}
                     >
                         {mode === "add" ? "add chips" : "take chips"}

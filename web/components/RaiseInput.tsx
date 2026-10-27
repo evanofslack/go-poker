@@ -2,7 +2,8 @@ import { useState } from "react";
 import classNames from "classnames";
 import { Betting, clampRaise, potRaiseTo } from "../lib/betting";
 import { tall, useMedia } from "../hooks/useMedia";
-import Button from "./Button";
+import { Button } from "@mantine/core";
+import { bar } from "../lib/theme";
 
 type raiseProps = {
     b: Betting;
@@ -28,7 +29,7 @@ export default function RaiseInput({ b, onRaise, onClose, step }: raiseProps) {
 
     const by = (d: number) => setText(String(clampRaise(b, amount + d)));
     const chip =
-        "mx-0.5 rounded-md border-2 border-line p-1.5 text-sm font-light whitespace-nowrap text-fg hover:bg-line sm:p-2 sm:text-base";
+        "mx-0.5 rounded-md border border-line p-1.5 text-sm font-light whitespace-nowrap text-fg hover:bg-line sm:p-2 sm:text-base";
     // steppers, at the ends, stand in for the slider on a tall screen
     const stepper = (label: string, d: number, sign: string) =>
         onTall && (
@@ -81,7 +82,7 @@ export default function RaiseInput({ b, onRaise, onClose, step }: raiseProps) {
             {onTall ? (
                 presetRow
             ) : (
-                <div className="absolute right-0 bottom-full left-0 z-40 mb-2 flex flex-col items-center rounded-md border-2 border-line bg-surface px-2 sm:left-auto">
+                <div className="absolute right-0 bottom-full left-0 z-40 mb-2 flex flex-col items-center rounded-md border border-line bg-surface px-2 sm:left-auto">
                     {presetRow}
                     <input
                         type="range"
@@ -102,22 +103,19 @@ export default function RaiseInput({ b, onRaise, onClose, step }: raiseProps) {
                 <input
                     // focusing it on a phone would open the keyboard over the table
                     autoFocus={!onTall}
-                    className="w-24 rounded-md border-2 border-line bg-surface p-2 text-lg text-fg focus:outline-hidden sm:w-28 sm:text-xl"
+                    className="h-10.5 w-24 rounded-md border border-line bg-surface px-2 text-lg text-fg focus:outline-hidden sm:h-12 sm:w-28 sm:text-xl tall:h-12"
                     id="raise"
                     inputMode="numeric"
                     value={text}
                     onChange={(e) => setText(e.target.value.replace(/\D/g, ""))}
                 />
-                <Button
-                    variant="primary"
-                    type="submit"
-                    className="flex-1 whitespace-nowrap sm:flex-none sm:text-xl"
-                >
+                <Button variant="filled" type="submit" size="md" className={classNames(bar, "flex-1 sm:flex-none")}>
                     {b.opening ? `bet ${amount}` : `raise to ${amount}`}
                 </Button>
                 <Button
                     type="button"
-                    className="sm:text-xl"
+                    size="md"
+                    className={bar}
                     aria-label={onTall ? "close" : undefined}
                     onClick={onClose}
                 >

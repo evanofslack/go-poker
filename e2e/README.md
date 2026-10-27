@@ -70,7 +70,7 @@ Each script prints PASS or FAIL per check and a tally, and exits nonzero on any 
 ```js
 const browser = await launch();
 const [alice, bob] = await seat(browser, "mytable" + Date.now(), ["alice", "bob"]);
-await alice.click('button:text-is("start")');
+await alice.click(btn("start"));
 check("bob sees the waiting line", await has(bob, "text=waiting for alice"));
 ```
 
@@ -85,8 +85,9 @@ check("bob sees the waiting line", await has(bob, "text=waiting for alice"));
   `checkDown` checks or calls until a condition.
 - The server's side: `record` keeps every view, log line and finished hand a page receives
   (call it before the page connects), `last` is the latest view.
-- The UI: `panel` opens a table panel tab, `seatMenu` picks from your seat menu, `playerRow` reads
-  a line of the players tab.
+- The UI: `btn` selects a button by its exact text (`button:text-is` misses Mantine's, which keep
+  the label in a span), `panel` opens a table panel tab, `seatMenu` picks from your seat menu,
+  `playerRow` reads a line of the players tab.
 
 ## Writing checks that don't flake
 

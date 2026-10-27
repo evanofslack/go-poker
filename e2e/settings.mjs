@@ -1,6 +1,6 @@
 // Settings tab: everyone at the table can read how the host set it up, and the
 // host can change it.
-import { URL, check, create, finish, fold, launch, open, panel, shot, sit, until } from "./lib.mjs";
+import { URL, btn, check, create, finish, fold, launch, open, panel, shot, sit, until } from "./lib.mjs";
 
 const row = (p, label) => p.locator(`[aria-label="table settings"] div:has(dt:text-is("${label}")) dd`).innerText();
 const table = "settings" + Date.now();
@@ -43,7 +43,7 @@ await shot(host, "settings");
 await shot(p, "settings-phone");
 
 // the host edits the settings between hands
-const edit = '[aria-label="table"] button:text-is("edit")';
+const edit = `[aria-label="table"] ${btn("edit")}`;
 check("a player can't edit", (await p.locator(edit).count()) === 0);
 await host.click(edit);
 check("the form starts from the table", (await host.inputValue("#minBuy")) === "20" && (await host.inputValue("#tablePassword")) === "s3cret");
@@ -51,7 +51,7 @@ check("the seat count can't change", (await host.locator('input[name="seats"]').
 await shot(host, "settings-edit");
 await host.click('label:has(input[name="stakes"]) >> text="10/20"');
 await host.fill("#tablePassword", "n3w");
-await host.click('button:text-is("save")');
+await host.click(btn("save"));
 check("a player sees the new stakes", await until(async () => (await row(p, "stakes")) === "10/20"));
 check("buy-ins keep their big blinds", (await row(p, "buy-in")) === "400–2,000 (20–100 bb)", await row(p, "buy-in"));
 await host.click('[aria-label="table settings"] button[aria-label="copy invite link"]');
@@ -69,14 +69,14 @@ await sit(host, 1);
 await sit(eve, 2);
 
 // mid-hand, a change waits for the hand to end
-await host.click('button:text-is("start")');
-await host.waitForSelector('button:text-is("fold")');
+await host.click(btn("start"));
+await host.waitForSelector(btn("fold"));
 await panel(host, "settings");
 await panel(eve, "settings");
 await host.click(edit);
 await host.click('label:has(input[name="stakes"]) >> text="25/50"');
 check("the form says when changes apply", await host.locator("text=changes apply after this hand").first().isVisible());
-await host.click('button:text-is("save")');
+await host.click(btn("save"));
 check("eve sees a change is waiting", await until(() => eve.locator('text="changes apply after this hand"').isVisible()));
 check("the stakes stay for this hand", (await row(eve, "stakes")) === "10/20");
 await shot(eve, "settings-pending");

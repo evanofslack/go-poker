@@ -5,7 +5,7 @@ import { AppContext } from "../../providers/AppStore";
 import useChatScroll from "../../hooks/useChatScroll";
 import { FiSend } from "react-icons/fi";
 import { sendMessage } from "../../actions/actions";
-import Button from "../Button";
+import { ActionIcon } from "@mantine/core";
 
 export default function Chat() {
     const socket = useSocket();
@@ -56,7 +56,7 @@ export default function Chat() {
                     />
                 ))}
             </div>
-            <div className="flex w-full flex-row justify-between text-muted">
+            <div className="flex w-full flex-row items-center justify-between bg-surface pr-1 text-muted">
                 <input
                     className="w-full bg-surface p-2 text-muted placeholder-zinc-600 focus:outline-hidden"
                     id="input"
@@ -67,9 +67,9 @@ export default function Chat() {
                     onChange={handleChange}
                     ref={messageRef}
                 ></input>
-                <Button variant="ghost" className="bg-surface" onClick={handleClick}>
+                <ActionIcon size="lg" aria-label="send" title="send" onClick={handleClick}>
                     <FiSend />
-                </Button>
+                </ActionIcon>
             </div>
         </div>
     );
