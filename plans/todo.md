@@ -11,7 +11,7 @@
 | 7 | Operator tooling | done |
 | 8 | Persistence (`persistence.md`) | done |
 | 9 | House rules | done |
-| 10 | e2e cleanup (`e2e.md`) | planned |
+| 10 | e2e cleanup (`e2e.md`) | done |
 | 11 | Straddle and run it N times (`straddle.md`) | planned |
 | - | Backlog | unranked |
 
@@ -619,7 +619,7 @@ minutes to under one, then a CI job.
 
 - [x] PR 1: shared helpers in `lib.mjs`, every script moved onto them, fixed sleeps gone (#135)
 - [x] PR 2: short timers for e2e, scripts in parallel (4m08s to about 40s)
-- [ ] PR 3: e2e in CI, non-blocking at first
+- PR 3, e2e in CI: not doing. It runs locally with `just e2e` as before (2026-10-27).
 
 # Stage 11: straddle and run it N times
 
