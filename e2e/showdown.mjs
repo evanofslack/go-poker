@@ -5,6 +5,7 @@ const browser = await launch();
 const [alice, bob] = await seat(browser, "sd" + Date.now(), ["alice", "bob"]);
 await alice.click('button:text-is("start")');
 await alice.waitForSelector('button:text-is("call 10")');
+check("the invite goes once the game starts", (await alice.locator("text=invite friends before you start").count()) === 0);
 
 check("dealer shows D and SB", (await alice.locator("text=SB").count()) === 1 && (await alice.locator("text=BB").count()) === 1);
 check("pot shows 30 preflop", (await alice.locator("p", { hasText: /^30$/ }).count()) === 1);
