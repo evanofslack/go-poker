@@ -104,20 +104,24 @@ tests, including `rollout_test.go`'s random hands, before any table or web work.
 ## Run it N times
 
 ### Engine (`holdem/`)
-- `State.Runs` (1 by default) and `RunFrom`, the board cards before the extra runs. `MaxRuns()`
-  is how many runs the deck allows now. `SetRuns(n)` is legal only mid-hand, not betting, with
-  fewer than two players who can bet, before the river, `n` from 1 to `MaxRuns()`, and only once a
-  hand.
+- `State.Runs` (0 until set, meaning once), `RunFrom`, the board cards before the runs split, and
+  `Boards [][]Card`, every finished runout: `Boards[0]` is `Board`, then each extra run. A normal
+  hand ends with `Boards = [Board]`.
+- `MaxRuns()` is how many runs the deck allows now (`len(Deck) / (5 - len(Board))`), 0 when
+  `SetRuns` isn't legal. `SetRuns(n)` is legal only mid-hand, not betting, with fewer than two
+  players who can bet, before the river, `n` from 1 to `MaxRuns()`, and only once a hand.
 - `NextStreet` deals the first run street by street as now. Once it reaches the river, with more
   runs to go, each further call deals a whole run (`Board[:RunFrom]` plus fresh cards) into
-  `Boards [][]Card` instead of showing down. `StreetDealt` gets a `Run` number. After the last run,
-  the showdown.
-- Showdown per run: each pot splits into n shares, odd chips to the earlier runs. Each share is
-  scored on its own board and paid like a pot now (odd chips left of the button).
-  `Pot.Runs []PotRun{Amount, Winners, Cards, Hand, Score}` holds each run; `Pot.Winners` is everyone
-  who won any run, so code that asks "did they win this pot" (7-2, stand-up) works unchanged.
-  `PotWon` gets a `Run` number, one per pot per run.
-- `View` gets `Boards` and `Runs`.
+  `Boards` instead of showing down. `StreetDealt` gets `Run`, its index in `Boards`. After the last
+  run, the showdown.
+- Showdown per run: each pot splits into a share per board, odd chips to the earlier runs. Each
+  share is scored on its own board and paid like a pot now (odd chips left of the button).
+- A pot records every runout: `Pot.Runs []PotRun{Amount, Winners, Cards, Hand, Score}`, one per
+  board whenever it's scored, even with one run, and empty when it went to the last player in.
+  `Cards`, `Hand` and `Score` live only there. `Pot.Winners` is everyone who won any run, so code
+  that asks "did they win this pot" (7-2, stand-up) works unchanged. `PotWon` gets `Run`, one per
+  pot per run.
+- `View` gets `Boards`, `Runs` and `RunFrom`.
 
 ### Table (`table/`)
 - Setting `RunIt bool`, "allow running it more than once", default off.
