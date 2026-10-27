@@ -235,6 +235,13 @@ func (h *harness) checkInvariants() {
 			h.t.Fatal("a bot to act without a bot timer")
 		}
 	}
+	a := s.StraddleAsk
+	if _, ok := s.Timers[TimerStraddle]; ok != (a != nil && a.Seat != 0) {
+		h.t.Fatalf("straddle timer %v, ask %+v", ok, a)
+	}
+	if a != nil && (g.InHand() || !slices.Equal(g.Positions().Straddle[:len(a.Yes)], a.Yes)) {
+		h.t.Fatalf("ask %+v in hand %v, could straddle %v", a, g.InHand(), g.Positions().Straddle)
+	}
 	if s.Next != nil && !g.InHand() {
 		h.t.Fatal("settings left waiting between hands")
 	}

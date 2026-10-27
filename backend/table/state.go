@@ -55,6 +55,7 @@ type Seat struct {
 	Token      string `json:"token"`    // hash of the token that reclaims the seat
 	Leaving    bool   `json:"leaving"`  // folded on their turn and removed after the hand
 	SitOutNext bool   `json:"sitOutNext"`
+	Straddle   string `json:"straddle"` // PresetAsk (or empty), PresetAlways or PresetNever
 }
 
 // Timer names a deadline. The runtime arms one timer per entry in
@@ -62,12 +63,13 @@ type Seat struct {
 type Timer string
 
 const (
-	TimerDeal   Timer = "deal"   // deal the next hand
-	TimerStreet Timer = "street" // deal the next street
-	TimerTurn   Timer = "turn"   // act for the player to act
-	TimerBot    Timer = "bot"    // a bot to act moves
-	TimerClose  Timer = "close"  // an ended table closes
-	TimerIdle   Timer = "idle"   // the table closes for lack of players
+	TimerDeal     Timer = "deal"     // deal the next hand
+	TimerStreet   Timer = "street"   // deal the next street
+	TimerTurn     Timer = "turn"     // act for the player to act
+	TimerBot      Timer = "bot"      // a bot to act moves
+	TimerStraddle Timer = "straddle" // the player asked to straddle runs out of time
+	TimerClose    Timer = "close"    // an ended table closes
+	TimerIdle     Timer = "idle"     // the table closes for lack of players
 )
 
 // graceTimer removes a disconnected person who didn't come back.
@@ -112,8 +114,9 @@ type State struct {
 	LogSeq   int                   `json:"logSeq"`
 	Acts     map[int]Act           `json:"acts"` // by seat
 
-	StandUp     *StandUp `json:"standUp"`     // the stand-up round going, if any
-	LastStandUp uint     `json:"lastStandUp"` // the payout of the round that just ended, to run it again
+	StandUp     *StandUp     `json:"standUp"`     // the stand-up round going, if any
+	StraddleAsk *StraddleAsk `json:"straddleAsk"` // the straddles for the next hand, being asked
+	LastStandUp uint         `json:"lastStandUp"` // the payout of the round that just ended, to run it again
 
 	Timers  map[Timer]time.Time `json:"timers"`
 	RandSeq uint64              `json:"randSeq"` // draws from the table's randomness so far
@@ -233,7 +236,7 @@ func hashToken(token string) string {
 
 // Restore readies a table loaded from storage after a restart. Nobody is
 // connected anymore: seated people get the reconnect grace and watchers are
-// gone. The player to act gets a fresh turn.
+// gone. The player to act, or asked to straddle, gets a fresh turn.
 func Restore(s *State, now time.Time) {
 	for id, p := range s.People {
 		if p.Seat == 0 {
@@ -243,7 +246,17 @@ func Restore(s *State, now time.Time) {
 		p.Connected = false
 		s.Timers[graceTimer(id)] = now.Add(s.Timing.ReconnectGrace)
 	}
+	// settings added since the table was saved
+	if s.Settings.DecisionTime == 0 {
+		s.Settings.DecisionTime = DefaultSettings.DecisionTime
+	}
+	if s.Settings.Straddle == "" {
+		s.Settings.Straddle = StraddleOff
+	}
 	if _, ok := s.Timers[TimerTurn]; ok {
 		s.Timers[TimerTurn] = now.Add(time.Duration(s.Settings.TurnTime) * time.Millisecond)
+	}
+	if _, ok := s.Timers[TimerStraddle]; ok {
+		s.Timers[TimerStraddle] = now.Add(time.Duration(s.Settings.DecisionTime) * time.Millisecond)
 	}
 }

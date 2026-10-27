@@ -1,6 +1,7 @@
 package table
 
 import (
+	"cmp"
 	"slices"
 	"time"
 
@@ -27,40 +28,44 @@ type PlayerView struct {
 
 // View is the table as one person sees it.
 type View struct {
-	Players  []PlayerView  `json:"players"`
-	Street   holdem.Street `json:"street"`
-	Betting  bool          `json:"betting"`
-	Button   int           `json:"button"`
-	SB       int           `json:"sb"`
-	BB       int           `json:"bb"`
-	ToAct    int           `json:"toAct"`
-	Board    []holdem.Card `json:"board"`
-	Hunted   []holdem.Card `json:"hunted"` // the rest of the board, from a duck hunt
-	Pots     []holdem.Pot  `json:"pots"`
-	MinRaise uint          `json:"minRaise"`
-	Hand     int           `json:"hand"`
+	Players   []PlayerView  `json:"players"`
+	Street    holdem.Street `json:"street"`
+	Betting   bool          `json:"betting"`
+	Button    int           `json:"button"`
+	SB        int           `json:"sb"`
+	BB        int           `json:"bb"`
+	Straddles []int         `json:"straddles"` // seats that straddled this hand, in order
+	ToAct     int           `json:"toAct"`
+	Board     []holdem.Card `json:"board"`
+	Hunted    []holdem.Card `json:"hunted"` // the rest of the board, from a duck hunt
+	Pots      []holdem.Pot  `json:"pots"`
+	MinRaise  uint          `json:"minRaise"`
+	Hand      int           `json:"hand"`
 
 	You        int          `json:"you"`        // your seat, 0 when watching
 	Legal      holdem.Legal `json:"legal"`      // what you can do now
 	SitOutNext bool         `json:"sitOutNext"` // you asked to sit out once this hand ends
 	ShowClaims []string     `json:"showClaims"` // what showing your cards now would win you, like "7-2" or "stand-up"
 
-	Settings    Settings       `json:"settings"`
-	Next        *Settings      `json:"next"` // settings from the next hand, if the host changed them mid-hand
-	HasPassword bool           `json:"hasPassword"`
-	Host        string         `json:"host"`
-	Running     bool           `json:"running"`
-	Paused      bool           `json:"paused"`
-	Ending      bool           `json:"ending"`   // the session ends after this hand
-	Ended       bool           `json:"ended"`    // the session is over and the ledger final
-	ClosesIn    int64          `json:"closesIn"` // ms until an ended table closes
-	TurnEndsIn  int64          `json:"turnEndsIn"`
-	BuyRequests []BuyRequest   `json:"buyRequests"` // oldest first
-	Watchers    []string       `json:"watchers"`    // connected without a seat
-	Ledger      LedgerView     `json:"ledger"`
-	Acts        map[int]string `json:"acts"` // what each seat did this street
-	StandUp     *StandUp       `json:"standUp"`
-	LastStandUp uint           `json:"lastStandUp"` // the payout of the stand-up round that just ended
+	Settings       Settings       `json:"settings"`
+	Next           *Settings      `json:"next"` // settings from the next hand, if the host changed them mid-hand
+	HasPassword    bool           `json:"hasPassword"`
+	Host           string         `json:"host"`
+	Running        bool           `json:"running"`
+	Paused         bool           `json:"paused"`
+	Ending         bool           `json:"ending"`   // the session ends after this hand
+	Ended          bool           `json:"ended"`    // the session is over and the ledger final
+	ClosesIn       int64          `json:"closesIn"` // ms until an ended table closes
+	TurnEndsIn     int64          `json:"turnEndsIn"`
+	BuyRequests    []BuyRequest   `json:"buyRequests"` // oldest first
+	Watchers       []string       `json:"watchers"`    // connected without a seat
+	Ledger         LedgerView     `json:"ledger"`
+	Acts           map[int]string `json:"acts"` // what each seat did this street
+	StandUp        *StandUp       `json:"standUp"`
+	StraddleAsk    *StraddleAsk   `json:"straddleAsk"`
+	StraddleEndsIn int64          `json:"straddleEndsIn"` // ms the player asked to straddle has left
+	StraddlePreset string         `json:"straddlePreset"` // yours: ask, always or never
+	LastStandUp    uint           `json:"lastStandUp"`    // the payout of the stand-up round that just ended
 }
 
 // ViewFor is the table as the person with id sees it, at now.
@@ -71,39 +76,43 @@ func ViewFor(s *State, id string, now time.Time) View {
 	}
 	g := s.Game.View(you)
 	v := View{
-		Street:      g.Street,
-		Betting:     g.Betting,
-		Button:      g.Button,
-		SB:          g.SB,
-		BB:          g.BB,
-		ToAct:       g.ToAct,
-		Board:       g.Board,
-		Hunted:      g.Hunted,
-		Pots:        g.Pots,
-		MinRaise:    g.MinRaise,
-		Hand:        g.Hand,
-		You:         you,
-		Legal:       s.Game.Legal(you),
-		Settings:    s.Settings,
-		Next:        s.Next,
-		HasPassword: s.Password != "",
-		Host:        s.Host,
-		Running:     s.Running,
-		Paused:      s.Paused,
-		Ending:      s.Ending,
-		Ended:       s.Ended(),
-		ClosesIn:    until(s.Timers, TimerClose, now),
-		TurnEndsIn:  until(s.Timers, TimerTurn, now),
-		BuyRequests: BuyRequests(s),
-		Watchers:    Watchers(s),
-		Ledger:      Ledger(s),
-		Acts:        shownActs(s),
-		StandUp:     s.StandUp,
-		LastStandUp: s.LastStandUp,
+		Street:         g.Street,
+		Betting:        g.Betting,
+		Button:         g.Button,
+		SB:             g.SB,
+		BB:             g.BB,
+		Straddles:      g.Straddles,
+		ToAct:          g.ToAct,
+		Board:          g.Board,
+		Hunted:         g.Hunted,
+		Pots:           g.Pots,
+		MinRaise:       g.MinRaise,
+		Hand:           g.Hand,
+		You:            you,
+		Legal:          s.Game.Legal(you),
+		Settings:       s.Settings,
+		Next:           s.Next,
+		HasPassword:    s.Password != "",
+		Host:           s.Host,
+		Running:        s.Running,
+		Paused:         s.Paused,
+		Ending:         s.Ending,
+		Ended:          s.Ended(),
+		ClosesIn:       until(s.Timers, TimerClose, now),
+		TurnEndsIn:     until(s.Timers, TimerTurn, now),
+		BuyRequests:    BuyRequests(s),
+		Watchers:       Watchers(s),
+		Ledger:         Ledger(s),
+		Acts:           shownActs(s),
+		StandUp:        s.StandUp,
+		StraddleAsk:    s.StraddleAsk,
+		StraddleEndsIn: until(s.Timers, TimerStraddle, now),
+		LastStandUp:    s.LastStandUp,
 	}
 	v.ShowClaims = ShowClaims(s, you)
 	if you != 0 {
 		v.SitOutNext = s.Seats[you].SitOutNext
+		v.StraddlePreset = cmp.Or(s.Seats[you].Straddle, PresetAsk)
 	}
 	for _, p := range g.Players {
 		seat := s.Seats[p.Seat]

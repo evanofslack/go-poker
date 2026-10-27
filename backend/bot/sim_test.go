@@ -17,7 +17,7 @@ func TestSim(t *testing.T) {
 	}
 	const hands, buyIn = 2000, 2000
 	levels := []string{Medium, Easy}
-	net := sim(t, levels, hands, buyIn)
+	net := sim(t, levels, hands, buyIn, false)
 	for i, level := range levels {
 		t.Logf("%s: %+.1f big blinds per 100 hands", level, float64(net[i])/20/hands*100)
 	}
@@ -26,9 +26,15 @@ func TestSim(t *testing.T) {
 	}
 }
 
+// TestBotsFacingStraddles plays six bots with every straddle posted, and
+// checks they only make legal moves.
+func TestBotsFacingStraddles(t *testing.T) {
+	sim(t, []string{Medium, Easy, Medium, Easy, Medium, Easy}, 300, 2000, true)
+}
+
 // sim plays hands between bots of levels, rebuying busted ones, and returns
-// each one's chips won or lost.
-func sim(t *testing.T, levels []string, hands int, buyIn uint) []int {
+// each one's chips won or lost. straddle posts every straddle there can be.
+func sim(t *testing.T, levels []string, hands int, buyIn uint, straddle bool) []int {
 	g := holdem.New(holdem.Config{SmallBlind: 10, BigBlind: 20}, [32]byte{byte(rand.Uint64())})
 	bought := make([]uint, len(levels))
 	for i := range levels {
@@ -48,7 +54,11 @@ func sim(t *testing.T, levels []string, hands int, buyIn uint) []int {
 					bought[i] += buyIn
 				}
 			}
-			_, err := g.StartHand(0)
+			n := 0
+			if straddle {
+				n = len(g.Positions().Straddle)
+			}
+			_, err := g.StartHand(n)
 			must(t, err)
 		case !g.Betting:
 			_, err := g.NextStreet()

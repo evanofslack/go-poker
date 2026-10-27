@@ -83,6 +83,7 @@ func Reduce(s *State, now time.Time, cmd Command) Result {
 		}
 		return r.res
 	}
+	r.askStraddles()
 	r.res.Changed = !r.quiet
 	r.res.Checkpoint = !s.Game.InHand()
 	return r.res
@@ -115,6 +116,10 @@ func personOf(cmd Command) string {
 		return c.Person
 	case GetHands:
 		return c.Person
+	case Straddle:
+		return c.Person
+	case StraddlePreset:
+		return c.Person
 	case AddBot:
 		return c.Person
 	case RemoveBot:
@@ -143,7 +148,7 @@ func personOf(cmd Command) string {
 // stops once the session ends so the ledger stays final.
 func closedWhenEnded(cmd Command) bool {
 	switch c := cmd.(type) {
-	case TakeSeat, Start, Rebuy, SitOut, AdjustChips, Pause, EndSession, AddBot, RemoveBot, StartStandUp, CancelStandUp,
+	case TakeSeat, Start, Rebuy, SitOut, Straddle, AdjustChips, Pause, EndSession, AddBot, RemoveBot, StartStandUp, CancelStandUp,
 		UpdateSettings, SetPassword:
 		return true
 	case HostAction:
@@ -203,6 +208,10 @@ func (r *reducer) do(cmd Command) error {
 		return r.show(p)
 	case Hunt:
 		return r.hunt(p)
+	case Straddle:
+		return r.straddle(p, c.Yes)
+	case StraddlePreset:
+		return r.straddlePreset(p, c.Preset)
 	case GetHands:
 		r.quiet = true
 		hands, more := HistoryFor(r.s, p.Name, c.Before)
@@ -278,6 +287,8 @@ func (r *reducer) timer(t TimerFired) error {
 		r.turnTimedOut()
 	case TimerBot:
 		r.botMove()
+	case TimerStraddle:
+		r.endStraddles()
 	case TimerClose:
 		r.res.Close = &Close{"ended", "the table has closed"}
 	case TimerIdle:

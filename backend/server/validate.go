@@ -55,6 +55,11 @@ func validBuyIn(n int64) bool {
 	return n > 0 && n <= maxChipChange
 }
 
+// validPreset reports whether s is a straddle preset.
+func validPreset(s string) bool {
+	return s == table.PresetAsk || s == table.PresetAlways || s == table.PresetNever
+}
+
 // validBotLevel reports whether s is a level a bot can play at.
 func validBotLevel(s string) bool {
 	return bot.Valid(s)

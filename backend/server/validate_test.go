@@ -109,3 +109,11 @@ func TestValidHandNumber(t *testing.T) {
 		}
 	}
 }
+
+func TestValidPreset(t *testing.T) {
+	for s, want := range map[string]bool{"ask": true, "always": true, "never": true, "": false, "maybe": false} {
+		if got := validPreset(s); got != want {
+			t.Errorf("validPreset(%q) = %v, want %v", s, got, want)
+		}
+	}
+}

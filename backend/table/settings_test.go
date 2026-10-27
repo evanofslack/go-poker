@@ -9,7 +9,8 @@ import (
 )
 
 func TestValidSettings(t *testing.T) {
-	ok := Settings{Seats: 8, SmallBlind: 10, BigBlind: 20, MinBuy: 1000, MaxBuy: 4000, TurnTime: 30000, NextHandDelay: 5000}
+	ok := Settings{Seats: 8, SmallBlind: 10, BigBlind: 20, MinBuy: 1000, MaxBuy: 4000, TurnTime: 30000, NextHandDelay: 5000,
+		DecisionTime: 5000, Straddle: StraddleOff}
 	tests := []struct {
 		name  string
 		edit  func(*Settings)
@@ -38,6 +39,11 @@ func TestValidSettings(t *testing.T) {
 		{"ante over the big blind", func(s *Settings) { s.Ante = 21 }, false},
 		{"7-2 at the cap", func(s *Settings) { s.SevenDeuce = 20 * maxSevenDeuceBB }, true},
 		{"7-2 over the cap", func(s *Settings) { s.SevenDeuce = 20*maxSevenDeuceBB + 1 }, false},
+		{"decision time too short", func(s *Settings) { s.DecisionTime = minDecisionTime - 1 }, false},
+		{"decision time too long", func(s *Settings) { s.DecisionTime = maxDecisionTime + 1 }, false},
+		{"forced straddles", func(s *Settings) { s.Straddle = StraddleForced }, true},
+		{"no straddle setting", func(s *Settings) { s.Straddle = "" }, false},
+		{"unknown straddle setting", func(s *Settings) { s.Straddle = "sometimes" }, false},
 	}
 	for _, tt := range tests {
 		s := ok

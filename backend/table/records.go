@@ -45,7 +45,7 @@ type HandPlayer struct {
 type HandAction struct {
 	Street  string `json:"street"` // preflop, flop, turn or river
 	Name    string `json:"name"`
-	Kind    string `json:"kind"`             // ante, small blind, big blind, check, call, bet, raise or fold
+	Kind    string `json:"kind"`             // ante, small blind, big blind, straddle, check, call, bet, raise or fold
 	Amount  uint   `json:"amount,omitempty"` // chips put in
 	To      uint   `json:"to,omitempty"`     // their bet on this street after putting them in
 	AllIn   bool   `json:"allIn,omitempty"`
@@ -148,7 +148,7 @@ func (r *reducer) recordEvent(e holdem.Event, timeout bool) {
 			a.To = e.To
 		}
 		h.Actions = append(h.Actions, a)
-		if e.Kind != holdem.KindAnte && e.Kind != holdem.KindSmallBlind && e.Kind != holdem.KindBigBlind {
+		if e.Kind != holdem.KindAnte && e.Kind != holdem.KindSmallBlind && e.Kind != holdem.KindBigBlind && e.Kind != holdem.KindStraddle {
 			s.Acts[e.Seat] = Act{e.Street, actLabel(e)}
 		}
 	case holdem.StreetDealt:
