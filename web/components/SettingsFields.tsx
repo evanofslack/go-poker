@@ -209,7 +209,7 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                     <Toggle
                         id="runIt"
                         label="run it"
-                        hint="players all in before the river can run the board out up to 4 times"
+                        hint="when everyone left is all in, or all but one, they can run the rest of the board out up to 4 times"
                         checked={form.runIt}
                         onChange={(on) => set({ runIt: on })}
                     />

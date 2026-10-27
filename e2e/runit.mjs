@@ -2,7 +2,9 @@
 import { check, finish, has, launch, panel, seat, shot, until } from "./lib.mjs";
 
 const setting = (p, label) => p.locator('dl[aria-label="table settings"] > div', { hasText: label }).innerText();
-const runIt = (p) => p.click("#runIt");
+// run it is on by default
+let runItDefault;
+const offRunIt = (p) => p.click("#runIt");
 
 // alice, on the button, shoves and bob calls
 async function allIn(alice, bob) {
@@ -15,7 +17,10 @@ async function allIn(alice, bob) {
 }
 
 const browser = await launch();
-const [alice, bob] = await seat(browser, "ri" + Date.now(), ["alice", "bob"], runIt);
+const [alice, bob] = await seat(browser, "ri" + Date.now(), ["alice", "bob"], async (p) => {
+    runItDefault = await p.locator("#runIt").isChecked();
+});
+check("run it is on by default", runItDefault);
 
 await panel(alice, "settings");
 const shown = await setting(alice, "run it");
@@ -49,14 +54,14 @@ await shot(alice, "ri-3-history");
 await alice.click('[aria-label="close table panel"]');
 
 // a pick of once ends the vote
-const [carol, dan] = await seat(browser, "ri1" + Date.now(), ["carol", "dan"], runIt);
+const [carol, dan] = await seat(browser, "ri1" + Date.now(), ["carol", "dan"]);
 await allIn(carol, dan);
 await dan.click('[data-run-ask] button:text-is("once")');
 check("once ends the vote", await until(async () => (await carol.locator("[data-run-ask]").count()) === 0));
 check("with one board", (await carol.locator('[data-boards="1"]').count()) === 1 && (await carol.locator("[data-run]").count()) === 0);
 
 // without run it, nobody is asked
-const [erin, finn] = await seat(browser, "ri0" + Date.now(), ["erin", "finn"]);
+const [erin, finn] = await seat(browser, "ri0" + Date.now(), ["erin", "finn"], offRunIt);
 await allIn(erin, finn);
 check("no vote without run it", !(await has(erin, "[data-run-ask]", 1500)));
 
