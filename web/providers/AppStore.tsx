@@ -1,4 +1,4 @@
-import { createContext, useReducer, ReactNode } from "react";
+import { createContext, useEffect, useReducer, ReactNode } from "react";
 import {
     AppState,
     Message,
@@ -11,7 +11,7 @@ import {
     View,
 } from "../interfaces";
 import { MaxHands } from "../interfaces/table";
-import { Prefs, loadPrefs, savePrefs } from "../lib/prefs";
+import { Prefs, loadPrefs, savePrefs, showLooks } from "../lib/prefs";
 
 const initialState: AppState = {
     messages: [],
@@ -141,6 +141,7 @@ type StoreProviderProps = {
 
 export function AppStoreProvider(props: StoreProviderProps) {
     const [appState, dispatch] = useReducer(reducer, initialState);
+    useEffect(() => showLooks(appState.prefs), [appState.prefs]);
 
     return (
         <AppContext.Provider value={{ appState, dispatch }}>{props.children}</AppContext.Provider>

@@ -1,8 +1,9 @@
 import { useContext } from "react";
 import { AppContext } from "../../providers/AppStore";
-import { Prefs } from "../../lib/prefs";
+import { Prefs, colors } from "../../lib/prefs";
 import Section from "../Section";
 import Segmented from "../Segmented";
+import Swatches from "../Swatches";
 import Toggle from "../Toggle";
 
 const keys: [string, string][] = [
@@ -36,6 +37,19 @@ export default function Options() {
                     value={prefs.motion}
                     onChange={(motion) => set({ motion })}
                 />
+                <Segmented
+                    legend="deck"
+                    hint="two color makes diamonds red and clubs black"
+                    name="deck"
+                    options={[
+                        { label: "four color", value: "four" },
+                        { label: "two color", value: "two" },
+                    ]}
+                    value={prefs.deck}
+                    onChange={(deck) => set({ deck })}
+                />
+                <Swatches legend="table" name="felt" look="felt" options={colors} value={prefs.felt} onChange={(felt) => set({ felt })} />
+                <Swatches legend="card backs" name="back" look="back" options={colors} value={prefs.back} onChange={(back) => set({ back })} />
             </Section>
             <Section title="sound">
                 <Toggle

@@ -107,7 +107,7 @@ function ExtraBoard({
 // RunCaption says which run a board is, and who won it once it's settled
 function RunCaption({ run, winner }: { run: number; winner?: { names: string; hand: string } }) {
     return (
-        <p className="text-xs text-on-felt/80 short:text-[0.6rem]" data-run-caption>
+        <p className="text-xs text-felt-ink/80 short:text-[0.6rem]" data-run-caption>
             run {run + 1}
             {winner && (
                 <>
