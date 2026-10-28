@@ -15,6 +15,8 @@ import type {
 import { joinTable, leaveTable } from "../actions/actions";
 import { inviteLink } from "../lib/invite";
 import { toast } from "../lib/toast";
+import { play, playEvent } from "../lib/sound";
+import { SystemName } from "../interfaces/table";
 
 // Session lets a tab rejoin its table, and reclaim its seat with the token,
 // after a dropped connection or a reload. The password lets a spectator back in.
@@ -126,6 +128,7 @@ export function SocketProvider(props: SocketProviderProps) {
                 case "chat": {
                     const m = msg as ChatOut;
                     dispatch({ type: "addMessage", payload: { name: m.name, message: m.message, time: m.time } });
+                    if (m.name !== appState.username && m.name !== SystemName) play("chat", "pluck-001");
                     return;
                 }
                 case "tables":
@@ -155,6 +158,7 @@ export function SocketProvider(props: SocketProviderProps) {
                     const m = msg as TableUpdate;
                     dispatch({ type: "updateView", payload: m.view });
                     for (const ev of m.events as GameEvent[]) {
+                        playEvent(ev);
                         if (ev.type === "log") {
                             dispatch({ type: "addLog", payload: ev.data.log });
                         } else if (ev.type === "acted" && ev.data.kind === "straddle") {

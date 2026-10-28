@@ -12,6 +12,7 @@ import {
 } from "../interfaces";
 import { MaxHands } from "../interfaces/table";
 import { Prefs, loadPrefs, savePrefs, showLooks } from "../lib/prefs";
+import { setSoundPrefs } from "../lib/sound";
 
 const initialState: AppState = {
     messages: [],
@@ -141,7 +142,10 @@ type StoreProviderProps = {
 
 export function AppStoreProvider(props: StoreProviderProps) {
     const [appState, dispatch] = useReducer(reducer, initialState);
-    useEffect(() => showLooks(appState.prefs), [appState.prefs]);
+    useEffect(() => {
+        showLooks(appState.prefs);
+        setSoundPrefs(appState.prefs);
+    }, [appState.prefs]);
 
     return (
         <AppContext.Provider value={{ appState, dispatch }}>{props.children}</AppContext.Provider>

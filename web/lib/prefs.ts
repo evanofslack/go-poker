@@ -12,6 +12,14 @@ export type Prefs = {
     back: Color; // card backs
     shortcuts: boolean; // keyboard shortcuts for the betting controls
     muted: boolean; // every sound, from the header's button
+    volume: number; // 0 to 1
+    turn: "always" | "away" | "off"; // the chime when it's your turn; away is a hidden tab
+    // the rest of the sounds, by group (lib/sound.ts)
+    timer: boolean;
+    cards: boolean;
+    chips: boolean;
+    chat: boolean;
+    decisions: boolean;
 };
 
 export const defaultPrefs: Prefs = {
@@ -21,6 +29,13 @@ export const defaultPrefs: Prefs = {
     back: "red",
     shortcuts: true,
     muted: false,
+    volume: 0.5,
+    turn: "always",
+    timer: true,
+    cards: true,
+    chips: true,
+    chat: true,
+    decisions: true,
 };
 
 const key = "prefs";

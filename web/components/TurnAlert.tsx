@@ -3,23 +3,8 @@ import { FiVolume2, FiVolumeX } from "react-icons/fi";
 import { AppContext } from "../providers/AppStore";
 import { ActionIcon } from "@mantine/core";
 
-function beep() {
-    try {
-        const ctx = new AudioContext();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.frequency.value = 660;
-        gain.gain.setValueAtTime(0.15, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-        osc.connect(gain).connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.3);
-        osc.onended = () => ctx.close();
-    } catch {}
-}
-
-// TurnAlert gets your attention when it becomes your turn in a background tab:
-// it flashes the tab title and, unless muted, plays a short sound.
+// TurnAlert is the header's mute, and gets your attention when it becomes your
+// turn in a background tab by flashing the tab title. Sounds plays the chime.
 export default function TurnAlert() {
     const { appState, dispatch } = useContext(AppContext);
     const muted = appState.prefs.muted;
@@ -35,7 +20,6 @@ export default function TurnAlert() {
         let id: ReturnType<typeof setInterval> | undefined;
         // wait a moment first, since a pre-action can take the turn straight away
         const wait = setTimeout(() => {
-            if (!muted) beep();
             let on = false;
             id = setInterval(() => {
                 on = !on;
@@ -50,7 +34,7 @@ export default function TurnAlert() {
         };
         document.addEventListener("visibilitychange", stop);
         return stop;
-    }, [myTurn, muted]);
+    }, [myTurn]);
 
     const toggle = () => dispatch({ type: "setPref", payload: { muted: !muted } });
 

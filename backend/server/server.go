@@ -233,4 +233,5 @@ func registerExtensions() {
 	mime.AddExtensionType(".woff", "font/woff")
 	mime.AddExtensionType(".woff2", "font/woff2")
 	mime.AddExtensionType(".ttf", "font/ttf")
+	mime.AddExtensionType(".mp3", "audio/mpeg")
 }

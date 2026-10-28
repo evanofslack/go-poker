@@ -12,12 +12,14 @@ import StandUpAgain from "./StandUpAgain";
 import Input from "./Input";
 import Table from "./Table";
 import TablePanel from "./TablePanel";
+import Sounds from "./Sounds";
 import { Button } from "@mantine/core";
 
 export default function Game() {
     const [tableOpen, setTableOpen] = useState(false);
     return (
         <div className="flex h-dvh flex-col overflow-hidden">
+            <Sounds />
             <header className="flex items-start justify-between gap-2 px-2 pt-1 sm:px-4 sm:pt-2">
                 <div className="flex items-center gap-1 sm:gap-2">
                     <Home />

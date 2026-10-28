@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { Switch } from "@mantine/core";
 import Hint from "./Hint";
 
@@ -7,10 +8,11 @@ type toggleProps = {
     hint?: string;
     checked: boolean;
     onChange: (checked: boolean) => void;
+    extra?: ReactNode; // after the switch, like a sound's test button
 };
 
 // Toggle is an on/off setting: the label on the left, a switch on the right
-export default function Toggle({ id, label, hint, checked, onChange }: toggleProps) {
+export default function Toggle({ id, label, hint, checked, onChange, extra }: toggleProps) {
     return (
         <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm">
             <label htmlFor={id} className="cursor-pointer">
@@ -23,6 +25,7 @@ export default function Toggle({ id, label, hint, checked, onChange }: togglePro
                 checked={checked}
                 onChange={(e) => onChange(e.currentTarget.checked)}
             />
+            {extra}
         </div>
     );
 }
