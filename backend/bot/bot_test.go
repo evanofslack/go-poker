@@ -108,7 +108,7 @@ func TestSpotOf(t *testing.T) {
 	for seat := 1; seat <= 3; seat++ {
 		must(t, g.Sit(seat, 1000))
 	}
-	_, err := g.StartHand(0)
+	_, err := g.StartHand(holdem.Deal{})
 	must(t, err)
 	s := spotOf(g.View(g.ToAct), g.ToAct, 0)
 	if len(s.board) != 0 || s.top != 20 || s.pot != 30 || s.others != 2 || s.bb != 20 || s.hole[0] == 0 {
@@ -123,7 +123,7 @@ func TestSpotPositions(t *testing.T) {
 	for seat := 1; seat <= 6; seat++ {
 		must(t, g.Sit(seat, 1000))
 	}
-	_, err := g.StartHand(0)
+	_, err := g.StartHand(holdem.Deal{})
 	must(t, err)
 	// under the gun limps
 	_, err = g.Act(g.ToAct, holdem.Call{})

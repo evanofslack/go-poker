@@ -117,7 +117,11 @@ func TestRollout(t *testing.T) {
 					}
 				}
 			}
-			if _, err := s.StartHand(r.IntN(len(s.Positions().Straddle) + 1)); err != nil {
+			d := Deal{Straddles: r.IntN(len(s.Positions().Straddle) + 1)}
+			if r.IntN(5) == 0 {
+				d = Deal{Bomb: 1 + r.UintN(100)}
+			}
+			if _, err := s.StartHand(d); err != nil {
 				// sit everyone with chips back in and top up
 				for _, p := range s.Players {
 					if p.Stack == 0 {

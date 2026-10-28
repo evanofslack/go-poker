@@ -24,6 +24,7 @@ type Dealt struct {
 // Action kinds
 const (
 	KindAnte       = "ante"
+	KindBomb       = "bomb"
 	KindSmallBlind = "small blind"
 	KindBigBlind   = "big blind"
 	KindStraddle   = "straddle"

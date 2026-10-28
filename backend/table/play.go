@@ -55,7 +55,7 @@ func (r *reducer) dealHand(waiting bool) {
 		}
 		straddles = len(a.Yes)
 	}
-	events, err := s.Game.StartHand(straddles)
+	events, err := s.Game.StartHand(holdem.Deal{Straddles: straddles})
 	if err != nil {
 		if waiting {
 			r.log("waiting for players")

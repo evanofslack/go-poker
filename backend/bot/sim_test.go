@@ -210,7 +210,7 @@ func sim(t *testing.T, game holdem.Game, levels []string, hands int, buyIn uint,
 			if straddle {
 				n = len(g.Positions().Straddle)
 			}
-			events, err = g.StartHand(n)
+			events, err = g.StartHand(holdem.Deal{Straddles: n})
 			must(t, err)
 		case !g.Betting:
 			events, err = g.NextStreet()

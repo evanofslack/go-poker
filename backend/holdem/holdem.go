@@ -122,6 +122,7 @@ type State struct {
 	SB        int      `json:"sb"`
 	BB        int      `json:"bb"`
 	Straddles []int    `json:"straddles"` // seats that straddled this hand, in order
+	Bomb      uint     `json:"bomb"`      // this hand is a bomb pot of this much from each player, 0 if not
 	ToAct     int      `json:"toAct"`
 	Board     []Card   `json:"board"`
 	Hunted    []Card   `json:"hunted"`  // the rest of the board, turned up for fun after a hand ended early

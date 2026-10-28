@@ -45,7 +45,7 @@ func TestHoleCards(t *testing.T) {
 		t.Fatalf("hold'em deals %d", n)
 	}
 	s := game(t, 1000, 1000, 1000)
-	if _, err := s.StartHand(0); err != nil {
+	if _, err := s.StartHand(Deal{}); err != nil {
 		t.Fatal(err)
 	}
 	for _, p := range s.Players {
@@ -70,7 +70,7 @@ func TestViewUndealt(t *testing.T) {
 
 func TestCloneCards(t *testing.T) {
 	s := game(t, 1000, 1000)
-	if _, err := s.StartHand(0); err != nil {
+	if _, err := s.StartHand(Deal{}); err != nil {
 		t.Fatal(err)
 	}
 	c := s.Clone()

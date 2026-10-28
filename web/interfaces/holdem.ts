@@ -67,6 +67,10 @@ export const KindAnte = "ante";
 /**
  * Action kinds
  */
+export const KindBomb = "bomb";
+/**
+ * Action kinds
+ */
 export const KindSmallBlind = "small blind";
 /**
  * Action kinds
@@ -242,6 +246,7 @@ export interface State {
   sb: number /* int */;
   bb: number /* int */;
   straddles: number /* int */[]; // seats that straddled this hand, in order
+  bomb: number /* uint */; // this hand is a bomb pot of this much from each player, 0 if not
   toAct: number /* int */;
   board: Card[];
   hunted: Card[]; // the rest of the board, turned up for fun after a hand ended early
@@ -284,6 +289,7 @@ export interface View {
   sb: number /* int */;
   bb: number /* int */;
   straddles: number /* int */[];
+  bomb: number /* uint */;
   toAct: number /* int */;
   board: Card[];
   hunted: Card[];

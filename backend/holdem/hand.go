@@ -51,11 +51,18 @@ func (s *State) Positions() Positions {
 // straddle is the k-th straddle, from 0: two big blinds, then double each time.
 func (s *State) straddle(k int) uint { return s.Config.BigBlind << (k + 1) }
 
+// Deal is what kind of hand StartHand deals.
+type Deal struct {
+	Straddles int  `json:"straddles"` // how many of Positions().Straddle straddle
+	Bomb      uint `json:"bomb"`      // a bomb pot: everyone puts this in and the hand starts on the flop; 0 for none
+}
+
 // StartHand deals a hand to every player who isn't sitting out and has chips,
-// with the first straddles of Positions().Straddle straddling. The button
+// with the first d.Straddles of Positions().Straddle straddling. The button
 // moves to the next of them; heads up, the button posts the small blind and
-// acts first preflop.
-func (s *State) StartHand(straddles int) ([]Event, error) {
+// acts first preflop. A bomb pot has no blinds, ante or straddles: everyone
+// puts in d.Bomb, all in if that's all they have, and the flop comes out.
+func (s *State) StartHand(d Deal) ([]Event, error) {
 	if s.InHand() {
 		return nil, ErrInHand
 	}
@@ -63,7 +70,8 @@ func (s *State) StartHand(straddles int) ([]Event, error) {
 		return nil, ErrNotEnoughPlayers
 	}
 	pos := s.Positions()
-	if straddles < 0 || straddles > len(pos.Straddle) {
+	straddles := d.Straddles
+	if straddles < 0 || straddles > len(pos.Straddle) || d.Bomb > 0 && straddles > 0 {
 		return nil, ErrIllegal
 	}
 
@@ -77,6 +85,7 @@ func (s *State) StartHand(straddles int) ([]Event, error) {
 	s.Runs, s.RunFrom, s.Boards = 0, 0, nil
 	s.Pots = nil
 	s.Aggressor = 0
+	s.Bomb = d.Bomb
 	s.Deck = shuffle(Deck(s.Config.Game), s.Seed, s.Hands)
 	s.Street = Preflop
 	s.Betting = true
@@ -95,6 +104,9 @@ func (s *State) StartHand(straddles int) ([]Event, error) {
 		}
 	}
 	events := append([]Event{started}, dealt...)
+	if d.Bomb > 0 {
+		return append(events, s.bomb()...), nil
+	}
 	if s.Config.Ante > 0 {
 		for _, seat := range started.Seats {
 			p := s.Player(seat)
@@ -369,4 +381,19 @@ func (s *State) Hunt() ([]Event, error) {
 	}
 	s.Hunted = cards
 	return []Event{Hunted{cards}}, nil
+}
+
+// bomb takes the bomb from everyone dealt in and deals the flop. With fewer
+// than two left who can bet, the board runs out from there.
+func (s *State) bomb() []Event {
+	var events []Event
+	for i := range s.Players {
+		if p := &s.Players[i]; p.Dealt {
+			amt := p.putDead(s.Bomb)
+			events = append(events, Acted{Seat: p.Seat, Street: Preflop, Kind: KindBomb, Amount: amt, AllIn: p.allIn()})
+		}
+	}
+	events = append(events, s.closeStreet()...)
+	flop, _ := s.NextStreet()
+	return append(events, flop...)
 }
