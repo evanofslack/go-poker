@@ -283,7 +283,7 @@ function BotSeat({ id, view }: { id: number; view: View }) {
             <button
                 className={classNames(
                     plate,
-                    "border-2 border-dashed border-raised bg-raised/40 text-muted hover:bg-raised hover:text-fg"
+                    "border-2 border-dashed border-line bg-raised/40 dark:border-raised text-muted hover:bg-raised hover:text-fg"
                 )}
                 onClick={() => setOpen(true)}
             >

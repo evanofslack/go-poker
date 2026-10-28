@@ -122,7 +122,7 @@ export default function Card({ card, placeholder, folded, hidden, highlight, big
         return (
             <div
                 aria-hidden
-                className={classNames(small ? smallCardSize.box : cardSize.box, "rounded-md bg-felt-dark opacity-20")}
+                className={classNames(small ? smallCardSize.box : cardSize.box, "rounded-md bg-felt-dark opacity-20 phone:invisible")}
             ></div>
         );
     }
