@@ -29,8 +29,11 @@ function actStyle(act: string) {
 
 // Markers are the blind label and bet in front of a seat, with the last action
 // under them, or above them for seats below the table's middle. On a phone the
-// seat's plate carries the blind, so just the bet and action go here.
-function Markers({ view, player, above, badges }: { view: View; player: PlayerView; above: boolean; badges: boolean }) {
+// seat's plate carries the blind, so just the bet and action go here. On the felt
+// the action lines up with the row's start, clear of the dealer button outside it.
+type markersProps = { view: View; player: PlayerView; above: boolean; badges: boolean; align?: "left" | "right" };
+
+function Markers({ view, player, above, badges, align }: markersProps) {
     const label = badges && view.running ? blind(view, player.seat) : "";
     // the player to act is choosing again, and the bet chip shows any amount
     const turn = view.betting && view.toAct === player.seat;
@@ -58,7 +61,8 @@ function Markers({ view, player, above, badges }: { view: View; player: PlayerVi
                     key={act}
                     className={classNames(
                         above ? "bottom-full mb-1" : "top-full mt-1",
-                        "absolute left-1/2 flex h-6 -translate-x-1/2 animate-pop items-center rounded-full px-2 text-xs font-bold whitespace-nowrap shadow-md lg:text-sm",
+                        align === "left" ? "left-0" : align === "right" ? "right-0" : "left-1/2 -translate-x-1/2",
+                        "absolute flex h-6 animate-pop items-center rounded-full px-2 text-xs font-bold whitespace-nowrap shadow-md lg:text-sm",
                         actStyle(act)
                     )}
                     data-act
@@ -128,7 +132,7 @@ export default function Table() {
                         style={markerAt(markerPoint(p.seat))}
                     >
                         {/* the action goes on the side away from the seat */}
-                        <Markers view={view} player={p} above={point(p.seat).y > 0.1} badges />
+                        <Markers view={view} player={p} above={point(p.seat).y > 0.1} badges align={right(p.seat) ? "right" : "left"} />
                     </div>
                 ))}
             {/* one button for the table, so it glides to the next seat each hand */}
