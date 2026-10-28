@@ -17,6 +17,15 @@
 @custom-variant tall (@media (max-aspect-ratio: 3/4));
 /* short screens, like a phone on its side; listed last so it wins over sm: and lg: */
 @custom-variant short (@media (max-height: 500px));
+/* table motion: only for people who haven't asked for less, and only once the
+   table has settled after joining, so a reload doesn't replay the deal */
+@custom-variant motion {
+  @media (prefers-reduced-motion: no-preference) {
+    :where([data-motion]) & {
+      @slot;
+    }
+  }
+}
 
 /* a visible keyboard focus ring everywhere; inputs opt out with outline-hidden */
 @layer base {
@@ -92,6 +101,25 @@
     from {
       opacity: 0;
       transform: scale(0.6);
+    }
+  }
+
+  --animate-deal: deal 250ms ease-out backwards; /* a card landing on the table */
+  @keyframes deal {
+    from {
+      opacity: 0;
+      transform: translateY(-0.75rem) rotate(-6deg) scale(0.9);
+    }
+  }
+
+  --animate-muck: muck 250ms ease-in; /* a folded card sliding away */
+  @keyframes muck {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-1rem) scale(0.85);
     }
   }
 

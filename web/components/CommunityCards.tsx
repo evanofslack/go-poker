@@ -34,6 +34,7 @@ export default function CommunityCards() {
                                 folded={false}
                                 hidden={false}
                                 highlight={highlight(view.board[i])}
+                                order={i < 3 ? i : 0}
                             />
                         ) : hunted(i) ? (
                             <div className="opacity-50" data-hunted>

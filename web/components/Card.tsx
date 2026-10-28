@@ -9,6 +9,7 @@ type cardProps = {
     highlight?: boolean;
     big?: boolean; // your own cards, a size up from a tablet on
     small?: boolean; // the extra boards when the board runs out more than once
+    order?: number; // its place among cards dealt together, which come in one after another
 };
 
 function cardToString(c: CardType) {
@@ -115,7 +116,7 @@ export function MiniCards({ count }: { count: number }) {
     );
 }
 
-export default function Card({ card, placeholder, folded, hidden, highlight, big = false, small = false }: cardProps) {
+export default function Card({ card, placeholder, folded, hidden, highlight, big = false, small = false, order = 0 }: cardProps) {
     const box = big ? bigCardSize.box : small ? smallCardSize.box : cardSize.box;
     const rank = big ? bigRankSize : small ? smallRankSize : rankSize;
     if (placeholder) {
@@ -127,54 +128,50 @@ export default function Card({ card, placeholder, folded, hidden, highlight, big
         );
     }
 
-    const c = cardToString(card);
     // the server sends 0 for cards this client can't see, which still show face down
-    const faceDown = hidden && !folded;
-    if (!faceDown && !card) {
+    if (!hidden && !card) {
         return null;
     }
-    if (hidden) {
-        if (folded) {
-            return <div aria-hidden className={box}></div>;
-        }
-        return (
-            <div
-                role="img"
-                aria-label="face-down card"
-                className={classNames(
-                    box,
-                    "card-back rounded-md border-2 border-card lg:border-4"
-                )}
-            ></div>
-        );
+    // cards dealt together come in one after another
+    const delay = { animationDelay: `${order * 80}ms` };
+    const back = classNames(box, "card-back rounded-md border-2 border-card lg:border-4");
+    if (hidden && folded) {
+        // another player's mucked cards slide away, keeping their space
+        return <div aria-hidden className={classNames(back, "opacity-0 motion:animate-muck")}></div>;
     }
-    if (folded) {
-        return (
-            <div role="img" aria-label={cardName(c) + ", folded"} className={color(c, false, big)}>
-                <div
-                    className={classNames(
-                        "flex w-full items-start justify-start font-semibold opacity-40",
-                        rank
-                    )}
-                >
-                    {c[0]}
-                </div>
-                <div className="opacity-40">{getSuitChar(c[1])}</div>
-            </div>
-        );
-    }
+
+    // a face-down card is the same element as the face it turns to, so it flips over
+    // when it's shown
+    const c = card ? cardToString(card) : "";
+    const label = !c
+        ? "face-down card"
+        : cardName(c) + (folded ? ", folded" : highlight ? ", in the winning hand" : "");
     return (
-        <div
-            role="img"
-            aria-label={cardName(c) + (highlight ? ", in the winning hand" : "")}
-            className={color(c, highlight, big, small)}
-        >
+        <div role="img" aria-label={label} className={classNames(box, "perspective-[40rem] motion:animate-deal")} style={delay}>
             <div
-                className={classNames("flex w-full items-start justify-start font-semibold", rank)}
+                className={classNames(
+                    "relative size-full transform-3d motion:transition-transform motion:duration-300",
+                    !c && "rotate-y-180"
+                )}
             >
-                {c[0]}
+                <div className={classNames(color(c, highlight && !folded, big, small), "absolute inset-0 backface-hidden")}>
+                    {c && (
+                        <>
+                            <div
+                                className={classNames(
+                                    "flex w-full items-start justify-start font-semibold",
+                                    folded && "opacity-40",
+                                    rank
+                                )}
+                            >
+                                {c[0]}
+                            </div>
+                            <div className={classNames(folded && "opacity-40")}>{getSuitChar(c[1])}</div>
+                        </>
+                    )}
+                </div>
+                <div className={classNames(back, "absolute inset-0 rotate-y-180 backface-hidden")}></div>
             </div>
-            <div>{getSuitChar(c[1])}</div>
         </div>
     );
 }

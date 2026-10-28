@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import { useContext } from "react";
+import { useContext, useEffect, useState } from "react";
 import { AppContext } from "../providers/AppStore";
 import { PlayerView, View } from "../interfaces";
 import { at, besideSeat, markerAt, ringPoint, seatAngle, tallPoint } from "../lib/seats";
@@ -81,6 +81,14 @@ export default function Table() {
     const { appState } = useContext(AppContext);
     const onPhone = useMedia(phone);
     const onTall = useMedia(tall);
+    // animate only once the table has settled after a join or rejoin, so the
+    // backlog doesn't play out as if it just happened
+    const [motion, setMotion] = useState(false);
+    useEffect(() => {
+        setMotion(false);
+        const t = setTimeout(() => setMotion(true), 500);
+        return () => clearTimeout(t);
+    }, [appState.welcomed]);
     const view = appState.view;
     if (!view) return null;
 
@@ -96,7 +104,7 @@ export default function Table() {
     };
 
     return (
-        <div className={"absolute inset-0 " + seatSize}>
+        <div className={"absolute inset-0 " + seatSize} data-motion={motion || undefined}>
             <div className="absolute top-1/2 left-1/2 h-[calc(0.8*(100%-2*var(--seat-hh)))] w-[calc(0.84*(100%-2*var(--seat-hw)))] -translate-1/2 rounded-full felt" />
             {/* on a tall table, the board takes the band across the middle, between the side seats */}
             <div

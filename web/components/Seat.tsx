@@ -155,8 +155,10 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
                 {player.dealt &&
                     player.cards.map((c, i) => (
                         <Card
-                            key={i}
+                            // a new hand deals new cards
+                            key={`${view.hand}-${i}`}
                             card={c}
+                            order={i}
                             placeholder={false}
                             // everyone is out between hands; only shown cards stay up, and
                             // your own mucked ones dim
