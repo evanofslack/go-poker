@@ -47,7 +47,7 @@ check("the invite stays until the game starts", await has(alice, "text=invite fr
 aliceWS.send(JSON.stringify({ action: "error", message: "can't rebuy during a hand" }));
 check("server errors show as a toast", await has(alice, "[role=alert] >> text=can't rebuy during a hand"));
 await shot(alice, `ux-2-toast`);
-check("toast goes away", await gone(alice, "button[role=alert]", 6000));
+check("toast goes away", await gone(alice, "[role=alert]:has-text(\"can't rebuy during a hand\")", 6000));
 
 await aliceWS.close();
 check("dropped connection shows reconnecting", await has(alice, "text=reconnecting…", 2000));

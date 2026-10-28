@@ -34,7 +34,7 @@ await sit(first, 1);
 
 await sit(await make(free, "cat"), 1);
 await make(locked, "dan", (p) => p.fill("#tablePassword", "s3cret"));
-await make(hidden, "eve", (p) => p.locator("#public").uncheck());
+await make(hidden, "eve", (p) => p.uncheck("label[for=public]"));
 
 // a second player fills the heads-up table by picking it from the list
 const bob = await page();

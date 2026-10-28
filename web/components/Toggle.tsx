@@ -1,3 +1,4 @@
+import { Switch } from "@mantine/core";
 import Hint from "./Hint";
 
 type toggleProps = {
@@ -8,8 +9,7 @@ type toggleProps = {
     onChange: (checked: boolean) => void;
 };
 
-// Toggle is an on/off setting: the label on the left, a switch on the right.
-// The switch is a styled checkbox, so it checks and reads like one.
+// Toggle is an on/off setting: the label on the left, a switch on the right
 export default function Toggle({ id, label, hint, checked, onChange }: toggleProps) {
     return (
         <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm">
@@ -17,13 +17,11 @@ export default function Toggle({ id, label, hint, checked, onChange }: togglePro
                 {label}
             </label>
             {hint && <Hint about={label} text={hint} />}
-            <input
+            <Switch
                 id={id}
-                type="checkbox"
-                role="switch"
-                className="relative ml-auto h-5 w-9 shrink-0 cursor-pointer appearance-none rounded-full bg-line transition-colors before:absolute before:top-0.5 before:left-0.5 before:size-4 before:rounded-full before:bg-fg before:transition-transform checked:bg-accent checked:before:translate-x-4 checked:before:bg-on-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="ml-auto"
                 checked={checked}
-                onChange={(e) => onChange(e.target.checked)}
+                onChange={(e) => onChange(e.currentTarget.checked)}
             />
         </div>
     );

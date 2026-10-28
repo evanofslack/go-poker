@@ -4,11 +4,11 @@ import { copyInvite } from "../lib/invite";
 import { Button } from "@mantine/core";
 
 export default function InviteButton() {
-    const { appState, dispatch } = useContext(AppContext);
+    const { appState } = useContext(AppContext);
     if (!appState.table) return null;
 
     return (
-        <Button size="xs" onClick={() => copyInvite(appState.table!, appState.password, dispatch)}
+        <Button size="xs" onClick={() => copyInvite(appState.table!, appState.password)}
         >
             copy invite link
         </Button>

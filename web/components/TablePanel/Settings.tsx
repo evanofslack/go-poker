@@ -2,7 +2,7 @@ import { ReactNode, useContext, useState } from "react";
 import { FiCopy } from "react-icons/fi";
 import { AppContext } from "../../providers/AppStore";
 import { copyInvite } from "../../lib/invite";
-import { Button } from "@mantine/core";
+import { Button, Checkbox } from "@mantine/core";
 import EditSettings from "../EditSettings";
 
 const chips = (n: number) => n.toLocaleString("en");
@@ -39,7 +39,7 @@ export default function Settings() {
                     leftSection={<FiCopy />}
                     title="copy invite link"
                     aria-label="copy invite link"
-                    onClick={() => copyInvite(table, appState.password, dispatch)}
+                    onClick={() => copyInvite(table, appState.password)}
                 >
                     invite
                 </Button>
@@ -95,15 +95,13 @@ export default function Settings() {
             </dl>
             {/* only for a mouse and keyboard */}
             <div className="mt-4 hidden text-sm pointer-fine:block">
-                <label className="flex items-center gap-2 py-1.5 text-fg">
-                    <input
-                        type="checkbox"
-                        className="size-4 accent-accent"
-                        checked={appState.shortcuts}
-                        onChange={(e) => dispatch({ type: "setShortcuts", payload: e.target.checked })}
-                    />
-                    keyboard shortcuts
-                </label>
+                <Checkbox
+                    size="xs"
+                    className="py-1.5"
+                    label="keyboard shortcuts"
+                    checked={appState.shortcuts}
+                    onChange={(e) => dispatch({ type: "setShortcuts", payload: e.currentTarget.checked })}
+                />
                 <dl aria-label="keyboard shortcuts" className={appState.shortcuts ? "" : "opacity-50"}>
                     {keys.map(([key, does]) => (
                         <div key={key} className="flex gap-2 border-b border-raised py-1.5 last:border-b-0">

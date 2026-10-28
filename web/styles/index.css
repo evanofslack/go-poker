@@ -3,6 +3,7 @@
 @layer theme, base, mantine, components, utilities;
 @import 'tailwindcss';
 @import '@mantine/core/styles.layer.css';
+@import '@mantine/notifications/styles.layer.css';
 
 /*
   Design tokens. One neutral palette (zinc), named by role so components don't

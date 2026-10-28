@@ -1,4 +1,4 @@
-import type { Dispatch } from "react";
+import { toast } from "./toast";
 
 // inviteLink is a link that opens the join form with the table filled in. A
 // password goes in the fragment, which browsers never send to the server.
@@ -9,13 +9,13 @@ export function inviteLink(table: string, password?: string | null) {
 
 // copyInvite copies the invite link, or shows it to copy by hand where the
 // clipboard isn't available (it needs a secure context)
-export async function copyInvite(table: string, password: string | null, dispatch: Dispatch<any>) {
+export async function copyInvite(table: string, password: string | null) {
     const link = inviteLink(table, password);
     try {
         await navigator.clipboard.writeText(link);
-        dispatch({ type: "addToast", payload: { message: "invite link copied", kind: "info" } });
+        toast("invite link copied");
     } catch {
-        dispatch({ type: "addToast", payload: { message: link, kind: "info" } });
+        toast(link);
     }
 }
 

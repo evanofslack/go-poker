@@ -4,7 +4,7 @@ import { btn, check, finish, has, launch, panel, seat, shot, until } from "./lib
 const setting = (p, label) => p.locator('dl[aria-label="table settings"] > div', { hasText: label }).innerText();
 // run it is on by default
 let runItDefault;
-const offRunIt = (p) => p.click("#runIt");
+const offRunIt = (p) => p.click("label[for=runIt]");
 
 // alice, on the button, shoves and bob calls
 async function allIn(alice, bob) {

@@ -1,4 +1,4 @@
-import type { Dispatch } from "react";
+import { toast } from "./toast";
 import { LedgerRow, View } from "../interfaces/index";
 
 export type PlayerStatus = "playing" | "sitting out" | "out of chips" | "disconnected" | "watching" | "left";
@@ -59,11 +59,11 @@ export function ledgerText(table: string, view: View) {
 }
 
 // copyLedger copies the ledger text and says whether it worked
-export async function copyLedger(table: string, view: View, dispatch: Dispatch<any>) {
+export async function copyLedger(table: string, view: View) {
     try {
         await navigator.clipboard.writeText(ledgerText(table, view));
-        dispatch({ type: "addToast", payload: { message: "ledger copied", kind: "info" } });
+        toast("ledger copied");
     } catch {
-        dispatch({ type: "addToast", payload: { message: "couldn't copy the ledger", kind: "error" } });
+        toast("couldn't copy the ledger", "error");
     }
 }

@@ -8,7 +8,7 @@ const [alice, bob] = await seat(browser, "su" + Date.now(), ["alice", "bob"]);
 // alice, hosting, starts a round for 2 big blinds from the host tab
 await panel(alice, "host");
 await shot(alice, "host-tab");
-await alice.click('label:has(input[name="standUpPayout"]) >> text="2 bb"');
+await alice.click('fieldset:has(input[name="standUpPayout"]) >> text="2 bb"');
 await alice.click(btn("start stand-up"));
 check("the round waits for the next hand", await has(alice, "text=starts with the next hand"));
 await alice.click('[aria-label="close table panel"]');

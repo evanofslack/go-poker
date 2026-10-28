@@ -5,7 +5,7 @@ import { playerCall, playerCheck, playerFold, playerRaise } from "../actions/act
 import { useSocket } from "../hooks/useSocket";
 import { bettingInfo } from "../lib/betting";
 import { Pre, owed, preOptions, preStreet, resolvePre } from "../lib/preaction";
-import { Button } from "@mantine/core";
+import { Button, Checkbox } from "@mantine/core";
 import { bar } from "../lib/theme";
 import RaiseInput from "./RaiseInput";
 
@@ -146,9 +146,8 @@ export default function Input() {
                             )}
                             aria-keyshortcuts={k}
                         >
-                            <input
-                                type="checkbox"
-                                className="size-4 accent-accent"
+                            <Checkbox
+                                size="xs"
                                 checked={on}
                                 onChange={() => setPre(on ? null : { kind, amount: owe, street })}
                             />

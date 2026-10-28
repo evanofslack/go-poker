@@ -2,7 +2,7 @@
 import { btn, check, finish, gone, has, launch, seat, seatMenu, shot, sit } from "./lib.mjs";
 
 const browser = await launch();
-const [alice, bob] = await seat(browser, "approve" + Date.now(), ["alice", "bob"], (p) => p.check("#approveRebuys"));
+const [alice, bob] = await seat(browser, "approve" + Date.now(), ["alice", "bob"], (p) => p.check("label[for=approveRebuys]"));
 check("a first buy-in needs no approval", await has(alice, 'p:text-is("bob")'));
 
 const requests = 'ul[aria-label="buy-in requests"]';

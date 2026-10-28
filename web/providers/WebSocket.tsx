@@ -14,6 +14,7 @@ import type {
 } from "../interfaces/server";
 import { joinTable, leaveTable } from "../actions/actions";
 import { inviteLink } from "../lib/invite";
+import { toast } from "../lib/toast";
 
 // Session lets a tab rejoin its table, and reclaim its seat with the token,
 // after a dropped connection or a reload. The password lets a spectator back in.
@@ -84,7 +85,7 @@ export function SocketProvider(props: SocketProviderProps) {
                 delay = 1000;
                 dispatch({ type: "setConnection", payload: "open" });
                 if (wasOpen) {
-                    dispatch({ type: "addToast", payload: { message: "reconnected", kind: "info" } });
+                    toast("reconnected");
                 }
                 wasOpen = true;
                 const session = loadSession();
@@ -159,7 +160,7 @@ export function SocketProvider(props: SocketProviderProps) {
                         } else if (ev.type === "acted" && ev.data.kind === "straddle") {
                             const name = m.view.players.find((p) => p.seat === ev.data.seat)?.name;
                             const message = `${name} straddles ${ev.data.to}`;
-                            dispatch({ type: "addToast", payload: { message, kind: "info" } });
+                            toast(message);
                         } else if (ev.type === "hand-done") {
                             dispatch({ type: "handDone", payload: ev.data });
                         } else if (ev.type === "paid") {
@@ -169,7 +170,7 @@ export function SocketProvider(props: SocketProviderProps) {
                                 p[0].kind === "stand-up"
                                     ? `${p[0].from} pays the stand-up: ${total} to ${p.length === 1 ? "1 player" : `${p.length} players`}`
                                     : `${p[0].to} wins the ${p[0].kind}: ${total}`;
-                            dispatch({ type: "addToast", payload: { message, kind: "info" } });
+                            toast(message);
                         } else if (ev.type === "hand-updated") {
                             dispatch({ type: "handUpdated", payload: ev.data.record });
                         }
@@ -180,7 +181,7 @@ export function SocketProvider(props: SocketProviderProps) {
                     const m = msg as ErrorOut;
                     if (m.code === "restarting") {
                         // the table is saved: keep the session and rejoin once reconnected
-                        dispatch({ type: "addToast", payload: { message: m.message, kind: "info" } });
+                        toast(m.message);
                         return;
                     }
                     // rejected actions only go to this client, show them in the log
@@ -201,7 +202,7 @@ export function SocketProvider(props: SocketProviderProps) {
                     }
                     // the join form shows its own errors
                     if (appState.table) {
-                        dispatch({ type: "addToast", payload: { message: m.message, kind: "error" } });
+                        toast(m.message, "error");
                     }
                     if (rejoining.current) {
                         rejoining.current = false;

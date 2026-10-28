@@ -9,7 +9,7 @@ import ManagePlayer from "./ManagePlayer";
 // Players lists everyone at the table with their chips in and out, and how
 // each settles up with the banker
 export default function Players() {
-    const { appState, dispatch } = useContext(AppContext);
+    const { appState } = useContext(AppContext);
     const game = appState.view;
     const [managing, setManaging] = useState<string | null>(null);
     if (!game) return null;
@@ -73,7 +73,7 @@ export default function Players() {
                 <span className={balance === 0 ? "text-subtle" : "text-error"}>
                     {balance === 0 ? "· balanced" : `· off by ${balance}`}
                 </span>
-                <Button size="xs" className="ml-auto" onClick={() => copyLedger(appState.table ?? "", game, dispatch)}>
+                <Button size="xs" className="ml-auto" onClick={() => copyLedger(appState.table ?? "", game)}>
                     copy ledger
                 </Button>
             </div>

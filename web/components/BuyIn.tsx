@@ -28,7 +28,7 @@ export default function BuyIn({ min, max, initial, label, onSubmit, onCancel }: 
             <div className="flex flex-row items-center gap-1">
                 <input
                     autoFocus
-                    className="w-20 min-w-0 flex-1 rounded-md bg-field p-1 text-fg focus:outline-hidden"
+                    className="w-20 min-w-16 flex-1 rounded-md bg-field p-1 text-fg focus:outline-hidden"
                     id="buyIn"
                     inputMode="numeric"
                     value={text}

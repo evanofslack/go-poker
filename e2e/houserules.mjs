@@ -12,8 +12,8 @@ const browser = await launch();
 let huntDefault;
 const [alice, bob] = await seat(browser, "hr" + Date.now(), ["alice", "bob"], async (p) => {
     huntDefault = await p.locator("#duckHunt").isChecked();
-    await p.click('label:has(input[name="ante"]) >> text="25%"');
-    await p.click('label:has(input[name="sevenDeuce"]) >> text="2 bb"');
+    await p.click('fieldset:has(input[name="ante"]) >> text="25%"');
+    await p.click('fieldset:has(input[name="sevenDeuce"]) >> text="2 bb"');
 });
 check("duck hunt is allowed by default", huntDefault);
 

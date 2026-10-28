@@ -8,7 +8,7 @@ import { HandPot, HandRecord } from "../../interfaces/index";
 type Card = string;
 import { actionText, netText, streets, winnersText } from "../../lib/history";
 import { AppContext } from "../../providers/AppStore";
-import { Button } from "@mantine/core";
+import { Button, Checkbox } from "@mantine/core";
 
 const suits: Record<string, { glyph: string; name: string; color: string }> = {
     s: { glyph: "♠", name: "spades", color: "text-black" },
@@ -70,10 +70,12 @@ export default function History() {
     return (
         <div className="flex h-full flex-col bg-surface">
             <div className="flex items-center gap-2 border-b border-raised px-2 py-1.5 text-xs">
-                <label className="flex cursor-pointer items-center gap-1.5 text-muted">
-                    <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} />
-                    hands I played
-                </label>
+                <Checkbox
+                    size="xs"
+                    label="hands I played"
+                    checked={mine}
+                    onChange={(e) => setMine(e.currentTarget.checked)}
+                />
                 <span className="ml-auto text-subtle">
                     {history.length === 1 ? "1 hand" : `${history.length} hands`}
                 </span>

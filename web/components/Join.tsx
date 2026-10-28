@@ -1,4 +1,5 @@
 import React, { useCallback, useContext, useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import Footer from "./Footer";
@@ -30,8 +31,11 @@ export default function Join() {
     let invalid = username == "" || tablename == "" || !connected;
     const showPassword = appState.needPassword || invitedWithPassword;
 
-    // an invite link fills in the table and any password, so only a name is needed
+    // an invite link fills in the table and any password, so only a name is needed. Wait for
+    // the router, whose first replace of the URL would put the password back.
+    const router = useRouter();
     useEffect(() => {
+        if (!router.isReady) return;
         setTablename(invitedTable());
         // the first call takes the password out of the address bar, so ignore later empty ones
         const invited = invitedPassword();
@@ -39,7 +43,7 @@ export default function Join() {
             setPassword(invited);
             setInvitedWithPassword(true);
         }
-    }, []);
+    }, [router.isReady]);
 
     // the table shows once the server confirms with joined-table
     const handleSubmit = (e: React.FormEvent) => {

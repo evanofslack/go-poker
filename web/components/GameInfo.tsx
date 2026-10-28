@@ -8,7 +8,7 @@ import { ActionIcon } from "@mantine/core";
 
 // GameInfo shows the stakes, table and connection, and copies the invite link
 export default function GameInfo() {
-    const { appState, dispatch } = useContext(AppContext);
+    const { appState } = useContext(AppContext);
     const config = appState.view?.settings;
     const watching = appState.view?.watchers.length ?? 0;
     const open = appState.connection === "open";
@@ -49,7 +49,7 @@ export default function GameInfo() {
                         size="sm"
                         title="copy invite link"
                         aria-label="copy invite link"
-                        onClick={() => copyInvite(table, appState.password, dispatch)}
+                        onClick={() => copyInvite(table, appState.password)}
                     >
                         <FiCopy />
                     </ActionIcon>

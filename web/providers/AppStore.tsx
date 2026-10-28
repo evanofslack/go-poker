@@ -4,7 +4,6 @@ import {
     Message,
     Log,
     Connection,
-    Toast,
     HandStats,
     HandRecord,
     PlayerTotals,
@@ -32,7 +31,6 @@ const initialState: AppState = {
     error: null,
     needPassword: false,
     connection: "connecting",
-    toasts: [],
     hands: [],
     totals: {},
     history: [],
@@ -41,7 +39,6 @@ const initialState: AppState = {
     shortcuts: loadShortcuts(),
 };
 
-let nextToastID = 0;
 
 type ACTIONTYPE =
     | { type: "addMessage"; payload: Message }
@@ -68,8 +65,6 @@ type ACTIONTYPE =
     | { type: "setNeedPassword"; payload: boolean }
     | { type: "setError"; payload: string | null }
     | { type: "setConnection"; payload: Connection }
-    | { type: "addToast"; payload: Omit<Toast, "id"> }
-    | { type: "removeToast"; payload: number }
     | { type: "addHistory"; payload: { hands: HandRecord[]; more: boolean } }
     | { type: "setTables"; payload: TableSummary[] }
     | { type: "setShortcuts"; payload: boolean };
@@ -117,7 +112,6 @@ function reducer(state: AppState, action: ACTIONTYPE): AppState {
             return {
                 ...initialState,
                 connection: state.connection,
-                toasts: state.toasts,
                 tables: state.tables,
                 shortcuts: state.shortcuts,
             };
@@ -138,13 +132,6 @@ function reducer(state: AppState, action: ACTIONTYPE): AppState {
             return { ...state, shortcuts: action.payload };
         case "setConnection":
             return { ...state, connection: action.payload };
-        case "addToast": {
-            // keep the last few so a burst of errors doesn't fill the screen
-            const toast = { ...action.payload, id: nextToastID++ };
-            return { ...state, toasts: [...state.toasts.slice(-2), toast] };
-        }
-        case "removeToast":
-            return { ...state, toasts: state.toasts.filter((t) => t.id !== action.payload) };
         default:
             throw new Error();
     }

@@ -8,7 +8,7 @@ import Dialog from "./Dialog";
 // SessionEnded shows everyone the final settle-up once the session ends. The
 // table panel keeps it after this is closed.
 export default function SessionEnded() {
-    const { appState, dispatch } = useContext(AppContext);
+    const { appState } = useContext(AppContext);
     const [closed, setClosed] = useState(false);
     const game = appState.view;
     if (!game?.ended || closed) return null;
@@ -43,7 +43,7 @@ export default function SessionEnded() {
                 </Button>
                 <Button
                     variant="filled"
-                    onClick={() => copyLedger(appState.table ?? "", game, dispatch)}
+                    onClick={() => copyLedger(appState.table ?? "", game)}
                 >
                     copy ledger
                 </Button>

@@ -15,7 +15,7 @@ const bRec = record(bob);
 // the shortest turn timer, which has to run out before the reconnect grace
 const turnTime = 15000;
 const setup = async (p) => {
-    await p.click(`label:has(input[name="turnTime"]) >> text="${turnTime / 1000}s"`);
+    await p.click(`fieldset:has(input[name="turnTime"]) >> text="${turnTime / 1000}s"`);
     await quick(p);
 };
 

@@ -40,7 +40,7 @@ check("the host can move a player to watching", (await rowHas(alice, "carol", "w
 // removing asks first
 await manage(alice, "bob", "remove from table");
 check("removing asks first", await has(alice, "[role=dialog] >> text=remove bob?"));
-check("the dialog takes keyboard focus", await alice.evaluate(() => !!document.activeElement?.closest("[role=dialog]")));
+check("the dialog takes keyboard focus", await until(() => alice.evaluate(() => !!document.activeElement?.closest("[role=dialog]"))));
 await alice.keyboard.press("Escape");
 check("escape cancels removing", (await alice.locator("[role=dialog]").count()) === 0 && (await rowHas(alice, "bob", "playing")));
 await manage(alice, "bob", "remove from table");

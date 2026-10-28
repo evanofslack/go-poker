@@ -53,12 +53,6 @@ export type Log = {
 // connecting until the first open; reconnecting after a drop
 export type Connection = "connecting" | "open" | "reconnecting";
 
-export type Toast = {
-    id: number;
-    message: string;
-    kind: "info" | "error";
-};
-
 export type AppState = {
     messages: Message[];
     logs: Log[];
@@ -69,7 +63,6 @@ export type AppState = {
     error: string | null;
     needPassword: boolean; // the last join was refused for a missing or wrong password
     connection: Connection;
-    toasts: Toast[];
     hands: table.HandStats[]; // the last hands played, oldest first
     totals: Record<string, table.Totals>; // by name, over every hand
     history: table.HandRecord[]; // hands as played, oldest first; older ones are fetched with getHands
