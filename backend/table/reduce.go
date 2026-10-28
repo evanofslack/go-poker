@@ -114,6 +114,8 @@ func personOf(cmd Command) string {
 		return c.Person
 	case Hunt:
 		return c.Person
+	case AddTime:
+		return c.Person
 	case GetHands:
 		return c.Person
 	case Straddle:
@@ -212,6 +214,8 @@ func (r *reducer) do(cmd Command) error {
 		return r.show(p)
 	case Hunt:
 		return r.hunt(p)
+	case AddTime:
+		return r.addTime(p)
 	case Straddle:
 		return r.straddle(p, c.Yes)
 	case StraddlePreset:

@@ -242,6 +242,13 @@ export interface Settings {
   special: string; // which bomb pot: SpecialBomb or SpecialDoubleBomb
   specialEvery: number /* uint */; // one every this many hands or orbits, 0 for only when the host calls one
   specialUnit: string; // UnitHands or UnitOrbits
+  /**
+   * time bank: cards that each add TimeCard to a player's turn timer
+   */
+  timeMax: number /* uint */; // the most cards a player holds, 0 for no time bank
+  timeBank: number /* uint */; // cards a player sits down with
+  timeEvery: number /* uint */; // hands dealt in to earn a card, 0 to never earn one
+  timeCard: number /* uint */; // what a card adds
 }
 /**
  * Special hands, and the units of their schedule
@@ -422,6 +429,7 @@ export interface PlayerView extends holdem.Player {
   bot: string; // level, empty for a person
   disconnected: boolean; // may still reconnect
   leaving: boolean;
+  timeCards: number /* uint */; // time bank cards left
 }
 /**
  * View is the table as one person sees it.

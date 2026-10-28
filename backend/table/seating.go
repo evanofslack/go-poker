@@ -147,7 +147,7 @@ func (r *reducer) takeSeat(p *Person, seat int, buyIn uint) error {
 // seatPerson sits p down, after checkSeat, and gives them the seat's token.
 func (r *reducer) seatPerson(p *Person, seat int, buyIn uint) {
 	token, hash := newToken()
-	r.sit(seat, buyIn, &Seat{Name: p.Name, Person: p.ID, Token: hash})
+	r.sit(seat, buyIn, &Seat{Name: p.Name, Person: p.ID, Token: hash, TimeCards: r.s.Settings.TimeBank})
 	p.Seat = seat
 	r.send(p.ID, NewToken{token})
 }

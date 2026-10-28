@@ -24,6 +24,7 @@ type PlayerView struct {
 	Bot           string `json:"bot"`          // level, empty for a person
 	Disconnected  bool   `json:"disconnected"` // may still reconnect
 	Leaving       bool   `json:"leaving"`
+	TimeCards     uint   `json:"timeCards"` // time bank cards left
 }
 
 // View is the table as one person sees it.
@@ -143,6 +144,7 @@ func ViewFor(s *State, id string, now time.Time) View {
 			Bot:          seat.Bot,
 			Disconnected: person != nil && !person.Connected,
 			Leaving:      seat.Leaving,
+			TimeCards:    seat.TimeCards,
 		})
 	}
 	if v.Players == nil {

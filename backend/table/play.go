@@ -162,6 +162,9 @@ func (r *reducer) nextStreet() {
 // turnTimedOut checks for the player to act if they can, and folds otherwise.
 func (r *reducer) turnTimedOut() {
 	g := &r.s.Game
+	if r.autoTime(g.ToAct) {
+		return
+	}
 	var a holdem.Action = holdem.Fold{}
 	if g.Legal(g.ToAct).Check {
 		a = holdem.Check{}
@@ -234,6 +237,7 @@ func (r *reducer) botMove() {
 // effect, then the session ends or the next hand is scheduled.
 func (r *reducer) afterHand() {
 	r.botsShow()
+	r.earnTime()
 	r.removeLeavers()
 	r.applySitOuts()
 	if r.s.Ending {

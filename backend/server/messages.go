@@ -28,6 +28,7 @@ const (
 	ActionGetHands    = "get-hands"
 	ActionShowCards   = "show-cards" // between hands
 	ActionDuckHunt    = "duck-hunt"  // between hands, on tables that allow it
+	ActionAddTime     = "add-time"   // on your turn, spends a time card
 	ActionStraddle    = "straddle"   // yes answers the straddle ask
 	ActionPreset      = "straddle-preset"
 	ActionRunIt       = "run-it" // runs is the pick in the run it vote

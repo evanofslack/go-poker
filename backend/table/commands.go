@@ -64,6 +64,9 @@ type Show struct{ Person string }
 // Hunt turns up the rest of the board after a hand that ended early.
 type Hunt struct{ Person string }
 
+// AddTime spends one of the person's time cards on their turn.
+type AddTime struct{ Person string }
+
 // Straddle answers the straddle ask.
 type Straddle struct {
 	Person string
@@ -180,6 +183,7 @@ func (SitOut) command()         {}
 func (Rebuy) command()          {}
 func (Show) command()           {}
 func (Hunt) command()           {}
+func (AddTime) command()        {}
 func (GetHands) command()       {}
 func (Straddle) command()       {}
 func (StraddlePreset) command() {}
