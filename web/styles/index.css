@@ -68,10 +68,12 @@
   --color-felt-dark: var(--color-green-900); /* pot, empty card slots */
   --color-rail: var(--color-teal-900); /* the padded edge around the felt */
   --color-rail-edge: var(--color-teal-700); /* its highlight */
-  --color-on-felt: var(--color-white);
+  --color-on-felt: var(--color-white); /* on felt-dark */
+  --color-felt-ink: var(--color-white); /* on the felt itself */
   --color-card: var(--color-white);
   --color-card-edge: var(--color-zinc-100);
   --color-card-back: var(--color-red-900);
+  --color-back-ink: var(--color-white);
   --color-spade: var(--color-black);
   --color-heart: var(--color-red-700);
   --color-diamond: var(--color-blue-700);
@@ -174,38 +176,132 @@
   --shadow-float: 0 4px 16px rgb(0 0 0 / 0.12), 0 1px 3px rgb(0 0 0 / 0.1);
 }
 
-/* the viewer's looks from the options tab, set on <html> (lib/prefs.ts). Green
-   felt, red backs and four colors are the defaults in @theme. */
-:root[data-deck="two"] {
+/* the viewer's looks from the options tab, set on <html> (lib/prefs.ts). Each is a
+   data attribute that works on any element, so the tab's swatches can show one.
+   felt-ink is text on the bare felt, back-ink on a card back. */
+[data-deck="two"] {
   --color-diamond: var(--color-heart);
   --color-club: var(--color-spade);
 }
-:root[data-felt="blue"] {
-  --color-felt: var(--color-blue-900);
-  --color-felt-light: var(--color-blue-800);
-  --color-felt-dark: var(--color-blue-950);
-  --color-rail: var(--color-slate-900);
-  --color-rail-edge: var(--color-slate-700);
-}
-:root[data-felt="red"] {
+[data-felt="red"] {
   --color-felt: var(--color-red-900);
   --color-felt-light: var(--color-red-800);
   --color-felt-dark: var(--color-red-950);
-  --color-rail: var(--color-stone-900);
-  --color-rail-edge: var(--color-stone-700);
+  --color-rail: color-mix(in oklab, var(--color-red-950) 60%, var(--color-zinc-900));
+  --color-rail-edge: color-mix(in oklab, var(--color-red-800) 60%, var(--color-zinc-700));
+  --color-felt-ink: var(--color-white);
 }
-:root[data-felt="gray"] {
+[data-felt="orange"] {
+  --color-felt: var(--color-orange-800);
+  --color-felt-light: var(--color-orange-700);
+  --color-felt-dark: var(--color-orange-950);
+  --color-rail: color-mix(in oklab, var(--color-orange-950) 60%, var(--color-zinc-900));
+  --color-rail-edge: color-mix(in oklab, var(--color-orange-800) 60%, var(--color-zinc-700));
+  --color-felt-ink: var(--color-white);
+}
+[data-felt="yellow"] {
+  --color-felt: var(--color-yellow-500);
+  --color-felt-light: var(--color-yellow-400);
+  --color-felt-dark: var(--color-yellow-800);
+  --color-rail: color-mix(in oklab, var(--color-yellow-900) 60%, var(--color-zinc-900));
+  --color-rail-edge: color-mix(in oklab, var(--color-yellow-700) 60%, var(--color-zinc-700));
+  --color-felt-ink: var(--color-zinc-900);
+}
+[data-felt="green"] {
+  --color-felt: var(--color-emerald-700);
+  --color-felt-light: var(--color-emerald-600);
+  --color-felt-dark: var(--color-green-900);
+  --color-rail: var(--color-teal-900);
+  --color-rail-edge: var(--color-teal-700);
+  --color-felt-ink: var(--color-white);
+}
+[data-felt="blue"] {
+  --color-felt: var(--color-blue-900);
+  --color-felt-light: var(--color-blue-800);
+  --color-felt-dark: var(--color-blue-950);
+  --color-rail: color-mix(in oklab, var(--color-blue-950) 60%, var(--color-zinc-900));
+  --color-rail-edge: color-mix(in oklab, var(--color-blue-800) 60%, var(--color-zinc-700));
+  --color-felt-ink: var(--color-white);
+}
+[data-felt="indigo"] {
+  --color-felt: var(--color-indigo-800);
+  --color-felt-light: var(--color-indigo-700);
+  --color-felt-dark: var(--color-indigo-950);
+  --color-rail: color-mix(in oklab, var(--color-indigo-950) 60%, var(--color-zinc-900));
+  --color-rail-edge: color-mix(in oklab, var(--color-indigo-800) 60%, var(--color-zinc-700));
+  --color-felt-ink: var(--color-white);
+}
+[data-felt="violet"] {
+  --color-felt: var(--color-violet-800);
+  --color-felt-light: var(--color-violet-700);
+  --color-felt-dark: var(--color-violet-950);
+  --color-rail: color-mix(in oklab, var(--color-violet-950) 60%, var(--color-zinc-900));
+  --color-rail-edge: color-mix(in oklab, var(--color-violet-800) 60%, var(--color-zinc-700));
+  --color-felt-ink: var(--color-white);
+}
+[data-felt="black"] {
+  --color-felt: var(--color-zinc-900);
+  --color-felt-light: var(--color-zinc-800);
+  --color-felt-dark: var(--color-black);
+  --color-rail: var(--color-black);
+  --color-rail-edge: var(--color-zinc-700);
+  --color-felt-ink: var(--color-white);
+}
+[data-felt="white"] {
+  --color-felt: var(--color-zinc-200);
+  --color-felt-light: var(--color-white);
+  --color-felt-dark: var(--color-zinc-600);
+  --color-rail: var(--color-zinc-400);
+  --color-rail-edge: var(--color-zinc-300);
+  --color-felt-ink: var(--color-zinc-900);
+}
+[data-felt="gray"] {
   --color-felt: var(--color-zinc-600);
   --color-felt-light: var(--color-zinc-500);
   --color-felt-dark: var(--color-zinc-800);
   --color-rail: var(--color-zinc-900);
   --color-rail-edge: var(--color-zinc-700);
+  --color-felt-ink: var(--color-white);
 }
-:root[data-back="blue"] {
+[data-back="red"] {
+  --color-card-back: var(--color-red-900);
+  --color-back-ink: var(--color-white);
+}
+[data-back="orange"] {
+  --color-card-back: var(--color-orange-700);
+  --color-back-ink: var(--color-white);
+}
+[data-back="yellow"] {
+  --color-card-back: var(--color-yellow-500);
+  --color-back-ink: var(--color-zinc-900);
+}
+[data-back="green"] {
+  --color-card-back: var(--color-green-800);
+  --color-back-ink: var(--color-white);
+}
+[data-back="blue"] {
   --color-card-back: var(--color-blue-800);
+  --color-back-ink: var(--color-white);
 }
-:root[data-back="black"] {
+[data-back="indigo"] {
+  --color-card-back: var(--color-indigo-800);
+  --color-back-ink: var(--color-white);
+}
+[data-back="violet"] {
+  --color-card-back: var(--color-violet-800);
+  --color-back-ink: var(--color-white);
+}
+[data-back="black"] {
   --color-card-back: var(--color-zinc-900);
+  --color-back-ink: var(--color-white);
+}
+[data-back="white"] {
+  --color-card-back: var(--color-zinc-200);
+  --color-back-ink: var(--color-zinc-900);
+}
+[data-back="gray"] {
+  --color-card-back: var(--color-zinc-500);
+  --color-back-ink: var(--color-white);
 }
 
 /* the table: felt lit from above the middle, in a padded rail */

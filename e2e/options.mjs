@@ -31,7 +31,7 @@ await pick(alice, "motion", "on");
 check("animations on", (await motion(alice)) === "on");
 
 check("four colors, green felt and red backs by default", (await look(alice, "deck")) === "four" && (await look(alice, "felt")) === "green" && (await look(alice, "back")) === "red");
-await pick(alice, "deck", "two");
+await pick(alice, "deck", "two color");
 check("two colors: diamonds take the heart color", (await color(alice, "--color-diamond")) === (await color(alice, "--color-heart")));
 check("two colors: clubs take the spade color", (await color(alice, "--color-club")) === (await color(alice, "--color-spade")));
 const green = await rail(alice);
@@ -75,7 +75,9 @@ if (process.env.SHOTS) {
     await alice.waitForTimeout(800);
     for (const scheme of ["dark", "light"]) {
         await alice.emulateMedia({ colorScheme: scheme });
-        for (const [felt, back] of [["green", "red"], ["blue", "blue"], ["red", "black"], ["gray", "red"]]) {
+        await alice.waitForTimeout(300);
+        await shot(alice, `options-${scheme}-swatches`);
+        for (const [felt, back] of [["green", "red"], ["yellow", "violet"], ["white", "black"], ["indigo", "white"]]) {
             await pick(alice, "felt", felt);
             await pick(alice, "back", back);
             await alice.click('[aria-label="table"] button[aria-label="close table panel"]');

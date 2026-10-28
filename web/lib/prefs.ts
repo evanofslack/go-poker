@@ -1,10 +1,15 @@
+// colors are the table and card back colors; styles/index.css has each as
+// [data-felt=…] and [data-back=…]
+export const colors = ["red", "orange", "yellow", "green", "blue", "indigo", "violet", "black", "white", "gray"] as const;
+export type Color = (typeof colors)[number];
+
 // Prefs are how one viewer likes the table: how it looks, what it plays, and
 // their keys. They're kept in this browser only, under one localStorage key.
 export type Prefs = {
     motion: "system" | "on" | "off"; // table animations; system follows reduced motion
     deck: "four" | "two"; // suit colors
-    felt: "green" | "blue" | "red" | "gray";
-    back: "red" | "blue" | "black"; // card backs
+    felt: Color;
+    back: Color; // card backs
     shortcuts: boolean; // keyboard shortcuts for the betting controls
     muted: boolean; // every sound, from the header's button
 };

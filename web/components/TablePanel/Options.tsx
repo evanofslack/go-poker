@@ -1,8 +1,9 @@
 import { useContext } from "react";
 import { AppContext } from "../../providers/AppStore";
-import { Prefs } from "../../lib/prefs";
+import { Prefs, colors } from "../../lib/prefs";
 import Section from "../Section";
 import Segmented from "../Segmented";
+import Swatches from "../Swatches";
 import Toggle from "../Toggle";
 
 const keys: [string, string][] = [
@@ -38,38 +39,17 @@ export default function Options() {
                 />
                 <Segmented
                     legend="deck"
-                    hint="two colors makes diamonds red and clubs black"
+                    hint="two color makes diamonds red and clubs black"
                     name="deck"
                     options={[
-                        { label: "four colors", value: "four" },
-                        { label: "two", value: "two" },
+                        { label: "four color", value: "four" },
+                        { label: "two color", value: "two" },
                     ]}
                     value={prefs.deck}
                     onChange={(deck) => set({ deck })}
                 />
-                <Segmented
-                    legend="table"
-                    name="felt"
-                    options={[
-                        { label: "green", value: "green" },
-                        { label: "blue", value: "blue" },
-                        { label: "red", value: "red" },
-                        { label: "gray", value: "gray" },
-                    ]}
-                    value={prefs.felt}
-                    onChange={(felt) => set({ felt })}
-                />
-                <Segmented
-                    legend="card backs"
-                    name="back"
-                    options={[
-                        { label: "red", value: "red" },
-                        { label: "blue", value: "blue" },
-                        { label: "black", value: "black" },
-                    ]}
-                    value={prefs.back}
-                    onChange={(back) => set({ back })}
-                />
+                <Swatches legend="table" name="felt" look="felt" options={colors} value={prefs.felt} onChange={(felt) => set({ felt })} />
+                <Swatches legend="card backs" name="back" look="back" options={colors} value={prefs.back} onChange={(back) => set({ back })} />
             </Section>
             <Section title="sound">
                 <Toggle
