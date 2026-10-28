@@ -91,7 +91,8 @@ const bRec = record(bob);
 await create(bob, "bob", "botsonly" + Date.now(), quick);
 for (const seat of ["1", "2"]) {
     await bob.locator("button", { hasText: "Open" }).filter({ hasText: seat }).click();
-    await bob.click(btn("add a bot here instead"));
+    await bob.click(btn("add bot"));
+    await bob.waitForSelector(`text=add a bot to seat ${seat}`);
     await bob.click(btn("add bot"));
     await until(() => last(bRec)?.players.length === Number(seat));
 }

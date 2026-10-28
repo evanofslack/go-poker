@@ -1,4 +1,4 @@
-// Invite links, table hints, error toasts, connection status, header and leaving.
+// Invite links, table hints, error toasts, connection status, header, leaving and light mode.
 import { URL, btn, check, confirmCreate, finish, gone, has, launch, open, shot, sit } from "./lib.mjs";
 
 const browser = await launch();
@@ -69,6 +69,19 @@ check("leaving clears the invite from the url", !bob.url().includes("?table="), 
 check("bob's seat is freed", await gone(alice, 'p:text-is("bob")'));
 await bob.reload();
 check("a reload stays on the join form", await has(bob, "#username"));
+
+// light mode
+const scheme = () => bob.evaluate(() => document.documentElement.dataset.mantineColorScheme);
+check("follows a dark system", (await scheme()) === "dark");
+await bob.emulateMedia({ colorScheme: "light" });
+await bob.waitForFunction(() => document.documentElement.dataset.mantineColorScheme === "light", null, { timeout: 2000 }).catch(() => {});
+check("follows a light system", (await scheme()) === "light");
+await bob.click('button[aria-label="light or dark"]');
+check("the toggle switches to dark", (await scheme()) === "dark");
+await bob.reload();
+check("the choice is remembered", (await scheme()) === "dark");
+await bob.click('button[aria-label="light or dark"]');
+await shot(bob, "ux-light");
 
 await browser.close();
 finish();

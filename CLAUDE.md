@@ -41,6 +41,9 @@ Realtime multiplayer poker: Go websocket server (`backend/`) + Next.js client (`
 - One palette: the Mantine theme (`web/lib/theme.ts`), with the role tokens in
   `styles/index.css` pointing at its variables. The table and cards have their own tokens
   there (`felt`, `card`, `heart`, `gold`, …). Use tokens, not raw Tailwind colors.
+- The system's scheme by default, then the toggle's: the tokens' light values are in `styles/index.css` under
+  `[data-mantine-color-scheme="light"]`. Prefer a light value for a token over the `dark:`
+  variant, which is for the odd class that has to differ.
 - Buttons: `filled` is the one main action in a group (join, start, save, approve), at most one
   per group. `default` (the theme's default) is everything else, the betting buttons included.
   `subtle` backs out (cancel, close). `outline` red opens something destructive, `filled` red

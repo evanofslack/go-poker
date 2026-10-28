@@ -12,8 +12,9 @@ import SeatMenu from "./SeatMenu";
 import { blind, isWinner, madeHand, winningCards, winningHand, winnings } from "../lib/hands";
 import { phone, useMedia } from "../hooks/useMedia";
 import classNames from "classnames";
-import { ActionIcon, Anchor } from "@mantine/core";
+import { ActionIcon, Button } from "@mantine/core";
 import { FiX } from "react-icons/fi";
+import { LuBot } from "react-icons/lu";
 
 const plate =
     "w-24 rounded-xl px-2 py-1 text-center sm:w-32 lg:w-40 lg:py-1.5 short:w-24 short:py-0.5";
@@ -23,7 +24,7 @@ function plateStyle(player: PlayerView, view: View) {
     const counting = action && view.turnEndsIn > 0;
     const winner = !view.betting && isWinner(view, player.seat);
     return classNames(plate, "relative", {
-        "bg-plate-active text-ink shadow-turn": action,
+        "bg-plate-active text-on-plate-active shadow-turn": action,
         "bg-highlight text-ink shadow-won": winner,
         "bg-panel text-fg": !action && !winner,
         // sitting out or out of chips
@@ -239,7 +240,7 @@ function OpenSeat({ id, view, host }: { id: number; view: View; host: boolean })
             <button
                 className={classNames(
                     plate,
-                    "border-2 border-dashed border-line bg-raised/60 text-fg hover:bg-raised"
+                    "border-2 border-dashed border-subtle/60 bg-raised/60 text-fg hover:bg-raised dark:border-line"
                 )}
                 onClick={() => setOpen("sit")}
             >
@@ -262,9 +263,9 @@ function OpenSeat({ id, view, host }: { id: number; view: View; host: boolean })
                         onCancel={close}
                     />
                     {host && (
-                        <Anchor component="button" size="sm" c="dimmed" className="mt-2 px-3" onClick={() => setOpen("bot")}>
-                            add a bot here instead
-                        </Anchor>
+                        <Button size="xs" leftSection={<LuBot />} className="mt-2 ml-3" onClick={() => setOpen("bot")}>
+                            add bot
+                        </Button>
                     )}
                 </Dialog>
             )}
@@ -285,7 +286,7 @@ function BotSeat({ id, view }: { id: number; view: View }) {
             <button
                 className={classNames(
                     plate,
-                    "border-2 border-dashed border-raised bg-raised/40 text-muted hover:bg-raised hover:text-fg"
+                    "border-2 border-dashed border-subtle/60 bg-raised/40 dark:border-raised text-muted hover:bg-raised hover:text-fg"
                 )}
                 onClick={() => setOpen(true)}
             >

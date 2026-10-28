@@ -33,10 +33,11 @@ export async function shot(page, name) {
     if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/${name}.png` });
 }
 
-// open makes a page in a new browser context, so it's a separate person. Table
-// animations are off, so checks see where things end up.
+// open makes a page in a new browser context, so it's a separate person. The system is
+// dark, and table animations are off so checks see where things end up, unless the
+// context says otherwise.
 export async function open(browser, context = {}) {
-    return (await browser.newContext({ reducedMotion: "reduce", ...context })).newPage();
+    return (await browser.newContext({ colorScheme: "dark", reducedMotion: "reduce", ...context })).newPage();
 }
 
 // confirmCreate creates the table from the settings dialog
