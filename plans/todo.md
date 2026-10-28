@@ -15,6 +15,11 @@
 | 11 | Straddle and run it N times (`straddle.md`) | done |
 | 12 | Mantine UI (`mantine.md`) and light mode | done |
 | 13 | Table polish (`table-polish.md`) | done |
+| 14 | Time bank (`extensions.md`) | planned |
+| 15 | Game refactor (`extensions.md`) | planned |
+| 16 | Pot-limit Omaha (`extensions.md`) | planned |
+| 17 | Bomb pots and double board (`extensions.md`) | planned |
+| 18 | Short deck (`extensions.md`) | planned |
 | - | Backlog | unranked |
 
 ## How items are ranked
@@ -635,12 +640,51 @@ where the smallest pick wins. Run it is on by default.
 - [x] PR 4: run it table (#143)
 - [x] PR 5: run it web (#145)
 
+# Stage 14: time bank
+
+Planned in `extensions.md`: time cards that add to the turn timer, earned as you play, spent with a
+button or automatically when time runs out. Parallel with stage 15.
+
+- [ ] PR 1: time bank table and server
+- [ ] PR 2: time bank web
+
+# Stage 15: game refactor
+
+Planned in `extensions.md`: hole cards as a slice, one `Game.Best` for hand strength, the hand hint
+from the server. Hold'em plays exactly as before.
+
+- [ ] PR 3: hole cards as a slice, `Game.Best`
+- [ ] PR 4: server hand hint, cards by count (web)
+
+# Stage 16: pot-limit Omaha
+
+Planned in `extensions.md`: Omaha and Omaha 5, exactly two hole cards, pot limit for any game.
+
+- [ ] PR 5: omaha engine
+- [ ] PR 6: omaha table, bots and web
+
+# Stage 17: bomb pots and double board
+
+Planned in `extensions.md`: bomb pots straight to the flop, by the host or every N hands, and two
+boards splitting each pot.
+
+- [ ] PR 7: bomb pot engine
+- [ ] PR 8: live boards and double board engine
+- [ ] PR 9: bomb pots and double board table and server
+- [ ] PR 10: bomb pots and double board web
+
+# Stage 18: short deck
+
+Planned in `extensions.md`: 36 cards, flush beats full house, A-6-7-8-9 straight, J-6 bounty.
+
+- [ ] PR 11: short deck engine
+- [ ] PR 12: short deck table and web
+
 # Backlog (unranked)
 
 - More house rules: see stages 9 and 11
-- Big blind ante: only the big blind posts the antes (the ante times the players dealt in) as dead
-  money, the blind first so a short big blind keeps their blind
-- Pot-limit Omaha
+- Game backlog (big blind ante, button blind, dealer's choice, hi-lo, crazy pineapple): see
+  `extensions.md`
 - Sit-n-go / tournament mode with a blind schedule
 - Accounts and persistent stats (only if this should be more than a play-with-friends app)
 - Admin view: a protected page listing tables, player counts, connections, uptime; close a table or
