@@ -3,6 +3,7 @@
 // union, and the client's own state.
 import type * as holdem from "./holdem";
 import type * as table from "./table";
+import type { Prefs } from "../lib/prefs";
 
 export type {
     BuyRequest,
@@ -68,6 +69,6 @@ export type AppState = {
     history: table.HandRecord[]; // hands as played, oldest first; older ones are fetched with getHands
     moreHistory: boolean; // the table keeps hands older than history's first
     tables: table.Summary[]; // public tables for the home page, best to join first
-    shortcuts: boolean; // keyboard shortcuts for the betting controls
+    prefs: Prefs; // how this viewer likes the table, saved in this browser
     welcomed: number; // counts joins and rejoins, so the table can settle before animating
 };
