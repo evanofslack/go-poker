@@ -3,7 +3,7 @@ import { setPassword as sendPassword, updateSettings } from "../actions/actions"
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import { defaultForm, fromSettings, settingsError, SettingsForm, toSettings } from "../lib/settings";
-import Button from "./Button";
+import { Button } from "@mantine/core";
 import Dialog from "./Dialog";
 import SettingsFields from "./SettingsFields";
 
@@ -47,10 +47,10 @@ export default function EditSettings({ onClose }: { onClose: () => void }) {
                 )}
                 <div className="flex flex-wrap items-center justify-end gap-2 border-t border-raised pt-3">
                     {midHand && <p className="mr-auto text-xs text-subtle">changes apply after this hand</p>}
-                    <Button type="button" variant="ghost" className="px-2 py-1 text-sm" onClick={onClose}>
+                    <Button type="button" variant="subtle" onClick={onClose}>
                         cancel
                     </Button>
-                    <Button type="submit" variant="primary" className="px-3 py-1 text-sm" disabled={!!invalid}>
+                    <Button type="submit" variant="filled" disabled={!!invalid}>
                         save
                     </Button>
                 </div>

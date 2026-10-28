@@ -1,6 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { FiVolume2, FiVolumeX } from "react-icons/fi";
 import { AppContext } from "../providers/AppStore";
+import { ActionIcon } from "@mantine/core";
 
 function loadMuted() {
     try {
@@ -67,14 +68,14 @@ export default function TurnAlert() {
     };
 
     return (
-        <button
-            className="p-1 text-subtle hover:text-fg"
+        <ActionIcon
+            size="sm"
             title={muted ? "unmute" : "mute"}
             aria-label="mute turn sound"
             aria-pressed={muted}
             onClick={toggle}
         >
             {muted ? <FiVolumeX /> : <FiVolume2 />}
-        </button>
+        </ActionIcon>
     );
 }

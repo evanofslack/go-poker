@@ -4,7 +4,7 @@ import { cancelStandUp, sessionAction, startStandUp } from "../../actions/action
 import { standUpPayouts } from "../../lib/settings";
 import { useSocket } from "../../hooks/useSocket";
 import { AppContext } from "../../providers/AppStore";
-import Button from "../Button";
+import { Button } from "@mantine/core";
 import Confirm from "../Confirm";
 import Section from "../Section";
 import Segmented from "../Segmented";
@@ -36,7 +36,8 @@ export default function Host() {
                 />
                 <span className="text-fg">{status}</span>
                 <Button
-                    className="ml-auto px-4 py-1"
+                    size="xs"
+                    className="ml-auto"
                     onClick={() => sessionAction(socket, game.paused ? "resume-game" : "pause-game")}
                 >
                     {game.paused ? "resume" : "pause"}
@@ -44,7 +45,7 @@ export default function Host() {
             </div>
             {!game.ended && <StandUp payoutBB={payoutBB} setPayoutBB={setPayoutBB} />}
             {!game.ending && (
-                <Button variant="danger" className="mt-auto w-full py-1.5" onClick={() => setConfirming(true)}>
+                <Button variant="outline" color="red" className="mt-auto self-start" onClick={() => setConfirming(true)}>
                     end session
                 </Button>
             )}
@@ -111,7 +112,7 @@ function StandUp({ payoutBB, setPayoutBB }: { payoutBB: number; setPayoutBB: (n:
                         {sat.length > 0 && <Names label="sat down" names={sat} />}
                     </>
                 )}
-                <Button className="self-end px-4 py-1" onClick={() => cancelStandUp(socket)}>
+                <Button className="self-start" onClick={() => cancelStandUp(socket)}>
                     cancel round
                 </Button>
             </Section>
@@ -137,8 +138,8 @@ function StandUp({ payoutBB, setPayoutBB }: { payoutBB: number; setPayoutBB: (n:
                 onChange={setPayoutBB}
             />
             <Button
-                variant="primary"
-                className="self-end px-4 py-1"
+                variant="filled"
+                className="self-start"
                 onClick={() => startStandUp(socket, payoutBB * game.settings.bb)}
             >
                 start stand-up

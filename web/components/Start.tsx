@@ -2,7 +2,8 @@ import { useContext } from "react";
 import { startGame } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
-import Button from "./Button";
+import { Button } from "@mantine/core";
+import { bar } from "../lib/theme";
 
 function handleStartGame(socket: WebSocket | null) {
     if (socket) {
@@ -20,7 +21,7 @@ export default function Start() {
     }
     if (!view.running && view.paused) {
         return (
-            <Button className="text-lg" title="the host paused the game" disabled>
+            <Button variant="filled" size="md" className={bar} title="the host paused the game" disabled>
                 start
             </Button>
         );
@@ -28,7 +29,7 @@ export default function Start() {
 
     if (!view.running && view.players.filter((p) => !p.sittingOut).length < 2) {
         return (
-            <Button className="text-lg" title="need 2 or more players to start" disabled>
+            <Button variant="filled" size="md" className={bar} title="need 2 or more players to start" disabled>
                 start
             </Button>
         );
@@ -36,7 +37,7 @@ export default function Start() {
 
     if (!view.running && view.players.filter((p) => !p.sittingOut).length >= 2) {
         return (
-            <Button className="text-lg" onClick={() => handleStartGame(socket)}>
+            <Button variant="filled" size="md" className={bar} onClick={() => handleStartGame(socket)}>
                 start
             </Button>
         );

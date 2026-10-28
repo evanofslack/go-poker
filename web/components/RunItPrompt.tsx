@@ -4,7 +4,8 @@ import { runIt } from "../actions/actions";
 import { useSecondsLeft } from "../hooks/useSecondsLeft";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
-import Button from "./Button";
+import { Button } from "@mantine/core";
+import { bar } from "../lib/theme";
 
 // RunItPrompt asks the players still in an all-in hand how many times to run
 // the board out. Everyone else sees who has answered.
@@ -35,8 +36,9 @@ export default function RunItPrompt() {
             {Array.from({ length: vote.max }, (_, i) => i + 1).map((n) => (
                 <Button
                     key={n}
-                    variant={mine === n ? "primary" : undefined}
-                    className={classNames("px-2 sm:px-4 sm:text-xl", mine && mine !== n && "opacity-60")}
+                    variant={mine === n ? "filled" : undefined}
+                    size="md"
+                    className={classNames(bar, mine && mine !== n && "opacity-60")}
                     aria-pressed={mine === n}
                     onClick={() => runIt(socket, n)}
                 >

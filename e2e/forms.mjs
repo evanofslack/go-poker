@@ -1,5 +1,5 @@
 // Join form, create table dialog and buy-in form behavior.
-import { URL, check, confirmCreate, finish, has, launch, open, shot } from "./lib.mjs";
+import { URL, btn, check, confirmCreate, finish, has, launch, open, shot } from "./lib.mjs";
 const browser = await launch();
 const p = await open(browser);
 const table = "forms" + Date.now();
@@ -11,7 +11,7 @@ await p.press("#tablename", "Enter");
 check("enter joins (no such table yet)", await has(p, "text=/no table|not found|doesn't exist|does not exist/i"));
 
 // the create dialog
-await p.click('button:text-is("create")');
+await p.click(btn("create"));
 check("create opens the settings dialog", await has(p, `text=create table ${table}`));
 check("old join error is cleared", (await p.locator('[role="dialog"] >> text=/not found/i').count()) === 0);
 check("buy-in shows chips", (await p.locator("text=1,000–4,000 chips").count()) === 1);
@@ -20,10 +20,10 @@ check("a hint opens under its label", await p.locator("text=a share of the big b
 await shot(p, "create-table");
 await p.fill("#maxBuy", "1001");
 check("over-cap max buy-in is explained", await p.locator("text=max buy-in can't be more than 1000 big blinds").isVisible());
-check("over-cap max buy-in disables create", await p.locator('button:text-is("create table")').isDisabled());
+check("over-cap max buy-in disables create", await p.locator(btn("create table")).isDisabled());
 await p.press("#maxBuy", "Escape");
 check("escape closes the dialog", (await p.locator('[role="dialog"]').count()) === 0);
-await p.click('button:text-is("create")');
+await p.click(btn("create"));
 check("reopened dialog is back to defaults", (await p.inputValue("#maxBuy")) === "200");
 await confirmCreate(p);
 await p.waitForSelector("text=Open");
@@ -32,7 +32,7 @@ await p.waitForSelector("text=Open");
 await p.locator("button", { hasText: "Open" }).filter({ hasText: "3" }).click();
 check("buy-in shows min and max", (await p.locator("text=1000 to 4000").count()) === 1);
 await p.fill("#buyIn", "20000");
-check("over-max disables sit down", await p.locator('button:text-is("sit down")').isDisabled());
+check("over-max disables sit down", await p.locator(btn("sit down")).isDisabled());
 await p.press("#buyIn", "Escape");
 check("escape cancels buy-in", (await p.locator("#buyIn").count()) === 0);
 await p.locator("button", { hasText: "Open" }).filter({ hasText: "3" }).click();
@@ -45,7 +45,7 @@ const q = await open(browser);
 await q.goto(URL);
 await q.fill("#username", "dave");
 await q.fill("#tablename", table);
-await q.click('button:text-is("create")');
+await q.click(btn("create"));
 await confirmCreate(q);
 check("taken table name shows in the dialog", await has(q, '[role="dialog"] >> text=table already exists'));
 
@@ -54,7 +54,7 @@ const r = await open(browser, { viewport: { width: 375, height: 667 } });
 await r.goto(URL);
 await r.fill("#username", "erin");
 await r.fill("#tablename", table + "c");
-await r.click('button:text-is("create")');
+await r.click(btn("create"));
 await r.click('label:has-text("custom")');
 await r.fill("#sb", "25");
 await r.fill("#bb", "50");

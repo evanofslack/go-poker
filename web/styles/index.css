@@ -1,8 +1,14 @@
+/* mantine sits between tailwind's base and utilities: its components beat the
+   preflight, and utility classes beat its components */
+@layer theme, base, mantine, components, utilities;
 @import 'tailwindcss';
+@import '@mantine/core/styles.layer.css';
+@import '@mantine/notifications/styles.layer.css';
 
 /*
   Design tokens. One neutral palette (zinc), named by role so components don't
-  pick shades ad hoc. Radius scale: rounded-md for controls, rounded-xl for
+  pick shades ad hoc. The colors come from the Mantine theme (lib/theme.ts), so
+  both draw on one palette. Radius scale: rounded-md for controls, rounded-xl for
   seats and panels, rounded-full for chips and pills.
 */
 /* a phone held upright; matches phone in hooks/useMedia.ts */
@@ -21,24 +27,49 @@
 }
 
 @theme {
-  --color-surface: var(--color-zinc-800); /* page background */
-  --color-panel: var(--color-zinc-900); /* seats */
-  --color-raised: var(--color-zinc-700); /* inputs, chat panel */
-  --color-fg: var(--color-zinc-100);
-  --color-muted: var(--color-zinc-400);
-  --color-subtle: var(--color-zinc-500);
-  --color-line: var(--color-zinc-600); /* borders of controls and menus */
-  --color-field: var(--color-zinc-600); /* small inputs on a panel */
-  --color-badge: var(--color-zinc-600); /* "bot", "sitting out" */
-  --color-accent: var(--color-cyan-500);
-  --color-accent-hover: var(--color-cyan-400);
-  --color-on-accent: var(--color-zinc-950); /* text on accent */
-  --color-danger: var(--color-rose-600);
-  --color-error: var(--color-rose-400); /* error text */
+  --color-surface: var(--mantine-color-dark-7); /* page background */
+  --color-panel: var(--mantine-color-dark-8); /* seats */
+  --color-raised: var(--mantine-color-dark-6); /* inputs, chat panel */
+  --color-fg: var(--mantine-color-dark-0);
+  --color-muted: var(--mantine-color-dark-2);
+  --color-subtle: var(--mantine-color-dark-3);
+  --color-line: var(--mantine-color-dark-4); /* borders of controls and menus */
+  --color-field: var(--mantine-color-dark-4); /* small inputs on a panel */
+  --color-badge: var(--mantine-color-dark-4); /* "bot", "sitting out" */
+  --color-accent: var(--mantine-color-cyan-5);
+  --color-accent-hover: var(--mantine-color-cyan-4);
+  --color-on-accent: var(--mantine-color-dark-9); /* text on accent */
+  --color-danger: var(--mantine-color-red-6);
+  --color-error: var(--mantine-color-red-4); /* error text */
   --color-warn: var(--color-amber-400);
   --color-gain: var(--color-green-400); /* chips won */
-  --color-loss: var(--color-rose-400); /* chips lost */
+  --color-loss: var(--mantine-color-red-4); /* chips lost */
   --color-highlight: var(--color-amber-200); /* winning seat */
+
+  /* the table and cards, which look the same in either color scheme */
+  --color-felt: var(--color-emerald-700);
+  --color-felt-edge: var(--color-teal-900);
+  --color-felt-dark: var(--color-green-900); /* pot, empty card slots */
+  --color-on-felt: var(--color-white);
+  --color-card: var(--color-white);
+  --color-card-edge: var(--color-zinc-100);
+  --color-card-back: var(--color-red-900);
+  --color-spade: var(--color-black);
+  --color-heart: var(--color-red-700);
+  --color-diamond: var(--color-blue-700);
+  --color-club: var(--color-green-700);
+  --color-ink: var(--color-zinc-900); /* text on light plates, chips and badges */
+  --color-plate-active: var(--color-zinc-100); /* the seat to act */
+  --color-gold: var(--color-amber-300); /* bets, winning cards */
+  --color-won: var(--color-amber-400);
+  --color-dealer: var(--color-purple-800);
+  --color-blind: var(--color-zinc-300);
+  --color-act-all-in: var(--color-rose-600);
+  --color-act-bet: var(--color-orange-400);
+  --color-act-call: var(--color-emerald-500);
+  --color-act-check: var(--color-sky-400);
+  --color-online: var(--color-green-500);
+  --color-offline: var(--color-red-500);
 
   /* panels floating over the table; dark enough to read on zinc */
   --shadow-float: 0 4px 16px rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.3);

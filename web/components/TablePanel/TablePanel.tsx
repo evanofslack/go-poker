@@ -1,11 +1,12 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import classNames from "classnames";
 import { AppContext } from "../../providers/AppStore";
 import History from "./History";
 import Host from "./Host";
 import Players from "./Players";
 import Settings from "./Settings";
 import Stats from "./Stats";
+import { ActionIcon, Tabs } from "@mantine/core";
+import { FiX } from "react-icons/fi";
 
 type tab = "players" | "hands" | "stats" | "settings" | "host";
 const tabs: tab[] = ["players", "hands", "stats", "settings", "host"];
@@ -36,11 +37,12 @@ export default function TablePanel({ onClose }: { onClose: () => void }) {
     close.current = onClose;
 
     useEffect(() => {
-        // a dialog opened from the panel handles its own Escape
+        // a dialog opened from the panel handles its own Escape. Listen in the capture phase,
+        // before the dialog closes, so it's still there to see.
         const key = (e: KeyboardEvent) =>
             e.key === "Escape" && !document.querySelector('[aria-modal="true"]') && close.current();
-        document.addEventListener("keydown", key);
-        return () => document.removeEventListener("keydown", key);
+        window.addEventListener("keydown", key, true);
+        return () => window.removeEventListener("keydown", key, true);
     }, []);
 
     const pick = (t: tab) => {
@@ -50,51 +52,48 @@ export default function TablePanel({ onClose }: { onClose: () => void }) {
         } catch {}
     };
 
-    const tabStyle = (t: tab) =>
-        classNames("shrink-0 rounded-md px-2 py-1 text-sm sm:px-3", tab === t ? "bg-surface text-fg" : "text-subtle");
-
     return (
         <div
             role="region"
             aria-label="table"
             className="absolute inset-y-2 right-2 left-2 z-40 flex flex-col rounded-xl bg-raised p-2 text-muted shadow-float ring-1 ring-black/20 sm:right-auto sm:w-[28rem]"
         >
-            <div className="mb-2 flex items-center gap-1">
-                <div className="flex min-w-0 gap-1 overflow-x-auto">
-                    <button className={tabStyle("players")} onClick={() => pick("players")}>
-                        players
-                    </button>
-                    <button className={tabStyle("hands")} onClick={() => pick("hands")}>
-                        hands
-                    </button>
-                    <button className={tabStyle("stats")} onClick={() => pick("stats")}>
-                        stats
-                    </button>
-                    <button className={tabStyle("settings")} onClick={() => pick("settings")}>
-                        settings
-                    </button>
-                    {host && (
-                        <button className={tabStyle("host")} onClick={() => pick("host")}>
-                            host
-                        </button>
-                    )}
+            <Tabs
+                value={tab}
+                onChange={(t) => t && pick(t as tab)}
+                keepMounted={false}
+                className="flex min-h-0 flex-1 flex-col"
+            >
+                <div className="mb-2 flex items-center gap-1">
+                    <Tabs.List className="min-w-0 flex-1 flex-nowrap overflow-x-auto">
+                        {tabs
+                            .filter((t) => t !== "host" || host)
+                            .map((t) => (
+                                <Tabs.Tab key={t} value={t} className="shrink-0 px-2 sm:px-3">
+                                    {t}
+                                </Tabs.Tab>
+                            ))}
+                    </Tabs.List>
+                    <ActionIcon className="shrink-0" title="close" aria-label="close table panel" onClick={onClose}>
+                        <FiX />
+                    </ActionIcon>
                 </div>
-                <button
-                    className="ml-auto shrink-0 px-2 text-subtle hover:text-fg"
-                    title="close"
-                    aria-label="close table panel"
-                    onClick={onClose}
-                >
-                    ✕
-                </button>
-            </div>
-            <div className="min-h-0 flex-1">
-                {tab === "players" && <Players />}
-                {tab === "hands" && <History />}
-                {tab === "stats" && <Stats />}
-                {tab === "settings" && <Settings />}
-                {tab === "host" && <Host />}
-            </div>
+                <Tabs.Panel value="players" className="min-h-0 flex-1">
+                    <Players />
+                </Tabs.Panel>
+                <Tabs.Panel value="hands" className="min-h-0 flex-1">
+                    <History />
+                </Tabs.Panel>
+                <Tabs.Panel value="stats" className="min-h-0 flex-1">
+                    <Stats />
+                </Tabs.Panel>
+                <Tabs.Panel value="settings" className="min-h-0 flex-1">
+                    <Settings />
+                </Tabs.Panel>
+                <Tabs.Panel value="host" className="min-h-0 flex-1">
+                    <Host />
+                </Tabs.Panel>
+            </Tabs>
         </div>
     );
 }

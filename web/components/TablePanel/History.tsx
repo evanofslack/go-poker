@@ -8,12 +8,13 @@ import { HandPot, HandRecord } from "../../interfaces/index";
 type Card = string;
 import { actionText, netText, streets, winnersText } from "../../lib/history";
 import { AppContext } from "../../providers/AppStore";
+import { Button, Checkbox } from "@mantine/core";
 
 const suits: Record<string, { glyph: string; name: string; color: string }> = {
-    s: { glyph: "♠", name: "spades", color: "text-black" },
-    h: { glyph: "♥", name: "hearts", color: "text-red-700" },
-    d: { glyph: "♦", name: "diamonds", color: "text-blue-700" },
-    c: { glyph: "♣", name: "clubs", color: "text-green-700" },
+    s: { glyph: "♠", name: "spades", color: "text-spade" },
+    h: { glyph: "♥", name: "hearts", color: "text-heart" },
+    d: { glyph: "♦", name: "diamonds", color: "text-diamond" },
+    c: { glyph: "♣", name: "clubs", color: "text-club" },
 };
 const ranks: Record<string, string> = { T: "ten", J: "jack", Q: "queen", K: "king", A: "ace" };
 
@@ -25,7 +26,7 @@ function MiniCard({ card }: { card: Card }) {
         <span
             role="img"
             aria-label={`${ranks[card[0]] ?? card[0]} of ${suit.name}`}
-            className={classNames("rounded-sm bg-white px-0.5 font-semibold leading-tight", suit.color)}
+            className={classNames("rounded-sm bg-card px-0.5 font-semibold leading-tight", suit.color)}
         >
             {card[0]}
             {suit.glyph}
@@ -69,10 +70,12 @@ export default function History() {
     return (
         <div className="flex h-full flex-col bg-surface">
             <div className="flex items-center gap-2 border-b border-raised px-2 py-1.5 text-xs">
-                <label className="flex cursor-pointer items-center gap-1.5 text-muted">
-                    <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} />
-                    hands I played
-                </label>
+                <Checkbox
+                    size="xs"
+                    label="hands I played"
+                    checked={mine}
+                    onChange={(e) => setMine(e.currentTarget.checked)}
+                />
                 <span className="ml-auto text-subtle">
                     {history.length === 1 ? "1 hand" : `${history.length} hands`}
                 </span>
@@ -90,12 +93,9 @@ export default function History() {
                 {hands.length === 0 && <li className="text-sm text-subtle">you haven't played a hand yet</li>}
                 {appState.moreHistory && socket && (
                     <li className="pt-2 text-center">
-                        <button
-                            className="rounded-md px-2 py-0.5 text-xs text-muted hover:bg-raised hover:text-fg"
-                            onClick={() => getHands(socket, history[0].hand)}
-                        >
+                        <Button variant="subtle" size="compact-xs" onClick={() => getHands(socket, history[0].hand)}>
                             load older hands
-                        </button>
+                        </Button>
                     </li>
                 )}
             </ol>

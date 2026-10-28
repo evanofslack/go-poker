@@ -1,17 +1,17 @@
 // Run it: two players all in preflop vote on how many times to run the board out.
-import { check, finish, has, launch, panel, seat, shot, until } from "./lib.mjs";
+import { btn, check, finish, has, launch, panel, seat, shot, until } from "./lib.mjs";
 
 const setting = (p, label) => p.locator('dl[aria-label="table settings"] > div', { hasText: label }).innerText();
 // run it is on by default
 let runItDefault;
-const offRunIt = (p) => p.click("#runIt");
+const offRunIt = (p) => p.click("label[for=runIt]");
 
 // alice, on the button, shoves and bob calls
 async function allIn(alice, bob) {
-    await alice.click('button:text-is("start")');
-    await alice.waitForSelector('button:text-is("call 10")');
-    await alice.click('button:text-is("raise")');
-    await alice.click('button:text-is("all in")');
+    await alice.click(btn("start"));
+    await alice.waitForSelector(btn("call 10"));
+    await alice.click(btn("raise"));
+    await alice.click(btn("all in"));
     await alice.press("#raise", "Enter");
     await bob.getByRole("button", { name: /^(call|all in) \d+/ }).click();
 }
@@ -31,11 +31,11 @@ await allIn(alice, bob);
 check("both are asked how many times", (await has(alice, "[data-run-ask]")) && (await has(bob, "[data-run-ask]")));
 const options = await bob.locator("[data-run-ask] button").allInnerTexts();
 check("from once to 4", JSON.stringify(options) === '["once","2×","3×","4×"]', JSON.stringify(options));
-await alice.click('[data-run-ask] button:text-is("2×")');
+await alice.click(`[data-run-ask] ${btn("2×")}`);
 check("alice's pick is marked", (await alice.locator('[data-run-ask] button[aria-pressed="true"]').innerText()) === "2×");
 check("the board waits for bob", (await alice.locator("[data-board] [role=img]").count()) === 0);
 await shot(bob, "ri-1-vote");
-await bob.click('[data-run-ask] button:text-is("3×")');
+await bob.click(`[data-run-ask] ${btn("3×")}`);
 
 check("the smallest pick runs: two boards", await has(alice, '[data-boards="2"]', 3000));
 check("the prompt goes", await until(async () => (await alice.locator("[data-run-ask]").count()) === 0));
@@ -56,7 +56,7 @@ await alice.click('[aria-label="close table panel"]');
 // a pick of once ends the vote
 const [carol, dan] = await seat(browser, "ri1" + Date.now(), ["carol", "dan"]);
 await allIn(carol, dan);
-await dan.click('[data-run-ask] button:text-is("once")');
+await dan.click(`[data-run-ask] ${btn("once")}`);
 check("once ends the vote", await until(async () => (await carol.locator("[data-run-ask]").count()) === 0));
 check("with one board", (await carol.locator('[data-boards="1"]').count()) === 1 && (await carol.locator("[data-run]").count()) === 0);
 

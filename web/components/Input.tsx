@@ -5,10 +5,11 @@ import { playerCall, playerCheck, playerFold, playerRaise } from "../actions/act
 import { useSocket } from "../hooks/useSocket";
 import { bettingInfo } from "../lib/betting";
 import { Pre, owed, preOptions, preStreet, resolvePre } from "../lib/preaction";
-import Button from "./Button";
+import { Button, Checkbox } from "@mantine/core";
+import { bar } from "../lib/theme";
 import RaiseInput from "./RaiseInput";
 
-const btn = "flex-1 px-2 sm:flex-none sm:px-4 sm:text-xl tall:py-3";
+const btn = classNames(bar, "flex-1 sm:flex-none");
 // key hints, drawn after the label so they aren't part of its text
 const hint =
     "pointer-fine:after:ml-2 pointer-fine:after:text-xs pointer-fine:after:font-normal pointer-fine:after:opacity-60";
@@ -25,8 +26,11 @@ function typing(t: EventTarget | null) {
     return t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement || t.isContentEditable;
 }
 
-const pill =
-    "flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border-2 px-2 py-2 whitespace-nowrap sm:flex-none sm:px-4 sm:text-lg";
+// a pick looks like the default buttons it stands in for, with a box to tick
+const pill = classNames(
+    bar,
+    "flex h-10.5 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border bg-(--mantine-color-default) font-semibold whitespace-nowrap text-fg hover:bg-(--mantine-color-default-hover) sm:flex-none"
+);
 
 export default function Input() {
     const socket = useSocket();
@@ -138,13 +142,12 @@ export default function Input() {
                             className={classNames(
                                 pill,
                                 keyed(k),
-                                on ? "border-accent text-fg" : "border-line text-muted hover:bg-raised"
+                                on ? "border-accent" : "border-(--mantine-color-default-border)"
                             )}
                             aria-keyshortcuts={k}
                         >
-                            <input
-                                type="checkbox"
-                                className="size-4 accent-accent"
+                            <Checkbox
+                                size="xs"
                                 checked={on}
                                 onChange={() => setPre(on ? null : { kind, amount: owe, street })}
                             />
@@ -176,16 +179,18 @@ export default function Input() {
     return (
         <div role="group" aria-label="your turn" className="flex w-full animate-arm gap-2 sm:w-auto">
             <Button
-                variant="danger"
-                className={classNames(btn, b.toCall > 0 && keyed("F"))}
+                size="md"
+                className={btn}
+                classNames={{ label: b.toCall > 0 ? keyed("F") : undefined }}
                 aria-keyshortcuts={b.toCall > 0 ? "F" : undefined}
                 onClick={() => playerFold(socket)}
             >
                 fold
             </Button>
             <Button
-                variant="primary"
-                className={classNames(btn, keyed("C"))}
+                size="md"
+                className={btn}
+                classNames={{ label: keyed("C") }}
                 aria-keyshortcuts="C"
                 onClick={() => (b.toCall > 0 ? playerCall(socket) : playerCheck(socket))}
             >
@@ -193,8 +198,9 @@ export default function Input() {
             </Button>
             {b.canRaise && b.fullRaise && (
                 <Button
-                    variant="primary"
-                    className={classNames(btn, keyed("R"))}
+                    size="md"
+                    className={btn}
+                    classNames={{ label: keyed("R") }}
                     aria-keyshortcuts="R B"
                     onClick={() => setShowRaise(true)}
                 >
@@ -202,7 +208,7 @@ export default function Input() {
                 </Button>
             )}
             {b.canRaise && !b.fullRaise && (
-                <Button variant="primary" className={btn} onClick={() => raiseTo(b.maxTo)}>
+                <Button size="md" className={btn} onClick={() => raiseTo(b.maxTo)}>
                     all in {b.maxTo}
                 </Button>
             )}

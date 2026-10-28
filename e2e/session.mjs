@@ -1,5 +1,5 @@
 // Two-player session: hidden cards, next hand, reload, turn timer and grace period.
-import { URL, check, create, finish, gone, grace, has, join, last, launch, open, quick, quiet, record, shot, sit, until } from "./lib.mjs";
+import { URL, btn, check, create, finish, gone, grace, has, join, last, launch, open, quick, quiet, record, shot, sit, until } from "./lib.mjs";
 
 // dealt counts the hands dealt, from updates where betting starts
 const dealt = (rec) => rec.views.filter((g, i) => g.betting && !rec.views[i - 1]?.betting).length;
@@ -15,7 +15,7 @@ const bRec = record(bob);
 // the shortest turn timer, which has to run out before the reconnect grace
 const turnTime = 15000;
 const setup = async (p) => {
-    await p.click(`label:has(input[name="turnTime"]) >> text="${turnTime / 1000}s"`);
+    await p.click(`fieldset:has(input[name="turnTime"]) >> text="${turnTime / 1000}s"`);
     await quick(p);
 };
 
@@ -32,12 +32,12 @@ const eve = await open(browser);
 await eve.goto(URL);
 await eve.fill("#username", "ALICE");
 await eve.fill("#tablename", table);
-await eve.click('button:text-is("join")');
+await eve.click(btn("join"));
 check("duplicate name rejected on join form", await has(eve, "text=name already taken"));
 await shot(eve, "1-name-taken");
 await eve.context().close();
 
-await alice.click('button:text-is("start")');
+await alice.click(btn("start"));
 await until(() => last(aRec)?.betting && last(bRec)?.betting);
 await shot(alice, "2-alice-hand1");
 await shot(bob, "3-bob-hand1");
@@ -48,7 +48,7 @@ check("alice never receives bob's cards mid-hand", preShowdown(aRec).every((g) =
 check("bob never receives alice's cards mid-hand", preShowdown(bRec).every((g) => !cardsShown(g, "alice")) && cardsShown(last(bRec), "bob"));
 
 // alice (dealer, small blind) folds; the server records it and deals the next hand once
-await alice.click('button:text-is("fold")');
+await alice.click(btn("fold"));
 await until(() => dealt(aRec) >= 2, 8000);
 await quiet(1000);
 check("server deals the next hand exactly once", dealt(aRec) === 2, `dealt ${dealt(aRec)}`);

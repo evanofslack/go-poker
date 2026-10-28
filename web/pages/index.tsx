@@ -1,7 +1,7 @@
 import Layout from "../components/Layout";
 import Game from "../components/Game";
 import Join from "../components/Join";
-import Toaster from "../components/Toaster";
+import { Notifications } from "@mantine/notifications";
 import { useContext } from "react";
 import { AppContext } from "../providers/AppStore";
 
@@ -10,7 +10,7 @@ export default function IndexPage() {
 
     return (
         <Layout title="Poker">
-            <Toaster />
+            <Notifications position="top-center" limit={3} autoClose={4000} />
             {appState.username ? <Game /> : <Join />}
         </Layout>
     );

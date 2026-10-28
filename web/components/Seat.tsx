@@ -12,6 +12,8 @@ import SeatMenu from "./SeatMenu";
 import { blind, isWinner, madeHand, winningCards, winningHand, winnings } from "../lib/hands";
 import { phone, useMedia } from "../hooks/useMedia";
 import classNames from "classnames";
+import { ActionIcon, Anchor } from "@mantine/core";
+import { FiX } from "react-icons/fi";
 
 const plate =
     "w-24 rounded-xl px-2 py-1 text-center sm:w-32 lg:w-40 lg:py-1.5 short:w-24 short:py-0.5";
@@ -21,8 +23,8 @@ function plateStyle(player: PlayerView, view: View) {
     const counting = action && view.turnEndsIn > 0;
     const winner = !view.betting && isWinner(view, player.seat);
     return classNames(plate, "relative", {
-        "bg-zinc-100 text-zinc-900 shadow-[0_0_40px_2px_rgba(255,255,255,0.3)]": action,
-        "bg-amber-200 text-zinc-900 shadow-[0_0_60px_20px_rgba(100,98,92,0.3)]": winner,
+        "bg-plate-active text-ink shadow-[0_0_40px_2px_rgba(255,255,255,0.3)]": action,
+        "bg-highlight text-ink shadow-[0_0_60px_20px_rgba(100,98,92,0.3)]": winner,
         "bg-panel text-fg": !action && !winner,
         // sitting out or out of chips
         "opacity-50": player.sittingOut && !action && !winner,
@@ -47,7 +49,7 @@ function ResultTag({ player, view, own }: { player: PlayerView; view: View; own:
     if (won) {
         const hand = winningHand(view, player.seat);
         return (
-            <span className={classNames(tag, "bg-amber-400 text-zinc-900")} data-won>
+            <span className={classNames(tag, "bg-won text-ink")} data-won>
                 won {won}
                 {hand && (
                     <>
@@ -120,12 +122,12 @@ function Badges({ player, view, own }: { player: PlayerView; view: View; own: bo
             data-badges
         >
             {dealer && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-purple-800 shadow-md">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-card text-xs font-bold text-dealer shadow-md">
                     D
                 </span>
             )}
             {label && (
-                <span className="flex h-5 items-center rounded-full bg-zinc-300 px-1.5 text-xs font-bold text-zinc-800 shadow-md">
+                <span className="flex h-5 items-center rounded-full bg-blind px-1.5 text-xs font-bold text-ink shadow-md">
                     {label}
                 </span>
             )}
@@ -203,14 +205,17 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
                 {own && <SeatMenu player={player} view={view} />}
                 {bot && host && socket && !view.ended && (
                     // on the top corner, clear of the name, icon and result tag
-                    <button
-                        className="absolute -top-2 -right-2 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-raised text-sm leading-none text-muted hover:text-fg"
+                    <ActionIcon
+                        variant="default"
+                        size="sm"
+                        radius="xl"
+                        className="absolute -top-2 -right-2 z-20"
                         title="remove bot"
                         aria-label={`remove ${player.name}`}
                         onClick={() => removeBot(socket, player.seat)}
                     >
-                        ×
-                    </button>
+                        <FiX />
+                    </ActionIcon>
                 )}
                 {view.betting && view.toAct === player.seat && view.turnEndsIn > 0 && (
                     <Countdown endsIn={view.turnEndsIn} total={view.settings.turnTime} />
@@ -255,12 +260,9 @@ function OpenSeat({ id, view, host }: { id: number; view: View; host: boolean })
                         onCancel={close}
                     />
                     {host && (
-                        <button
-                            className="mt-2 px-3 text-sm text-subtle underline hover:text-fg"
-                            onClick={() => setOpen("bot")}
-                        >
+                        <Anchor component="button" size="sm" c="dimmed" className="mt-2 px-3" onClick={() => setOpen("bot")}>
                             add a bot here instead
-                        </button>
+                        </Anchor>
                     )}
                 </Dialog>
             )}
@@ -281,7 +283,7 @@ function BotSeat({ id, view }: { id: number; view: View }) {
             <button
                 className={classNames(
                     plate,
-                    "border-2 border-dashed border-zinc-700 bg-raised/40 text-muted hover:bg-raised hover:text-fg"
+                    "border-2 border-dashed border-raised bg-raised/40 text-muted hover:bg-raised hover:text-fg"
                 )}
                 onClick={() => setOpen(true)}
             >

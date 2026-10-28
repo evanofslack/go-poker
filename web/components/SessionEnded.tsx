@@ -2,13 +2,13 @@ import { useContext, useState } from "react";
 import classNames from "classnames";
 import { AppContext } from "../providers/AppStore";
 import { copyLedger, settleLine, signed } from "../lib/ledger";
-import Button from "./Button";
+import { Button } from "@mantine/core";
 import Dialog from "./Dialog";
 
 // SessionEnded shows everyone the final settle-up once the session ends. The
 // table panel keeps it after this is closed.
 export default function SessionEnded() {
-    const { appState, dispatch } = useContext(AppContext);
+    const { appState } = useContext(AppContext);
     const [closed, setClosed] = useState(false);
     const game = appState.view;
     if (!game?.ended || closed) return null;
@@ -38,13 +38,12 @@ export default function SessionEnded() {
             </ul>
             {balance !== 0 && <p className="mb-3 text-sm text-error">off by {balance}</p>}
             <div className="flex justify-end gap-2">
-                <Button variant="ghost" className="px-2 py-1 text-sm" onClick={() => setClosed(true)}>
+                <Button variant="subtle" onClick={() => setClosed(true)}>
                     close
                 </Button>
                 <Button
-                    variant="primary"
-                    className="px-3 py-1 text-sm"
-                    onClick={() => copyLedger(appState.table ?? "", game, dispatch)}
+                    variant="filled"
+                    onClick={() => copyLedger(appState.table ?? "", game)}
                 >
                     copy ledger
                 </Button>

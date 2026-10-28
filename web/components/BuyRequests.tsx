@@ -2,7 +2,7 @@ import { useContext } from "react";
 import { hostAction } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
-import Button from "./Button";
+import { Button } from "@mantine/core";
 
 // BuyRequests shows the host the rebuys waiting for their ok.
 export default function BuyRequests() {
@@ -24,15 +24,15 @@ export default function BuyRequests() {
                         {r.seat ? `wants to sit back down with ${r.amount}` : `wants to rebuy for ${r.amount}`}
                     </span>
                     <Button
-                        variant="primary"
-                        className="px-2 py-0.5 text-xs"
+                        variant="filled"
+                        size="xs"
                         onClick={() => hostAction(socket, "approve-buy-in", r.name)}
                     >
                         approve
                     </Button>
                     <Button
-                        variant="ghost"
-                        className="px-2 py-0.5 text-xs"
+                        variant="subtle"
+                        size="xs"
                         onClick={() => hostAction(socket, "deny-buy-in", r.name)}
                     >
                         deny

@@ -11,6 +11,7 @@ import {
     stakes,
     turnTimes,
 } from "../lib/settings";
+import { TextInput } from "@mantine/core";
 import Hint from "./Hint";
 import Section from "./Section";
 import Segmented from "./Segmented";
@@ -24,7 +25,6 @@ type settingsFieldsProps = {
     seats: boolean; // the seat count can't change once the table exists
 };
 
-const input = "w-full rounded-md bg-raised px-2 py-1 text-fg focus:outline-hidden";
 const label = "mb-1 block text-xs text-muted";
 const digits = (s: string) => s.replace(/\D/g, "");
 const chips = (n: number) => n.toLocaleString("en");
@@ -63,8 +63,7 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                                     <label className={label} htmlFor="sb">
                                         small blind
                                     </label>
-                                    <input
-                                        className={input}
+                                    <TextInput
                                         id="sb"
                                         inputMode="numeric"
                                         value={form.sb}
@@ -75,8 +74,7 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                                     <label className={label} htmlFor="bb">
                                         big blind
                                     </label>
-                                    <input
-                                        className={input}
+                                    <TextInput
                                         id="bb"
                                         inputMode="numeric"
                                         value={form.bb}
@@ -91,8 +89,8 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                             buy-in
                         </FieldLabel>
                         <div className="flex items-center gap-2 text-sm">
-                            <input
-                                className={input}
+                            <TextInput
+                                className="flex-1"
                                 id="minBuy"
                                 aria-label="min buy-in, in big blinds"
                                 inputMode="numeric"
@@ -100,8 +98,8 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                                 onChange={(e) => set({ minBuyBB: digits(e.target.value) })}
                             />
                             <span className="text-subtle">–</span>
-                            <input
-                                className={input}
+                            <TextInput
+                                className="flex-1"
                                 id="maxBuy"
                                 aria-label="max buy-in, in big blinds"
                                 inputMode="numeric"
@@ -177,8 +175,7 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                         <FieldLabel htmlFor="tablePassword" hint="optional; it's shared in invite links">
                             password
                         </FieldLabel>
-                        <input
-                            className={input}
+                        <TextInput
                             id="tablePassword"
                             type="text"
                             autoComplete="off"

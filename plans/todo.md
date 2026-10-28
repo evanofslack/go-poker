@@ -13,6 +13,7 @@
 | 9 | House rules | done |
 | 10 | e2e cleanup (`e2e.md`) | done |
 | 11 | Straddle and run it N times (`straddle.md`) | done |
+| 12 | Mantine UI (`mantine.md`) | done |
 | - | Backlog | unranked |
 
 ## How items are ranked

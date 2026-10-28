@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { check, create, finish, fold, join, last, launch, open, record, sit, until } from "./lib.mjs";
+import { btn, check, create, finish, fold, join, last, launch, open, record, sit, until } from "./lib.mjs";
 
 if (!process.env.BIN) {
     console.log("BIN must name a server binary; just e2e sets it");
@@ -60,7 +60,7 @@ await sit(alice, 1);
 await join(bob, "bob", table);
 await sit(bob, 2);
 await until(() => last(aRec)?.players.length === 2);
-await alice.click('button:text-is("start")');
+await alice.click(btn("start"));
 await until(() => last(aRec)?.betting);
 
 // a graceful restart mid-hand carries the hand on

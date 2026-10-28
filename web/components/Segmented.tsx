@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { SegmentedControl } from "@mantine/core";
 import Hint from "./Hint";
 
 type segmentedProps<T> = {
@@ -10,8 +11,8 @@ type segmentedProps<T> = {
     onChange: (value: T) => void;
 };
 
-// Segmented picks one of a few options. They're radio buttons underneath, so
-// arrow keys move between them.
+// Segmented picks one of a few options, with a legend. Mantine's values are
+// strings, so it maps them back to the options' own.
 export default function Segmented<T extends string | number>({
     legend,
     hint,
@@ -26,22 +27,14 @@ export default function Segmented<T extends string | number>({
                 {legend}
                 {hint && <Hint about={legend} text={hint} />}
             </legend>
-            <div className="flex flex-wrap gap-1">
-                {options.map((o) => (
-                    <label key={o.value} className="cursor-pointer">
-                        <input
-                            type="radio"
-                            className="peer sr-only"
-                            name={name}
-                            checked={o.value === value}
-                            onChange={() => onChange(o.value)}
-                        />
-                        <span className="block rounded-md border-2 border-line px-2 py-0.5 text-sm hover:bg-raised peer-checked:border-accent peer-checked:bg-accent peer-checked:font-semibold peer-checked:hover:bg-accent peer-checked:text-on-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent">
-                            {o.label}
-                        </span>
-                    </label>
-                ))}
-            </div>
+            <SegmentedControl
+                name={name}
+                size="xs"
+                color="cyan"
+                data={options.map((o) => ({ label: o.label, value: String(o.value) }))}
+                value={String(value)}
+                onChange={(v) => onChange(options.find((o) => String(o.value) === v)!.value)}
+            />
         </fieldset>
     );
 }

@@ -1,5 +1,5 @@
 // A full nine-seat table on desktop, tablet and phone viewports, then smaller tables on phones.
-import { check, create, finish, join, launch, open, quiet, shot, sit } from "./lib.mjs";
+import { btn, check, create, finish, join, launch, open, quiet, shot, sit } from "./lib.mjs";
 
 const views = {
     desktop: { viewport: { width: 1280, height: 720 } },
@@ -128,7 +128,7 @@ async function seatTable(n, kinds, order) {
         await sit(p, order[i]);
         pages.push({ p, kind: kinds[i], name: names[i] });
     }
-    await pages[0].p.click('button:text-is("start")');
+    await pages[0].p.click(btn("start"));
     // everyone is dealt in
     for (const { p } of pages) await p.waitForSelector("text=/^(waiting for .+|fold)$/");
     // and the deal has settled
@@ -143,7 +143,7 @@ await checkLayout(pages, 9);
 
 // open the raise input on whoever is to act, and the chat on a phone
 for (const { p, kind, name } of pages) {
-    const r = p.locator('button:text-is("raise")');
+    const r = p.locator(btn("raise"));
     if (await r.count()) {
         await r.click();
         await shot(p, `lay-2-raise-${kind}`);
@@ -156,15 +156,15 @@ for (const { p, kind, name } of pages) {
 // the seat menu opens upward from the bottom seat, so it stays on screen
 for (const { p, kind } of pages.filter((x) => ["phone", "landscape"].includes(x.kind))) {
     await p.click('button[title="seat options"]');
-    const menu = await p.locator('button:text-is("leave seat")').boundingBox();
+    const menu = await p.locator(btn("leave seat")).boundingBox();
     const vh = await p.evaluate(() => window.innerHeight);
     check(`${kind}: seat menu on screen`, menu && menu.y >= 0 && menu.y + menu.height <= vh, JSON.stringify(menu));
     await shot(p, `lay-4-menu-${kind}`);
     await p.keyboard.press("Escape");
-    check(`${kind}: escape closes the seat menu`, (await p.locator('button:text-is("leave seat")').count()) === 0);
+    check(`${kind}: escape closes the seat menu`, (await p.locator(btn("leave seat")).count()) === 0);
 }
 const phone = pages[1].p;
-await phone.click('button:text-is("chat")');
+await phone.click(btn("chat"));
 await phone.fill('input[placeholder="say something..."]', "hi from the phone").catch(() => {});
 await shot(phone, `lay-3-chat-phone`);
 
@@ -176,14 +176,14 @@ for (const [n, order] of [[6, [2, 5, 1, 4, 6, 3]], [8, [4, 8, 2, 6, 1, 7, 3, 5]]
     await checkLayout(small, order.length);
     // whoever is to act raises: on a phone the presets and steppers fit in the footer
     for (const { p, kind, name } of small) {
-        const r = p.locator('button:text-is("raise")');
+        const r = p.locator(btn("raise"));
         if (!(await r.count())) continue;
         await r.click();
         const before = Number(await p.inputValue("#raise"));
         await p.click('button[aria-label="more"]');
         const after = Number(await p.inputValue("#raise"));
         check(`${n} seats, ${kind}: + adds a big blind`, after === before + 20, `${before} to ${after}`);
-        check(`${n} seats, ${kind}: raise presets in the footer`, (await p.locator('footer button:text-is("pot")').count()) === 1);
+        check(`${n} seats, ${kind}: raise presets in the footer`, (await p.locator(`footer ${btn("pot")}`).count()) === 1);
         check(`${n} seats, ${kind}: raise fits`, !(await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)));
         const gap = await footerGap(p, name);
         check(`${n} seats, ${kind}: own seat clear of the raise controls`, gap >= 0, `${gap}px`);

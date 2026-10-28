@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Button from "./Button";
+import { Button, TextInput } from "@mantine/core";
 
 type buyInProps = {
     min: number;
@@ -26,28 +26,19 @@ export default function BuyIn({ min, max, initial, label, onSubmit, onCancel }: 
             onKeyDown={(e) => e.key === "Escape" && onCancel()}
         >
             <div className="flex flex-row items-center gap-1">
-                <input
+                <TextInput
                     autoFocus
-                    className="w-20 rounded-md bg-field p-1 text-fg focus:outline-hidden"
+                    size="xs"
+                    className="w-20 min-w-16 flex-1"
                     id="buyIn"
                     inputMode="numeric"
                     value={text}
                     onChange={(e) => setText(e.target.value.replace(/\D/g, ""))}
                 />
-                <Button
-                    type="submit"
-                    variant="primary"
-                    className="px-2 py-1 text-sm whitespace-nowrap"
-                    disabled={!valid}
-                >
+                <Button type="submit" variant="filled" size="compact-sm" className="shrink-0" disabled={!valid}>
                     {label}
                 </Button>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    className="px-1 py-1 text-sm"
-                    onClick={onCancel}
-                >
+                <Button type="button" variant="subtle" size="compact-sm" className="shrink-0" onClick={onCancel}>
                     cancel
                 </Button>
             </div>
