@@ -82,7 +82,9 @@ func try(t *testing.T, s *State, f func() error) {
 func TestRollout(t *testing.T) {
 	for game := range 300 {
 		r := rand.New(rand.NewPCG(uint64(game), 1))
-		s := New(Config{SmallBlind: 1 + r.UintN(10), BigBlind: 20, Ante: r.UintN(3) * 5}, [32]byte{byte(game), byte(game >> 8)})
+		// hold'em, Omaha or Omaha 5, no limit or pot limit
+		g := Game{Hole: []int{0, 4, 5}[r.IntN(3)], Pot: r.IntN(2) == 0}
+		s := New(Config{Game: g, SmallBlind: 1 + r.UintN(10), BigBlind: 20, Ante: r.UintN(3) * 5}, [32]byte{byte(game), byte(game >> 8)})
 		seats := 2 + r.IntN(8)
 		for seat := 1; seat <= seats; seat++ {
 			if r.IntN(4) > 0 {
@@ -130,6 +132,11 @@ func TestRollout(t *testing.T) {
 				continue
 			}
 			check(t, &s, total)
+			for _, p := range s.Players {
+				if p.Dealt && len(p.Cards) != g.HoleCards() {
+					t.Fatalf("game %d: seat %d dealt %d cards", game, p.Seat, len(p.Cards))
+				}
+			}
 
 			for steps := 0; s.InHand(); steps++ {
 				if steps > 200 {
@@ -156,7 +163,11 @@ func TestRollout(t *testing.T) {
 						try(t, &s, func() error { _, err := s.Act(other, Call{}); return err })
 					}
 				}
-				a := randomAction(r, s.Legal(s.ToAct))
+				l := s.Legal(s.ToAct)
+				if g.Pot && l.RaiseMax > s.potRaise(s.topBet()-s.Player(s.ToAct).Bet) {
+					t.Fatalf("game %d: raise to %d over the pot", game, l.RaiseMax)
+				}
+				a := randomAction(r, l)
 				try(t, &s, func() error { _, err := s.Act(s.ToAct, a); return err })
 				check(t, &s, total)
 				// mid-hand seat changes are refused

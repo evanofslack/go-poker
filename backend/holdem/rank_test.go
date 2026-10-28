@@ -107,3 +107,52 @@ func TestMadeHand(t *testing.T) {
 		t.Errorf("hidden cards made %q", got)
 	}
 }
+
+func TestBestOmaha(t *testing.T) {
+	plo := Game{Hole: 4}
+	tests := []struct {
+		name, hole, board, want string
+	}{
+		{"one suited hole card isn't a flush", "As Kd Qc Jh", "2s 5s 8s Ts 3d", "high card"},
+		{"a four card board straight doesn't play", "2c 2d 3h 3s", "Ts Jd Qc Kh 9d", "a pair"},
+		{"broadway needs only two from the hole", "As Kd 4c 4h", "Qs Jd Tc 2h 7d", "a straight"},
+		{"quads on the board play as trips at best", "As Ad 2h 3c", "Kc Kd Kh Ks 7d", "a full house"},
+		{"two hole cards make the wheel", "As 2d Kh Kc", "3c 4d 5h Tc Js", "a straight"},
+		{"one pair from the hole can't fill up", "Qc Qd 9h 9s", "Qs 9d 2c 7h 4d", "three of a kind"},
+		{"a paired board fills a set", "Qc Qd 9h 8s", "Qs 7d 7c 2h 4d", "a full house"},
+		{"a pair on board plays with any two", "Ac Kd 7h 3s", "8c 8d 2h 5c Js", "a pair"},
+	}
+	for _, tt := range tests {
+		five, score := plo.Best(cards(tt.hole), cards(tt.board))
+		if got := HandName(score, nil); got != tt.want {
+			t.Errorf("%s: %s with %s is %q (%v), want %q", tt.name, tt.hole, tt.board, got, five, tt.want)
+		}
+		// always two from the hole
+		in := 0
+		for _, c := range five {
+			if slices.Contains(cards(tt.hole), c) {
+				in++
+			}
+		}
+		if in != 2 {
+			t.Errorf("%s: %v uses %d hole cards", tt.name, five, in)
+		}
+	}
+	plo5 := Game{Hole: 5}
+	if _, score := plo5.Best(cards("2c 7d 9h As Ah"), cards("Ac Ad 5h 6s Kd")); HandName(score, nil) != "four of a kind" {
+		t.Errorf("PLO5 picked %q", HandName(score, nil))
+	}
+	if c, score := plo.Best(cards("As Ad 2h 3c"), cards("Kc Kd")); c != nil || score <= worstScore {
+		t.Error("scored a hand before the flop")
+	}
+}
+
+func TestMadeHandOmaha(t *testing.T) {
+	plo := Game{Hole: 4}
+	if got := plo.MadeHand(cards("As Ad 2h 3c"), nil); got != "pair" {
+		t.Errorf("preflop %q", got)
+	}
+	if got := plo.MadeHand(cards("As Kd Qc Jh"), cards("2s 5s 8s")); got != "high card" {
+		t.Errorf("one suited card made %q", got)
+	}
+}

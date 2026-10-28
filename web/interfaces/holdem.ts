@@ -29,7 +29,7 @@ export interface Legal {
   /**
    * RaiseMin and RaiseMax bound a bet or raise, as the whole bet this street.
    * Both 0 when the player can't raise. A short stack can only go all in, at
-   * RaiseMax, below RaiseMin.
+   * RaiseMax, below RaiseMin. Pot limit caps RaiseMax at the pot.
    */
   raiseMin: number /* uint */;
   raiseMax: number /* uint */;
@@ -157,7 +157,8 @@ export interface Hunted {
 //////////
 // source: holdem.go
 /*
-Package holdem is a no-limit Texas hold'em engine. State is plain data: no
+Package holdem is a poker engine: Texas hold'em and Omaha, no limit or pot
+limit. State is plain data: no
 locks, no clock and no global randomness, so it can be copied, compared and
 saved. Methods check an action is legal before changing anything, so one that
 returns an error leaves the state as it was.
@@ -259,10 +260,12 @@ export interface State {
 // source: rank.go
 
 /**
- * Game is what's being played. The zero Game is hold'em.
+ * Game is what's being played. The zero Game is no-limit hold'em; more than
+ * two hole cards is Omaha.
  */
 export interface Game {
   hole: number /* int */; // hole cards each, 0 for 2
+  pot: boolean; // pot limit
 }
 
 //////////

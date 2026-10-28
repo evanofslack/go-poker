@@ -7,9 +7,11 @@ import (
 	"github.com/alexclewontin/riverboat/eval"
 )
 
-// Game is what's being played. The zero Game is hold'em.
+// Game is what's being played. The zero Game is no-limit hold'em; more than
+// two hole cards is Omaha.
 type Game struct {
-	Hole int `json:"hole"` // hole cards each, 0 for 2
+	Hole int  `json:"hole"` // hole cards each, 0 for 2
+	Pot  bool `json:"pot"`  // pot limit
 }
 
 // HoleCards is how many hole cards each player gets.
@@ -26,9 +28,13 @@ func Deck(g Game) []Card {
 }
 
 // Best is the best five card hand hole makes with board, and its score,
-// lower is better (Cactus Kev's ranks). Hold'em plays any five of them. With
-// fewer than five cards it's nil and a score worse than any hand.
+// lower is better (Cactus Kev's ranks). Hold'em plays any five of them, Omaha
+// exactly two hole cards and three from the board. Without enough cards it's
+// nil and a score worse than any hand.
 func (g Game) Best(hole, board []Card) ([]Card, int) {
+	if g.HoleCards() > 2 {
+		return omaha(hole, board)
+	}
 	c := append(slices.Clone(hole), board...)
 	switch len(c) {
 	case 5:
@@ -41,14 +47,34 @@ func (g Game) Best(hole, board []Card) ([]Card, int) {
 	return nil, worstScore + 1
 }
 
+// omaha is the best hand of two of hole and three of board.
+func omaha(hole, board []Card) ([]Card, int) {
+	var best []Card
+	score := worstScore + 1
+	for i := range hole {
+		for j := i + 1; j < len(hole); j++ {
+			for a := range board {
+				for b := a + 1; b < len(board); b++ {
+					for c := b + 1; c < len(board); c++ {
+						if s := eval.HandValue(hole[i], hole[j], board[a], board[b], board[c]); s < score {
+							best, score = []Card{hole[i], hole[j], board[a], board[b], board[c]}, s
+						}
+					}
+				}
+			}
+		}
+	}
+	return best, score
+}
+
 // MadeHand is the kind of hand hole makes with board so far, like "two pair",
-// for a player's own hint. Before there are five cards it's a pair in the
-// hole or high card. Empty without cards.
+// for a player's own hint. Before the flop it's a pair in the hole or high
+// card. Empty without cards.
 func (g Game) MadeHand(hole, board []Card) string {
 	if len(hole) == 0 || hole[0] == 0 {
 		return ""
 	}
-	if len(hole)+len(board) < 5 {
+	if len(board) < 3 {
 		seen := map[byte]bool{}
 		for _, c := range hole {
 			r := c.String()[0]

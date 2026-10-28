@@ -1,4 +1,5 @@
-// Package holdem is a no-limit Texas hold'em engine. State is plain data: no
+// Package holdem is a poker engine: Texas hold'em and Omaha, no limit or pot
+// limit. State is plain data: no
 // locks, no clock and no global randomness, so it can be copied, compared and
 // saved. Methods check an action is legal before changing anything, so one that
 // returns an error leaves the state as it was.
