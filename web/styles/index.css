@@ -122,6 +122,13 @@
     }
   }
 
+  --animate-flip: flip 300ms ease-out; /* a card turning face up */
+  @keyframes flip {
+    from {
+      transform: rotateY(180deg);
+    }
+  }
+
   --animate-muck: muck 250ms ease-in; /* a folded card sliding away */
   @keyframes muck {
     from {
