@@ -4,6 +4,7 @@ import classNames from "classnames";
 import { AppContext } from "../providers/AppStore";
 import { copyInvite } from "../lib/invite";
 import TurnAlert from "./TurnAlert";
+import ColorSchemeToggle from "./ColorSchemeToggle";
 import { ActionIcon } from "@mantine/core";
 
 // GameInfo shows the stakes, table and connection, and copies the invite link
@@ -55,6 +56,7 @@ export default function GameInfo() {
                     </ActionIcon>
                 )}
                 <TurnAlert />
+                <ColorSchemeToggle />
             </div>
         </div>
     );
