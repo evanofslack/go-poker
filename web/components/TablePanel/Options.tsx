@@ -36,6 +36,40 @@ export default function Options() {
                     value={prefs.motion}
                     onChange={(motion) => set({ motion })}
                 />
+                <Segmented
+                    legend="deck"
+                    hint="two colors makes diamonds red and clubs black"
+                    name="deck"
+                    options={[
+                        { label: "four colors", value: "four" },
+                        { label: "two", value: "two" },
+                    ]}
+                    value={prefs.deck}
+                    onChange={(deck) => set({ deck })}
+                />
+                <Segmented
+                    legend="table"
+                    name="felt"
+                    options={[
+                        { label: "green", value: "green" },
+                        { label: "blue", value: "blue" },
+                        { label: "red", value: "red" },
+                        { label: "gray", value: "gray" },
+                    ]}
+                    value={prefs.felt}
+                    onChange={(felt) => set({ felt })}
+                />
+                <Segmented
+                    legend="card backs"
+                    name="back"
+                    options={[
+                        { label: "red", value: "red" },
+                        { label: "blue", value: "blue" },
+                        { label: "black", value: "black" },
+                    ]}
+                    value={prefs.back}
+                    onChange={(back) => set({ back })}
+                />
             </Section>
             <Section title="sound">
                 <Toggle
