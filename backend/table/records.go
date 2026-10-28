@@ -291,7 +291,7 @@ func (r *reducer) finishHand() {
 func (hp *HandPlayer) bestHand(g holdem.Game, hole, board []holdem.Card) {
 	if len(board) == 5 {
 		cards, score := g.Best(hole, board)
-		hp.Hand, hp.Score = holdem.HandName(score, cards), score
+		hp.Hand, hp.Score = g.HandName(score, cards), score
 	}
 }
 

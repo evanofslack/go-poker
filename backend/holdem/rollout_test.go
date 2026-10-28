@@ -83,10 +83,13 @@ func try(t *testing.T, s *State, f func() error) {
 func TestRollout(t *testing.T) {
 	for game := range 300 {
 		r := rand.New(rand.NewPCG(uint64(game), 1))
-		// hold'em, Omaha or Omaha 5, no limit or pot limit
-		g := Game{Hole: []int{0, 4, 5}[r.IntN(3)], Pot: r.IntN(2) == 0}
+		// hold'em, Omaha or Omaha 5, no limit or pot limit, full or short deck
+		g := Game{Hole: []int{0, 4, 5}[r.IntN(3)], Pot: r.IntN(2) == 0, Short: r.IntN(3) == 0}
 		s := New(Config{Game: g, SmallBlind: 1 + r.UintN(10), BigBlind: 20, Ante: r.UintN(3) * 5}, [32]byte{byte(game), byte(game >> 8)})
 		seats := 2 + r.IntN(8)
+		if g.Short {
+			seats = min(seats, (36-5)/g.HoleCards()) // one board's worth
+		}
 		for seat := 1; seat <= seats; seat++ {
 			if r.IntN(4) > 0 {
 				s.Sit(seat, 1+r.UintN(2000))

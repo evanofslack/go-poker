@@ -44,10 +44,14 @@ func HandName(score int, cards []Card) string {
 		return cmp.Or(counts[b]-counts[a], b-a)
 	})
 	named := len(cards) == 5 && len(counts) > 0 && r[len(r)-1] >= 0
-	// a straight's high card, the five in a wheel
+	// a straight's high card, the five in a wheel and the nine in A-6-7-8-9
 	high := func() string {
 		if counts[12] == 1 && counts[0] == 1 && counts[11] == 0 {
 			return rankNames[3]
+		}
+		// short deck's A-6-7-8-9
+		if counts[12] == 1 && counts[4] == 1 && counts[8] == 0 {
+			return rankNames[7]
 		}
 		return rankNames[r[0]]
 	}

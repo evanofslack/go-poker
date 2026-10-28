@@ -272,6 +272,7 @@ export interface State {
 export interface Game {
   hole: number /* int */; // hole cards each, 0 for 2
   pot: boolean; // pot limit
+  short: boolean; // short deck: 2s to 5s out, a flush beats a full house, trips beat a straight, A-6-7-8-9 is a straight
 }
 
 //////////

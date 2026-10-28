@@ -320,7 +320,7 @@ func (s *State) showdown() []Event {
 					run.Winners = append(run.Winners, seat)
 				}
 			}
-			run.Hand = HandName(run.Score, run.Cards)
+			run.Hand = s.Config.Game.HandName(run.Score, run.Cards)
 			pot.Runs = append(pot.Runs, run)
 			show = append(show, run.Winners...)
 		}
