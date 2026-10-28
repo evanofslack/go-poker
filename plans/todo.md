@@ -19,7 +19,7 @@
 | 15 | Game refactor (`extensions.md`) | done |
 | 16 | Pot-limit Omaha (`extensions.md`) | done |
 | 17 | Bomb pots and double board (`extensions.md`) | done |
-| 18 | Short deck (`extensions.md`) | planned |
+| 18 | Short deck (`extensions.md`) | done |
 | - | Backlog | unranked |
 
 ## How items are ranked
@@ -677,8 +677,8 @@ boards splitting each pot.
 
 Planned in `extensions.md`: 36 cards, flush beats full house, A-6-7-8-9 straight, J-6 bounty.
 
-- [ ] PR 11: short deck engine
-- [ ] PR 12: short deck table and web
+- [x] PR 11: short deck engine (#180)
+- [x] PR 12: short deck table and web (#181)
 
 # Backlog (unranked)
 
