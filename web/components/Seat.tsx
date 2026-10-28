@@ -11,6 +11,7 @@ import Countdown from "./Countdown";
 import SeatMenu from "./SeatMenu";
 import { blind, isWinner, madeHand, winningCards, winningHand, winnings } from "../lib/hands";
 import { phone, useMedia } from "../hooks/useMedia";
+import { useTween } from "../hooks/useTween";
 import classNames from "classnames";
 import { ActionIcon, Button } from "@mantine/core";
 import { FiX } from "react-icons/fi";
@@ -24,7 +25,7 @@ function plateStyle(player: PlayerView, view: View) {
     const counting = action && view.turnEndsIn > 0;
     const winner = !view.betting && isWinner(view, player.seat);
     return classNames(plate, "relative", {
-        "bg-plate-active text-on-plate-active shadow-turn": action,
+        "bg-plate-active text-on-plate-active shadow-turn motion:animate-turn": action,
         "bg-highlight text-ink shadow-won": winner,
         "bg-panel text-fg": !action && !winner,
         // sitting out or out of chips
@@ -144,6 +145,7 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
     // on a phone, other players' face-down cards shrink onto the plate, and only
     // cards you can read, like at showdown, take the full size
     const mini = onPhone && !own && player.dealt && player.cards.every((c) => !c);
+    const stack = useTween(player.stack);
     return (
         <div className="flex flex-col items-center short:flex-row">
             <div
@@ -183,7 +185,7 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
                 </p>
 
                 <p className="text-sm leading-tight font-semibold sm:text-lg short:text-sm">
-                    {player.stack}
+                    {stack}
                 </p>
                 {view.betting && view.toAct === player.seat && (
                     <span className="sr-only">to act</span>
