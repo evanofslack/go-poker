@@ -115,11 +115,12 @@ type State struct {
 	LogSeq   int                   `json:"logSeq"`
 	Acts     map[int]Act           `json:"acts"` // by seat
 
-	StandUp     *StandUp     `json:"standUp"`     // the stand-up round going, if any
-	BombNext    bool         `json:"bombNext"`    // the next hand is a bomb pot
-	StraddleAsk *StraddleAsk `json:"straddleAsk"` // the straddles for the next hand, being asked
-	RunVote     *RunVote     `json:"runVote"`     // how many times to run the board out, being voted on
-	LastStandUp uint         `json:"lastStandUp"` // the payout of the round that just ended, to run it again
+	StandUp      *StandUp     `json:"standUp"`      // the stand-up round going, if any
+	SpecialNext  string       `json:"specialNext"`  // the next hand's special: SpecialBomb, SpecialDouble, SpecialDoubleBomb, or "" for none
+	SpecialHands int          `json:"specialHands"` // normal hands since the schedule last dealt a special one
+	StraddleAsk  *StraddleAsk `json:"straddleAsk"`  // the straddles for the next hand, being asked
+	RunVote      *RunVote     `json:"runVote"`      // how many times to run the board out, being voted on
+	LastStandUp  uint         `json:"lastStandUp"`  // the payout of the round that just ended, to run it again
 
 	Timers  map[Timer]time.Time `json:"timers"`
 	RandSeq uint64              `json:"randSeq"` // draws from the table's randomness so far
@@ -262,6 +263,9 @@ func Restore(s *State, now time.Time) {
 	}
 	if s.Settings.Deck == "" {
 		s.Settings.Deck = DeckFull
+	}
+	if s.Settings.Special == "" {
+		s.Settings.Special, s.Settings.SpecialUnit = SpecialBomb, UnitHands
 	}
 	if _, ok := s.Timers[TimerTurn]; ok {
 		s.Timers[TimerTurn] = now.Add(time.Duration(s.Settings.TurnTime) * time.Millisecond)

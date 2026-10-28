@@ -209,9 +209,9 @@ export function cancelStandUp(socket: WebSocket) {
     send(socket, { action: "cancel-stand-up" });
 }
 
-// bombPot makes the next hand a bomb pot, or calls it off
-export function bombPot(socket: WebSocket, on: boolean) {
-    send(socket, { action: on ? "bomb-pot" : "cancel-bomb-pot" });
+// specialHand makes the next hand a bomb pot, double board, or both, or calls it off with ""
+export function specialHand(socket: WebSocket, kind: string) {
+    send(socket, kind ? { action: "special-hand", kind } : { action: "cancel-special-hand" });
 }
 
 // updateSettings changes the table's settings, all but the seat count, from the next hand if one is being played

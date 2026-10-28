@@ -191,14 +191,15 @@ func (AdjustChips) command()    {}
 func (Pause) command()          {}
 func (EndSession) command()     {}
 func (StartStandUp) command()   {}
-func (BombPot) command()        {}
+func (SpecialHand) command()    {}
 func (CancelStandUp) command()  {}
 func (UpdateSettings) command() {}
 func (SetPassword) command()    {}
 func (TimerFired) command()     {}
 
-// BombPot makes the next hand a bomb pot, or calls it off.
-type BombPot struct {
+// SpecialHand makes the next hand a special one: Kind is SpecialBomb,
+// SpecialDouble or SpecialDoubleBomb, or "" to call it off.
+type SpecialHand struct {
 	Person string
-	On     bool
+	Kind   string
 }

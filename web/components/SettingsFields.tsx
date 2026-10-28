@@ -1,8 +1,8 @@
 import {
     blinds,
     antes,
-    bombEvery,
     bombPots,
+    isBomb,
     bountyHand,
     decisionTimes,
     decks,
@@ -21,6 +21,7 @@ import { TextInput } from "@mantine/core";
 import Hint from "./Hint";
 import Section from "./Section";
 import Segmented from "./Segmented";
+import SpecialSchedule from "./SpecialSchedule";
 import Toggle from "./Toggle";
 
 type settingsFieldsProps = {
@@ -251,40 +252,33 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                         checked={form.duckHunt}
                         onChange={(on) => set({ duckHunt: on })}
                     />
-                    <Toggle
-                        id="doubleBoard"
-                        label="double board"
-                        hint="every hand deals two boards from the flop, and each pot splits between them. no running it"
-                        checked={form.doubleBoard}
-                        onChange={(on) => set({ doubleBoard: on })}
-                    />
                 </Section>
-                <Section title="bomb pots">
-                    <Segmented
-                        legend="bomb pot"
-                        hint="everyone puts this in and the hand starts on the flop. the host calls one from the host tab"
-                        name="bombPot"
-                        options={bombPots.map((n) => ({ label: n ? `${n} bb` : "off", value: n }))}
-                        value={form.bombPot}
-                        onChange={(n) => set({ bombPot: n })}
+                <Section title="special hands">
+                    <Toggle
+                        id="bombPots"
+                        label="bomb pots"
+                        hint="everyone puts in the same amount and the hand starts on the flop. the host can call one, or double board, any time from the host tab"
+                        checked={form.bombPot > 0}
+                        onChange={(on) =>
+                            set({ bombPot: on ? 2 : 0, special: !on && isBomb(form.special) ? "double" : form.special })
+                        }
                     />
                     {form.bombPot > 0 && (
-                        <>
-                            <Segmented
-                                legend="every"
-                                name="bombEvery"
-                                options={bombEvery.map((n) => ({ label: n ? `${n} hands` : "when called", value: n }))}
-                                value={form.bombEvery}
-                                onChange={(n) => set({ bombEvery: n })}
-                            />
-                            <Toggle
-                                id="bombDouble"
-                                label="double board bomb pots"
-                                checked={form.bombDouble}
-                                onChange={(on) => set({ bombDouble: on })}
-                            />
-                        </>
+                        <Segmented
+                            legend="bomb pot"
+                            name="bombPot"
+                            options={bombPots.map((n) => ({ label: `${n} bb`, value: n }))}
+                            value={form.bombPot}
+                            onChange={(n) => set({ bombPot: n })}
+                        />
                     )}
+                    <SpecialSchedule
+                        special={form.special}
+                        specialEvery={form.specialEvery}
+                        specialUnit={form.specialUnit}
+                        bombs={form.bombPot > 0}
+                        onChange={set}
+                    />
                 </Section>
             </div>
         </div>

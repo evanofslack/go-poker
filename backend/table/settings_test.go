@@ -10,7 +10,8 @@ import (
 
 func TestValidSettings(t *testing.T) {
 	ok := Settings{Seats: 8, SmallBlind: 10, BigBlind: 20, MinBuy: 1000, MaxBuy: 4000, TurnTime: 30000, NextHandDelay: 5000,
-		DecisionTime: 5000, Straddle: StraddleOff, Game: GameHoldem, Limit: LimitNo, Deck: DeckFull}
+		DecisionTime: 5000, Straddle: StraddleOff, Game: GameHoldem, Limit: LimitNo, Deck: DeckFull,
+		Special: SpecialBomb, SpecialUnit: UnitHands}
 	tests := []struct {
 		name  string
 		edit  func(*Settings)

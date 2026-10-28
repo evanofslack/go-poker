@@ -25,19 +25,19 @@ func bombTable(t *testing.T, edit func(*Settings)) *harness {
 
 func TestBombPotNextHand(t *testing.T) {
 	h := bombTable(t, nil)
-	if msg := h.refused(BombPot{Person: h.ids["b"], On: true}); msg != errNotHost.Error() {
+	if msg := h.refused(SpecialHand{Person: h.ids["b"], Kind: SpecialBomb}); msg != errNotHost.Error() {
 		t.Fatalf("b called a bomb pot: %q", msg)
 	}
-	h.ok(BombPot{Person: h.ids["a"], On: true})
+	h.ok(SpecialHand{Person: h.ids["a"], Kind: SpecialBomb})
 	h.mustLog("a makes the next hand a bomb pot of 50 each")
-	if !ViewFor(h.s, h.ids["b"], h.now).BombNext {
+	if ViewFor(h.s, h.ids["b"], h.now).SpecialNext != SpecialBomb {
 		t.Fatal("b doesn't see the bomb pot coming")
 	}
-	h.refused(BombPot{Person: h.ids["a"], On: true})
+	h.refused(SpecialHand{Person: h.ids["a"], Kind: SpecialBomb})
 	h.ok(Start{Person: h.ids["a"]})
 	g := h.s.Game
-	if g.Bomb != 50 || g.Street != holdem.Flop || len(g.Board) != 3 || h.s.BombNext {
-		t.Fatalf("bomb %d street %q board %v next %v", g.Bomb, g.Street, g.Board, h.s.BombNext)
+	if g.Bomb != 50 || g.Street != holdem.Flop || len(g.Board) != 3 || h.s.SpecialNext != "" {
+		t.Fatalf("bomb %d street %q board %v next %q", g.Bomb, g.Street, g.Board, h.s.SpecialNext)
 	}
 	if v := ViewFor(h.s, h.ids["b"], h.now); v.Bomb != 50 {
 		t.Fatalf("view bomb %d", v.Bomb)
@@ -65,9 +65,9 @@ func TestBombPotNextHand(t *testing.T) {
 
 func TestBombPotCancel(t *testing.T) {
 	h := bombTable(t, nil)
-	h.refused(BombPot{Person: h.ids["a"]})
-	h.ok(BombPot{Person: h.ids["a"], On: true})
-	h.ok(BombPot{Person: h.ids["a"]})
+	h.refused(SpecialHand{Person: h.ids["a"]})
+	h.ok(SpecialHand{Person: h.ids["a"], Kind: SpecialBomb})
+	h.ok(SpecialHand{Person: h.ids["a"]})
 	h.mustLog("a called off the bomb pot")
 	h.ok(Start{Person: h.ids["a"]})
 	if h.s.Game.Bomb != 0 {
@@ -77,13 +77,13 @@ func TestBombPotCancel(t *testing.T) {
 	set := DefaultSettings
 	h = newHarness(t, set, "")
 	h.join("a")
-	if msg := h.refused(BombPot{Person: h.ids["a"], On: true}); msg != "set a bomb pot amount first" {
+	if msg := h.refused(SpecialHand{Person: h.ids["a"], Kind: SpecialBomb}); msg != "bomb pots are off at this table" {
 		t.Fatalf("no amount: %q", msg)
 	}
 }
 
 func TestBombPotEvery(t *testing.T) {
-	h := bombTable(t, func(s *Settings) { s.BombEvery = 3 })
+	h := bombTable(t, func(s *Settings) { s.SpecialEvery = 3 })
 	h.ok(Start{Person: h.ids["a"]})
 	var bombs []int
 	for hand := 1; hand <= 6; hand++ {
@@ -108,7 +108,7 @@ func TestBombPotEvery(t *testing.T) {
 
 func TestBombPotSkipsStraddles(t *testing.T) {
 	h := bombTable(t, func(s *Settings) { s.Straddle = StraddleForced })
-	h.ok(BombPot{Person: h.ids["a"], On: true})
+	h.ok(SpecialHand{Person: h.ids["a"], Kind: SpecialBomb})
 	if h.s.StraddleAsk != nil {
 		t.Fatalf("asked to straddle a bomb pot: %+v", h.s.StraddleAsk)
 	}
@@ -119,7 +119,9 @@ func TestBombPotSkipsStraddles(t *testing.T) {
 }
 
 func TestDoubleBoardTable(t *testing.T) {
-	h := bombTable(t, func(s *Settings) { s.DoubleBoard = true })
+	// double board every hand, with no bomb pots
+	h := bombTable(t, func(s *Settings) { s.BombPot, s.Special, s.SpecialEvery = 0, SpecialDouble, 1 })
+	h.ok(SpecialHand{Person: h.ids["a"], Kind: SpecialDouble})
 	h.ok(Start{Person: h.ids["a"]})
 	if !h.s.Game.Double || h.s.Game.Bomb != 0 {
 		t.Fatalf("double %v bomb %d", h.s.Game.Double, h.s.Game.Bomb)
@@ -141,8 +143,9 @@ func TestDoubleBoardTable(t *testing.T) {
 }
 
 func TestDoubleBoardBombTable(t *testing.T) {
-	h := bombTable(t, func(s *Settings) { s.BombDouble = true })
-	h.ok(BombPot{Person: h.ids["a"], On: true})
+	h := bombTable(t, nil)
+	h.ok(SpecialHand{Person: h.ids["a"], Kind: SpecialDoubleBomb})
+	h.mustLog("a makes the next hand a double board bomb pot of 50 each")
 	h.ok(Start{Person: h.ids["a"]})
 	if !h.s.Game.Double || h.s.Game.Bomb != 50 {
 		t.Fatalf("double %v bomb %d", h.s.Game.Double, h.s.Game.Bomb)
@@ -160,7 +163,8 @@ func TestDoubleBoardBombTable(t *testing.T) {
 }
 
 func TestSevenDeuceSecondBoard(t *testing.T) {
-	h := bombTable(t, func(s *Settings) { s.DoubleBoard, s.SevenDeuce = true, 40 })
+	h := bombTable(t, func(s *Settings) { s.SevenDeuce = 40 })
+	h.ok(SpecialHand{Person: h.ids["a"], Kind: SpecialDouble})
 	h.ok(Start{Person: h.ids["a"]})
 	h.s.Game.Player(1).Cards = hole("Ah Ad")
 	h.s.Game.Player(2).Cards = hole("7c 2d")
@@ -187,16 +191,18 @@ func TestSevenDeuceSecondBoard(t *testing.T) {
 	}
 }
 
-func TestBombSettings(t *testing.T) {
+func TestSpecialSettings(t *testing.T) {
 	for _, tt := range []struct {
 		name string
 		edit func(*Settings)
 	}{
 		{"bomb too big", func(s *Settings) { s.BombPot = 21 * s.BigBlind }},
-		{"every with no bomb", func(s *Settings) { s.BombEvery = 5 }},
-		{"every too far apart", func(s *Settings) { s.BombPot, s.BombEvery = 20, 101 }},
-		{"two PLO5 boards for 9", func(s *Settings) { s.Seats, s.Game, s.DoubleBoard = 9, GameOmaha5, true }},
-		{"two PLO5 bomb boards for 9", func(s *Settings) { s.Seats, s.Game, s.BombPot, s.BombDouble = 9, GameOmaha5, 20, true }},
+		{"scheduled bombs with bomb pots off", func(s *Settings) { s.SpecialEvery = 5 }},
+		{"too many hands apart", func(s *Settings) { s.BombPot, s.SpecialEvery = 20, 101 }},
+		{"too many orbits apart", func(s *Settings) { s.BombPot, s.SpecialEvery, s.SpecialUnit = 20, 21, UnitOrbits }},
+		{"another unit", func(s *Settings) { s.SpecialUnit = "days" }},
+		{"another special", func(s *Settings) { s.Special = "triple" }},
+		{"two PLO5 boards for 9", func(s *Settings) { s.Seats, s.Game, s.Special, s.SpecialEvery = 9, GameOmaha5, SpecialDouble, 1 }},
 	} {
 		set := DefaultSettings
 		tt.edit(&set)
@@ -205,19 +211,70 @@ func TestBombSettings(t *testing.T) {
 		}
 	}
 	ok := DefaultSettings
-	ok.Seats, ok.Game, ok.DoubleBoard = 8, GameOmaha5, true
+	ok.Seats, ok.Game, ok.Special, ok.SpecialEvery = 8, GameOmaha5, SpecialDouble, 1
 	if err := ok.Validate(); err != nil {
 		t.Fatalf("PLO5 double board for 8: %v", err)
 	}
 
 	h := bombTable(t, nil)
-	h.ok(BombPot{Person: h.ids["a"], On: true})
-	set := DefaultSettings
-	set.BombEvery = 0
-	set.DoubleBoard = true
+	h.ok(SpecialHand{Person: h.ids["a"], Kind: SpecialBomb})
+	set := h.s.Settings
+	set.BombPot = 0
+	set.Special, set.SpecialEvery, set.SpecialUnit = SpecialDouble, 2, UnitOrbits
 	h.ok(UpdateSettings{Person: h.ids["a"], Settings: set})
-	h.mustLog("the bomb pot to off, double board on")
-	if h.s.BombNext {
-		t.Fatal("bomb pot still next with none set")
+	h.mustLog("bomb pots to off, a double board every 2 orbits")
+	if h.s.SpecialNext != "" {
+		t.Fatal("bomb pot still next with bomb pots off")
+	}
+	if v := ViewFor(h.s, h.ids["a"], h.now); v.SpecialIn != 6 {
+		t.Fatalf("next special in %d hands, want 2 orbits of 3", v.SpecialIn)
+	}
+	h.refused(SpecialHand{Person: h.ids["a"], Kind: SpecialBomb})
+	h.ok(SpecialHand{Person: h.ids["a"], Kind: SpecialDouble})
+	h.mustLog("a makes the next hand double board")
+}
+
+func TestSpecialOrbits(t *testing.T) {
+	// a double board bomb pot every orbit, three handed: every third hand
+	h := bombTable(t, func(s *Settings) { s.Special, s.SpecialEvery, s.SpecialUnit = SpecialDoubleBomb, 1, UnitOrbits })
+	h.ok(Start{Person: h.ids["a"]})
+	var special []int
+	for hand := 1; hand <= 7; hand++ {
+		if h.s.Game.Bomb > 0 && h.s.Game.Double {
+			special = append(special, hand)
+		}
+		for h.s.Game.InHand() {
+			if h.s.Game.Betting {
+				h.play(holdem.Fold{})
+			} else {
+				h.advance(time.Second)
+			}
+		}
+		if hand < 7 {
+			h.nextHand()
+		}
+	}
+	if !slices.Equal(special, []int{3, 6}) {
+		t.Fatalf("specials on hands %v", special)
+	}
+}
+
+func TestHostSpecialWaitsForSchedule(t *testing.T) {
+	h := bombTable(t, func(s *Settings) { s.SpecialEvery = 2 })
+	h.ok(SpecialHand{Person: h.ids["a"], Kind: SpecialDouble})
+	h.ok(Start{Person: h.ids["a"]})
+	if !h.s.Game.Double || h.s.Game.Bomb != 0 {
+		t.Fatalf("the host's double board wasn't dealt: double %v bomb %d", h.s.Game.Double, h.s.Game.Bomb)
+	}
+	for h.s.Game.InHand() {
+		if h.s.Game.Betting {
+			h.play(holdem.Fold{})
+		} else {
+			h.advance(time.Second)
+		}
+	}
+	// the host's special didn't count, so the schedule's bomb comes after one normal hand
+	if h.s.SpecialNext != "" || ViewFor(h.s, h.ids["a"], h.now).SpecialIn != 2 {
+		t.Fatalf("next %q in %d", h.s.SpecialNext, ViewFor(h.s, h.ids["a"], h.now).SpecialIn)
 	}
 }

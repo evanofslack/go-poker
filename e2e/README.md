@@ -6,7 +6,7 @@ protect what you run them on.
 | Script | Covers |
 | --- | --- |
 | `session.mjs` | hidden cards, next hand, reload and reconnect, turn timer and grace period |
-| `bombpot.mjs` | the host calls a double board bomb pot: everyone posts, flop first, two boards and a pot each |
+| `bombpot.mjs` | special hands: the host calls a double board bomb pot (everyone posts, flop first, two boards and a pot each), then schedules them by orbit |
 | `betting.mjs` | betting controls: labels, presets, raise, the waiting line |
 | `preaction.mjs` | picking an action before your turn: offers, clearing, playing it |
 | `keys.mjs` | keyboard shortcuts, the raise panel's arrows, turning them off |

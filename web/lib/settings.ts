@@ -24,8 +24,14 @@ export const straddleModes = ["off", "optional", "forced"];
 export const antes = [0, 0.1, 0.25, 0.5, 1]; // in big blinds, 0 is no ante
 export const sevenDeuces = [0, 1, 2, 5]; // 7-2 bounties in big blinds, 0 is off
 export const standUpPayouts = [1, 2, 5, 10]; // stand-up payouts in big blinds
-export const bombPots = [0, 1, 2, 5, 10]; // bomb pots in big blinds, 0 is off
-export const bombEvery = [0, 10, 20, 50]; // hands between bomb pots, 0 is only when the host calls one
+export const bombPots = [1, 2, 5, 10]; // bomb pots in big blinds
+export const specialKinds = [
+    { label: "bomb pot", value: "bomb" },
+    { label: "double board", value: "double" },
+    { label: "both", value: "double-bomb" },
+];
+export const everyHands = [0, 5, 10, 20, 50]; // hands between scheduled special hands, 0 is only when the host calls one
+export const everyOrbits = [0, 1, 2, 3, 5];
 export const maxBigBlind = 1_000_000;
 export const maxBuyInBB = 1000;
 export const maxPasswordLen = 32;
@@ -51,10 +57,10 @@ export type SettingsForm = {
     straddle: string; // off, optional or forced
     decisionTime: number;
     runIt: boolean;
-    bombPot: number; // in big blinds
-    bombEvery: number;
-    bombDouble: boolean;
-    doubleBoard: boolean;
+    bombPot: number; // in big blinds, 0 for no bomb pots
+    special: string; // what the schedule deals: bomb, double or double-bomb
+    specialEvery: number; // 0 for only when the host calls one
+    specialUnit: string; // hands or orbits
 };
 
 // the server's defaults
@@ -79,9 +85,9 @@ export const defaultForm: SettingsForm = {
     decisionTime: 5000,
     runIt: true,
     bombPot: 0,
-    bombEvery: 0,
-    bombDouble: false,
-    doubleBoard: false,
+    special: "bomb",
+    specialEvery: 0,
+    specialUnit: "hands",
 };
 
 // blinds are the form's small and big blind
@@ -131,9 +137,10 @@ export function toSettings(f: SettingsForm): Settings {
         decisionTime: f.decisionTime,
         runIt: f.runIt,
         bombPot: f.bombPot * bb,
-        bombEvery: f.bombPot > 0 ? f.bombEvery : 0,
-        bombDouble: f.bombDouble,
-        doubleBoard: f.doubleBoard,
+        special: f.special,
+        // a schedule of bomb pots needs them on
+        specialEvery: isBomb(f.special) && !f.bombPot ? 0 : f.specialEvery,
+        specialUnit: f.specialUnit,
     };
 }
 
@@ -165,10 +172,10 @@ export function fromSettings(s: Settings): SettingsForm {
         straddle: s.straddle,
         decisionTime: s.decisionTime,
         runIt: s.runIt,
-        bombPot: nearest(bombPots, s.bombPot, (n) => n * s.bb),
-        bombEvery: nearest(bombEvery, s.bombEvery, (n) => n),
-        bombDouble: s.bombDouble,
-        doubleBoard: s.doubleBoard,
+        bombPot: s.bombPot ? nearest(bombPots, s.bombPot, (n) => n * s.bb) : 0,
+        special: s.special,
+        specialEvery: s.specialEvery,
+        specialUnit: s.specialUnit,
     };
 }
 
@@ -187,4 +194,13 @@ export function gameTitle(s: Pick<Settings, "game" | "limit" | "deck">): string 
 // bountyHand is the worst hand bounty's hand: 7-2, or J-6 on a short deck
 export function bountyHand(s: Pick<Settings, "deck">): string {
     return s.deck === "short" ? "J-6" : "7-2";
+}
+
+// isBomb and isDouble say what a special hand is
+export const isBomb = (kind: string) => kind === "bomb" || kind === "double-bomb";
+export const isDouble = (kind: string) => kind === "double" || kind === "double-bomb";
+
+// specialName names a special hand, like "double board bomb pot"
+export function specialName(kind: string): string {
+    return { bomb: "bomb pot", double: "double board", "double-bomb": "double board bomb pot" }[kind] ?? "";
 }

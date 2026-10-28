@@ -73,7 +73,8 @@ type View struct {
 	RunVote        *RunVote       `json:"runVote"`
 	RunVoteEndsIn  int64          `json:"runVoteEndsIn"` // ms the run it vote has left
 	LastStandUp    uint           `json:"lastStandUp"`   // the payout of the stand-up round that just ended
-	BombNext       bool           `json:"bombNext"`      // the next hand is a bomb pot
+	SpecialNext    string         `json:"specialNext"`   // the next hand's special, if any: bomb, double or double-bomb
+	SpecialIn      int            `json:"specialIn"`     // hands until the schedule's next special hand, 0 with no schedule
 	MadeHand       []string       `json:"madeHand"`      // yours so far, like "two pair", on each board; empty when you're not in a hand
 }
 
@@ -124,7 +125,8 @@ func ViewFor(s *State, id string, now time.Time) View {
 		RunVote:        s.RunVote,
 		RunVoteEndsIn:  until(s.Timers, TimerRunVote, now),
 		LastStandUp:    s.LastStandUp,
-		BombNext:       s.BombNext,
+		SpecialNext:    s.SpecialNext,
+		SpecialIn:      s.specialIn(),
 		MadeHand:       madeHand(s, you),
 	}
 	v.ShowClaims = ShowClaims(s, you)

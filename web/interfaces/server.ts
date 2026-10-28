@@ -147,11 +147,11 @@ export const ActionCancelStandUp = "cancel-stand-up";
 /**
  * inbound (client) actions
  */
-export const ActionBombPot = "bomb-pot"; // the next hand is a bomb pot
+export const ActionSpecialHand = "special-hand"; // kind: the next hand is a bomb, double or double-bomb
 /**
  * inbound (client) actions
  */
-export const ActionCancelBombPot = "cancel-bomb-pot";
+export const ActionCancelSpecialHand = "cancel-special-hand";
 /**
  * inbound (client) actions
  */
@@ -184,6 +184,7 @@ export interface Inbound {
   yes?: boolean; // straddle
   preset?: string; // straddle-preset: ask, always or never
   runs?: number /* int */; // run-it
+  kind?: string; // special-hand
 }
 /**
  * outbound (server) actions

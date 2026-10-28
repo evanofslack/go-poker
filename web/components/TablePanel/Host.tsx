@@ -1,13 +1,14 @@
 import { useContext, useState } from "react";
 import classNames from "classnames";
-import { bombPot, cancelStandUp, sessionAction, startStandUp } from "../../actions/actions";
-import { standUpPayouts } from "../../lib/settings";
+import { cancelStandUp, sessionAction, specialHand, startStandUp, updateSettings } from "../../actions/actions";
+import { specialName, standUpPayouts } from "../../lib/settings";
 import { useSocket } from "../../hooks/useSocket";
 import { AppContext } from "../../providers/AppStore";
 import { Button } from "@mantine/core";
 import Confirm from "../Confirm";
 import Section from "../Section";
 import Segmented from "../Segmented";
+import SpecialSchedule, { kindsFor } from "../SpecialSchedule";
 
 // Host holds the host's controls for the whole session. Controls for one
 // player are on their row in the players tab.
@@ -44,28 +45,7 @@ export default function Host() {
                 </Button>
             </div>
             {!game.ended && <StandUp payoutBB={payoutBB} setPayoutBB={setPayoutBB} />}
-            {!game.ended && game.settings.bombPot > 0 && (
-                <Section
-                    title="bomb pot"
-                    hint={`everyone puts in ${game.settings.bombPot.toLocaleString("en")} and the hand starts on the flop`}
-                >
-                    {game.bombNext ? (
-                        <>
-                            <p className="flex items-center gap-2 text-fg" aria-label="bomb pot">
-                                {game.settings.bombPot.toLocaleString("en")} each
-                                <span className="rounded bg-badge px-1.5 text-xs text-muted">next hand</span>
-                            </p>
-                            <Button className="self-start" onClick={() => bombPot(socket, false)}>
-                                call it off
-                            </Button>
-                        </>
-                    ) : (
-                        <Button variant="filled" className="self-start" onClick={() => bombPot(socket, true)}>
-                            bomb pot next hand
-                        </Button>
-                    )}
-                </Section>
-            )}
+            {!game.ended && <SpecialHands />}
             {!game.ending && (
                 <Button variant="outline" color="red" className="mt-auto self-start" onClick={() => setConfirming(true)}>
                     end session
@@ -166,6 +146,67 @@ function StandUp({ payoutBB, setPayoutBB }: { payoutBB: number; setPayoutBB: (n:
             >
                 start stand-up
             </Button>
+        </Section>
+    );
+}
+
+// SpecialHands calls a bomb pot, double board, or both for the next hand, and
+// sets how often they come round on their own
+function SpecialHands() {
+    const socket = useSocket();
+    const { appState } = useContext(AppContext);
+    const game = appState.view;
+    const [picked, setPicked] = useState("");
+    if (!socket || !game) return null;
+    // the settings the next hand will have, if the host changed them mid-hand
+    const s = game.next ?? game.settings;
+    const kinds = kindsFor(s.bombPot > 0);
+    const kind = kinds.some((k) => k.value === picked) ? picked : kinds[0].value;
+    const next = game.specialNext;
+    return (
+        <Section
+            title="special hands"
+            hint={
+                (s.bombPot > 0
+                    ? `a bomb pot takes ${s.bombPot.toLocaleString("en")} from everyone and starts on the flop. `
+                    : "") + "double board deals two boards from the flop, and each pot splits between them"
+            }
+        >
+            {next ? (
+                <>
+                    <p className="flex flex-wrap items-center gap-2 text-fg" aria-label="special hand">
+                        {specialName(next)}
+                        <span className="rounded bg-badge px-1.5 text-xs text-muted">next hand</span>
+                    </p>
+                    <Button className="self-start" onClick={() => specialHand(socket, "")}>
+                        call it off
+                    </Button>
+                </>
+            ) : (
+                <>
+                    <Segmented legend="next hand" name="specialNext" options={kinds} value={kind} onChange={setPicked} />
+                    <Button variant="filled" className="self-start" onClick={() => specialHand(socket, kind)}>
+                        deal it next hand
+                    </Button>
+                </>
+            )}
+            <SpecialSchedule
+                special={s.special}
+                specialEvery={s.specialEvery}
+                specialUnit={s.specialUnit}
+                bombs={s.bombPot > 0}
+                onChange={(change) => {
+                    const set = { ...s, ...change };
+                    // the kind shown is the first allowed when the saved one isn't
+                    if (!kinds.some((k) => k.value === set.special)) set.special = kinds[0].value;
+                    updateSettings(socket, set);
+                }}
+            />
+            {game.specialIn > 0 && !next && (
+                <p className="text-xs text-muted" aria-label="next special hand">
+                    next {specialName(s.special)} in {game.specialIn === 1 ? "1 hand" : `${game.specialIn} hands`}
+                </p>
+            )}
         </Section>
     );
 }

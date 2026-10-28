@@ -236,13 +236,34 @@ export interface Settings {
   straddle: string; // StraddleOff, StraddleOptional or StraddleForced
   runIt: boolean; // once everyone left is all in, or all but one, they vote to run the rest of the board out more than once
   /**
-   * bomb pots and double board
+   * special hands: bomb pots and double board, called by the host or on a
+   * schedule
    */
-  bombPot: number /* uint */; // what everyone puts in a bomb pot, 0 for none
-  bombEvery: number /* uint */; // a bomb pot every this many hands, 0 for only when the host calls one
-  bombDouble: boolean; // bomb pots are double board
-  doubleBoard: boolean; // every hand is double board
+  bombPot: number /* uint */; // what everyone puts in a bomb pot, 0 for no bomb pots
+  special: string; // what the schedule deals: SpecialBomb, SpecialDouble or SpecialDoubleBomb
+  specialEvery: number /* uint */; // one every this many hands or orbits, 0 for only when the host calls one
+  specialUnit: string; // UnitHands or UnitOrbits
 }
+/**
+ * Special hands, and the units of their schedule
+ */
+export const SpecialBomb = "bomb";
+/**
+ * Special hands, and the units of their schedule
+ */
+export const SpecialDouble = "double";
+/**
+ * Special hands, and the units of their schedule
+ */
+export const SpecialDoubleBomb = "double-bomb";
+/**
+ * Special hands, and the units of their schedule
+ */
+export const UnitHands = "hands";
+/**
+ * Special hands, and the units of their schedule
+ */
+export const UnitOrbits = "orbits";
 /**
  * Games and limits
  */
@@ -454,7 +475,8 @@ export interface View {
   runVote?: RunVote;
   runVoteEndsIn: number /* int64 */; // ms the run it vote has left
   lastStandUp: number /* uint */; // the payout of the stand-up round that just ended
-  bombNext: boolean; // the next hand is a bomb pot
+  specialNext: string; // the next hand's special, if any: bomb, double or double-bomb
+  specialIn: number /* int */; // hands until the schedule's next special hand, 0 with no schedule
   madeHand: string[]; // yours so far, like "two pair", on each board; empty when you're not in a hand
 }
 /**

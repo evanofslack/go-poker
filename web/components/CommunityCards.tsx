@@ -2,6 +2,7 @@ import { useContext } from "react";
 import classNames from "classnames";
 import { AppContext } from "../providers/AppStore";
 import { runWinners, winningCards } from "../lib/hands";
+import { specialName } from "../lib/settings";
 import { Card as CardType } from "../interfaces";
 import Card from "./Card";
 
@@ -17,6 +18,13 @@ export default function CommunityCards() {
     // the deal
     const runs = view.double ? 2 : view.runs > 1 ? view.runs : 1;
     const label = view.double ? "board" : "run";
+    // the special hand being played, or the one coming next
+    const playing = view.bomb > 0 ? (view.double ? "double-bomb" : "bomb") : view.double ? "double" : "";
+    const special = playing
+        ? specialName(playing) + (view.bomb > 0 ? ` · ${view.bomb.toLocaleString("en")} each` : "")
+        : view.specialNext && view.street === ""
+          ? `${specialName(view.specialNext)} next hand`
+          : "";
     const winners = runWinners(view);
     // the cards before the split are on every board, so they count for any run
     const shared = new Set(view.board.slice(0, view.runFrom));
@@ -25,9 +33,9 @@ export default function CommunityCards() {
     const highlight = (c: CardType) => first.has(c) || (shared.has(c) && all.has(c));
     return (
         <div className="relative flex flex-col items-center gap-1" data-boards={runs}>
-            {(view.bomb > 0 || (view.bombNext && view.street === "")) && (
+            {special && (
                 <p className="text-xs font-semibold text-felt-ink/80 short:text-[0.6rem]" data-bomb>
-                    {view.bomb > 0 ? `bomb pot · ${view.bomb.toLocaleString("en")} each` : "bomb pot next hand"}
+                    {special}
                 </p>
             )}
             <div className="relative flex flex-row gap-0.5 text-spade sm:gap-1" data-board>

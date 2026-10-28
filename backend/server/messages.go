@@ -33,25 +33,25 @@ const (
 	ActionRunIt       = "run-it" // runs is the pick in the run it vote
 
 	// host only
-	ActionAddBot          = "add-bot"
-	ActionRemoveBot       = "remove-bot"
-	ActionMakeHost        = "make-host"
-	ActionSetBanker       = "set-banker"
-	ActionMoveToSpectator = "move-to-spectator"
-	ActionRemovePlayer    = "remove-player"
-	ActionSitOutPlayer    = "sit-out-player"
-	ActionApproveBuy      = "approve-buy-in"
-	ActionDenyBuy         = "deny-buy-in"
-	ActionAdjustChips     = "adjust-chips"
-	ActionPauseGame       = "pause-game"
-	ActionResumeGame      = "resume-game"
-	ActionEndSession      = "end-session"
-	ActionStartStandUp    = "start-stand-up" // amount is the payout
-	ActionCancelStandUp   = "cancel-stand-up"
-	ActionBombPot         = "bomb-pot" // the next hand is a bomb pot
-	ActionCancelBombPot   = "cancel-bomb-pot"
-	ActionUpdateSettings  = "update-settings" // settings has all of them, but the seat count stays
-	ActionSetPassword     = "set-password"
+	ActionAddBot            = "add-bot"
+	ActionRemoveBot         = "remove-bot"
+	ActionMakeHost          = "make-host"
+	ActionSetBanker         = "set-banker"
+	ActionMoveToSpectator   = "move-to-spectator"
+	ActionRemovePlayer      = "remove-player"
+	ActionSitOutPlayer      = "sit-out-player"
+	ActionApproveBuy        = "approve-buy-in"
+	ActionDenyBuy           = "deny-buy-in"
+	ActionAdjustChips       = "adjust-chips"
+	ActionPauseGame         = "pause-game"
+	ActionResumeGame        = "resume-game"
+	ActionEndSession        = "end-session"
+	ActionStartStandUp      = "start-stand-up" // amount is the payout
+	ActionCancelStandUp     = "cancel-stand-up"
+	ActionSpecialHand       = "special-hand" // kind: the next hand is a bomb, double or double-bomb
+	ActionCancelSpecialHand = "cancel-special-hand"
+	ActionUpdateSettings    = "update-settings" // settings has all of them, but the seat count stays
+	ActionSetPassword       = "set-password"
 )
 
 // Inbound is every message a client sends. Action says which fields are used.
@@ -76,6 +76,7 @@ type Inbound struct {
 	Yes     bool   `json:"yes,omitempty"`     // straddle
 	Preset  string `json:"preset,omitempty"`  // straddle-preset: ask, always or never
 	Runs    int    `json:"runs,omitempty"`    // run-it
+	Kind    string `json:"kind,omitempty"`    // special-hand
 }
 
 // outbound (server) actions
