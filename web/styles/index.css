@@ -123,6 +123,16 @@
     }
   }
 
+  --animate-turn: turn 700ms ease-out; /* a seat's turn starting: one ring out from the plate */
+  @keyframes turn {
+    from {
+      box-shadow: 0 0 0 0 rgb(255 255 255 / 0.6), var(--shadow-turn);
+    }
+    to {
+      box-shadow: 0 0 0 0.75rem rgb(255 255 255 / 0), var(--shadow-turn);
+    }
+  }
+
   --animate-arm: arm 300ms; /* controls that ignore clicks as they appear */
   @keyframes arm {
     from,
