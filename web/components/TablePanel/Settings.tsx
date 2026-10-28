@@ -2,24 +2,15 @@ import { ReactNode, useContext, useState } from "react";
 import { FiCopy } from "react-icons/fi";
 import { AppContext } from "../../providers/AppStore";
 import { copyInvite } from "../../lib/invite";
-import { Button, Checkbox } from "@mantine/core";
+import { Button } from "@mantine/core";
 import EditSettings from "../EditSettings";
 
 const chips = (n: number) => n.toLocaleString("en");
 const seconds = (ms: number) => `${ms / 1000}s`;
 
-const keys: [string, string][] = [
-    ["F", "fold"],
-    ["C", "check or call"],
-    ["R / B", "bet or raise"],
-    ["↑ ↓", "change a bet by a big blind"],
-    ["Enter", "place the bet"],
-    ["Esc", "close the bet"],
-];
-
 // Settings shows how the host set up the table, and lets the host change it.
 export default function Settings() {
-    const { appState, dispatch } = useContext(AppContext);
+    const { appState } = useContext(AppContext);
     const [editing, setEditing] = useState(false);
     const game = appState.view;
     const table = appState.table;
@@ -93,27 +84,6 @@ export default function Settings() {
                     </div>
                 ))}
             </dl>
-            {/* only for a mouse and keyboard */}
-            <div className="mt-4 hidden text-sm pointer-fine:block">
-                <Checkbox
-                    size="xs"
-                    className="py-1.5"
-                    label="keyboard shortcuts"
-                    checked={appState.shortcuts}
-                    onChange={(e) => dispatch({ type: "setShortcuts", payload: e.currentTarget.checked })}
-                />
-                <dl aria-label="keyboard shortcuts" className={appState.shortcuts ? "" : "opacity-50"}>
-                    {keys.map(([key, does]) => (
-                        <div key={key} className="flex gap-2 border-b border-raised py-1.5 last:border-b-0">
-                            <dt>
-                                <kbd className="rounded border border-line px-1.5 font-sans text-fg">{key}</kbd>
-                            </dt>
-                            <dd className="ml-auto text-right text-subtle">{does}</dd>
-                        </div>
-                    ))}
-                </dl>
-                <p className="py-1.5 text-subtle">Before your turn, F and C pick an action instead.</p>
-            </div>
         </div>
     );
 }

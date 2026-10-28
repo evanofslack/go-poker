@@ -24,6 +24,7 @@ protect what you run them on.
 | `stats.mjs` | table panel: stats tab |
 | `history.mjs` | table panel: hands tab, hidden, shown and mucked cards, late joiners and reloads |
 | `settings.mjs` | table panel: settings tab, for the host and a player; the host editing settings, mid-hand too |
+| `options.mjs` | table panel: options tab, animations, mute and shortcuts kept across reloads, old settings carried over |
 | `ux.mjs` | toasts, reconnecting, the header, leaving |
 | `layout.mjs` | nine seats on desktop, laptop, tablet and phone screens; six, eight and four players on phones |
 | `bots.mjs` | adding, playing with and removing bots |

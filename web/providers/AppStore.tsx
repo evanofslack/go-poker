@@ -11,15 +11,7 @@ import {
     View,
 } from "../interfaces";
 import { MaxHands } from "../interfaces/table";
-
-// loadShortcuts is the saved keyboard shortcuts setting, on by default
-function loadShortcuts() {
-    try {
-        return localStorage.getItem("shortcuts") !== "0";
-    } catch {
-        return true;
-    }
-}
+import { Prefs, loadPrefs, savePrefs } from "../lib/prefs";
 
 const initialState: AppState = {
     messages: [],
@@ -36,7 +28,7 @@ const initialState: AppState = {
     history: [],
     moreHistory: false,
     tables: [],
-    shortcuts: loadShortcuts(),
+    prefs: loadPrefs(),
     welcomed: 0,
 };
 
@@ -68,7 +60,7 @@ type ACTIONTYPE =
     | { type: "setConnection"; payload: Connection }
     | { type: "addHistory"; payload: { hands: HandRecord[]; more: boolean } }
     | { type: "setTables"; payload: TableSummary[] }
-    | { type: "setShortcuts"; payload: boolean };
+    | { type: "setPref"; payload: Partial<Prefs> };
 
 function reducer(state: AppState, action: ACTIONTYPE): AppState {
     switch (action.type) {
@@ -114,7 +106,7 @@ function reducer(state: AppState, action: ACTIONTYPE): AppState {
                 ...initialState,
                 connection: state.connection,
                 tables: state.tables,
-                shortcuts: state.shortcuts,
+                prefs: state.prefs,
             };
         case "setTablename":
             return { ...state, table: action.payload };
@@ -126,11 +118,11 @@ function reducer(state: AppState, action: ACTIONTYPE): AppState {
             return { ...state, error: action.payload };
         case "setTables":
             return { ...state, tables: action.payload };
-        case "setShortcuts":
-            try {
-                localStorage.setItem("shortcuts", action.payload ? "1" : "0");
-            } catch {}
-            return { ...state, shortcuts: action.payload };
+        case "setPref": {
+            const prefs = { ...state.prefs, ...action.payload };
+            savePrefs(prefs);
+            return { ...state, prefs };
+        }
         case "setConnection":
             return { ...state, connection: action.payload };
         default:
