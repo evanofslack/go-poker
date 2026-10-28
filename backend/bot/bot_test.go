@@ -110,8 +110,34 @@ func TestSpotOf(t *testing.T) {
 	}
 	_, err := g.StartHand(0)
 	must(t, err)
-	s := spotOf(g.View(g.ToAct), g.ToAct)
+	s := spotOf(g.View(g.ToAct), g.ToAct, 0)
 	if len(s.board) != 0 || s.top != 20 || s.pot != 30 || s.others != 2 || s.bb != 20 || s.hole[0] == 0 {
 		t.Fatalf("preflop spot %+v", s)
+	}
+}
+
+// TestSpotPositions checks who acts behind each seat after the flop, and the
+// blinds and limpers preflop, six handed with the button in seat 1.
+func TestSpotPositions(t *testing.T) {
+	g := holdem.New(holdem.Config{SmallBlind: 10, BigBlind: 20}, [32]byte{})
+	for seat := 1; seat <= 6; seat++ {
+		must(t, g.Sit(seat, 1000))
+	}
+	_, err := g.StartHand(0)
+	must(t, err)
+	// under the gun limps
+	_, err = g.Act(g.ToAct, holdem.Call{})
+	must(t, err)
+	for seat := 1; seat <= 6; seat++ {
+		s := spotOf(g.View(seat), seat, 0)
+		if seat == g.Button && s.behind != 0 {
+			t.Errorf("button: behind = %d, want 0", s.behind)
+		}
+		if seat == g.SB && (!s.sb || s.behind != 5) {
+			t.Errorf("small blind spot %+v", s)
+		}
+		if seat == g.BB && (!s.bbs || s.limpers != 1) {
+			t.Errorf("big blind spot %+v", s)
+		}
 	}
 }

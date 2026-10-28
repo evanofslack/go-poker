@@ -208,7 +208,7 @@ func (r *reducer) botMove() {
 	if !g.Betting || seat == nil || seat.Bot == "" {
 		return
 	}
-	a := bot.Decide(seat.Bot, g.View(g.ToAct), g.ToAct, r.s.rand())
+	a := bot.Decide(seat.Bot, seat.Name, g.View(g.ToAct), g.ToAct, r.s.Current.aggressor(g.Street), r.s.rand())
 	events, err := g.Act(g.ToAct, a)
 	if err != nil {
 		// a bad move from the bot shouldn't stall the table
