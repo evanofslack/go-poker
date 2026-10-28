@@ -30,9 +30,10 @@ Stacked. Each runs `just check` and the e2e scripts for its area, with screensho
 2. **dealing and flipping** (#154): cards slide in as they're dealt, the flop one after another;
    hidden cards flip over at showdown (the same element, so it turns rather than swaps); folded
    cards slide away.
-3. **gliding buttons**: one dealer button and one marker per blind or straddle, drawn by the
-   table rather than by each seat, so they glide to the next seats each hand. Phones keep them on
-   the seat plates.
+3. **gliding dealer button**: one dealer button, drawn by the table rather than by each seat, so
+   it glides to the next seat each hand. Each seat's markers run toward the middle, with the
+   button just outside them. Blinds only show preflop, so they pop in rather than glide. Phones
+   keep both on the seat plates.
 4. **stack changes and turn pulse**: stacks and the pot count to their new value; the seat to act
    pulses once as its turn starts.
 5. **display tab**: a `prefs` object in the store (one localStorage key, merged with defaults, one
