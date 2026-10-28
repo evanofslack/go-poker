@@ -260,6 +260,9 @@ func Restore(s *State, now time.Time) {
 	if s.Settings.Game == "" {
 		s.Settings.Game, s.Settings.Limit = GameHoldem, LimitNo
 	}
+	if s.Settings.Deck == "" {
+		s.Settings.Deck = DeckFull
+	}
 	if _, ok := s.Timers[TimerTurn]; ok {
 		s.Timers[TimerTurn] = now.Add(time.Duration(s.Settings.TurnTime) * time.Millisecond)
 	}

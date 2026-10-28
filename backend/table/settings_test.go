@@ -10,7 +10,7 @@ import (
 
 func TestValidSettings(t *testing.T) {
 	ok := Settings{Seats: 8, SmallBlind: 10, BigBlind: 20, MinBuy: 1000, MaxBuy: 4000, TurnTime: 30000, NextHandDelay: 5000,
-		DecisionTime: 5000, Straddle: StraddleOff, Game: GameHoldem, Limit: LimitNo}
+		DecisionTime: 5000, Straddle: StraddleOff, Game: GameHoldem, Limit: LimitNo, Deck: DeckFull}
 	tests := []struct {
 		name  string
 		edit  func(*Settings)
@@ -215,9 +215,9 @@ func TestGameSettings(t *testing.T) {
 
 func TestRestoreBeforeGames(t *testing.T) {
 	h := pair(t)
-	h.s.Settings.Game, h.s.Settings.Limit = "", ""
+	h.s.Settings.Game, h.s.Settings.Limit, h.s.Settings.Deck = "", "", ""
 	Restore(h.s, h.now)
-	if h.s.Settings.Game != GameHoldem || h.s.Settings.Limit != LimitNo || h.s.Settings.Validate() != nil {
-		t.Fatalf("restored as %q %q", h.s.Settings.Game, h.s.Settings.Limit)
+	if h.s.Settings.Game != GameHoldem || h.s.Settings.Limit != LimitNo || h.s.Settings.Deck != DeckFull || h.s.Settings.Validate() != nil {
+		t.Fatalf("restored as %q %q %q", h.s.Settings.Game, h.s.Settings.Limit, h.s.Settings.Deck)
 	}
 }

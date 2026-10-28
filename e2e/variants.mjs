@@ -1,5 +1,6 @@
-// Other games: pot limit Omaha and Omaha 5, their cards on each screen, the pot limit presets.
-import { btn, check, finish, launch, seat, shot } from "./lib.mjs";
+// Other games: pot limit Omaha and Omaha 5, their cards on each screen, the pot
+// limit presets, and short deck with its J-6 bounty.
+import { btn, check, checkDown, finish, has, launch, record, seat, shot } from "./lib.mjs";
 
 const phone = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 };
 const small = { viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true };
@@ -40,6 +41,24 @@ await dave.waitForSelector(btn("call 10"));
 check("five cards in Omaha 5", (await faceUp(dave)) === 5, String(await faceUp(dave)));
 await shot(dave, "plo5-1-phone");
 await shot(erin, "plo5-2-small");
+
+// short deck hold'em with the J-6 bounty, heads up
+const shortDeck = async (p) => {
+    await p.click('fieldset:has(input[name="deck"]) >> text="short (6+)"');
+    check("the bounty follows the deck", (await p.locator('legend:text-is("J-6 bounty")').count()) === 1);
+    await p.click('fieldset:has(input[name="sevenDeuce"]) >> text="1 bb"');
+};
+const [frank, gina] = await seat(browser, "six" + Date.now(), ["frank", "gina"], shortDeck);
+const rec = record(gina);
+await gina.reload();
+await frank.click(btn("start"));
+await frank.waitForSelector(btn("call 10"));
+check("the header names the game", (await frank.locator("text=6+ NLH 10/20").count()) === 1);
+await checkDown([frank, gina], async () => rec.hands.length >= 3, 30000);
+const seen = rec.hands.flatMap((h) => [...h.record.board, ...h.record.players.flatMap((p) => p.cards ?? [])]);
+check("no card below a six", seen.length > 0 && seen.every((c) => !"2345".includes(c[0])), seen.join(" "));
+check("history says 6+", rec.hands.every((h) => h.record.game === "6+ NLH"));
+await shot(frank, "short-1-desktop");
 
 await browser.close();
 finish();

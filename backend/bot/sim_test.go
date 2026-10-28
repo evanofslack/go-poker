@@ -77,6 +77,26 @@ func TestBotsPlayOmaha(t *testing.T) {
 	}
 }
 
+func TestBotsPlayShortDeck(t *testing.T) {
+	for _, g := range []holdem.Game{{Short: true}, {Hole: 4, Pot: true, Short: true}} {
+		sim(t, g, []string{Medium, Easy, Medium, Easy}, 50, 100*simBB, false)
+	}
+}
+
+// TestSimShortDeck plays medium against easy at short deck hold'em heads up
+// and checks medium comes out ahead.
+func TestSimShortDeck(t *testing.T) {
+	if os.Getenv("BOTSIM") == "" {
+		t.Skip("set BOTSIM=1 to run")
+	}
+	const hands = 2000
+	res := sim(t, holdem.Game{Short: true}, []string{Medium, Easy}, hands, 100*simBB, false)
+	report(t, res)
+	if res[0].net <= 0 {
+		t.Errorf("medium lost %d chips to easy at short deck over %d hands", -res[0].net, hands)
+	}
+}
+
 // TestSimOmaha plays medium against easy at PLO heads up and checks medium
 // comes out ahead.
 func TestSimOmaha(t *testing.T) {

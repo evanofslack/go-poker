@@ -25,12 +25,14 @@ type Settings struct {
 
 	Game  string `json:"game"`  // GameHoldem, GameOmaha or GameOmaha5
 	Limit string `json:"limit"` // LimitNo or LimitPot
+	Deck  string `json:"deck"`  // DeckFull or DeckShort
 
 	// house rules
 	Ante     uint `json:"ante"`     // from every player each hand, 0 for none
 	DuckHunt bool `json:"duckHunt"` // players can turn up the rest of the board after a hand ends early
 	// SevenDeuce is the bounty everyone dealt in pays a player who wins the
-	// main pot with 7-2 and shows it, 0 for none
+	// main pot with the worst hand, 7-2, or J-6 on a short deck, and shows
+	// it, 0 for none. Hold'em only.
 	SevenDeuce uint   `json:"sevenDeuce"`
 	Straddle   string `json:"straddle"` // StraddleOff, StraddleOptional or StraddleForced
 	RunIt      bool   `json:"runIt"`    // once everyone left is all in, or all but one, they vote to run the rest of the board out more than once
@@ -57,6 +59,8 @@ const (
 	GameOmaha5 = "omaha5"
 	LimitNo    = "no"
 	LimitPot   = "pot"
+	DeckFull   = "full"
+	DeckShort  = "short" // 6+: 2s to 5s out
 )
 
 // holeCards is how many hole cards each game deals.
@@ -65,20 +69,25 @@ var holeCards = map[string]int{GameHoldem: 2, GameOmaha: 4, GameOmaha5: 5}
 // config is the game's config for set.
 func (set Settings) config() holdem.Config {
 	return holdem.Config{
-		Game:       holdem.Game{Hole: holeCards[set.Game], Pot: set.Limit == LimitPot},
+		Game:       holdem.Game{Hole: holeCards[set.Game], Pot: set.Limit == LimitPot, Short: set.Deck == DeckShort},
 		SmallBlind: set.SmallBlind,
 		BigBlind:   set.BigBlind,
 		Ante:       set.Ante,
 	}
 }
 
-// GameName names set's game the short way, like "NLH" or "PLO5".
+// GameName names set's game the short way, like "NLH", "PLO5" or "6+ NLH".
 func GameName(set Settings) string {
 	name := map[string]string{GameHoldem: "H", GameOmaha: "O", GameOmaha5: "O5"}[set.Game]
 	if set.Limit == LimitPot {
-		return "PL" + name
+		name = "PL" + name
+	} else {
+		name = "NL" + name
 	}
-	return "NL" + name
+	if set.Deck == DeckShort {
+		return "6+ " + name
+	}
+	return name
 }
 
 // Straddle settings. Forced posts under the gun's straddle for them;
@@ -104,6 +113,7 @@ var DefaultSettings = Settings{
 	Straddle:      StraddleOff,
 	Game:          GameHoldem,
 	Limit:         LimitNo,
+	Deck:          DeckFull,
 }
 
 // settings limits, mirrored by the create table form
@@ -151,6 +161,8 @@ func (s Settings) Validate() error {
 		return errors.New("game must be holdem, omaha or omaha5")
 	case s.Limit != LimitNo && s.Limit != LimitPot:
 		return errors.New("limit must be no or pot")
+	case s.Deck != DeckFull && s.Deck != DeckShort:
+		return errors.New("deck must be full or short")
 	case int(s.Seats)*holeCards[s.Game]+5 > len(holdem.Deck(s.config().Game)):
 		return fmt.Errorf("%s deals too many cards for %d seats", GameName(s), s.Seats)
 	case int(s.Seats)*holeCards[s.Game]+5*s.boards() > len(holdem.Deck(s.config().Game)):
@@ -162,7 +174,7 @@ func (s Settings) Validate() error {
 	case s.BombEvery > 0 && s.BombPot == 0:
 		return errors.New("set the bomb pot to have one every few hands")
 	case s.SevenDeuce > 0 && holeCards[s.Game] != 2:
-		return errors.New("the 7-2 bounty is for hold'em")
+		return errors.New("the worst hand bounty is for hold'em")
 	}
 	return nil
 }
@@ -234,7 +246,7 @@ func settingsChanges(old, set Settings) string {
 		}
 		return fmt.Sprint(n)
 	}
-	add(old.Game != set.Game || old.Limit != set.Limit, "the game to %s", GameName(set))
+	add(old.Game != set.Game || old.Limit != set.Limit || old.Deck != set.Deck, "the game to %s", GameName(set))
 	add(old.SmallBlind != set.SmallBlind || old.BigBlind != set.BigBlind, "the blinds to %d/%d", set.SmallBlind, set.BigBlind)
 	add(old.Ante != set.Ante, "the ante to %s", chips(set.Ante))
 	add(old.MinBuy != set.MinBuy || old.MaxBuy != set.MaxBuy, "the buy-in to %d-%d", set.MinBuy, set.MaxBuy)
@@ -247,7 +259,7 @@ func settingsChanges(old, set Settings) string {
 	add(old.Public != set.Public, "the table to %s", visibility(set.Public))
 	add(old.ApproveRebuys != set.ApproveRebuys, "rebuy approval %s", onOff(set.ApproveRebuys))
 	add(old.DuckHunt != set.DuckHunt, "duck hunt %s", onOff(set.DuckHunt))
-	add(old.SevenDeuce != set.SevenDeuce, "the 7-2 bounty to %s", chips(set.SevenDeuce))
+	add(old.SevenDeuce != set.SevenDeuce, "the %s bounty to %s", bountyKind(set.config().Game), chips(set.SevenDeuce))
 	add(old.Straddle != set.Straddle, "straddles %s", set.Straddle)
 	add(old.RunIt != set.RunIt, "run it %s", onOff(set.RunIt))
 	add(old.DecisionTime != set.DecisionTime, "the decision time to %ds", set.DecisionTime/1000)

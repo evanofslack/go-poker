@@ -221,6 +221,7 @@ export interface Settings {
   approveRebuys: boolean; // rebuys, and sitting back down, wait for the host
   game: string; // GameHoldem, GameOmaha or GameOmaha5
   limit: string; // LimitNo or LimitPot
+  deck: string; // DeckFull or DeckShort
   /**
    * house rules
    */
@@ -228,7 +229,8 @@ export interface Settings {
   duckHunt: boolean; // players can turn up the rest of the board after a hand ends early
   /**
    * SevenDeuce is the bounty everyone dealt in pays a player who wins the
-   * main pot with 7-2 and shows it, 0 for none
+   * main pot with the worst hand, 7-2, or J-6 on a short deck, and shows
+   * it, 0 for none. Hold'em only.
    */
   sevenDeuce: number /* uint */;
   straddle: string; // StraddleOff, StraddleOptional or StraddleForced
@@ -262,6 +264,14 @@ export const LimitNo = "no";
  */
 export const LimitPot = "pot";
 /**
+ * Games and limits
+ */
+export const DeckFull = "full";
+/**
+ * Games and limits
+ */
+export const DeckShort = "short"; // 6+: 2s to 5s out
+/**
  * Straddle settings. Forced posts under the gun's straddle for them;
  * re-straddles stay optional.
  */
@@ -281,9 +291,13 @@ export const StraddleForced = "forced";
 // source: sidegames.go
 
 /**
- * Side game kinds
+ * Side game kinds. The worst hand bounty is 7-2, or J-6 on a short deck.
  */
 export const KindSevenDeuce = "7-2";
+/**
+ * Side game kinds. The worst hand bounty is 7-2, or J-6 on a short deck.
+ */
+export const KindJackSix = "J-6";
 /**
  * Payment is chips one player paid another for a side game.
  */

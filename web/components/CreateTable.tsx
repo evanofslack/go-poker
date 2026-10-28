@@ -2,7 +2,7 @@ import { useContext, useState } from "react";
 import { createTable } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
-import { defaultForm, settingsError, SettingsForm, toSettings } from "../lib/settings";
+import { bountyHand, defaultForm, settingsError, SettingsForm, toSettings } from "../lib/settings";
 import { Button } from "@mantine/core";
 import Dialog from "./Dialog";
 import SettingsFields from "./SettingsFields";
@@ -25,7 +25,7 @@ function summary(form: SettingsForm, password: string): string {
         s.turnTime ? `${s.turnTime / 1000}s timer` : "no timer",
     ];
     if (s.ante) parts.push(`${chips(s.ante)} ante`);
-    if (s.sevenDeuce) parts.push("7-2 game");
+    if (s.sevenDeuce) parts.push(`${bountyHand(s)} game`);
     if (password) parts.push("password");
     return parts.join(" · ");
 }

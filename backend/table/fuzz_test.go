@@ -27,6 +27,9 @@ func TestRandomCommands(t *testing.T) {
 		set.RunIt = r.IntN(2) == 0
 		set.Game = []string{GameHoldem, GameOmaha, GameOmaha5}[r.IntN(3)]
 		set.Limit = []string{LimitNo, LimitPot}[r.IntN(2)]
+		if r.IntN(3) == 0 && int(set.Seats)*holeCards[set.Game]+10 <= 36 {
+			set.Deck = DeckShort
+		}
 		if set.Game != GameHoldem {
 			set.SevenDeuce = 0
 		}

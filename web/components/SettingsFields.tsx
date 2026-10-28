@@ -3,7 +3,9 @@ import {
     antes,
     bombEvery,
     bombPots,
+    bountyHand,
     decisionTimes,
+    decks,
     games,
     limits,
     straddleModes,
@@ -69,6 +71,14 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                             options={limits}
                             value={form.limit}
                             onChange={(l) => set({ limit: l })}
+                        />
+                        <Segmented
+                            legend="deck"
+                            hint="short deck takes out the 2s to 5s: a flush beats a full house, three of a kind beats a straight, and A-6-7-8-9 is a straight"
+                            name="deck"
+                            options={decks}
+                            value={form.deck}
+                            onChange={(d) => set({ deck: d })}
                         />
                     </div>
                     <div>
@@ -211,8 +221,8 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                 <Section title="house rules">
                     {form.game === "holdem" && (
                         <Segmented
-                            legend="7-2 bounty"
-                            hint="win the pot with 7-2 and show it, and everyone dealt in pays you this"
+                            legend={`${bountyHand(form)} bounty`}
+                            hint={`win the pot with ${bountyHand(form)} and show it, and everyone dealt in pays you this`}
                             name="sevenDeuce"
                             options={sevenDeuces.map((n) => ({ label: n ? `${n} bb` : "off", value: n }))}
                             value={form.sevenDeuce}
