@@ -19,13 +19,17 @@
 @custom-variant short (@media (max-height: 500px));
 /* the dark color scheme, which Mantine marks on <html> */
 @custom-variant dark (&:where([data-mantine-color-scheme=dark], [data-mantine-color-scheme=dark] *));
-/* table motion: only for people who haven't asked for less, and only once the
-   table has settled after joining, so a reload doesn't replay the deal */
+/* table motion, once the table has settled after joining, so a reload doesn't
+   replay the deal. data-motion is the viewer's animations option: system
+   animates unless the device asks for less motion, on always does, off never. */
 @custom-variant motion {
   @media (prefers-reduced-motion: no-preference) {
-    :where([data-motion]) & {
+    :where([data-motion="system"]) & {
       @slot;
     }
+  }
+  :where([data-motion="on"]) & {
+    @slot;
   }
 }
 
@@ -124,6 +128,16 @@
     to {
       opacity: 0;
       transform: translateY(-1rem) scale(0.85);
+    }
+  }
+
+  --animate-turn: turn 700ms ease-out; /* a seat's turn starting: one ring out from the plate */
+  @keyframes turn {
+    from {
+      box-shadow: 0 0 0 0 rgb(255 255 255 / 0.6), var(--shadow-turn);
+    }
+    to {
+      box-shadow: 0 0 0 0.75rem rgb(255 255 255 / 0), var(--shadow-turn);
     }
   }
 

@@ -105,7 +105,7 @@ export default function Table() {
     const dealer = !onPhone && view.running && bySeat.has(view.button);
 
     return (
-        <div className={"absolute inset-0 " + seatSize} data-motion={motion || undefined}>
+        <div className={"absolute inset-0 " + seatSize} data-motion={motion ? appState.prefs.motion : undefined}>
             <div className="absolute top-1/2 left-1/2 h-[calc(0.8*(100%-2*var(--seat-hh)))] w-[calc(0.84*(100%-2*var(--seat-hw)))] -translate-1/2 rounded-full felt" />
             {/* on a tall table, the board takes the band across the middle, between the side seats */}
             <div

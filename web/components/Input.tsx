@@ -76,7 +76,7 @@ export default function Input() {
 
     // F and C act on your turn, or pick before it; R and B open the bet
     onKey.current = (key) => {
-        if (!appState.shortcuts || !socket || !view?.betting || !open || !me?.in || me.stack === 0) return false;
+        if (!appState.prefs.shortcuts || !socket || !view?.betting || !open || !me?.in || me.stack === 0) return false;
         if (!turn) {
             const owe = owed(view, me);
             const kind = preOptions(owe, me.stack)[key === "f" ? 0 : key === "c" ? 1 : -1]?.[0];
@@ -104,7 +104,7 @@ export default function Input() {
         return () => document.removeEventListener("keydown", key);
     }, []);
 
-    const keyed = (k: string) => (appState.shortcuts ? classNames(hint, hints[k]) : "");
+    const keyed = (k: string) => (appState.prefs.shortcuts ? classNames(hint, hints[k]) : "");
 
     if (!socket || !view || !view.betting) return null;
 
