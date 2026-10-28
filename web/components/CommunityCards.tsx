@@ -74,6 +74,8 @@ export default function CommunityCards() {
                     from={view.runFrom}
                     winning={winningCards(view, run)}
                     winner={winners[run]}
+                    // double board's two boards are worth the same, so the same size
+                    small={!view.double}
                 />
             ))}
         </div>
@@ -81,7 +83,7 @@ export default function CommunityCards() {
 }
 
 // ExtraBoard is one more run of the board, small, with its cards lined up
-// under the slots they replace
+// under the slots they replace; or double board's second board
 function ExtraBoard({
     label,
     run,
@@ -89,7 +91,9 @@ function ExtraBoard({
     from,
     winning,
     winner,
+    small,
 }: {
+    small: boolean;
     label: string;
     run: number;
     cards: CardType[];
@@ -109,10 +113,10 @@ function ExtraBoard({
                                 folded={false}
                                 hidden={false}
                                 highlight={winning.has(cards[i - from])}
-                                small
+                                small={small}
                             />
                         ) : (
-                            <Card card={0} placeholder={true} folded={false} hidden={false} small />
+                            <Card card={0} placeholder={true} folded={false} hidden={false} small={small} />
                         )}
                     </div>
                 ))}

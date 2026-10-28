@@ -3,7 +3,15 @@ import { AppContext } from "../providers/AppStore";
 import { removeBot, takeSeat } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { PlayerView, View } from "../interfaces/index";
-import Card, { MiniCards, bigCardOverlap, bigCardSize, cardOverlap, cardSize } from "./Card";
+import Card, {
+    MiniCards,
+    bigCardOverlap,
+    bigCardSize,
+    bigTuckedOverlap,
+    cardOverlap,
+    cardSize,
+    tuckedOverlap,
+} from "./Card";
 import BuyIn from "./BuyIn";
 import Dialog from "./Dialog";
 import AddBot from "./AddBot";
@@ -154,6 +162,9 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
     // on a phone, other players' face-down cards shrink onto the plate, and only
     // cards you can read, like at showdown, take the full size
     const mini = onPhone && !own && player.dealt && player.cards.every((c) => !c);
+    // folded this hand, or mucked once it's over
+    const folded = !player.in && !(view.street === "" && player.shown);
+    const tucked = folded && view.street !== "";
     const stack = useTween(player.stack);
     return (
         <div className="flex flex-col items-center short:flex-row">
@@ -166,11 +177,23 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
             >
                 {player.dealt &&
                     player.cards.map((c, i) => (
-                        // past two cards, each covers half of the one before
+                        // past two cards, each covers half of the one before, and
+                        // folded they tuck away under the last
                         <div
                             // a new hand deals new cards
                             key={`${view.hand}-${i}`}
-                            className={classNames(i > 0 && player.cards.length > 2 && (own ? bigCardOverlap : cardOverlap))}
+                            className={classNames(
+                                "transition-[margin] duration-300",
+                                i > 0 &&
+                                    player.cards.length > 2 &&
+                                    (tucked
+                                        ? own
+                                            ? bigTuckedOverlap
+                                            : tuckedOverlap
+                                        : own
+                                          ? bigCardOverlap
+                                          : cardOverlap)
+                            )}
                         >
                             <Card
                                 card={c}
@@ -178,7 +201,7 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
                                 placeholder={false}
                                 // everyone is out between hands; only shown cards stay up, and
                                 // your own mucked ones dim
-                                folded={!player.in && !(view.street === "" && player.shown)}
+                                folded={folded}
                                 hidden={!c}
                                 highlight={winning.has(c)}
                                 big={own}

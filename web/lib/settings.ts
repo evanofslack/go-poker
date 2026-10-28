@@ -4,8 +4,8 @@ import { Settings } from "../interfaces/index";
 // limits (backend/server/validate.go), which these mirror.
 export const games = [
     { label: "hold'em", value: "holdem" },
-    { label: "Omaha", value: "omaha" },
-    { label: "Omaha 5", value: "omaha5" },
+    { label: "omaha", value: "omaha" },
+    { label: "omaha 5", value: "omaha5" },
 ];
 export const limits = [
     { label: "no limit", value: "no" },
@@ -181,10 +181,16 @@ export function gameName(s: Pick<Settings, "game" | "limit" | "deck">): string {
     return (s.deck === "short" ? "6+ " : "") + (s.limit === "pot" ? "PL" : "NL") + name;
 }
 
-// gameTitle spells a table's game out, like "pot limit Omaha" or "no limit 6+ hold'em"
+// gameTitle spells a table's game out, like "pot limit omaha" or "no limit 6+ hold'em"
 export function gameTitle(s: Pick<Settings, "game" | "limit" | "deck">): string {
-    const name = { holdem: "texas hold'em", omaha: "Omaha", omaha5: "5 card Omaha" }[s.game] ?? "texas hold'em";
+    const name = { holdem: "texas hold'em", omaha: "omaha", omaha5: "5 card omaha" }[s.game] ?? "texas hold'em";
     return (s.limit === "pot" ? "pot limit " : "no limit ") + (s.deck === "short" ? "6+ " : "") + name;
+}
+
+// gameLabel names a table's game for the header, like "nl hold'em" or "pl 6+ omaha 5"
+export function gameLabel(s: Pick<Settings, "game" | "limit" | "deck">): string {
+    const name = { holdem: "hold'em", omaha: "omaha", omaha5: "omaha 5" }[s.game] ?? "hold'em";
+    return (s.limit === "pot" ? "pl " : "nl ") + (s.deck === "short" ? "6+ " : "") + name;
 }
 
 // bountyHand is the worst hand bounty's hand: 7-2, or J-6 on a short deck

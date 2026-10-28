@@ -113,8 +113,13 @@ export default function Table() {
                     "pointer-events-none absolute top-1/2 left-1/2 z-30 flex -translate-1/2 flex-col items-center gap-2 short:top-[53%]",
                     onTall ? "w-full px-2" : "w-[calc(0.66*(100%-2*var(--seat-hw)))] portrait:top-[40%]"
                 )}
-                // each extra run of the board lifts the column, so the runs clear the markers below it
-                style={!onTall && view.runs > 1 ? { marginTop: `${-(view.runs - 1) * 1.75}rem` } : undefined}
+                // each extra run of the board lifts the column, so the runs clear the markers below it;
+                // double board's second board is full size, so it lifts further
+                style={
+                    !onTall && view.runs > 1
+                        ? { marginTop: `${-(view.runs - 1) * (view.double ? 3 : 1.75)}rem` }
+                        : undefined
+                }
             >
                 <Pot />
                 <CommunityCards />
