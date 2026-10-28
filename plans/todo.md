@@ -17,7 +17,7 @@
 | 13 | Table polish (`table-polish.md`) | done |
 | 14 | Time bank (`extensions.md`) | planned |
 | 15 | Game refactor (`extensions.md`) | done |
-| 16 | Pot-limit Omaha (`extensions.md`) | planned |
+| 16 | Pot-limit Omaha (`extensions.md`) | done |
 | 17 | Bomb pots and double board (`extensions.md`) | planned |
 | 18 | Short deck (`extensions.md`) | planned |
 | - | Backlog | unranked |
@@ -660,8 +660,8 @@ from the server. Hold'em plays exactly as before.
 
 Planned in `extensions.md`: Omaha and Omaha 5, exactly two hole cards, pot limit for any game.
 
-- [ ] PR 5: omaha engine
-- [ ] PR 6: omaha table, bots and web
+- [x] PR 5: omaha engine (#174)
+- [x] PR 6: omaha table, bots and web (#175)
 
 # Stage 17: bomb pots and double board
 
