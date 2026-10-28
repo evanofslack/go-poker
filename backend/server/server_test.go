@@ -514,8 +514,9 @@ func TestUpdateSettings(t *testing.T) {
 	host := create(t, srv, "t", "host")
 	a := join(t, srv, "t", "a")
 
+	// the rest are zero, so the buy-ins don't fit the blinds
 	host.send(`{"action":"update-settings","settings":{"bb":20}}`)
-	if e := host.errorMsg(); !strings.Contains(e.Message, "small blind") {
+	if e := host.errorMsg(); !strings.Contains(e.Message, "buy-in") {
 		t.Fatalf("partial settings: %+v", e)
 	}
 	set := table.DefaultSettings
