@@ -31,6 +31,7 @@ export default function Segmented<T extends string | number>({
                 name={name}
                 size="xs"
                 color="cyan"
+                className="bg-panel"
                 data={options.map((o) => ({ label: o.label, value: String(o.value) }))}
                 value={String(value)}
                 onChange={(v) => onChange(options.find((o) => String(o.value) === v)!.value)}

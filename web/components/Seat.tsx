@@ -12,8 +12,9 @@ import SeatMenu from "./SeatMenu";
 import { blind, isWinner, madeHand, winningCards, winningHand, winnings } from "../lib/hands";
 import { phone, useMedia } from "../hooks/useMedia";
 import classNames from "classnames";
-import { ActionIcon, Anchor } from "@mantine/core";
+import { ActionIcon, Button } from "@mantine/core";
 import { FiX } from "react-icons/fi";
+import { LuBot } from "react-icons/lu";
 
 const plate =
     "w-24 rounded-xl px-2 py-1 text-center sm:w-32 lg:w-40 lg:py-1.5 short:w-24 short:py-0.5";
@@ -23,7 +24,7 @@ function plateStyle(player: PlayerView, view: View) {
     const counting = action && view.turnEndsIn > 0;
     const winner = !view.betting && isWinner(view, player.seat);
     return classNames(plate, "relative", {
-        "bg-plate-active text-ink shadow-[0_0_40px_2px_rgba(255,255,255,0.3)]": action,
+        "bg-plate-active text-on-plate-active shadow-[0_0_40px_2px_rgba(255,255,255,0.3)]": action,
         "bg-highlight text-ink shadow-[0_0_60px_20px_rgba(100,98,92,0.3)]": winner,
         "bg-panel text-fg": !action && !winner,
         // sitting out or out of chips
@@ -260,9 +261,9 @@ function OpenSeat({ id, view, host }: { id: number; view: View; host: boolean })
                         onCancel={close}
                     />
                     {host && (
-                        <Anchor component="button" size="sm" c="dimmed" className="mt-2 px-3" onClick={() => setOpen("bot")}>
-                            add a bot here instead
-                        </Anchor>
+                        <Button size="xs" leftSection={<LuBot />} className="mt-2 ml-3" onClick={() => setOpen("bot")}>
+                            add bot
+                        </Button>
                     )}
                 </Dialog>
             )}
