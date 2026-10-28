@@ -48,6 +48,8 @@ const (
 	ActionEndSession      = "end-session"
 	ActionStartStandUp    = "start-stand-up" // amount is the payout
 	ActionCancelStandUp   = "cancel-stand-up"
+	ActionBombPot         = "bomb-pot" // the next hand is a bomb pot
+	ActionCancelBombPot   = "cancel-bomb-pot"
 	ActionUpdateSettings  = "update-settings" // settings has all of them, but the seat count stays
 	ActionSetPassword     = "set-password"
 )

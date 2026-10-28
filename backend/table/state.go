@@ -116,6 +116,7 @@ type State struct {
 	Acts     map[int]Act           `json:"acts"` // by seat
 
 	StandUp     *StandUp     `json:"standUp"`     // the stand-up round going, if any
+	BombNext    bool         `json:"bombNext"`    // the next hand is a bomb pot
 	StraddleAsk *StraddleAsk `json:"straddleAsk"` // the straddles for the next hand, being asked
 	RunVote     *RunVote     `json:"runVote"`     // how many times to run the board out, being voted on
 	LastStandUp uint         `json:"lastStandUp"` // the payout of the round that just ended, to run it again

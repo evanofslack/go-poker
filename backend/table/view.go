@@ -40,7 +40,9 @@ type View struct {
 	Hunted    []holdem.Card   `json:"hunted"`  // the rest of the board, from a duck hunt
 	Runs      int             `json:"runs"`    // times the board runs out, 0 until decided
 	RunFrom   int             `json:"runFrom"` // board cards dealt before the runs split
-	Boards    [][]holdem.Card `json:"boards"`  // every finished runout, the first being Board
+	Boards    [][]holdem.Card `json:"boards"`  // every finished runout, the first being Board; on double board both, from the flop
+	Bomb      uint            `json:"bomb"`    // this hand is a bomb pot of this much each, 0 if not
+	Double    bool            `json:"double"`  // this hand is double board
 	Pots      []holdem.Pot    `json:"pots"`
 	MinRaise  uint            `json:"minRaise"`
 	Hand      int             `json:"hand"`
@@ -71,6 +73,7 @@ type View struct {
 	RunVote        *RunVote       `json:"runVote"`
 	RunVoteEndsIn  int64          `json:"runVoteEndsIn"` // ms the run it vote has left
 	LastStandUp    uint           `json:"lastStandUp"`   // the payout of the stand-up round that just ended
+	BombNext       bool           `json:"bombNext"`      // the next hand is a bomb pot
 	MadeHand       []string       `json:"madeHand"`      // yours so far, like "two pair", on each board; empty when you're not in a hand
 }
 
@@ -94,6 +97,8 @@ func ViewFor(s *State, id string, now time.Time) View {
 		Runs:           g.Runs,
 		RunFrom:        g.RunFrom,
 		Boards:         g.Boards,
+		Bomb:           g.Bomb,
+		Double:         g.Double,
 		Pots:           g.Pots,
 		MinRaise:       g.MinRaise,
 		Hand:           g.Hand,
@@ -119,6 +124,7 @@ func ViewFor(s *State, id string, now time.Time) View {
 		RunVote:        s.RunVote,
 		RunVoteEndsIn:  until(s.Timers, TimerRunVote, now),
 		LastStandUp:    s.LastStandUp,
+		BombNext:       s.BombNext,
 		MadeHand:       madeHand(s, you),
 	}
 	v.ShowClaims = ShowClaims(s, you)
@@ -172,6 +178,9 @@ func madeHand(s *State, seat int) []string {
 	p := s.Game.Player(seat)
 	if p == nil || !p.In || !s.Game.InHand() {
 		return []string{}
+	}
+	if s.Game.Double && len(s.Game.Boards) == 2 {
+		return []string{s.Game.Config.Game.MadeHand(p.Cards, s.Game.Boards[0]), s.Game.Config.Game.MadeHand(p.Cards, s.Game.Boards[1])}
 	}
 	return []string{s.Game.Config.Game.MadeHand(p.Cards, s.Game.Board)}
 }

@@ -55,7 +55,14 @@ func (r *reducer) dealHand(waiting bool) {
 		}
 		straddles = len(a.Yes)
 	}
-	events, err := s.Game.StartHand(holdem.Deal{Straddles: straddles})
+	deal := holdem.Deal{Straddles: straddles}
+	if s.Settings.DoubleBoard {
+		deal.Boards = 2
+	}
+	if s.BombNext {
+		deal = holdem.Deal{Bomb: s.Settings.BombPot, Boards: s.Settings.boards()}
+	}
+	events, err := s.Game.StartHand(deal)
 	if err != nil {
 		if waiting {
 			r.log("waiting for players")
@@ -64,6 +71,7 @@ func (r *reducer) dealHand(waiting bool) {
 	}
 	r.cancel(TimerDeal)
 	r.dropStraddles()
+	s.BombNext = false
 	clear(s.Acts)
 	r.played(events, false)
 }
@@ -236,6 +244,9 @@ func (r *reducer) afterHand() {
 		r.applySettings("settings changed:", *r.s.Next)
 	}
 	r.rebuyBots()
+	if every := r.s.Settings.BombEvery; every > 0 && r.s.Settings.BombPot > 0 && (r.s.Game.Hands+1)%int(every) == 0 {
+		r.s.BombNext = true
+	}
 	r.scheduleDeal()
 }
 

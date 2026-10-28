@@ -21,6 +21,7 @@ type HandRecord struct {
 	SB      uint         `json:"sb"`
 	BB      uint         `json:"bb"`
 	Ante    uint         `json:"ante,omitempty"`
+	Bomb    uint         `json:"bomb,omitempty"` // a bomb pot of this much each
 	Dealer  string       `json:"dealer"`
 	Players []HandPlayer `json:"players"` // dealt in, in seat order
 	Actions []HandAction `json:"actions"` // antes and blinds first
@@ -134,6 +135,10 @@ func (r *reducer) recordEvent(e holdem.Event, timeout bool) {
 			BB:      s.Game.Config.BigBlind,
 			Ante:    s.Game.Config.Ante,
 			Dealer:  name(e.Button),
+			Bomb:    s.Game.Bomb,
+		}
+		if h.Bomb > 0 {
+			h.Ante = 0
 		}
 		for _, n := range e.Seats {
 			p := s.Game.Player(n)
@@ -151,7 +156,7 @@ func (r *reducer) recordEvent(e holdem.Event, timeout bool) {
 			a.To = e.To
 		}
 		h.Actions = append(h.Actions, a)
-		if e.Kind != holdem.KindAnte && e.Kind != holdem.KindSmallBlind && e.Kind != holdem.KindBigBlind && e.Kind != holdem.KindStraddle {
+		if e.Kind != holdem.KindAnte && e.Kind != holdem.KindSmallBlind && e.Kind != holdem.KindBigBlind && e.Kind != holdem.KindStraddle && e.Kind != holdem.KindBomb {
 			s.Acts[e.Seat] = Act{e.Street, actLabel(e)}
 		}
 	case holdem.StreetDealt:

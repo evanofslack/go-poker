@@ -34,6 +34,20 @@ type Settings struct {
 	SevenDeuce uint   `json:"sevenDeuce"`
 	Straddle   string `json:"straddle"` // StraddleOff, StraddleOptional or StraddleForced
 	RunIt      bool   `json:"runIt"`    // once everyone left is all in, or all but one, they vote to run the rest of the board out more than once
+
+	// bomb pots and double board
+	BombPot     uint `json:"bombPot"`     // what everyone puts in a bomb pot, 0 for none
+	BombEvery   uint `json:"bombEvery"`   // a bomb pot every this many hands, 0 for only when the host calls one
+	BombDouble  bool `json:"bombDouble"`  // bomb pots are double board
+	DoubleBoard bool `json:"doubleBoard"` // every hand is double board
+}
+
+// boards is how many boards set's hands can deal at most.
+func (set Settings) boards() int {
+	if set.DoubleBoard || set.BombPot > 0 && set.BombDouble {
+		return 2
+	}
+	return 1
 }
 
 // Games and limits
@@ -104,6 +118,8 @@ const (
 	minDecisionTime  = 2000
 	maxDecisionTime  = 30_000
 	maxSevenDeuceBB  = 10 // the most a 7-2 bounty can be, in big blinds
+	maxBombBB        = 20 // the most a bomb pot can be, in big blinds
+	maxBombEvery     = 100
 )
 
 // Validate returns why s can't be used for a new table, if it can't.
@@ -137,6 +153,14 @@ func (s Settings) Validate() error {
 		return errors.New("limit must be no or pot")
 	case int(s.Seats)*holeCards[s.Game]+5 > len(holdem.Deck(s.config().Game)):
 		return fmt.Errorf("%s deals too many cards for %d seats", GameName(s), s.Seats)
+	case int(s.Seats)*holeCards[s.Game]+5*s.boards() > len(holdem.Deck(s.config().Game)):
+		return fmt.Errorf("%s deals too many cards for two boards at %d seats", GameName(s), s.Seats)
+	case s.BombPot > maxBombBB*s.BigBlind:
+		return fmt.Errorf("bomb pot can't be more than %d big blinds", maxBombBB)
+	case s.BombEvery > maxBombEvery:
+		return fmt.Errorf("bomb pots can't be further apart than %d hands", maxBombEvery)
+	case s.BombEvery > 0 && s.BombPot == 0:
+		return errors.New("set the bomb pot to have one every few hands")
 	case s.SevenDeuce > 0 && holeCards[s.Game] != 2:
 		return errors.New("the 7-2 bounty is for hold'em")
 	}
@@ -179,6 +203,9 @@ func (r *reducer) applySettings(who string, set Settings) {
 		r.dropStraddles() // asked at the old blinds
 	}
 	s.Settings, s.Next = set, nil
+	if set.BombPot == 0 {
+		s.BombNext = false
+	}
 	s.Game.SetConfig(set.config())
 	if changes != "" {
 		r.log("%s %s", who, changes)
@@ -224,6 +251,14 @@ func settingsChanges(old, set Settings) string {
 	add(old.Straddle != set.Straddle, "straddles %s", set.Straddle)
 	add(old.RunIt != set.RunIt, "run it %s", onOff(set.RunIt))
 	add(old.DecisionTime != set.DecisionTime, "the decision time to %ds", set.DecisionTime/1000)
+	add(old.BombPot != set.BombPot, "the bomb pot to %s", chips(set.BombPot))
+	if set.BombEvery == 0 {
+		add(old.BombEvery != 0, "bomb pots only when called")
+	} else {
+		add(old.BombEvery != set.BombEvery, "a bomb pot every %d hands", set.BombEvery)
+	}
+	add(old.BombDouble != set.BombDouble, "double board bomb pots %s", onOff(set.BombDouble))
+	add(old.DoubleBoard != set.DoubleBoard, "double board %s", onOff(set.DoubleBoard))
 	return strings.Join(c, ", ")
 }
 

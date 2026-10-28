@@ -191,7 +191,14 @@ func (AdjustChips) command()    {}
 func (Pause) command()          {}
 func (EndSession) command()     {}
 func (StartStandUp) command()   {}
+func (BombPot) command()        {}
 func (CancelStandUp) command()  {}
 func (UpdateSettings) command() {}
 func (SetPassword) command()    {}
 func (TimerFired) command()     {}
+
+// BombPot makes the next hand a bomb pot, or calls it off.
+type BombPot struct {
+	Person string
+	On     bool
+}

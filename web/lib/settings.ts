@@ -20,6 +20,8 @@ export const straddleModes = ["off", "optional", "forced"];
 export const antes = [0, 0.1, 0.25, 0.5, 1]; // in big blinds, 0 is no ante
 export const sevenDeuces = [0, 1, 2, 5]; // 7-2 bounties in big blinds, 0 is off
 export const standUpPayouts = [1, 2, 5, 10]; // stand-up payouts in big blinds
+export const bombPots = [0, 1, 2, 5, 10]; // bomb pots in big blinds, 0 is off
+export const bombEvery = [0, 10, 20, 50]; // hands between bomb pots, 0 is only when the host calls one
 export const maxBigBlind = 1_000_000;
 export const maxBuyInBB = 1000;
 export const maxPasswordLen = 32;
@@ -44,6 +46,10 @@ export type SettingsForm = {
     straddle: string; // off, optional or forced
     decisionTime: number;
     runIt: boolean;
+    bombPot: number; // in big blinds
+    bombEvery: number;
+    bombDouble: boolean;
+    doubleBoard: boolean;
 };
 
 // the server's defaults
@@ -66,6 +72,10 @@ export const defaultForm: SettingsForm = {
     straddle: "off",
     decisionTime: 5000,
     runIt: true,
+    bombPot: 0,
+    bombEvery: 0,
+    bombDouble: false,
+    doubleBoard: false,
 };
 
 // blinds are the form's small and big blind
@@ -113,6 +123,10 @@ export function toSettings(f: SettingsForm): Settings {
         straddle: f.straddle,
         decisionTime: f.decisionTime,
         runIt: f.runIt,
+        bombPot: f.bombPot * bb,
+        bombEvery: f.bombPot > 0 ? f.bombEvery : 0,
+        bombDouble: f.bombDouble,
+        doubleBoard: f.doubleBoard,
     };
 }
 
@@ -143,6 +157,10 @@ export function fromSettings(s: Settings): SettingsForm {
         straddle: s.straddle,
         decisionTime: s.decisionTime,
         runIt: s.runIt,
+        bombPot: nearest(bombPots, s.bombPot, (n) => n * s.bb),
+        bombEvery: nearest(bombEvery, s.bombEvery, (n) => n),
+        bombDouble: s.bombDouble,
+        doubleBoard: s.doubleBoard,
     };
 }
 

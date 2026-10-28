@@ -97,6 +97,7 @@ export interface HandRecord {
   sb: number /* uint */;
   bb: number /* uint */;
   ante?: number /* uint */;
+  bomb?: number /* uint */; // a bomb pot of this much each
   dealer: string;
   players: HandPlayer[]; // dealt in, in seat order
   actions: HandAction[]; // antes and blinds first
@@ -231,6 +232,13 @@ export interface Settings {
   sevenDeuce: number /* uint */;
   straddle: string; // StraddleOff, StraddleOptional or StraddleForced
   runIt: boolean; // once everyone left is all in, or all but one, they vote to run the rest of the board out more than once
+  /**
+   * bomb pots and double board
+   */
+  bombPot: number /* uint */; // what everyone puts in a bomb pot, 0 for none
+  bombEvery: number /* uint */; // a bomb pot every this many hands, 0 for only when the host calls one
+  bombDouble: boolean; // bomb pots are double board
+  doubleBoard: boolean; // every hand is double board
 }
 /**
  * Games and limits
@@ -319,6 +327,7 @@ export interface StandUp {
  */
 export interface Totals {
   hands: number /* int */; // dealt in
+  bombs: number /* int */; // of them bomb pots, which have no preflop to count for VPIP and PFR
   vpip: number /* int */; // hands they chose to put money in preflop
   pfr: number /* int */; // hands they raised preflop
   threeBetSpots: number /* int */; // hands they acted preflop facing one raise
@@ -399,7 +408,9 @@ export interface View {
   hunted: number[]; // the rest of the board, from a duck hunt
   runs: number /* int */; // times the board runs out, 0 until decided
   runFrom: number /* int */; // board cards dealt before the runs split
-  boards: number[][]; // every finished runout, the first being Board
+  boards: number[][]; // every finished runout, the first being Board; on double board both, from the flop
+  bomb: number /* uint */; // this hand is a bomb pot of this much each, 0 if not
+  double: boolean; // this hand is double board
   pots: holdem.Pot[];
   minRaise: number /* uint */;
   hand: number /* int */;
@@ -428,6 +439,7 @@ export interface View {
   runVote?: RunVote;
   runVoteEndsIn: number /* int64 */; // ms the run it vote has left
   lastStandUp: number /* uint */; // the payout of the stand-up round that just ended
+  bombNext: boolean; // the next hand is a bomb pot
   madeHand: string[]; // yours so far, like "two pair", on each board; empty when you're not in a hand
 }
 /**

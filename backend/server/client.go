@@ -343,6 +343,8 @@ func (c *Client) command(in Inbound) (table.Command, error) {
 		return table.StartStandUp{Person: p, Payout: uint(in.Amount)}, nil
 	case ActionCancelStandUp:
 		return table.CancelStandUp{Person: p}, nil
+	case ActionBombPot, ActionCancelBombPot:
+		return table.BombPot{Person: p, On: in.Action == ActionBombPot}, nil
 	case ActionUpdateSettings:
 		// the table checks them, once it has put in its seat count
 		var settings table.Settings

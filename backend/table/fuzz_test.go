@@ -30,6 +30,12 @@ func TestRandomCommands(t *testing.T) {
 		if set.Game != GameHoldem {
 			set.SevenDeuce = 0
 		}
+		set.BombPot = r.UintN(3) * set.BigBlind
+		if set.BombPot > 0 {
+			set.BombEvery = r.UintN(4)
+		}
+		set.BombDouble = r.IntN(2) == 0
+		set.DoubleBoard = r.IntN(4) == 0
 		if r.IntN(3) == 0 {
 			set.TurnTime = 0
 		}
@@ -54,7 +60,7 @@ func TestRandomCommands(t *testing.T) {
 			id := h.ids[name]
 			other := names[r.IntN(len(names))]
 			var cmd Command
-			switch r.IntN(36) {
+			switch r.IntN(37) {
 			case 0, 1:
 				joins++
 				newID := fmt.Sprintf("%s-%d", name, joins)
@@ -113,11 +119,14 @@ func TestRandomCommands(t *testing.T) {
 				next.TurnTime = []uint{0, 15000, 30000}[r.IntN(3)]
 				next.Straddle = []string{StraddleOff, StraddleOptional, StraddleForced}[r.IntN(3)]
 				next.RunIt = r.IntN(2) == 0
+				next.DoubleBoard = r.IntN(4) == 0
 				cmd = UpdateSettings{Person: id, Settings: next}
 			case 23, 24:
 				cmd = Straddle{Person: id, Yes: r.IntN(3) > 0}
 			case 26, 27:
 				cmd = RunIt{Person: id, Runs: r.IntN(6)}
+			case 28:
+				cmd = BombPot{Person: id, On: r.IntN(3) > 0}
 			case 25:
 				cmd = StraddlePreset{Person: id, Preset: []string{PresetAsk, PresetAlways, PresetNever}[r.IntN(3)]}
 			default:

@@ -147,6 +147,14 @@ export const ActionCancelStandUp = "cancel-stand-up";
 /**
  * inbound (client) actions
  */
+export const ActionBombPot = "bomb-pot"; // the next hand is a bomb pot
+/**
+ * inbound (client) actions
+ */
+export const ActionCancelBombPot = "cancel-bomb-pot";
+/**
+ * inbound (client) actions
+ */
 export const ActionUpdateSettings = "update-settings"; // settings has all of them, but the seat count stays
 /**
  * inbound (client) actions
