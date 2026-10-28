@@ -18,7 +18,7 @@
 | 14 | Time bank (`extensions.md`) | planned |
 | 15 | Game refactor (`extensions.md`) | done |
 | 16 | Pot-limit Omaha (`extensions.md`) | done |
-| 17 | Bomb pots and double board (`extensions.md`) | planned |
+| 17 | Bomb pots and double board (`extensions.md`) | done |
 | 18 | Short deck (`extensions.md`) | planned |
 | - | Backlog | unranked |
 
@@ -668,10 +668,10 @@ Planned in `extensions.md`: Omaha and Omaha 5, exactly two hole cards, pot limit
 Planned in `extensions.md`: bomb pots straight to the flop, by the host or every N hands, and two
 boards splitting each pot.
 
-- [ ] PR 7: bomb pot engine
-- [ ] PR 8: live boards and double board engine
-- [ ] PR 9: bomb pots and double board table and server
-- [ ] PR 10: bomb pots and double board web
+- [x] PR 7: bomb pot engine (#176)
+- [x] PR 8: live boards and double board engine (#177)
+- [x] PR 9: bomb pots and double board table and server (#178)
+- [x] PR 10: bomb pots and double board web (#179)
 
 # Stage 18: short deck
 
