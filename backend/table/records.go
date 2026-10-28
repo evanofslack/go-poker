@@ -21,7 +21,8 @@ type HandRecord struct {
 	SB      uint         `json:"sb"`
 	BB      uint         `json:"bb"`
 	Ante    uint         `json:"ante,omitempty"`
-	Bomb    uint         `json:"bomb,omitempty"` // a bomb pot of this much each
+	Bomb    uint         `json:"bomb,omitempty"`   // a bomb pot of this much each
+	Double  bool         `json:"double,omitempty"` // double board: Boards are the two boards
 	Dealer  string       `json:"dealer"`
 	Players []HandPlayer `json:"players"` // dealt in, in seat order
 	Actions []HandAction `json:"actions"` // antes and blinds first
@@ -136,6 +137,7 @@ func (r *reducer) recordEvent(e holdem.Event, timeout bool) {
 			Ante:    s.Game.Config.Ante,
 			Dealer:  name(e.Button),
 			Bomb:    s.Game.Bomb,
+			Double:  s.Game.Double,
 		}
 		if h.Bomb > 0 {
 			h.Ante = 0

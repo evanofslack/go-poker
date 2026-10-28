@@ -154,7 +154,7 @@ func TestDoubleBoardBombTable(t *testing.T) {
 			h.advance(time.Second)
 		}
 	}
-	if rec := h.s.History[0]; len(rec.Boards) != 2 || len(rec.Boards[1]) != 5 {
+	if rec := h.s.History[0]; !rec.Double || len(rec.Boards) != 2 || len(rec.Boards[1]) != 5 {
 		t.Fatalf("recorded boards %v", rec.Boards)
 	}
 }

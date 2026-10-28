@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import classNames from "classnames";
-import { cancelStandUp, sessionAction, startStandUp } from "../../actions/actions";
+import { bombPot, cancelStandUp, sessionAction, startStandUp } from "../../actions/actions";
 import { standUpPayouts } from "../../lib/settings";
 import { useSocket } from "../../hooks/useSocket";
 import { AppContext } from "../../providers/AppStore";
@@ -44,6 +44,28 @@ export default function Host() {
                 </Button>
             </div>
             {!game.ended && <StandUp payoutBB={payoutBB} setPayoutBB={setPayoutBB} />}
+            {!game.ended && game.settings.bombPot > 0 && (
+                <Section
+                    title="bomb pot"
+                    hint={`everyone puts in ${game.settings.bombPot.toLocaleString("en")} and the hand starts on the flop`}
+                >
+                    {game.bombNext ? (
+                        <>
+                            <p className="flex items-center gap-2 text-fg" aria-label="bomb pot">
+                                {game.settings.bombPot.toLocaleString("en")} each
+                                <span className="rounded bg-badge px-1.5 text-xs text-muted">next hand</span>
+                            </p>
+                            <Button className="self-start" onClick={() => bombPot(socket, false)}>
+                                call it off
+                            </Button>
+                        </>
+                    ) : (
+                        <Button variant="filled" className="self-start" onClick={() => bombPot(socket, true)}>
+                            bomb pot next hand
+                        </Button>
+                    )}
+                </Section>
+            )}
             {!game.ending && (
                 <Button variant="outline" color="red" className="mt-auto self-start" onClick={() => setConfirming(true)}>
                     end session

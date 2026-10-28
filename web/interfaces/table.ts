@@ -98,6 +98,7 @@ export interface HandRecord {
   bb: number /* uint */;
   ante?: number /* uint */;
   bomb?: number /* uint */; // a bomb pot of this much each
+  double?: boolean; // double board: Boards are the two boards
   dealer: string;
   players: HandPlayer[]; // dealt in, in seat order
   actions: HandAction[]; // antes and blinds first

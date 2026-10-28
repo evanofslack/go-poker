@@ -115,6 +115,7 @@ function Hand({ record: r, me, open, onToggle }: { record: HandRecord; me: strin
             >
                 <span className="w-8 shrink-0 text-subtle tabular-nums">#{r.hand}</span>
                 {r.game && r.game !== "NLH" && <span className="shrink-0 text-subtle">{r.game}</span>}
+                {r.bomb ? <span className="shrink-0 text-subtle">bomb</span> : null}
                 <span className="min-w-0 flex-1 truncate text-fg">{winnersText(r)}</span>
                 {you && <Cards cards={you.cards} />}
                 {you && (
@@ -173,14 +174,14 @@ function HandDetail({ record: r, me }: { record: HandRecord; me: string | null }
             ))}
             {(r.boards ?? []).slice(1).map((b, i) => (
                 <p key={i} className="flex items-center gap-1.5 text-subtle" data-history-run>
-                    run {i + 2}
+                    {r.double ? "board" : "run"} {i + 2}
                     <Cards cards={b} />
                 </p>
             ))}
             <ul aria-label="pots">
                 {(r.pots ?? []).map((p, i, pots) => (
                     <li key={i}>
-                        {r.boards && `run ${(p.run ?? 0) + 1}: `}
+                        {r.boards && `${r.double ? "board" : "run"} ${(p.run ?? 0) + 1}: `}
                         {potName(pots, p)} {p.amount} ·{" "}
                         <span className="text-fg">{p.winners.join(", ")}</span>
                         {p.hand && `, ${p.hand}`}

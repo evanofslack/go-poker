@@ -1,6 +1,8 @@
 import {
     blinds,
     antes,
+    bombEvery,
+    bombPots,
     decisionTimes,
     games,
     limits,
@@ -239,6 +241,40 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                         checked={form.duckHunt}
                         onChange={(on) => set({ duckHunt: on })}
                     />
+                    <Toggle
+                        id="doubleBoard"
+                        label="double board"
+                        hint="every hand deals two boards from the flop, and each pot splits between them. no running it"
+                        checked={form.doubleBoard}
+                        onChange={(on) => set({ doubleBoard: on })}
+                    />
+                </Section>
+                <Section title="bomb pots">
+                    <Segmented
+                        legend="bomb pot"
+                        hint="everyone puts this in and the hand starts on the flop. the host calls one from the host tab"
+                        name="bombPot"
+                        options={bombPots.map((n) => ({ label: n ? `${n} bb` : "off", value: n }))}
+                        value={form.bombPot}
+                        onChange={(n) => set({ bombPot: n })}
+                    />
+                    {form.bombPot > 0 && (
+                        <>
+                            <Segmented
+                                legend="every"
+                                name="bombEvery"
+                                options={bombEvery.map((n) => ({ label: n ? `${n} hands` : "when called", value: n }))}
+                                value={form.bombEvery}
+                                onChange={(n) => set({ bombEvery: n })}
+                            />
+                            <Toggle
+                                id="bombDouble"
+                                label="double board bomb pots"
+                                checked={form.bombDouble}
+                                onChange={(on) => set({ bombDouble: on })}
+                            />
+                        </>
+                    )}
                 </Section>
             </div>
         </div>

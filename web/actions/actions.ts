@@ -209,6 +209,11 @@ export function cancelStandUp(socket: WebSocket) {
     send(socket, { action: "cancel-stand-up" });
 }
 
+// bombPot makes the next hand a bomb pot, or calls it off
+export function bombPot(socket: WebSocket, on: boolean) {
+    send(socket, { action: on ? "bomb-pot" : "cancel-bomb-pot" });
+}
+
 // updateSettings changes the table's settings, all but the seat count, from the next hand if one is being played
 export function updateSettings(socket: WebSocket, settings: Settings) {
     send(socket, { action: "update-settings", settings: settings });
