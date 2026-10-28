@@ -1,8 +1,9 @@
 import { useContext } from "react";
 import { AppContext } from "../providers/AppStore";
 import { settledPots } from "../lib/hands";
+import Chips from "./Chips";
 
-const chip = "flex h-10 items-center justify-center rounded-full bg-felt-dark px-5 text-on-felt short:h-7 short:px-3";
+const chip = "flex h-10 items-center justify-center gap-2 rounded-full bg-felt-dark px-5 text-on-felt short:h-7 short:gap-1.5 short:px-3";
 
 export default function Pot() {
     const { appState } = useContext(AppContext);
@@ -18,5 +19,10 @@ export default function Pot() {
 
     // every chip committed this hand, including the current street
     const total = view.players.reduce((sum, p) => sum + p.committed, 0);
-    return <p className={chip + " min-w-24 text-2xl font-semibold short:min-w-16 short:text-base"}>{total}</p>;
+    return (
+        <p className={chip + " min-w-24 text-2xl font-semibold short:min-w-16 short:text-base"}>
+            {total > 0 && <Chips amount={total} bb={view.settings.bb} className="size-5 short:size-4" />}
+            {total}
+        </p>
+    );
 }
