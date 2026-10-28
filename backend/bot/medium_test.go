@@ -6,11 +6,12 @@ import (
 	"testing"
 
 	"github.com/alexclewontin/riverboat/eval"
+	"github.com/evanofslack/go-poker/holdem"
 )
 
 func TestChen(t *testing.T) {
 	tests := []struct {
-		hole [2]eval.Card
+		hole []eval.Card
 		want float64
 	}{
 		{hole("As", "Ad"), 20},
@@ -35,17 +36,17 @@ func TestEquity(t *testing.T) {
 			t.Errorf("%s: equity = %.3f, want about %.2f", name, got, want)
 		}
 	}
-	near("aces heads up", equity(hole("As", "Ad"), nil, 1, anyHand, false, 4000, r), 0.85)
-	near("seven deuce heads up", equity(hole("7s", "2d"), nil, 1, anyHand, false, 4000, r), 0.35)
-	if e := equity(hole("As", "Ks"), cards("Qs", "Js", "Ts", "2d", "3c"), 3, anyHand, false, 500, r); e != 1 {
+	near("aces heads up", equity(holdem.Game{}, hole("As", "Ad"), nil, 1, anyHand, false, 4000, r), 0.85)
+	near("seven deuce heads up", equity(holdem.Game{}, hole("7s", "2d"), nil, 1, anyHand, false, 4000, r), 0.35)
+	if e := equity(holdem.Game{}, hole("As", "Ks"), cards("Qs", "Js", "Ts", "2d", "3c"), 3, anyHand, false, 500, r); e != 1 {
 		t.Errorf("royal flush: equity = %v, want 1", e)
 	}
-	one := equity(hole("Qs", "Qd"), nil, 1, anyHand, false, 2000, r)
-	five := equity(hole("Qs", "Qd"), nil, 5, anyHand, false, 2000, r)
+	one := equity(holdem.Game{}, hole("Qs", "Qd"), nil, 1, anyHand, false, 2000, r)
+	five := equity(holdem.Game{}, hole("Qs", "Qd"), nil, 5, anyHand, false, 2000, r)
 	if five >= one {
 		t.Errorf("queens: equity against 5 (%.2f) should be below against 1 (%.2f)", five, one)
 	}
-	if e := equity(hole("7s", "2d"), nil, 0, anyHand, false, 100, r); e != 1 {
+	if e := equity(holdem.Game{}, hole("7s", "2d"), nil, 0, anyHand, false, 100, r); e != 1 {
 		t.Errorf("no opponents: equity = %v, want 1", e)
 	}
 }
@@ -53,12 +54,12 @@ func TestEquity(t *testing.T) {
 func BenchmarkEquity(b *testing.B) {
 	r := rand.New(rand.NewPCG(1, 2))
 	for b.Loop() {
-		equity(hole("As", "Kd"), nil, 8, anyHand, false, trials, r)
+		equity(holdem.Game{}, hole("As", "Kd"), nil, 8, anyHand, false, trials, r)
 	}
 }
 
 // at is player to act holding h on board, owing owe into pot, against others.
-func at(h [2]eval.Card, board []eval.Card, owe, pot uint, others int) spot {
+func at(h []eval.Card, board []eval.Card, owe, pot uint, others int) spot {
 	return spot{hole: h, board: board, top: owe, stack: 2000, minRaise: 20, pot: pot, bb: 20, others: others}
 }
 
@@ -103,7 +104,7 @@ func TestMediumMovesAreLegal(t *testing.T) {
 	for range 500 {
 		r.Shuffle(len(deck), func(i, j int) { deck[i], deck[j] = deck[j], deck[i] })
 		s := spot{
-			hole:     [2]eval.Card{deck[0], deck[1]},
+			hole:     []eval.Card{deck[0], deck[1]},
 			board:    append([]eval.Card{}, deck[2:2+[]int{0, 3, 4, 5}[r.IntN(4)]]...),
 			stack:    uint(r.IntN(3000)) + 1,
 			minRaise: 20,
@@ -135,7 +136,7 @@ func TestMediumMovesAreLegal(t *testing.T) {
 
 // unopened is a six-handed preflop spot nobody has raised, behind players
 // from the button.
-func unopened(h [2]eval.Card, behind int) spot {
+func unopened(h []eval.Card, behind int) spot {
 	return spot{hole: h, top: 20, stack: 2000, minRaise: 20, pot: 30, bb: 20, others: 5, behind: behind}
 }
 
@@ -180,7 +181,7 @@ func TestMediumReraisesAces(t *testing.T) {
 
 func TestDrawOf(t *testing.T) {
 	tests := []struct {
-		hole  [2]eval.Card
+		hole  []eval.Card
 		board []eval.Card
 		want  draw
 	}{

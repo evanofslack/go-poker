@@ -2,7 +2,7 @@
 packages:
   - path: "github.com/evanofslack/go-poker/holdem"
     output_path: "../web/interfaces/holdem.ts"
-    include_files: [holdem.go, events.go, betting.go, view.go]
+    include_files: [holdem.go, events.go, betting.go, view.go, rank.go]
     type_mappings:
       eval.Card: "number"
   - path: "github.com/evanofslack/go-poker/table"

@@ -4,14 +4,11 @@ import (
 	"encoding/binary"
 	"math/rand/v2"
 	"slices"
-
-	"github.com/alexclewontin/riverboat/eval"
 )
 
-// shuffle is hand's deck, from seed. A var so tests can stack the deck.
-var shuffle = func(seed [32]byte, hand int) []Card {
+// shuffle shuffles deck for hand, from seed. A var so tests can stack the deck.
+var shuffle = func(deck []Card, seed [32]byte, hand int) []Card {
 	binary.LittleEndian.PutUint64(seed[24:], binary.LittleEndian.Uint64(seed[24:])^uint64(hand))
-	deck := slices.Clone(eval.DefaultDeck)
 	rand.New(rand.NewChaCha8(seed)).Shuffle(len(deck), func(i, j int) { deck[i], deck[j] = deck[j], deck[i] })
 	return deck
 }
@@ -80,7 +77,7 @@ func (s *State) StartHand(straddles int) ([]Event, error) {
 	s.Runs, s.RunFrom, s.Boards = 0, 0, nil
 	s.Pots = nil
 	s.Aggressor = 0
-	s.Deck = shuffle(s.Seed, s.Hands)
+	s.Deck = shuffle(Deck(s.Config.Game), s.Seed, s.Hands)
 	s.Street = Preflop
 	s.Betting = true
 	s.MinRaise = s.Config.BigBlind << straddles
@@ -92,7 +89,7 @@ func (s *State) StartHand(straddles int) ([]Event, error) {
 	for i := range s.Players {
 		if p := &s.Players[i]; p.ready() {
 			p.In, p.Dealt = true, true
-			copy(p.Cards[:], s.draw(2))
+			p.Cards = s.draw(s.Config.Game.HoleCards())
 			started.Seats = append(started.Seats, p.Seat)
 			dealt = append(dealt, Dealt{p.Seat, p.Cards})
 		}
@@ -282,8 +279,7 @@ func (s *State) showdown() []Event {
 				run.Amount++
 			}
 			for _, seat := range pot.Eligible {
-				c := s.Player(seat).Cards
-				cards, score := eval.BestFiveOfSeven(c[0], c[1], b[0], b[1], b[2], b[3], b[4])
+				cards, score := s.Config.Game.Best(s.Player(seat).Cards, b)
 				switch {
 				case score < run.Score:
 					run.Score, run.Cards, run.Winners = score, cards, []int{seat}
@@ -349,7 +345,7 @@ func (s *State) Show(seat int) ([]Event, error) {
 		return nil, ErrNoSeat
 	case s.InHand():
 		return nil, ErrInHand
-	case !p.Dealt || p.Shown || p.Cards == [2]Card{}:
+	case !p.Dealt || p.Shown || len(p.Cards) == 0:
 		return nil, ErrIllegal
 	}
 	p.Shown = true

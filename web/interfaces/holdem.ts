@@ -177,9 +177,10 @@ export const Flop: Street = "flop";
 export const Turn: Street = "turn";
 export const River: Street = "river";
 /**
- * Config is the game's blinds and ante. It only changes between hands.
+ * Config is the game and its blinds and ante. It only changes between hands.
  */
 export interface Config {
+  game: Game;
   sb: number /* uint */;
   bb: number /* uint */;
   ante: number /* uint */; // from every player dealt in, 0 for none
@@ -196,7 +197,7 @@ export interface Player {
   in: boolean; // dealt in and not folded
   sittingOut: boolean; // not dealt in; busted players sit out
   acted: boolean; // since the last full raise, so a short all-in can't be re-raised
-  cards: Card[]; // zero when not dealt, or hidden in a view
+  cards: Card[]; // empty when not dealt; zeros when hidden in a view
   shown: boolean; // face up: once all in, at showdown if they must, or by choice after
 }
 /**
@@ -252,6 +253,16 @@ export interface State {
   aggressor: number /* int */; // the last to bet or raise this street, 0 for none
   hands: number /* int */; // dealt so far
   seed: string /* []byte */; // decks come from this and the hand number
+}
+
+//////////
+// source: rank.go
+
+/**
+ * Game is what's being played. The zero Game is hold'em.
+ */
+export interface Game {
+  hole: number /* int */; // hole cards each, 0 for 2
 }
 
 //////////

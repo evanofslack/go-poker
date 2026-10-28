@@ -60,7 +60,7 @@ func TestShowAfterHand(t *testing.T) {
 	if updated == nil || updated.Record.Players[1].Cards == nil || updated.Record.Players[0].Cards != nil {
 		t.Fatalf("the watcher should see b's cards and not a's: %+v", updated)
 	}
-	if v := ViewFor(h.s, h.ids["watcher"], h.now); v.Players[1].Cards == [2]holdem.Card{} {
+	if v := ViewFor(h.s, h.ids["watcher"], h.now); hidden(v.Players[1].Cards) {
 		t.Fatal("b's cards should be face up")
 	}
 	h.refused(Show{Person: h.ids["b"]})

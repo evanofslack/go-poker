@@ -18,7 +18,7 @@ func stackDraws(t *testing.T, draws ...string) {
 		listed = append(listed, cards(d)...)
 	}
 	old := shuffle
-	shuffle = func([32]byte, int) []Card {
+	shuffle = func([]Card, [32]byte, int) []Card {
 		deck := slices.DeleteFunc(slices.Clone(eval.DefaultDeck), func(c Card) bool { return slices.Contains(listed, c) })
 		// draw takes cards off the end, so the first draw goes last
 		for i := len(draws) - 1; i >= 0; i-- {

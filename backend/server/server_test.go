@@ -735,7 +735,7 @@ func testCrashRestore(t *testing.T, saved Store) {
 	if v.Hand != 2 || v.Street == "" {
 		v = back.update(func(v table.View) bool { return v.Hand == 2 && v.Street != "" }).View
 	}
-	if v.Players[0].Cards != cards {
+	if !slices.Equal(v.Players[0].Cards, cards) {
 		t.Fatalf("hand 2 dealt %v, then %v", cards, v.Players[0].Cards)
 	}
 }

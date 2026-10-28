@@ -69,7 +69,8 @@ func toHoldem(s spot, a Action) holdem.Action {
 
 // spot is what a bot looks at to decide.
 type spot struct {
-	hole     [2]eval.Card
+	game     holdem.Game
+	hole     []eval.Card
 	board    []eval.Card
 	top      uint // this street's biggest bet
 	bet      uint // what the bot has bet this street
@@ -89,6 +90,7 @@ type spot struct {
 
 func spotOf(view holdem.View, seat, aggressor int) spot {
 	s := spot{
+		game:     view.Config.Game,
 		board:    view.Board,
 		bb:       view.Config.BigBlind << len(view.Straddles),
 		minRaise: view.MinRaise,
@@ -137,7 +139,7 @@ func spotOf(view holdem.View, seat, aggressor int) spot {
 // weak hands to big bets, and sometimes min-raises a strong hand.
 func easy(s spot, r *rand.Rand) Action {
 	owe := s.top - s.bet
-	h := strengthOf(s.hole, s.board)
+	h := strengthOf(s.game, s.hole, s.board)
 
 	if h == strong && !s.called && r.Float64() < 0.3 {
 		raise := s.top + s.minRaise - s.bet
@@ -168,15 +170,15 @@ const (
 
 // strengthOf roughly rates a hand: preflop by its two cards, after the flop
 // by the best hand it makes with the board.
-func strengthOf(hole [2]eval.Card, board []eval.Card) strength {
-	if hole[0] == 0 || hole[1] == 0 {
+func strengthOf(g holdem.Game, hole, board []eval.Card) strength {
+	if len(hole) < 2 || hole[0] == 0 || hole[1] == 0 {
 		return weak
 	}
 	if len(board) < 3 {
 		return preflop(hole)
 	}
-	// lower scores are better hands, see handName in the server
-	switch score := best(append([]eval.Card{hole[0], hole[1]}, board...)); {
+	// lower scores are better hands, see holdem.HandName
+	switch _, score := g.Best(hole, board); {
 	case score <= 3325: // two pair or better
 		return strong
 	case score <= 6185: // a pair
@@ -185,7 +187,7 @@ func strengthOf(hole [2]eval.Card, board []eval.Card) strength {
 	return weak
 }
 
-func preflop(hole [2]eval.Card) strength {
+func preflop(hole []eval.Card) strength {
 	a, b := rank(hole[0]), rank(hole[1])
 	suited := hole[0]&hole[1]&0xF000 != 0
 	switch {
@@ -200,19 +202,4 @@ func preflop(hole [2]eval.Card) strength {
 // rank is a card's rank, from 0 for a deuce to 12 for an ace.
 func rank(c eval.Card) int {
 	return int(c>>8) & 0xF
-}
-
-// best scores the best five card hand in cards, which holds 5 to 7 cards.
-func best(cards []eval.Card) int {
-	c := cards
-	switch len(c) {
-	case 5:
-		return eval.HandValue(c[0], c[1], c[2], c[3], c[4])
-	case 6:
-		_, score := eval.BestFiveOfSix(c[0], c[1], c[2], c[3], c[4], c[5])
-		return score
-	default:
-		_, score := eval.BestFiveOfSeven(c[0], c[1], c[2], c[3], c[4], c[5], c[6])
-		return score
-	}
 }

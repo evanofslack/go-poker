@@ -5,8 +5,10 @@ import (
 	"math"
 	"math/bits"
 	"math/rand/v2"
+	"slices"
 
 	"github.com/alexclewontin/riverboat/eval"
+	"github.com/evanofslack/go-poker/holdem"
 )
 
 // trials is how many runouts medium simulates to estimate its equity.
@@ -31,7 +33,7 @@ func medium(s spot, r *rand.Rand) Action {
 	if s.raised {
 		minChen = 6
 	}
-	e := equity(s.hole, s.board, s.others, minChen, owe > 0, trials, r)
+	e := equity(s.game, s.hole, s.board, s.others, minChen, owe > 0, trials, r)
 	why := fmt.Sprintf("equity %.2f, %s", e, d)
 
 	if owe == 0 {
@@ -117,11 +119,11 @@ func (d draw) String() string {
 
 // drawOf is the draw hole has on board, counting only draws that use a hole
 // card and leaving out hands already made.
-func drawOf(hole [2]eval.Card, board []eval.Card) draw {
+func drawOf(hole, board []eval.Card) draw {
 	if len(board) >= 5 {
 		return noDraw
 	}
-	all := append([]eval.Card{hole[0], hole[1]}, board...)
+	all := append(slices.Clone(hole), board...)
 	flush := false
 	for _, suit := range []eval.Card{0x1000, 0x2000, 0x4000, 0x8000} {
 		n := 0
@@ -130,7 +132,7 @@ func drawOf(hole [2]eval.Card, board []eval.Card) draw {
 				n++
 			}
 		}
-		if n == 4 && (hole[0]&suit != 0 || hole[1]&suit != 0) {
+		if n == 4 && slices.ContainsFunc(hole, func(c eval.Card) bool { return c&suit != 0 }) {
 			flush = true
 		}
 	}
@@ -273,7 +275,7 @@ func openAt(s spot) float64 {
 
 // suitedPlayable is a suited ace or suited connector, a hand worth reraising
 // as a bluff now and then.
-func suitedPlayable(hole [2]eval.Card) bool {
+func suitedPlayable(hole []eval.Card) bool {
 	if hole[0]&hole[1]&0xF000 == 0 {
 		return false
 	}
@@ -322,21 +324,23 @@ const anyHand = -2
 // equity estimates the chance hole wins against others hands scoring at
 // least minChen, by dealing out the rest of the board trials times. Against
 // a bet, opponents mostly hold a pair or a draw. A split counts as a share.
-func equity(hole [2]eval.Card, board []eval.Card, others int, minChen float64, bet bool, trials int, r *rand.Rand) float64 {
+// Opponents get as many cards as hole, from the game's deck.
+func equity(g holdem.Game, hole, board []eval.Card, others int, minChen float64, bet bool, trials int, r *rand.Rand) float64 {
 	if others == 0 {
 		return 1
 	}
-	known := map[eval.Card]bool{hole[0]: true, hole[1]: true}
-	for _, c := range board {
+	known := map[eval.Card]bool{}
+	for _, c := range append(slices.Clone(hole), board...) {
 		known[c] = true
 	}
 	var deck []eval.Card
-	for _, c := range eval.DefaultDeck {
+	for _, c := range holdem.Deck(g) {
 		if !known[c] {
 			deck = append(deck, c)
 		}
 	}
-	need := 2*others + 5 - len(board)
+	h := len(hole)
+	need := h*others + 5 - len(board)
 	full := make([]eval.Card, 5)
 	copy(full, board)
 
@@ -349,18 +353,18 @@ func equity(hole [2]eval.Card, board []eval.Card, others int, minChen float64, b
 		}
 		// swap hands an opponent wouldn't play for cards past the runout
 		for o := range others {
-			for try := 0; try < 10 && !plays([2]eval.Card{deck[2*o], deck[2*o+1]}, board, minChen, bet, r); try++ {
-				for _, k := range []int{2 * o, 2*o + 1} {
+			for try := 0; try < 10 && !plays(deck[h*o:h*o+h], board, minChen, bet, r); try++ {
+				for k := h * o; k < h*o+h; k++ {
 					j := need + r.IntN(len(deck)-need)
 					deck[k], deck[j] = deck[j], deck[k]
 				}
 			}
 		}
-		copy(full[len(board):], deck[2*others:need])
-		mine := score(hole[0], hole[1], full)
+		copy(full[len(board):], deck[h*others:need])
+		_, mine := g.Best(hole, full)
 		ties := 1
 		for o := range others {
-			theirs := score(deck[2*o], deck[2*o+1], full)
+			_, theirs := g.Best(deck[h*o:h*o+h], full)
 			if theirs < mine {
 				ties = 0
 				break
@@ -379,7 +383,7 @@ func equity(hole [2]eval.Card, board []eval.Card, others int, minChen float64, b
 // plays reports whether an opponent would still be in with hole: a hand
 // scoring minChen preflop, and against a bet one that connects with the board,
 // or now and then a bluff.
-func plays(hole [2]eval.Card, board []eval.Card, minChen float64, bet bool, r *rand.Rand) bool {
+func plays(hole, board []eval.Card, minChen float64, bet bool, r *rand.Rand) bool {
 	if chen(hole) < minChen {
 		return false
 	}
@@ -391,26 +395,20 @@ func plays(hole [2]eval.Card, board []eval.Card, minChen float64, bet bool, r *r
 
 // connects reports whether hole makes a pair or better with board, using a
 // hole card, or has a draw.
-func connects(hole [2]eval.Card, board []eval.Card) bool {
+func connects(hole, board []eval.Card) bool {
 	b := rankMask(board)
-	if rank(hole[0]) == rank(hole[1]) || b&rankMask(hole[:]) != 0 {
+	if rank(hole[0]) == rank(hole[1]) || b&rankMask(hole) != 0 {
 		return true
 	}
-	if straight(rankMask(append([]eval.Card{hole[0], hole[1]}, board...))) && !straight(b) {
+	if straight(rankMask(append(slices.Clone(hole), board...))) && !straight(b) {
 		return true
 	}
 	return drawOf(hole, board) != noDraw
 }
 
-// score is the best hand two hole cards make with a full board, lower is better.
-func score(a, b eval.Card, board []eval.Card) int {
-	_, s := eval.BestFiveOfSeven(a, b, board[0], board[1], board[2], board[3], board[4])
-	return s
-}
-
 // chen scores a starting hand with Bill Chen's formula, from -1 for 7-2 off
 // suit up to 20 for aces.
-func chen(hole [2]eval.Card) float64 {
+func chen(hole []eval.Card) float64 {
 	hi, lo := rank(hole[0]), rank(hole[1])
 	if lo > hi {
 		hi, lo = lo, hi

@@ -10,9 +10,9 @@ import (
 	"github.com/evanofslack/go-poker/holdem"
 )
 
-func hole(s string) [2]holdem.Card {
+func hole(s string) []holdem.Card {
 	f := strings.Fields(s)
-	return [2]holdem.Card{eval.MustParseCardString(f[0]), eval.MustParseCardString(f[1])}
+	return []holdem.Card{eval.MustParseCardString(f[0]), eval.MustParseCardString(f[1])}
 }
 
 func board(s string) []holdem.Card {

@@ -118,10 +118,10 @@ func TestCheckedDownLoserMucks(t *testing.T) {
 	if !s.Player(1).Shown || s.Player(2).Shown {
 		t.Fatal("only the winner shows")
 	}
-	if v := s.View(1); v.Players[1].Cards != [2]Card{} {
+	if v := s.View(1); !hidden(v.Players[1].Cards) {
 		t.Fatal("a mucked hand reached another player")
 	}
-	if v := s.View(2); v.Players[1].Cards == [2]Card{} {
+	if v := s.View(2); hidden(v.Players[1].Cards) {
 		t.Fatal("you still see your own mucked hand")
 	}
 }
@@ -157,7 +157,7 @@ func TestShow(t *testing.T) {
 	act(t, s, 2, Fold{})
 
 	events := ok(t)(s.Show(3))
-	if sh, ok := events[0].(Shown); !ok || sh.Seat != 3 || s.View(1).Players[2].Cards == [2]Card{} {
+	if sh, ok := events[0].(Shown); !ok || sh.Seat != 3 || hidden(s.View(1).Players[2].Cards) {
 		t.Fatalf("the winner's cards should be face up: %+v", events)
 	}
 	if _, err := s.Show(3); !errors.Is(err, ErrIllegal) {

@@ -29,7 +29,7 @@ func stackDeck(t *testing.T, order string) {
 	}
 	chunks = append(chunks, first[n:n+3], first[n+3:n+4], first[n+4:])
 	old := shuffle
-	shuffle = func([32]byte, int) []Card {
+	shuffle = func([]Card, [32]byte, int) []Card {
 		deck := slices.DeleteFunc(slices.Clone(eval.DefaultDeck), func(c Card) bool { return slices.Contains(first, c) })
 		// draw takes cards off the end, so the first chunk goes last
 		for i := len(chunks) - 1; i >= 0; i-- {
@@ -400,10 +400,10 @@ func TestViewHidesCards(t *testing.T) {
 	s := game(t, 1000, 1000)
 	events := start(t, s)
 	v := s.View(1)
-	if v.Players[0].Cards == [2]Card{} || v.Players[1].Cards != [2]Card{} {
+	if hidden(v.Players[0].Cards) || !hidden(v.Players[1].Cards) {
 		t.Fatal("player 1 should see only their own cards")
 	}
-	if spec := s.View(0); spec.Players[0].Cards != [2]Card{} {
+	if spec := s.View(0); !hidden(spec.Players[0].Cards) {
 		t.Fatal("spectators see no hole cards")
 	}
 	for _, e := range events {
@@ -433,4 +433,9 @@ func TestSitAndLeave(t *testing.T) {
 	if err := s.Leave(5); err != nil || s.Player(5) != nil {
 		t.Fatal("leave failed")
 	}
+}
+
+// hidden reports whether cards are face down, or none.
+func hidden(cards []Card) bool {
+	return !slices.ContainsFunc(cards, func(c Card) bool { return c != 0 })
 }

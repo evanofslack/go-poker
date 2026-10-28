@@ -3,7 +3,6 @@ package table
 import (
 	"slices"
 
-	"github.com/alexclewontin/riverboat/eval"
 	"github.com/evanofslack/go-poker/holdem"
 )
 
@@ -142,7 +141,7 @@ func (r *reducer) recordEvent(e holdem.Event, timeout bool) {
 		r.beginStandUp(e.Seats)
 	case holdem.Dealt:
 		if hp := h.player(e.Seat); hp != nil {
-			hp.Cards = cardNames(e.Cards[:]...)
+			hp.Cards = cardNames(e.Cards...)
 		}
 	case holdem.Acted:
 		a := HandAction{Street: string(e.Street), Name: name(e.Seat), Kind: e.Kind, Amount: e.Amount, AllIn: e.AllIn, Timeout: timeout}
@@ -248,7 +247,7 @@ func (r *reducer) finishHand() {
 		hp.Net = int(p.Stack) - int(hp.Stack)
 		hp.Showdown = showdown[hp.Seat]
 		if hp.Shown {
-			hp.bestHand(p.Cards, s.Game.Board)
+			hp.bestHand(s.Game.Config.Game, p.Cards, s.Game.Board)
 		}
 	}
 	if len(s.Game.Boards) > 1 {
@@ -280,9 +279,9 @@ func (r *reducer) finishHand() {
 }
 
 // bestHand names hp's best hand, with a full board.
-func (hp *HandPlayer) bestHand(c [2]holdem.Card, board []holdem.Card) {
+func (hp *HandPlayer) bestHand(g holdem.Game, hole, board []holdem.Card) {
 	if len(board) == 5 {
-		cards, score := eval.BestFiveOfSeven(c[0], c[1], board[0], board[1], board[2], board[3], board[4])
+		cards, score := g.Best(hole, board)
 		hp.Hand, hp.Score = holdem.HandName(score, cards), score
 	}
 }

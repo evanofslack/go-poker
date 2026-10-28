@@ -36,8 +36,9 @@ var (
 	ErrBadAmount        = errors.New("invalid amount")
 )
 
-// Config is the game's blinds and ante. It only changes between hands.
+// Config is the game and its blinds and ante. It only changes between hands.
 type Config struct {
+	Game       Game `json:"game"`
 	SmallBlind uint `json:"sb"`
 	BigBlind   uint `json:"bb"`
 	Ante       uint `json:"ante"` // from every player dealt in, 0 for none
@@ -45,16 +46,16 @@ type Config struct {
 
 // Player is someone in a seat.
 type Player struct {
-	Seat       int     `json:"seat"` // from 1
-	Stack      uint    `json:"stack"`
-	Bet        uint    `json:"bet"`        // this street
-	Committed  uint    `json:"committed"`  // this hand, Bet included
-	Dealt      bool    `json:"dealt"`      // dealt into the last or current hand
-	In         bool    `json:"in"`         // dealt in and not folded
-	SittingOut bool    `json:"sittingOut"` // not dealt in; busted players sit out
-	Acted      bool    `json:"acted"`      // since the last full raise, so a short all-in can't be re-raised
-	Cards      [2]Card `json:"cards"`      // zero when not dealt, or hidden in a view
-	Shown      bool    `json:"shown"`      // face up: once all in, at showdown if they must, or by choice after
+	Seat       int    `json:"seat"` // from 1
+	Stack      uint   `json:"stack"`
+	Bet        uint   `json:"bet"`        // this street
+	Committed  uint   `json:"committed"`  // this hand, Bet included
+	Dealt      bool   `json:"dealt"`      // dealt into the last or current hand
+	In         bool   `json:"in"`         // dealt in and not folded
+	SittingOut bool   `json:"sittingOut"` // not dealt in; busted players sit out
+	Acted      bool   `json:"acted"`      // since the last full raise, so a short all-in can't be re-raised
+	Cards      []Card `json:"cards"`      // empty when not dealt; zeros when hidden in a view
+	Shown      bool   `json:"shown"`      // face up: once all in, at showdown if they must, or by choice after
 }
 
 // allIn reports whether p is in the hand with no chips left to bet.
@@ -152,6 +153,9 @@ func (s *State) SetConfig(cfg Config) error {
 // Clone returns a deep copy of s.
 func (s State) Clone() State {
 	s.Players = slices.Clone(s.Players)
+	for i := range s.Players {
+		s.Players[i].Cards = slices.Clone(s.Players[i].Cards)
+	}
 	s.Straddles = slices.Clone(s.Straddles)
 	s.Board = slices.Clone(s.Board)
 	s.Hunted = slices.Clone(s.Hunted)

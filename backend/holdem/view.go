@@ -26,8 +26,12 @@ type View struct {
 func (s *State) View(seat int) View {
 	c := s.Clone()
 	for i := range c.Players {
-		if p := &c.Players[i]; p.Seat != seat && !p.Shown {
-			p.Cards = [2]Card{}
+		p := &c.Players[i]
+		switch {
+		case p.Cards == nil:
+			p.Cards = []Card{}
+		case p.Seat != seat && !p.Shown:
+			p.Cards = make([]Card, len(p.Cards))
 		}
 	}
 	players := c.Players

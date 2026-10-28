@@ -2,6 +2,8 @@ package bot
 
 import (
 	"math/rand/v2"
+
+	"github.com/evanofslack/go-poker/holdem"
 )
 
 // baselineLevel is medium as it played before its rewrite, for the sims to
@@ -20,7 +22,7 @@ func baseline(s spot, r *rand.Rand) Action {
 		return baselinePreflop(s, r)
 	}
 	owe := s.top - s.bet
-	e := equity(s.hole, s.board, s.others, anyHand, false, trials, r)
+	e := equity(holdem.Game{}, s.hole, s.board, s.others, anyHand, false, trials, r)
 	slowPlay := e > 0.85 && r.Float64() < 0.2
 
 	if owe == 0 {

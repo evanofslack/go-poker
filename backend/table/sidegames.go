@@ -49,8 +49,8 @@ func (r *reducer) pay(kind string, from, to int, amount uint) (Payment, bool) {
 }
 
 // isSevenDeuce reports whether cards are a seven and a deuce, of any suits.
-func isSevenDeuce(cards [2]holdem.Card) bool {
-	if cards[0] == 0 || cards[1] == 0 {
+func isSevenDeuce(cards []holdem.Card) bool {
+	if len(cards) != 2 || cards[0] == 0 || cards[1] == 0 {
 		return false
 	}
 	a, b := cards[0].String()[:1], cards[1].String()[:1]
@@ -123,7 +123,7 @@ func (r *reducer) lateShow(seat int) {
 		return
 	}
 	hp.Shown = true
-	hp.bestHand(s.Game.Player(seat).Cards, s.Game.Board)
+	hp.bestHand(s.Game.Config.Game, s.Game.Player(seat).Cards, s.Game.Board)
 	r.latePayments(h, append(r.sevenDeuce(h, seat), r.standUp()...))
 	r.res.Events = append(r.res.Events, HandUpdated{*h})
 }
