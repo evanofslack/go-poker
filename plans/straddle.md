@@ -1,6 +1,6 @@
 # Straddles and run it N times
 
-**Status: in progress.** Stage 11 in `todo.md`, after the e2e cleanup (`e2e.md`).
+**Status: done.** Stage 11 in `todo.md`, after the e2e cleanup (`e2e.md`).
 
 Two house rules that change the betting engine (`holdem/`), unlike stage 9's. Each gets engine
 tests, including `rollout_test.go`'s random hands, before any table or web work.
