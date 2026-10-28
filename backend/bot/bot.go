@@ -26,10 +26,11 @@ const (
 )
 
 // Action is a bot's move before it becomes a holdem.Action. Amount is the
-// chips it puts in, for Raise only.
+// chips it puts in, for Raise only. Reason says why the bot chose it, for logs.
 type Action struct {
 	Kind   Kind
 	Amount uint
+	Reason string
 }
 
 // Valid reports whether level is a bot level.
@@ -37,16 +38,24 @@ func Valid(level string) bool {
 	return level == Easy || level == Medium
 }
 
-// Decide picks a move for the player in seat, whose turn it is. view should be
-// that player's own view, so the bot only knows what they would.
-func Decide(level string, view holdem.View, seat int, r *rand.Rand) holdem.Action {
-	s := spotOf(view, seat)
-	var a Action
+// Decide picks a move for the bot called name in seat, whose turn it is. view
+// should be that player's own view, so the bot only knows what they would.
+// aggressor is the seat that made the last bet or raise before this street, 0
+// if nobody did.
+func Decide(level, name string, view holdem.View, seat, aggressor int, r *rand.Rand) holdem.Action {
+	s := spotOf(view, seat, aggressor)
+	s.style = styleOf(name)
+	return toHoldem(s, choose(level, s, r))
+}
+
+func choose(level string, s spot, r *rand.Rand) Action {
 	if level == Medium {
-		a = medium(s, r)
-	} else {
-		a = easy(s, r)
+		return medium(s, r)
 	}
+	return easy(s, r)
+}
+
+func toHoldem(s spot, a Action) holdem.Action {
 	switch a.Kind {
 	case Raise:
 		return holdem.Raise{To: s.bet + a.Amount}
@@ -70,18 +79,55 @@ type spot struct {
 	pot      uint // every chip bet this hand, this street included
 	bb       uint // the big blind, or the last straddle
 	others   int  // opponents still in the hand
+	behind   int  // opponents who act after the bot after the flop, 0 on the button
+	sb, bbs  bool // the bot posted the small blind, or the big blind or last straddle
+	limpers  int  // opponents who just called the big blind preflop
+	led      bool // the bot made the last bet or raise before this street
+	raised   bool // someone bet or raised before this street
+	style    style
 }
 
-func spotOf(view holdem.View, seat int) spot {
-	s := spot{board: view.Board, bb: view.Config.BigBlind << len(view.Straddles), minRaise: view.MinRaise}
-	for _, p := range view.Players {
+func spotOf(view holdem.View, seat, aggressor int) spot {
+	s := spot{
+		board:    view.Board,
+		bb:       view.Config.BigBlind << len(view.Straddles),
+		minRaise: view.MinRaise,
+		led:      aggressor == seat,
+		raised:   aggressor != 0,
+	}
+	big := view.BB
+	if n := len(view.Straddles); n > 0 {
+		big = view.Straddles[n-1]
+	}
+	s.sb, s.bbs = seat == view.SB, seat == big
+	me := 0
+	for i, p := range view.Players {
 		s.top = max(s.top, p.Bet)
 		s.pot += p.Committed
 		switch {
 		case p.Seat == seat:
+			me = i
 			s.hole, s.bet, s.stack, s.called = p.Cards, p.Bet, p.Stack, p.Acted
 		case p.In:
 			s.others++
+		}
+	}
+	// after the flop the seat left of the button acts first, the button last
+	n := len(view.Players)
+	for k := 1; k < n && seat != view.Button; k++ {
+		p := view.Players[(me+k)%n]
+		if p.In {
+			s.behind++
+		}
+		if p.Seat == view.Button {
+			break
+		}
+	}
+	if s.top == s.bb {
+		for _, p := range view.Players {
+			if p.In && p.Bet == s.bb && p.Seat != big && p.Seat != seat {
+				s.limpers++
+			}
 		}
 	}
 	return s

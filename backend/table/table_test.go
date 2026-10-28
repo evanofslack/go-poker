@@ -453,3 +453,26 @@ func TestRestore(t *testing.T) {
 	h.play(holdem.Call{})
 	h.checkInvariants()
 }
+
+func TestAggressor(t *testing.T) {
+	h := &HandRecord{
+		Players: []HandPlayer{{Name: "a", Seat: 1}, {Name: "b", Seat: 2}, {Name: "c", Seat: 3}},
+		Actions: []HandAction{
+			{Street: "preflop", Name: "a", Kind: "small blind"},
+			{Street: "preflop", Name: "b", Kind: "big blind"},
+			{Street: "preflop", Name: "c", Kind: "raise"},
+			{Street: "preflop", Name: "a", Kind: "call"},
+			{Street: "flop", Name: "a", Kind: "check"},
+			{Street: "flop", Name: "c", Kind: "check"},
+			{Street: "turn", Name: "a", Kind: "bet"},
+		},
+	}
+	for street, want := range map[holdem.Street]int{holdem.Preflop: 0, holdem.Flop: 3, holdem.Turn: 3, holdem.River: 1} {
+		if got := h.aggressor(street); got != want {
+			t.Errorf("aggressor before %s = %d, want %d", street, got, want)
+		}
+	}
+	if got := (*HandRecord)(nil).aggressor(holdem.Flop); got != 0 {
+		t.Errorf("aggressor with no hand = %d", got)
+	}
+}

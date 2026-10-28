@@ -189,6 +189,28 @@ func actLabel(e holdem.Acted) string {
 	return e.Kind
 }
 
+// aggressor is the seat that made the last bet or raise before street, 0 if
+// nobody did. Actions are in order, so the first on street ends the search.
+func (h *HandRecord) aggressor(street holdem.Street) int {
+	seat := 0
+	if h == nil {
+		return seat
+	}
+	for _, a := range h.Actions {
+		if a.Street == string(street) {
+			break
+		}
+		if a.Kind == holdem.KindBet || a.Kind == holdem.KindRaise {
+			for _, p := range h.Players {
+				if p.Name == a.Name {
+					seat = p.Seat
+				}
+			}
+		}
+	}
+	return seat
+}
+
 func (h *HandRecord) player(seat int) *HandPlayer {
 	for i := range h.Players {
 		if h.Players[i].Seat == seat {
