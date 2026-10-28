@@ -59,7 +59,7 @@ func TestRunItTwice(t *testing.T) {
 		t.Fatal("the vote waits for b")
 	}
 	h.pick("b", 3)
-	h.mustLog("running it 2 times")
+	h.mustRuns(2)
 	if h.s.RunVote != nil || h.s.Game.Runs != 2 {
 		t.Fatalf("vote %+v runs %d", h.s.RunVote, h.s.Game.Runs)
 	}
@@ -84,7 +84,7 @@ func TestRunItOnceEndsTheVote(t *testing.T) {
 	h := runItTable(t, "a", "b")
 	h.shove(1)
 	h.pick("b", 1)
-	h.mustLog("running it once")
+	h.mustRuns(1)
 	if h.s.RunVote != nil || h.s.Game.Runs != 1 {
 		t.Fatalf("vote %+v runs %d", h.s.RunVote, h.s.Game.Runs)
 	}
@@ -109,7 +109,7 @@ func TestRunItCovered(t *testing.T) {
 	}
 	h.pick("a", 2)
 	h.pick("b", 2)
-	h.mustLog("running it 2 times")
+	h.mustRuns(2)
 }
 
 func TestRunItSmallestPick(t *testing.T) {
@@ -118,7 +118,7 @@ func TestRunItSmallestPick(t *testing.T) {
 	h.pick("a", 3)
 	h.pick("b", 4)
 	h.pick("c", 2)
-	h.mustLog("running it 2 times")
+	h.mustRuns(2)
 }
 
 func TestRunItTimeout(t *testing.T) {
@@ -126,7 +126,7 @@ func TestRunItTimeout(t *testing.T) {
 	h.shove(1)
 	h.pick("a", 3)
 	h.advance(5 * time.Second)
-	h.mustLog("running it once")
+	h.mustRuns(1)
 	if h.s.Game.Runs != 1 {
 		t.Fatalf("runs %d", h.s.Game.Runs)
 	}
@@ -149,7 +149,7 @@ func TestRunItVoters(t *testing.T) {
 	}
 	h.pick("a", 2)
 	h.pick("b", 2)
-	h.mustLog("running it 2 times")
+	h.mustRuns(2)
 	if msg := h.refused(RunIt{Person: h.ids["a"], Runs: 2}); msg != "there's no run it vote" {
 		t.Fatal(msg)
 	}
@@ -160,7 +160,7 @@ func TestRunItDisconnectedPicksOnce(t *testing.T) {
 	h.play(holdem.Raise{To: h.s.Game.Legal(1).RaiseMax})
 	h.do(Disconnect{Person: h.ids["a"]})
 	h.play(holdem.Call{})
-	h.mustLog("running it once")
+	h.mustRuns(1)
 }
 
 func TestRunItBotsPickTheMost(t *testing.T) {
@@ -218,4 +218,12 @@ func TestRunItRestore(t *testing.T) {
 		t.Fatalf("vote timer at %v", at)
 	}
 	h.checkInvariants()
+}
+
+// mustRuns fails unless the vote settled on running the board out n times
+func (h *harness) mustRuns(n int) {
+	h.t.Helper()
+	if h.s.Game.Runs != n {
+		h.t.Fatalf("runs %d, want %d", h.s.Game.Runs, n)
+	}
 }

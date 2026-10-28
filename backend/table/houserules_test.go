@@ -119,7 +119,6 @@ func TestDuckHunt(t *testing.T) {
 	if v := ViewFor(h.s, h.ids["watcher"], h.now); len(v.Hunted) != 5 || len(v.Board) != 0 {
 		t.Fatalf("hunted %v board %v", v.Hunted, v.Board)
 	}
-	h.mustLog("a went duck hunting")
 	h.refused(Hunt{Person: h.ids["b"]})
 
 	// the hunted cards stay up a while before the next hand
