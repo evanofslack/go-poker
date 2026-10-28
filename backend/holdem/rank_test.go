@@ -79,3 +79,31 @@ func TestCloneCards(t *testing.T) {
 		t.Fatal("clone shares hole cards")
 	}
 }
+
+func TestMadeHand(t *testing.T) {
+	var g Game
+	tests := []struct {
+		hole, board string
+		want        string
+	}{
+		{"As Ad", "", "pair"},
+		{"As Kd", "", "high card"},
+		{"As Kd", "Ah 7c 2d", "pair"},
+		{"As Kd", "Ah Kc 2d", "two pair"},
+		{"As Ks", "Qs Js Ts", "royal flush"},
+		{"9s 8s", "7d 6c 5h 2d", "straight"},
+		{"9s 8s", "9d 9c 8h 2d Kc", "full house"},
+	}
+	for _, tt := range tests {
+		var board []Card
+		if tt.board != "" {
+			board = cards(tt.board)
+		}
+		if got := g.MadeHand(cards(tt.hole), board); got != tt.want {
+			t.Errorf("MadeHand(%s, %s) = %q, want %q", tt.hole, tt.board, got, tt.want)
+		}
+	}
+	if got := g.MadeHand([]Card{0, 0}, nil); got != "" {
+		t.Errorf("hidden cards made %q", got)
+	}
+}

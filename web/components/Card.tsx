@@ -78,6 +78,9 @@ export const bigCardSize = {
     h: "h-14 sm:h-24 lg:h-28 phone:h-[4.5rem] short:h-10",
     box: "w-10 h-14 sm:w-16 sm:h-24 lg:w-20 lg:h-28 phone:w-12 phone:h-[4.5rem] short:w-7 short:h-10",
 };
+// cardOverlap and bigCardOverlap pull a card half over the one before, so more than two fit
+export const cardOverlap = "-ml-5 sm:-ml-6 lg:-ml-8 phone:-ml-6 short:-ml-3.5";
+export const bigCardOverlap = "-ml-5 sm:-ml-8 lg:-ml-10 phone:-ml-6 short:-ml-3.5";
 export const smallCardSize = {
     box: "w-7 h-10 sm:w-9 sm:h-12 lg:w-11 lg:h-16 phone:w-8 phone:h-11 short:w-5 short:h-7",
 };

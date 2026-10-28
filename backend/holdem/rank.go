@@ -2,6 +2,7 @@ package holdem
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/alexclewontin/riverboat/eval"
 )
@@ -38,4 +39,26 @@ func (g Game) Best(hole, board []Card) ([]Card, int) {
 		return eval.BestFiveOfSeven(c[0], c[1], c[2], c[3], c[4], c[5], c[6])
 	}
 	return nil, worstScore + 1
+}
+
+// MadeHand is the kind of hand hole makes with board so far, like "two pair",
+// for a player's own hint. Before there are five cards it's a pair in the
+// hole or high card. Empty without cards.
+func (g Game) MadeHand(hole, board []Card) string {
+	if len(hole) == 0 || hole[0] == 0 {
+		return ""
+	}
+	if len(hole)+len(board) < 5 {
+		seen := map[byte]bool{}
+		for _, c := range hole {
+			r := c.String()[0]
+			if seen[r] {
+				return "pair"
+			}
+			seen[r] = true
+		}
+		return "high card"
+	}
+	_, score := g.Best(hole, board)
+	return strings.TrimPrefix(HandName(score, nil), "a ")
 }

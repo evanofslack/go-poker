@@ -405,6 +405,7 @@ export interface View {
   runVote?: RunVote;
   runVoteEndsIn: number /* int64 */; // ms the run it vote has left
   lastStandUp: number /* uint */; // the payout of the stand-up round that just ended
+  madeHand: string[]; // yours so far, like "two pair", on each board; empty when you're not in a hand
 }
 /**
  * Summary is what the home page shows of a public table.

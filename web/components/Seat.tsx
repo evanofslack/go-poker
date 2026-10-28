@@ -3,13 +3,13 @@ import { AppContext } from "../providers/AppStore";
 import { removeBot, takeSeat } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { PlayerView, View } from "../interfaces/index";
-import Card, { MiniCards, bigCardSize, cardSize } from "./Card";
+import Card, { MiniCards, bigCardOverlap, bigCardSize, cardOverlap, cardSize } from "./Card";
 import BuyIn from "./BuyIn";
 import Dialog from "./Dialog";
 import AddBot from "./AddBot";
 import Countdown from "./Countdown";
 import SeatMenu from "./SeatMenu";
-import { blind, isWinner, madeHand, winningCards, winningHand, winnings } from "../lib/hands";
+import { blind, isWinner, winningCards, winningHand, winnings } from "../lib/hands";
 import { phone, useMedia } from "../hooks/useMedia";
 import { useTween } from "../hooks/useTween";
 import classNames from "classnames";
@@ -69,7 +69,7 @@ function ResultTag({ player, view, own }: { player: PlayerView; view: View; own:
             </span>
         );
     }
-    const made = own && player.in && view.street !== "" ? madeHand([...player.cards, ...view.board]) : "";
+    const made = own ? view.madeHand.join(" · ") : "";
     if (!made) return null;
     const counting = view.betting && player.seat === view.toAct && view.turnEndsIn > 0;
     return (
@@ -166,19 +166,24 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
             >
                 {player.dealt &&
                     player.cards.map((c, i) => (
-                        <Card
+                        // past two cards, each covers half of the one before
+                        <div
                             // a new hand deals new cards
                             key={`${view.hand}-${i}`}
-                            card={c}
-                            order={i}
-                            placeholder={false}
-                            // everyone is out between hands; only shown cards stay up, and
-                            // your own mucked ones dim
-                            folded={!player.in && !(view.street === "" && player.shown)}
-                            hidden={!c}
-                            highlight={winning.has(c)}
-                            big={own}
-                        />
+                            className={classNames(i > 0 && player.cards.length > 2 && (own ? bigCardOverlap : cardOverlap))}
+                        >
+                            <Card
+                                card={c}
+                                order={i}
+                                placeholder={false}
+                                // everyone is out between hands; only shown cards stay up, and
+                                // your own mucked ones dim
+                                folded={!player.in && !(view.street === "" && player.shown)}
+                                hidden={!c}
+                                highlight={winning.has(c)}
+                                big={own}
+                            />
+                        </div>
                     ))}
             </div>
             <div className={plateStyle(player, view)}>

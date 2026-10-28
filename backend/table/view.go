@@ -71,6 +71,7 @@ type View struct {
 	RunVote        *RunVote       `json:"runVote"`
 	RunVoteEndsIn  int64          `json:"runVoteEndsIn"` // ms the run it vote has left
 	LastStandUp    uint           `json:"lastStandUp"`   // the payout of the stand-up round that just ended
+	MadeHand       []string       `json:"madeHand"`      // yours so far, like "two pair", on each board; empty when you're not in a hand
 }
 
 // ViewFor is the table as the person with id sees it, at now.
@@ -118,6 +119,7 @@ func ViewFor(s *State, id string, now time.Time) View {
 		RunVote:        s.RunVote,
 		RunVoteEndsIn:  until(s.Timers, TimerRunVote, now),
 		LastStandUp:    s.LastStandUp,
+		MadeHand:       madeHand(s, you),
 	}
 	v.ShowClaims = ShowClaims(s, you)
 	if you != 0 {
@@ -163,6 +165,16 @@ func Watchers(s *State) []string {
 }
 
 var streetOrder = map[holdem.Street]int{holdem.Preflop: 1, holdem.Flop: 2, holdem.Turn: 3, holdem.River: 4}
+
+// madeHand is the hand seat makes so far, for their own hint: empty unless
+// they're in a hand being played.
+func madeHand(s *State, seat int) []string {
+	p := s.Game.Player(seat)
+	if p == nil || !p.In || !s.Game.InHand() {
+		return []string{}
+	}
+	return []string{s.Game.Config.Game.MadeHand(p.Cards, s.Game.Board)}
+}
 
 // shownActs are the actions the seats show: this street's. Between hands the
 // last street's stay up.

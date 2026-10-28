@@ -376,6 +376,12 @@ func TestViewsHideCards(t *testing.T) {
 	if vw := ViewFor(h.s, h.ids["watcher"], h.now); !hidden(vw.Players[0].Cards) || vw.Watchers[0] != "watcher" {
 		t.Fatal("watcher sees cards")
 	}
+	if len(va.MadeHand) != 1 || va.MadeHand[0] == "" {
+		t.Fatalf("a's made hand %v", va.MadeHand)
+	}
+	if vw := ViewFor(h.s, h.ids["watcher"], h.now); len(vw.MadeHand) != 0 {
+		t.Fatalf("watcher sees a made hand %v", vw.MadeHand)
+	}
 	for _, e := range EventsFor(h.s, res.Events, h.ids["watcher"]) {
 		if _, ok := e.(holdem.Dealt); ok {
 			t.Fatal("watcher got hole cards")
