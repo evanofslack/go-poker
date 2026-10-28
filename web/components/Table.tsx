@@ -27,25 +27,18 @@ function actStyle(act: string) {
     return "bg-act-check text-ink"; // check
 }
 
-// Markers are the dealer button, blind labels and bet in front of a seat, with
-// the last action under them, or above them for seats below the table's middle.
-// On a phone the seat's plate carries the button and blind, so just the bet and
-// action go here.
+// Markers are the blind label and bet in front of a seat, with the last action
+// under them, or above them for seats below the table's middle. On a phone the
+// seat's plate carries the blind, so just the bet and action go here.
 function Markers({ view, player, above, badges }: { view: View; player: PlayerView; above: boolean; badges: boolean }) {
-    const dealer = badges && view.running && view.button === player.seat;
     const label = badges && view.running ? blind(view, player.seat) : "";
     // the player to act is choosing again, and the bet chip shows any amount
     const turn = view.betting && view.toAct === player.seat;
     const act = turn ? "" : (view.acts[player.seat] ?? "");
     const shown = player.bet ? act.replace(/ (to )?\d+$/, "") : act;
-    if (!dealer && !label && !act && !player.bet) return null;
+    if (!label && !act && !player.bet) return null;
     return (
         <div className="relative flex items-center gap-1" data-markers>
-            {dealer && (
-                <span className="puck flex h-6 w-6 items-center justify-center rounded-full text-sm font-bold text-ink lg:h-7 lg:w-7 lg:text-base">
-                    D
-                </span>
-            )}
             {label && (
                 <span className="puck flex h-6 items-center rounded-full px-1.5 text-xs font-bold text-ink [--puck:var(--color-blind)]">
                     {label}
@@ -102,6 +95,10 @@ export default function Table() {
         const p = point(id);
         return id === view.you ? { x: p.x * 0.75, y: p.y * 0.75 } : p;
     };
+    // a seat's markers start at its marker point and run toward the middle of the
+    // table, and the dealer button sits just outside them, toward the seat
+    const right = (id: number) => point(id).x > 0.05;
+    const dealer = !onPhone && view.running && bySeat.has(view.button);
 
     return (
         <div className={"absolute inset-0 " + seatSize} data-motion={motion || undefined}>
@@ -124,13 +121,32 @@ export default function Table() {
                 view.players.map((p) => (
                     <div
                         key={p.seat}
-                        className="absolute z-10 -translate-1/2"
+                        className={classNames(
+                            "absolute z-10 -translate-y-1/2",
+                            right(p.seat) ? "-translate-x-[calc(100%+0.25rem)]" : "translate-x-1"
+                        )}
                         style={markerAt(markerPoint(p.seat))}
                     >
                         {/* the action goes on the side away from the seat */}
                         <Markers view={view} player={p} above={point(p.seat).y > 0.1} badges />
                     </div>
                 ))}
+            {/* one button for the table, so it glides to the next seat each hand */}
+            {dealer && (
+                <div
+                    className={classNames(
+                        "absolute z-10 -translate-y-1/2 motion:transition-[left,top,translate] motion:duration-500 motion:ease-out",
+                        right(view.button) ? "translate-x-1" : "-translate-x-[calc(100%+0.25rem)]"
+                    )}
+                    style={markerAt(markerPoint(view.button))}
+                    data-markers
+                    data-dealer
+                >
+                    <span className="puck flex h-6 w-6 items-center justify-center rounded-full text-sm font-bold text-ink lg:h-7 lg:w-7 lg:text-base">
+                        D
+                    </span>
+                </div>
+            )}
             {ids.map((id) => (
                 <div
                     key={id}
