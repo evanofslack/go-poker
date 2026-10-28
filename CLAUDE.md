@@ -39,7 +39,8 @@ Realtime multiplayer poker: Go websocket server (`backend/`) + Next.js client (`
   `phone:`/`tall:`/`short:` variants. Utility classes beat Mantine's styles (CSS layers), so
   `className` can adjust a Mantine component.
 - One palette: the Mantine theme (`web/lib/theme.ts`), with the role tokens in
-  `styles/index.css` pointing at its variables. Use tokens, not raw Tailwind colors.
+  `styles/index.css` pointing at its variables. The table and cards have their own tokens
+  there (`felt`, `card`, `heart`, `gold`, …). Use tokens, not raw Tailwind colors.
 - Buttons: `filled` is the one main action in a group (join, start, save, approve), at most one
   per group. `default` (the theme's default) is everything else, the betting buttons included.
   `subtle` backs out (cancel, close). `outline` red opens something destructive, `filled` red

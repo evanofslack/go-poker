@@ -23,8 +23,8 @@ function plateStyle(player: PlayerView, view: View) {
     const counting = action && view.turnEndsIn > 0;
     const winner = !view.betting && isWinner(view, player.seat);
     return classNames(plate, "relative", {
-        "bg-zinc-100 text-zinc-900 shadow-[0_0_40px_2px_rgba(255,255,255,0.3)]": action,
-        "bg-amber-200 text-zinc-900 shadow-[0_0_60px_20px_rgba(100,98,92,0.3)]": winner,
+        "bg-plate-active text-ink shadow-[0_0_40px_2px_rgba(255,255,255,0.3)]": action,
+        "bg-highlight text-ink shadow-[0_0_60px_20px_rgba(100,98,92,0.3)]": winner,
         "bg-panel text-fg": !action && !winner,
         // sitting out or out of chips
         "opacity-50": player.sittingOut && !action && !winner,
@@ -49,7 +49,7 @@ function ResultTag({ player, view, own }: { player: PlayerView; view: View; own:
     if (won) {
         const hand = winningHand(view, player.seat);
         return (
-            <span className={classNames(tag, "bg-amber-400 text-zinc-900")} data-won>
+            <span className={classNames(tag, "bg-won text-ink")} data-won>
                 won {won}
                 {hand && (
                     <>
@@ -122,12 +122,12 @@ function Badges({ player, view, own }: { player: PlayerView; view: View; own: bo
             data-badges
         >
             {dealer && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-purple-800 shadow-md">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-card text-xs font-bold text-dealer shadow-md">
                     D
                 </span>
             )}
             {label && (
-                <span className="flex h-5 items-center rounded-full bg-zinc-300 px-1.5 text-xs font-bold text-zinc-800 shadow-md">
+                <span className="flex h-5 items-center rounded-full bg-blind px-1.5 text-xs font-bold text-ink shadow-md">
                     {label}
                 </span>
             )}
@@ -283,7 +283,7 @@ function BotSeat({ id, view }: { id: number; view: View }) {
             <button
                 className={classNames(
                     plate,
-                    "border-2 border-dashed border-zinc-700 bg-raised/40 text-muted hover:bg-raised hover:text-fg"
+                    "border-2 border-dashed border-raised bg-raised/40 text-muted hover:bg-raised hover:text-fg"
                 )}
                 onClick={() => setOpen(true)}
             >

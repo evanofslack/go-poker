@@ -19,11 +19,11 @@ const seatSize =
 
 // actStyle colors a player's last action by what it was
 function actStyle(act: string) {
-    if (act === "fold") return "bg-zinc-600 text-zinc-300";
-    if (act === "all in") return "bg-rose-600 text-white";
-    if (act.startsWith("bet") || act.startsWith("raise")) return "bg-orange-400 text-zinc-900";
-    if (act.startsWith("call")) return "bg-emerald-500 text-zinc-900";
-    return "bg-sky-400 text-zinc-900"; // check
+    if (act === "fold") return "bg-line text-fg";
+    if (act === "all in") return "bg-act-all-in text-on-felt";
+    if (act.startsWith("bet") || act.startsWith("raise")) return "bg-act-bet text-ink";
+    if (act.startsWith("call")) return "bg-act-call text-ink";
+    return "bg-act-check text-ink"; // check
 }
 
 // Markers are the dealer button, blind labels and bet in front of a seat, with
@@ -41,17 +41,17 @@ function Markers({ view, player, above, badges }: { view: View; player: PlayerVi
     return (
         <div className="relative flex items-center gap-1" data-markers>
             {dealer && (
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm font-bold text-purple-800 lg:h-7 lg:w-7 lg:text-base">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-card text-sm font-bold text-dealer lg:h-7 lg:w-7 lg:text-base">
                     D
                 </span>
             )}
             {label && (
-                <span className="flex h-6 items-center rounded-full bg-zinc-300 px-1.5 text-xs font-bold text-zinc-800">
+                <span className="flex h-6 items-center rounded-full bg-blind px-1.5 text-xs font-bold text-ink">
                     {label}
                 </span>
             )}
             {player.bet !== 0 && (
-                <span className="flex h-6 min-w-10 items-center justify-center rounded-full bg-amber-300 px-2 text-sm font-semibold text-zinc-900 lg:h-8 lg:text-lg">
+                <span className="flex h-6 min-w-10 items-center justify-center rounded-full bg-gold px-2 text-sm font-semibold text-ink lg:h-8 lg:text-lg">
                     {player.bet}
                 </span>
             )}
@@ -93,7 +93,7 @@ export default function Table() {
 
     return (
         <div className={"absolute inset-0 " + seatSize}>
-            <div className="absolute top-1/2 left-1/2 h-[calc(0.8*(100%-2*var(--seat-hh)))] w-[calc(0.84*(100%-2*var(--seat-hw)))] -translate-1/2 rounded-full border-8 border-teal-900 bg-emerald-700" />
+            <div className="absolute top-1/2 left-1/2 h-[calc(0.8*(100%-2*var(--seat-hh)))] w-[calc(0.84*(100%-2*var(--seat-hw)))] -translate-1/2 rounded-full border-8 border-felt-edge bg-felt" />
             {/* on a tall table, the board takes the band across the middle, between the side seats */}
             <div
                 className={classNames(

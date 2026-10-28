@@ -46,6 +46,31 @@
   --color-loss: var(--mantine-color-red-4); /* chips lost */
   --color-highlight: var(--color-amber-200); /* winning seat */
 
+  /* the table and cards, which look the same in either color scheme */
+  --color-felt: var(--color-emerald-700);
+  --color-felt-edge: var(--color-teal-900);
+  --color-felt-dark: var(--color-green-900); /* pot, empty card slots */
+  --color-on-felt: var(--color-white);
+  --color-card: var(--color-white);
+  --color-card-edge: var(--color-zinc-100);
+  --color-card-back: var(--color-red-900);
+  --color-spade: var(--color-black);
+  --color-heart: var(--color-red-700);
+  --color-diamond: var(--color-blue-700);
+  --color-club: var(--color-green-700);
+  --color-ink: var(--color-zinc-900); /* text on light plates, chips and badges */
+  --color-plate-active: var(--color-zinc-100); /* the seat to act */
+  --color-gold: var(--color-amber-300); /* bets, winning cards */
+  --color-won: var(--color-amber-400);
+  --color-dealer: var(--color-purple-800);
+  --color-blind: var(--color-zinc-300);
+  --color-act-all-in: var(--color-rose-600);
+  --color-act-bet: var(--color-orange-400);
+  --color-act-call: var(--color-emerald-500);
+  --color-act-check: var(--color-sky-400);
+  --color-online: var(--color-green-500);
+  --color-offline: var(--color-red-500);
+
   /* panels floating over the table; dark enough to read on zinc */
   --shadow-float: 0 4px 16px rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.3);
 

@@ -20,7 +20,7 @@ export default function GameInfo() {
                 <span
                     className={classNames(
                         "h-2 w-2 shrink-0 rounded-full",
-                        open ? "bg-green-500" : "animate-pulse bg-red-500"
+                        open ? "bg-online" : "animate-pulse bg-offline"
                     )}
                     role="status"
                     aria-label={open ? "connected" : "reconnecting"}

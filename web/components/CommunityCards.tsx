@@ -23,7 +23,7 @@ export default function CommunityCards() {
     const highlight = (c: CardType) => first.has(c) || (shared.has(c) && all.has(c));
     return (
         <div className="relative flex flex-col items-center gap-1" data-boards={runs}>
-            <div className="relative flex flex-row gap-0.5 text-black sm:gap-1" data-board>
+            <div className="relative flex flex-row gap-0.5 text-spade sm:gap-1" data-board>
                 {[0, 1, 2, 3, 4].map((i) => (
                     <div key={i}>
                         {view.board[i] ? (
@@ -80,7 +80,7 @@ function ExtraBoard({
 }) {
     return (
         <div className="flex flex-col items-center" data-run={run + 1}>
-            <div className="flex flex-row items-center gap-0.5 text-black sm:gap-1">
+            <div className="flex flex-row items-center gap-0.5 text-spade sm:gap-1">
                 {[0, 1, 2, 3, 4].map((i) => (
                     <div key={i} className={classNames(i < from && "invisible")}>
                         {i >= from && cards[i - from] ? (
@@ -106,7 +106,7 @@ function ExtraBoard({
 // RunCaption says which run a board is, and who won it once it's settled
 function RunCaption({ run, winner }: { run: number; winner?: { names: string; hand: string } }) {
     return (
-        <p className="text-xs text-white/80 short:text-[0.6rem]" data-run-caption>
+        <p className="text-xs text-on-felt/80 short:text-[0.6rem]" data-run-caption>
             run {run + 1}
             {winner && (
                 <>

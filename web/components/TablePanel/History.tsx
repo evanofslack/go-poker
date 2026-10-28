@@ -11,10 +11,10 @@ import { AppContext } from "../../providers/AppStore";
 import { Button, Checkbox } from "@mantine/core";
 
 const suits: Record<string, { glyph: string; name: string; color: string }> = {
-    s: { glyph: "♠", name: "spades", color: "text-black" },
-    h: { glyph: "♥", name: "hearts", color: "text-red-700" },
-    d: { glyph: "♦", name: "diamonds", color: "text-blue-700" },
-    c: { glyph: "♣", name: "clubs", color: "text-green-700" },
+    s: { glyph: "♠", name: "spades", color: "text-spade" },
+    h: { glyph: "♥", name: "hearts", color: "text-heart" },
+    d: { glyph: "♦", name: "diamonds", color: "text-diamond" },
+    c: { glyph: "♣", name: "clubs", color: "text-club" },
 };
 const ranks: Record<string, string> = { T: "ten", J: "jack", Q: "queen", K: "king", A: "ace" };
 
@@ -26,7 +26,7 @@ function MiniCard({ card }: { card: Card }) {
         <span
             role="img"
             aria-label={`${ranks[card[0]] ?? card[0]} of ${suit.name}`}
-            className={classNames("rounded-sm bg-white px-0.5 font-semibold leading-tight", suit.color)}
+            className={classNames("rounded-sm bg-card px-0.5 font-semibold leading-tight", suit.color)}
         >
             {card[0]}
             {suit.glyph}

@@ -1,6 +1,6 @@
 # Mantine
 
-**Status: in progress.** Stage 12 in `todo.md`.
+**Status: done.** Stage 12 in `todo.md`.
 
 Move the web app's controls to Mantine 8 and give them one style guide (in `CLAUDE.md`, under UI).
 Before this, `Button` had four variants whose fills didn't follow a rule, every call site set its
@@ -29,10 +29,12 @@ Stacked. Each runs `just check` and `just e2e`, with screenshots.
    `SegmentedControl`, `Switch`, `Checkbox`; `Modal` under `Dialog` (no transition, no close
    button, so focus and e2e work as before); `Menu` for `SeatMenu`; `@mantine/notifications`
    for `Toaster`, with a `toast()` helper replacing the store's toasts.
-3. **mantine inputs and color tokens**: `TextInput`, `PasswordInput`, `NumberInput` (keep every
-   `id`, e2e presses them); `Slider` and `NumberInput` in `RaiseInput` (its arrow handling skips
-   `role="slider"`); raise presets as `Button`s; the hard-coded colors in `Table`, `Card`, `Seat`,
-   `History`, `Pot` and others as tokens, so light mode is light values plus a toggle.
+3. **mantine inputs and color tokens**: `TextInput` and `PasswordInput` (every `id` kept, e2e
+   presses them); number fields stay `TextInput`s holding digits, as before, rather than
+   `NumberInput`, whose value and separators would change how forms read them. `Slider` in
+   `RaiseInput` (its arrow handling skips `role="slider"`); raise presets as `Button`s, steppers
+   as `ActionIcon`s; the hard-coded colors in `Table`, `Card`, `Seat`, `History`, `Pot` and others
+   as tokens, so light mode is light values plus a toggle.
 
 ## Notes
 - Mantine's dark scheme takes outline and light colors 4-5 shades below `primaryShade`, which

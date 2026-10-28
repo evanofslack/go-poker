@@ -86,13 +86,13 @@ const bigRankSize = "text-lg sm:text-3xl lg:text-4xl phone:text-xl short:text-sm
 function color(card: string, highlight = false, big = false, small = false) {
     return classNames(
         {
-            "ring-2 ring-amber-300 lg:ring-4": highlight,
-            "text-red-700": card[1] == "H",
-            "text-blue-700": card[1] == "D",
-            "text-green-700": card[1] == "C",
-            "text-black": card[1] == "S",
+            "ring-2 ring-gold lg:ring-4": highlight,
+            "text-heart": card[1] == "H",
+            "text-diamond": card[1] == "D",
+            "text-club": card[1] == "C",
+            "text-spade": card[1] == "S",
         },
-        "rounded-md border border-zinc-100 shadow-2xl bg-white pt-0.5 px-1 text-2xl sm:text-3xl lg:pt-1 lg:px-2.5 lg:text-5xl phone:text-3xl short:text-base short:px-0.5 short:pt-0 font-normal flex items-center justify-start flex-col",
+        "rounded-md border border-card-edge shadow-2xl bg-card pt-0.5 px-1 text-2xl sm:text-3xl lg:pt-1 lg:px-2.5 lg:text-5xl phone:text-3xl short:text-base short:px-0.5 short:pt-0 font-normal flex items-center justify-start flex-col",
         big ? "sm:text-5xl lg:text-6xl phone:text-3xl short:text-base" : "",
         small ? "text-base sm:text-xl lg:text-3xl phone:text-lg short:text-[0.6rem] lg:pt-0.5 lg:px-1.5" : "",
         big ? bigCardSize.box : small ? smallCardSize.box : cardSize.box
@@ -109,7 +109,7 @@ export function MiniCards({ count }: { count: number }) {
             className="absolute -top-2 right-3 z-20 flex gap-0.5"
         >
             {Array.from({ length: count }, (_, i) => (
-                <div key={i} className="h-5 w-3.5 rounded-sm border border-white bg-red-900" />
+                <div key={i} className="h-5 w-3.5 rounded-sm border border-card bg-card-back" />
             ))}
         </div>
     );
@@ -122,7 +122,7 @@ export default function Card({ card, placeholder, folded, hidden, highlight, big
         return (
             <div
                 aria-hidden
-                className={classNames(small ? smallCardSize.box : cardSize.box, "rounded-md bg-green-900 opacity-20")}
+                className={classNames(small ? smallCardSize.box : cardSize.box, "rounded-md bg-felt-dark opacity-20")}
             ></div>
         );
     }
@@ -143,7 +143,7 @@ export default function Card({ card, placeholder, folded, hidden, highlight, big
                 aria-label="face-down card"
                 className={classNames(
                     box,
-                    "rounded-md border-2 border-white bg-red-900 lg:border-4"
+                    "rounded-md border-2 border-card bg-card-back lg:border-4"
                 )}
             ></div>
         );

@@ -2,7 +2,7 @@ import { useContext } from "react";
 import { AppContext } from "../providers/AppStore";
 import { settledPots } from "../lib/hands";
 
-const chip = "flex h-10 items-center justify-center rounded-full bg-green-900 px-5 text-white short:h-7 short:px-3";
+const chip = "flex h-10 items-center justify-center rounded-full bg-felt-dark px-5 text-on-felt short:h-7 short:px-3";
 
 export default function Pot() {
     const { appState } = useContext(AppContext);
