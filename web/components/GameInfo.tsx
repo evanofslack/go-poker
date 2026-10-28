@@ -7,7 +7,9 @@ import TurnAlert from "./TurnAlert";
 import ColorSchemeToggle from "./ColorSchemeToggle";
 import { ActionIcon } from "@mantine/core";
 
-// GameInfo shows the stakes, table and connection, and copies the invite link
+// GameInfo shows the connection and the header's buttons, and below them the
+// stakes, table and watchers. A phone has room for the stakes only; the panel
+// shows the table's name.
 export default function GameInfo() {
     const { appState } = useContext(AppContext);
     const config = appState.view?.settings;
@@ -17,34 +19,17 @@ export default function GameInfo() {
 
     return (
         <div className="ml-auto min-w-0 text-right text-xs text-subtle sm:text-sm">
-            <p className="flex items-center justify-end gap-2">
-                <span
-                    className={classNames(
-                        "h-2 w-2 shrink-0 rounded-full",
-                        open ? "bg-online" : "animate-pulse bg-offline"
-                    )}
-                    role="status"
-                    aria-label={open ? "connected" : "reconnecting"}
-                    title={open ? "connected" : "reconnecting"}
-                />
-                {config && (
-                    <span className="truncate">
-                        <span className="hidden sm:inline">stakes </span>
-                        {config.sb}/{config.bb}
-                    </span>
-                )}
-            </p>
             <div className="flex items-center justify-end gap-1">
-                {/* a phone has no room for the table's name, which the table menu shows */}
-                {watching > 0 && (
-                    <span className="mr-1 shrink-0 whitespace-nowrap">
-                        watching {watching}
-                        <span className="phone:hidden"> ·</span>
-                    </span>
-                )}
-                <span className="truncate phone:hidden">
-                    table <span className="text-muted">{table}</span>
+                <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center">
+                    <span
+                        className={classNames("h-2 w-2 rounded-full", open ? "bg-online" : "animate-pulse bg-offline")}
+                        role="status"
+                        aria-label={open ? "connected" : "reconnecting"}
+                        title={open ? "connected" : "reconnecting"}
+                    />
                 </span>
+                <TurnAlert />
+                <ColorSchemeToggle />
                 {table && (
                     <ActionIcon
                         size="sm"
@@ -55,9 +40,19 @@ export default function GameInfo() {
                         <FiCopy />
                     </ActionIcon>
                 )}
-                <TurnAlert />
-                <ColorSchemeToggle />
             </div>
+            {config && (
+                <div className="truncate">
+                    stakes{" "}
+                    <span className="font-semibold text-fg">
+                        {config.sb}/{config.bb}
+                    </span>
+                </div>
+            )}
+            <div className="truncate phone:hidden">
+                table <span className="font-semibold text-fg">{table}</span>
+            </div>
+            {watching > 0 && <div className="phone:hidden">watching {watching}</div>}
         </div>
     );
 }
