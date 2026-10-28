@@ -247,12 +247,13 @@ export interface State {
   bb: number /* int */;
   straddles: number /* int */[]; // seats that straddled this hand, in order
   bomb: number /* uint */; // this hand is a bomb pot of this much from each player, 0 if not
+  double: boolean; // this hand is double board: Boards holds both from the flop on
   toAct: number /* int */;
   board: Card[];
   hunted: Card[]; // the rest of the board, turned up for fun after a hand ended early
-  runs: number /* int */; // times the board runs out, 0 until SetRuns, which means once
+  runs: number /* int */; // times the board runs out, 0 until SetRuns, which means once; 2 on double board
   runFrom: number /* int */; // board cards dealt before the runs split
-  boards: Card[][]; // every finished runout, in order; Boards[0] is Board
+  boards: Card[][]; // every finished runout, in order, or both boards on double board; Boards[0] is Board
   deck: Card[]; // kept after the hand for Hunt
   pots: Pot[];
   minRaise: number /* uint */; // the smallest raise, by how much it adds to the top bet
@@ -290,6 +291,7 @@ export interface View {
   bb: number /* int */;
   straddles: number /* int */[];
   bomb: number /* uint */;
+  double: boolean;
   toAct: number /* int */;
   board: Card[];
   hunted: Card[];

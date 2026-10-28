@@ -2,6 +2,7 @@ package holdem
 
 import (
 	"encoding/json"
+	"errors"
 	"math/rand/v2"
 	"reflect"
 	"slices"
@@ -121,7 +122,12 @@ func TestRollout(t *testing.T) {
 			if r.IntN(5) == 0 {
 				d = Deal{Bomb: 1 + r.UintN(100)}
 			}
-			if _, err := s.StartHand(d); err != nil {
+			if r.IntN(4) == 0 {
+				d.Boards = 2
+			}
+			if _, err := s.StartHand(d); errors.Is(err, ErrIllegal) && d.Boards == 2 {
+				continue // too many players for two boards of this game
+			} else if err != nil {
 				// sit everyone with chips back in and top up
 				for _, p := range s.Players {
 					if p.Stack == 0 {
@@ -181,7 +187,11 @@ func TestRollout(t *testing.T) {
 			}
 
 			// a showdown scores every board, each one from the same start
-			if len(s.Pots) > 0 && len(s.Pots[0].Runs) > 0 {
+			if len(s.Pots) > 0 && len(s.Pots[0].Runs) > 0 && s.Double {
+				if len(s.Boards) != 2 || len(s.Boards[0]) != 5 || len(s.Boards[1]) != 5 || len(s.Pots[0].Runs) != 2 {
+					t.Fatalf("game %d: double board showdown on %v", game, s.Boards)
+				}
+			} else if len(s.Pots) > 0 && len(s.Pots[0].Runs) > 0 {
 				if len(s.Boards) != max(s.Runs, 1) || len(s.Pots[0].Runs) != len(s.Boards) {
 					t.Fatalf("game %d: runs %d, boards %d, pot runs %d", game, s.Runs, len(s.Boards), len(s.Pots[0].Runs))
 				}

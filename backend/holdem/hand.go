@@ -55,13 +55,16 @@ func (s *State) straddle(k int) uint { return s.Config.BigBlind << (k + 1) }
 type Deal struct {
 	Straddles int  `json:"straddles"` // how many of Positions().Straddle straddle
 	Bomb      uint `json:"bomb"`      // a bomb pot: everyone puts this in and the hand starts on the flop; 0 for none
+	Boards    int  `json:"boards"`    // 2 for double board, 0 or 1 for one
 }
 
 // StartHand deals a hand to every player who isn't sitting out and has chips,
 // with the first d.Straddles of Positions().Straddle straddling. The button
 // moves to the next of them; heads up, the button posts the small blind and
 // acts first preflop. A bomb pot has no blinds, ante or straddles: everyone
-// puts in d.Bomb, all in if that's all they have, and the flop comes out.
+// puts in d.Bomb, all in if that's all they have, and the flop comes out. A
+// double board hand deals two boards from the flop, and each pot splits
+// between them.
 func (s *State) StartHand(d Deal) ([]Event, error) {
 	if s.InHand() {
 		return nil, ErrInHand
@@ -71,7 +74,11 @@ func (s *State) StartHand(d Deal) ([]Event, error) {
 	}
 	pos := s.Positions()
 	straddles := d.Straddles
-	if straddles < 0 || straddles > len(pos.Straddle) || d.Bomb > 0 && straddles > 0 {
+	if straddles < 0 || straddles > len(pos.Straddle) || d.Bomb > 0 && straddles > 0 || d.Boards < 0 || d.Boards > 2 {
+		return nil, ErrIllegal
+	}
+	// there are no burn cards
+	if s.ReadyCount()*s.Config.Game.HoleCards()+5*max(d.Boards, 1) > len(Deck(s.Config.Game)) {
 		return nil, ErrIllegal
 	}
 
@@ -86,6 +93,10 @@ func (s *State) StartHand(d Deal) ([]Event, error) {
 	s.Pots = nil
 	s.Aggressor = 0
 	s.Bomb = d.Bomb
+	s.Double = d.Boards == 2
+	if s.Double {
+		s.Runs = 2 // so it can't run out more times, and the showdown waits for both
+	}
 	s.Deck = shuffle(Deck(s.Config.Game), s.Seed, s.Hands)
 	s.Street = Preflop
 	s.Betting = true
@@ -186,7 +197,17 @@ func (s *State) NextStreet() ([]Event, error) {
 	cards := s.draw(n)
 	s.Board = append(s.Board, cards...)
 	events := []Event{StreetDealt{Street: s.Street, Cards: cards}}
-	if s.Street == River {
+	switch {
+	case s.Double:
+		// the second board's cards come after the first's
+		second := s.draw(n)
+		if s.Boards == nil {
+			s.Boards = [][]Card{nil, nil}
+		}
+		s.Boards[0] = slices.Clone(s.Board)
+		s.Boards[1] = append(s.Boards[1], second...)
+		events = append(events, StreetDealt{Street: s.Street, Cards: second, Run: 1})
+	case s.Street == River:
 		s.Boards = append(s.Boards, slices.Clone(s.Board))
 	}
 
@@ -368,7 +389,7 @@ func (s *State) Show(seat int) ([]Event, error) {
 // river: the cards that would have come, dealt street by street from the
 // same deck. They count for nothing.
 func (s *State) Hunt() ([]Event, error) {
-	if s.InHand() || len(s.Board) == 5 || s.Hunted != nil || len(s.Deck) < 5-len(s.Board) {
+	if s.InHand() || s.Double || len(s.Board) == 5 || s.Hunted != nil || len(s.Deck) < 5-len(s.Board) {
 		return nil, ErrIllegal
 	}
 	var cards []Card

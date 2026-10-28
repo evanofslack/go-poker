@@ -123,12 +123,13 @@ type State struct {
 	BB        int      `json:"bb"`
 	Straddles []int    `json:"straddles"` // seats that straddled this hand, in order
 	Bomb      uint     `json:"bomb"`      // this hand is a bomb pot of this much from each player, 0 if not
+	Double    bool     `json:"double"`    // this hand is double board: Boards holds both from the flop on
 	ToAct     int      `json:"toAct"`
 	Board     []Card   `json:"board"`
 	Hunted    []Card   `json:"hunted"`  // the rest of the board, turned up for fun after a hand ended early
-	Runs      int      `json:"runs"`    // times the board runs out, 0 until SetRuns, which means once
+	Runs      int      `json:"runs"`    // times the board runs out, 0 until SetRuns, which means once; 2 on double board
 	RunFrom   int      `json:"runFrom"` // board cards dealt before the runs split
-	Boards    [][]Card `json:"boards"`  // every finished runout, in order; Boards[0] is Board
+	Boards    [][]Card `json:"boards"`  // every finished runout, in order, or both boards on double board; Boards[0] is Board
 	Deck      []Card   `json:"deck"`    // kept after the hand for Hunt
 	Pots      []Pot    `json:"pots"`
 	MinRaise  uint     `json:"minRaise"`  // the smallest raise, by how much it adds to the top bet
