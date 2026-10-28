@@ -26,8 +26,11 @@ function typing(t: EventTarget | null) {
     return t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement || t.isContentEditable;
 }
 
-const pill =
-    "flex h-10.5 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border px-2 whitespace-nowrap sm:h-12 sm:flex-none sm:px-4 sm:text-lg tall:h-12";
+// a pick looks like the default buttons it stands in for, with a box to tick
+const pill = classNames(
+    bar,
+    "flex h-10.5 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border bg-(--mantine-color-default) font-semibold whitespace-nowrap text-fg hover:bg-(--mantine-color-default-hover) sm:flex-none"
+);
 
 export default function Input() {
     const socket = useSocket();
@@ -139,7 +142,7 @@ export default function Input() {
                             className={classNames(
                                 pill,
                                 keyed(k),
-                                on ? "border-accent text-fg" : "border-line text-muted hover:bg-raised"
+                                on ? "border-accent" : "border-(--mantine-color-default-border)"
                             )}
                             aria-keyshortcuts={k}
                         >

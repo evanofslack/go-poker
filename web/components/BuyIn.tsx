@@ -28,16 +28,16 @@ export default function BuyIn({ min, max, initial, label, onSubmit, onCancel }: 
             <div className="flex flex-row items-center gap-1">
                 <input
                     autoFocus
-                    className="w-20 rounded-md bg-field p-1 text-fg focus:outline-hidden"
+                    className="w-20 min-w-0 flex-1 rounded-md bg-field p-1 text-fg focus:outline-hidden"
                     id="buyIn"
                     inputMode="numeric"
                     value={text}
                     onChange={(e) => setText(e.target.value.replace(/\D/g, ""))}
                 />
-                <Button type="submit" variant="filled" size="xs" disabled={!valid}>
+                <Button type="submit" variant="filled" size="compact-sm" className="shrink-0" disabled={!valid}>
                     {label}
                 </Button>
-                <Button type="button" variant="subtle" size="xs" onClick={onCancel}>
+                <Button type="button" variant="subtle" size="compact-sm" className="shrink-0" onClick={onCancel}>
                     cancel
                 </Button>
             </div>
