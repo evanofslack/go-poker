@@ -156,8 +156,10 @@ func (s Settings) Validate() error {
 	switch {
 	case s.Seats < 2 || s.Seats > maxSeats:
 		return fmt.Errorf("seats must be between 2 and %d", maxSeats)
-	case s.SmallBlind < 1 || s.SmallBlind > s.BigBlind:
-		return errors.New("small blind must be between 1 and the big blind")
+	case s.BigBlind < 1:
+		return errors.New("big blind must be at least 1")
+	case s.SmallBlind > s.BigBlind:
+		return errors.New("small blind can't be more than the big blind")
 	case s.BigBlind > maxBigBlind:
 		return fmt.Errorf("big blind can't be more than %d", maxBigBlind)
 	case s.MinBuy < s.BigBlind || s.MinBuy > s.MaxBuy:

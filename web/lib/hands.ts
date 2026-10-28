@@ -47,7 +47,7 @@ export function winnings(view: View, seat: number) {
 // blind labels the small and big blind seats, only preflop when they matter
 export function blind(view: View, seat: number) {
     if (view.street !== "preflop") return "";
-    if (view.sb === seat) return "SB";
+    if (view.sb === seat && view.settings.sb > 0) return "SB";
     if (view.bb === seat) return "BB";
     if (view.straddles.includes(seat)) return "STR";
     return "";

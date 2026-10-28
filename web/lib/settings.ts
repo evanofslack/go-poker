@@ -96,7 +96,8 @@ export function settingsError(f: SettingsForm): string {
     const [sb, bb] = blinds(f);
     const min = parseInt(f.minBuyBB);
     const max = parseInt(f.maxBuyBB);
-    if (!(sb >= 1) || !(bb >= sb)) return "small blind must be between 1 and the big blind";
+    if (!(bb >= 1)) return "big blind must be at least 1";
+    if (!(sb >= 0) || sb > bb) return "small blind can't be more than the big blind";
     if (bb > maxBigBlind) return `big blind can't be more than ${maxBigBlind}`;
     if (!(min >= 1) || !(max >= min)) return "min buy-in must be at least 1 big blind and at most the max";
     if (max > maxBuyInBB) return `max buy-in can't be more than ${maxBuyInBB} big blinds`;

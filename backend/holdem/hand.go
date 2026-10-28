@@ -135,6 +135,9 @@ func (s *State) StartHand(d Deal) ([]Event, error) {
 		blinds = append(blinds, blind{seat, KindStraddle, s.straddle(k)})
 	}
 	for _, b := range blinds {
+		if b.amt == 0 {
+			continue // no small blind, for games of antes and a big blind
+		}
 		p := s.Player(b.seat)
 		amt := p.put(b.amt)
 		events = append(events, Acted{Seat: b.seat, Street: Preflop, Kind: b.kind, Amount: amt, To: p.Bet, AllIn: p.allIn()})

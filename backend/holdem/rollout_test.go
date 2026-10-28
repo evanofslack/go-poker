@@ -85,7 +85,7 @@ func TestRollout(t *testing.T) {
 		r := rand.New(rand.NewPCG(uint64(game), 1))
 		// hold'em, Omaha or Omaha 5, no limit or pot limit, full or short deck
 		g := Game{Hole: []int{0, 4, 5}[r.IntN(3)], Pot: r.IntN(2) == 0, Short: r.IntN(3) == 0}
-		s := New(Config{Game: g, SmallBlind: 1 + r.UintN(10), BigBlind: 20, Ante: r.UintN(3) * 5}, [32]byte{byte(game), byte(game >> 8)})
+		s := New(Config{Game: g, SmallBlind: r.UintN(11), BigBlind: 20, Ante: r.UintN(3) * 5}, [32]byte{byte(game), byte(game >> 8)})
 		seats := 2 + r.IntN(8)
 		if g.Short {
 			seats = min(seats, (36-5)/g.HoleCards()) // one board's worth

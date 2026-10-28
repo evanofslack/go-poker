@@ -439,3 +439,40 @@ func TestSitAndLeave(t *testing.T) {
 func hidden(cards []Card) bool {
 	return !slices.ContainsFunc(cards, func(c Card) bool { return c != 0 })
 }
+
+// TestNoSmallBlind plays antes and a big blind: nobody posts a small blind,
+// and the seat after the button still acts after the big blind's left.
+func TestNoSmallBlind(t *testing.T) {
+	s := game(t, 1000, 1000, 1000)
+	s.Config.SmallBlind, s.Config.Ante = 0, 5
+	events := start(t, s)
+	for _, e := range events {
+		if a, ok := e.(Acted); ok && a.Kind == KindSmallBlind {
+			t.Fatalf("posted %+v", a)
+		}
+	}
+	// button 1, the small blind's seat 2 posts only the ante, big blind 3
+	if p := s.Player(2); p.Committed != 5 || p.Bet != 0 {
+		t.Fatalf("seat 2 put in %d, bet %d", p.Committed, p.Bet)
+	}
+	if s.ToAct != 1 || s.Legal(1).Call != 20 {
+		t.Fatalf("seat %d to act, legal %+v", s.ToAct, s.Legal(1))
+	}
+	// everyone limps, and the big blind checks to close it
+	act(t, s, 1, Call{})
+	act(t, s, 2, Call{})
+	act(t, s, 3, Check{})
+	if s.Betting || s.Pots[0].Amount != 75 {
+		t.Fatalf("betting %v, pots %+v", s.Betting, s.Pots)
+	}
+}
+
+func TestNoSmallBlindHeadsUp(t *testing.T) {
+	s := game(t, 1000, 1000)
+	s.Config.SmallBlind = 0
+	start(t, s)
+	// the button posts nothing and acts first
+	if s.ToAct != s.Button || s.Legal(s.Button).Call != 20 || s.Player(s.Button).Committed != 0 {
+		t.Fatalf("seat %d to act, button %d, legal %+v", s.ToAct, s.Button, s.Legal(s.ToAct))
+	}
+}

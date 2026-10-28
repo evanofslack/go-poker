@@ -92,8 +92,9 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                         {form.stakes === "custom" && (
                             <div className="mt-2 flex gap-2">
                                 <div className="flex-1">
-                                    <label className={label} htmlFor="sb">
+                                    <label className={`${label} flex items-center gap-1`} htmlFor="sb">
                                         small blind
+                                        <Hint about="small blind" text="0 for none: antes and a big blind, as short deck often plays" />
                                     </label>
                                     <TextInput
                                         id="sb"
