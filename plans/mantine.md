@@ -1,7 +1,6 @@
 # Mantine
 
-**Status: in progress.** Stage 12 in `todo.md`. Best done before stage 11, so the straddle prompt
-and run-it vote are built on Mantine instead of rewritten onto it.
+**Status: in progress.** Stage 12 in `todo.md`.
 
 Move the web app's controls to Mantine 8 and give them one style guide (in `CLAUDE.md`, under UI).
 Before this, `Button` had four variants whose fills didn't follow a rule, every call site set its
