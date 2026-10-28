@@ -37,6 +37,7 @@ const initialState: AppState = {
     moreHistory: false,
     tables: [],
     shortcuts: loadShortcuts(),
+    welcomed: 0,
 };
 
 
@@ -82,7 +83,7 @@ function reducer(state: AppState, action: ACTIONTYPE): AppState {
         case "welcome": {
             // everything so far, replacing what a previous join left
             const { view, logs, hands, totals, history, more } = action.payload;
-            return { ...state, view, logs, hands, totals, history, moreHistory: more };
+            return { ...state, view, logs, hands, totals, history, moreHistory: more, welcomed: state.welcomed + 1 };
         }
         case "handDone": {
             const { record, stats, totals } = action.payload;

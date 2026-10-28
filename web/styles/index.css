@@ -19,6 +19,15 @@
 @custom-variant short (@media (max-height: 500px));
 /* the dark color scheme, which Mantine marks on <html> */
 @custom-variant dark (&:where([data-mantine-color-scheme=dark], [data-mantine-color-scheme=dark] *));
+/* table motion: only for people who haven't asked for less, and only once the
+   table has settled after joining, so a reload doesn't replay the deal */
+@custom-variant motion {
+  @media (prefers-reduced-motion: no-preference) {
+    :where([data-motion]) & {
+      @slot;
+    }
+  }
+}
 
 /* a visible keyboard focus ring everywhere; inputs opt out with outline-hidden */
 @layer base {
@@ -51,8 +60,10 @@
 
   /* the table and cards, which look the same in either color scheme */
   --color-felt: var(--color-emerald-700);
-  --color-felt-edge: var(--color-teal-900);
+  --color-felt-light: var(--color-emerald-600); /* the lit middle of the felt */
   --color-felt-dark: var(--color-green-900); /* pot, empty card slots */
+  --color-rail: var(--color-teal-900); /* the padded edge around the felt */
+  --color-rail-edge: var(--color-teal-700); /* its highlight */
   --color-on-felt: var(--color-white);
   --color-card: var(--color-white);
   --color-card-edge: var(--color-zinc-100);
@@ -66,8 +77,14 @@
   --color-on-plate-active: var(--color-ink);
   --color-gold: var(--color-amber-300); /* bets, winning cards */
   --color-won: var(--color-amber-400);
-  --color-dealer: var(--color-purple-800);
   --color-blind: var(--color-zinc-300);
+  /* chips, from small bets to big; the stripes on their edges. None is white,
+     so no chip reads as the dealer button. */
+  --color-chip-1: var(--color-blue-600);
+  --color-chip-2: var(--color-red-600);
+  --color-chip-3: var(--color-emerald-600);
+  --color-chip-4: var(--color-zinc-800);
+  --color-chip-stripe: var(--color-white);
   --color-act-all-in: var(--color-rose-600);
   --color-act-bet: var(--color-orange-400);
   --color-act-call: var(--color-emerald-500);
@@ -77,12 +94,36 @@
 
   /* panels floating over the table; dark enough to read on zinc */
   --shadow-float: 0 4px 16px rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.3);
+  /* a card lying on the felt */
+  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.25);
+  /* glows around the seat to act and the winning seats */
+  --shadow-turn: 0 0 40px 2px rgb(255 255 255 / 0.3);
+  --shadow-won: 0 0 36px 6px rgb(252 211 77 / 0.35);
 
   --animate-pop: pop 150ms ease-out; /* a badge appearing */
   @keyframes pop {
     from {
       opacity: 0;
       transform: scale(0.6);
+    }
+  }
+
+  --animate-deal: deal 250ms ease-out backwards; /* a card landing on the table */
+  @keyframes deal {
+    from {
+      opacity: 0;
+      transform: translateY(-0.75rem) rotate(-6deg) scale(0.9);
+    }
+  }
+
+  --animate-muck: muck 250ms ease-in; /* a folded card sliding away */
+  @keyframes muck {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-1rem) scale(0.85);
     }
   }
 
@@ -117,6 +158,47 @@
   --color-plate-active: var(--mantine-color-gray-7); /* dark mode's, inverted */
   --color-on-plate-active: var(--mantine-color-white);
   --shadow-float: 0 4px 16px rgb(0 0 0 / 0.12), 0 1px 3px rgb(0 0 0 / 0.1);
+}
+
+/* the table: felt lit from above the middle, in a padded rail */
+@utility felt {
+  background: radial-gradient(ellipse at 50% 40%, var(--color-felt-light), var(--color-felt) 70%);
+  border: 0.5rem solid var(--color-rail);
+  box-shadow:
+    inset 0 0 24px rgb(0 0 0 / 0.2),
+    0 -1px 0 var(--color-rail-edge),
+    0 4px 12px rgb(0 0 0 / 0.25);
+}
+
+/* a card's back: plain, inside a thin light frame */
+@utility card-back {
+  background-color: var(--color-card-back);
+  box-shadow:
+    inset 0 0 0 2px var(--color-card-back),
+    inset 0 0 0 3px rgb(255 255 255 / 0.25),
+    var(--shadow-card);
+}
+
+/* a chip seen from above: four stripes on its edge, and its thickness below.
+   --chip sets its color. */
+@utility chip {
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle, var(--chip) 0 58%, transparent 60%),
+    repeating-conic-gradient(var(--chip) 0 60deg, var(--color-chip-stripe) 60deg 90deg);
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.2),
+    0 1.5px 0 color-mix(in oklab, var(--chip) 55%, black);
+}
+
+/* the dealer button and blinds: a raised disc. --puck sets the bottom of its face. */
+@utility puck {
+  background: linear-gradient(to bottom, var(--color-white), var(--puck, var(--color-zinc-200)));
+  box-shadow:
+    inset 0 1px 0 var(--color-white),
+    inset 0 -1px 1px rgb(0 0 0 / 0.2),
+    0 2px 0 var(--color-zinc-500),
+    0 3px 4px rgb(0 0 0 / 0.4);
 }
 
 /* chart series, in this fixed order. Checked with the dataviz palette

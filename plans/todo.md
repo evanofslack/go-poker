@@ -13,8 +13,8 @@
 | 9 | House rules | done |
 | 10 | e2e cleanup (`e2e.md`) | done |
 | 11 | Straddle and run it N times (`straddle.md`) | done |
-| 12 | Mantine UI (`mantine.md`) | done |
-| 13 | Light mode | done |
+| 12 | Mantine UI (`mantine.md`) and light mode | done |
+| 13 | Table polish (`table-polish.md`) | in progress |
 | - | Backlog | unranked |
 
 ## How items are ranked

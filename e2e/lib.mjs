@@ -34,9 +34,10 @@ export async function shot(page, name) {
 }
 
 // open makes a page in a new browser context, so it's a separate person. The system is
-// dark unless the context says otherwise.
+// dark, and table animations are off so checks see where things end up, unless the
+// context says otherwise.
 export async function open(browser, context = {}) {
-    return (await browser.newContext({ colorScheme: "dark", ...context })).newPage();
+    return (await browser.newContext({ colorScheme: "dark", reducedMotion: "reduce", ...context })).newPage();
 }
 
 // confirmCreate creates the table from the settings dialog

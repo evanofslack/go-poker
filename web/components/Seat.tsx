@@ -24,8 +24,8 @@ function plateStyle(player: PlayerView, view: View) {
     const counting = action && view.turnEndsIn > 0;
     const winner = !view.betting && isWinner(view, player.seat);
     return classNames(plate, "relative", {
-        "bg-plate-active text-on-plate-active shadow-[0_0_40px_2px_rgba(255,255,255,0.3)]": action,
-        "bg-highlight text-ink shadow-[0_0_60px_20px_rgba(100,98,92,0.3)]": winner,
+        "bg-plate-active text-on-plate-active shadow-turn": action,
+        "bg-highlight text-ink shadow-won": winner,
         "bg-panel text-fg": !action && !winner,
         // sitting out or out of chips
         "opacity-50": player.sittingOut && !action && !winner,
@@ -123,12 +123,12 @@ function Badges({ player, view, own }: { player: PlayerView; view: View; own: bo
             data-badges
         >
             {dealer && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-card text-xs font-bold text-dealer shadow-md">
+                <span className="puck flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-ink">
                     D
                 </span>
             )}
             {label && (
-                <span className="flex h-5 items-center rounded-full bg-blind px-1.5 text-xs font-bold text-ink shadow-md">
+                <span className="puck flex h-5 items-center rounded-full px-1.5 text-xs font-bold text-ink [--puck:var(--color-blind)]">
                     {label}
                 </span>
             )}
@@ -156,8 +156,10 @@ function PlayerSeat({ player, view, own, host }: playerSeatProps) {
                 {player.dealt &&
                     player.cards.map((c, i) => (
                         <Card
-                            key={i}
+                            // a new hand deals new cards
+                            key={`${view.hand}-${i}`}
                             card={c}
+                            order={i}
                             placeholder={false}
                             // everyone is out between hands; only shown cards stay up, and
                             // your own mucked ones dim

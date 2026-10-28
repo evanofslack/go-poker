@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import { useContext } from "react";
+import { useContext, useEffect, useState } from "react";
 import { AppContext } from "../providers/AppStore";
 import { PlayerView, View } from "../interfaces";
 import { at, besideSeat, markerAt, ringPoint, seatAngle, tallPoint } from "../lib/seats";
@@ -7,6 +7,7 @@ import { blind } from "../lib/hands";
 import { phone, tall, useMedia } from "../hooks/useMedia";
 import Seat from "./Seat";
 import Pot from "./Pot";
+import Chips from "./Chips";
 import CommunityCards from "./CommunityCards";
 import TableHint from "./TableHint";
 import BuyRequests from "./BuyRequests";
@@ -26,33 +27,32 @@ function actStyle(act: string) {
     return "bg-act-check text-ink"; // check
 }
 
-// Markers are the dealer button, blind labels and bet in front of a seat, with
-// the last action under them, or above them for seats below the table's middle.
-// On a phone the seat's plate carries the button and blind, so just the bet and
-// action go here.
-function Markers({ view, player, above, badges }: { view: View; player: PlayerView; above: boolean; badges: boolean }) {
-    const dealer = badges && view.running && view.button === player.seat;
+// Markers are the blind label and bet in front of a seat, with the last action
+// under them, or above them for seats below the table's middle. On a phone the
+// seat's plate carries the blind, so just the bet and action go here. On the felt
+// the action lines up with the row's start, clear of the dealer button outside it.
+type markersProps = { view: View; player: PlayerView; above: boolean; badges: boolean; align?: "left" | "right" };
+
+function Markers({ view, player, above, badges, align }: markersProps) {
     const label = badges && view.running ? blind(view, player.seat) : "";
     // the player to act is choosing again, and the bet chip shows any amount
     const turn = view.betting && view.toAct === player.seat;
     const act = turn ? "" : (view.acts[player.seat] ?? "");
     const shown = player.bet ? act.replace(/ (to )?\d+$/, "") : act;
-    if (!dealer && !label && !act && !player.bet) return null;
+    if (!label && !act && !player.bet) return null;
     return (
         <div className="relative flex items-center gap-1" data-markers>
-            {dealer && (
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-card text-sm font-bold text-dealer lg:h-7 lg:w-7 lg:text-base">
-                    D
-                </span>
-            )}
             {label && (
-                <span className="flex h-6 items-center rounded-full bg-blind px-1.5 text-xs font-bold text-ink">
+                <span className="puck flex h-6 items-center rounded-full px-1.5 text-xs font-bold text-ink [--puck:var(--color-blind)]">
                     {label}
                 </span>
             )}
             {player.bet !== 0 && (
-                <span className="flex h-6 min-w-10 items-center justify-center rounded-full bg-gold px-2 text-sm font-semibold text-ink lg:h-8 lg:text-lg">
-                    {player.bet}
+                <span className="flex items-center gap-1">
+                    <Chips amount={player.bet} bb={view.settings.bb} className="size-5 lg:size-6" />
+                    <span className="flex h-6 items-center rounded-full bg-felt-dark/80 px-1.5 text-sm font-semibold text-on-felt lg:h-7 lg:text-lg">
+                        {player.bet}
+                    </span>
                 </span>
             )}
             {/* off the row, so the row stays put */}
@@ -61,7 +61,8 @@ function Markers({ view, player, above, badges }: { view: View; player: PlayerVi
                     key={act}
                     className={classNames(
                         above ? "bottom-full mb-1" : "top-full mt-1",
-                        "absolute left-1/2 flex h-6 -translate-x-1/2 animate-pop items-center rounded-full px-2 text-xs font-bold whitespace-nowrap shadow-md lg:text-sm",
+                        align === "left" ? "left-0" : align === "right" ? "right-0" : "left-1/2 -translate-x-1/2",
+                        "absolute flex h-6 animate-pop items-center rounded-full px-2 text-xs font-bold whitespace-nowrap shadow-md lg:text-sm",
                         actStyle(act)
                     )}
                     data-act
@@ -77,6 +78,14 @@ export default function Table() {
     const { appState } = useContext(AppContext);
     const onPhone = useMedia(phone);
     const onTall = useMedia(tall);
+    // animate only once the table has settled after a join or rejoin, so the
+    // backlog doesn't play out as if it just happened
+    const [motion, setMotion] = useState(false);
+    useEffect(() => {
+        setMotion(false);
+        const t = setTimeout(() => setMotion(true), 500);
+        return () => clearTimeout(t);
+    }, [appState.welcomed]);
     const view = appState.view;
     if (!view) return null;
 
@@ -90,16 +99,22 @@ export default function Table() {
         const p = point(id);
         return id === view.you ? { x: p.x * 0.75, y: p.y * 0.75 } : p;
     };
+    // a seat's markers start at its marker point and run toward the middle of the
+    // table, and the dealer button sits just outside them, toward the seat
+    const right = (id: number) => point(id).x > 0.05;
+    const dealer = !onPhone && view.running && bySeat.has(view.button);
 
     return (
-        <div className={"absolute inset-0 " + seatSize}>
-            <div className="absolute top-1/2 left-1/2 h-[calc(0.8*(100%-2*var(--seat-hh)))] w-[calc(0.84*(100%-2*var(--seat-hw)))] -translate-1/2 rounded-full border-8 border-felt-edge bg-felt" />
+        <div className={"absolute inset-0 " + seatSize} data-motion={motion || undefined}>
+            <div className="absolute top-1/2 left-1/2 h-[calc(0.8*(100%-2*var(--seat-hh)))] w-[calc(0.84*(100%-2*var(--seat-hw)))] -translate-1/2 rounded-full felt" />
             {/* on a tall table, the board takes the band across the middle, between the side seats */}
             <div
                 className={classNames(
                     "pointer-events-none absolute top-1/2 left-1/2 z-30 flex -translate-1/2 flex-col items-center gap-2 short:top-[53%]",
                     onTall ? "w-full px-2" : "w-[calc(0.66*(100%-2*var(--seat-hw)))] portrait:top-[40%]"
                 )}
+                // each extra run of the board lifts the column, so the runs clear the markers below it
+                style={!onTall && view.runs > 1 ? { marginTop: `${-(view.runs - 1) * 1.75}rem` } : undefined}
             >
                 <Pot />
                 <CommunityCards />
@@ -110,13 +125,32 @@ export default function Table() {
                 view.players.map((p) => (
                     <div
                         key={p.seat}
-                        className="absolute z-10 -translate-1/2"
+                        className={classNames(
+                            "absolute z-10 -translate-y-1/2",
+                            right(p.seat) ? "-translate-x-[calc(100%+0.25rem)]" : "translate-x-1"
+                        )}
                         style={markerAt(markerPoint(p.seat))}
                     >
                         {/* the action goes on the side away from the seat */}
-                        <Markers view={view} player={p} above={point(p.seat).y > 0.1} badges />
+                        <Markers view={view} player={p} above={point(p.seat).y > 0.1} badges align={right(p.seat) ? "right" : "left"} />
                     </div>
                 ))}
+            {/* one button for the table, so it glides to the next seat each hand */}
+            {dealer && (
+                <div
+                    className={classNames(
+                        "absolute z-10 -translate-y-1/2 motion:transition-[left,top,translate] motion:duration-500 motion:ease-out",
+                        right(view.button) ? "translate-x-1" : "-translate-x-[calc(100%+0.25rem)]"
+                    )}
+                    style={markerAt(markerPoint(view.button))}
+                    data-markers
+                    data-dealer
+                >
+                    <span className="puck flex h-6 w-6 items-center justify-center rounded-full text-sm font-bold text-ink lg:h-7 lg:w-7 lg:text-base">
+                        D
+                    </span>
+                </div>
+            )}
             {ids.map((id) => (
                 <div
                     key={id}
