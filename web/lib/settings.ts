@@ -27,6 +27,10 @@ export const standUpPayouts = [1, 2, 5, 10]; // stand-up payouts in big blinds
 export const bombPots = [1, 2, 5, 10]; // bomb pots in big blinds
 export const everyHands = [5, 10, 20, 50]; // hands between scheduled bomb pots
 export const everyOrbits = [1, 2, 3, 4, 5];
+export const timeBanks = [0, 1, 2, 3, 5]; // time cards to sit down with, 0 is no time bank
+export const timeEveries = [0, 10, 20, 50]; // hands to earn a time card, 0 is never
+export const timeCards = [10000, 20000, 30000]; // what a time card adds
+export const timeCardsHeld = 5; // the most cards a player holds, at least what they start with
 export const maxBigBlind = 1_000_000;
 export const maxBuyInBB = 1000;
 export const maxPasswordLen = 32;
@@ -187,7 +191,8 @@ export function fromSettings(s: Settings): SettingsForm {
         timeMax: s.timeMax,
         timeBank: s.timeBank,
         timeEvery: s.timeEvery,
-        timeCard: s.timeCard,
+        // a table from before the time bank has no card length
+        timeCard: s.timeCard || defaultForm.timeCard,
     };
 }
 

@@ -14,6 +14,10 @@ import {
     seatCounts,
     SettingsForm,
     stakes,
+    timeBanks,
+    timeCards,
+    timeCardsHeld,
+    timeEveries,
     turnTimes,
 } from "../lib/settings";
 import { TextInput } from "@mantine/core";
@@ -169,6 +173,35 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                         value={form.turnTime}
                         onChange={(ms) => set({ turnTime: ms })}
                     />
+                    {form.turnTime > 0 && (
+                        <Segmented
+                            legend="time bank"
+                            hint="cards a player sits down with; each adds time to their turn, spent when they ask or when their time runs out"
+                            name="timeBank"
+                            options={timeBanks.map((n) => ({ label: n ? String(n) : "off", value: n }))}
+                            value={form.timeMax ? form.timeBank : 0}
+                            onChange={(n) => set({ timeBank: n, timeMax: n ? Math.max(n, timeCardsHeld) : 0 })}
+                        />
+                    )}
+                    {form.turnTime > 0 && form.timeMax > 0 && (
+                        <>
+                            <Segmented
+                                legend="time card"
+                                name="timeCard"
+                                options={timeCards.map((ms) => ({ label: `${ms / 1000}s`, value: ms }))}
+                                value={form.timeCard}
+                                onChange={(ms) => set({ timeCard: ms })}
+                            />
+                            <Segmented
+                                legend="earn a card"
+                                hint={`every so many hands dealt in, up to ${form.timeMax}`}
+                                name="timeEvery"
+                                options={timeEveries.map((n) => ({ label: n ? `${n} hands` : "never", value: n }))}
+                                value={form.timeEvery}
+                                onChange={(n) => set({ timeEvery: n })}
+                            />
+                        </>
+                    )}
                     <Segmented
                         legend="between hands"
                         name="nextHandDelay"

@@ -140,6 +140,11 @@ export function duckHunt(socket: WebSocket) {
     send(socket, { action: "duck-hunt" });
 }
 
+// addTime spends one of your time cards on your turn
+export function addTime(socket: WebSocket) {
+    send(socket, { action: "add-time" });
+}
+
 export function rebuy(socket: WebSocket, amount: number) {
     socket?.send(
         JSON.stringify({

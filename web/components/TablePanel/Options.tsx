@@ -31,6 +31,7 @@ const keys: [string, string][] = [
     ["F", "fold"],
     ["C", "check or call"],
     ["R / B", "bet or raise"],
+    ["T", "add time from your time bank"],
     ["↑ ↓", "change a bet by a big blind"],
     ["Enter", "place the bet"],
     ["Esc", "close the bet"],
