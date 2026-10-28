@@ -7,8 +7,8 @@ import TurnAlert from "./TurnAlert";
 import ColorSchemeToggle from "./ColorSchemeToggle";
 import { ActionIcon } from "@mantine/core";
 
-// GameInfo shows the stakes, table and watchers, and below them the connection
-// and the header's buttons. A phone has room for the stakes only; the panel
+// GameInfo shows the connection and the header's buttons, and below them the
+// stakes, table and watchers. A phone has room for the stakes only; the panel
 // shows the table's name.
 export default function GameInfo() {
     const { appState } = useContext(AppContext);
@@ -19,18 +19,6 @@ export default function GameInfo() {
 
     return (
         <div className="ml-auto min-w-0 text-right text-xs text-subtle sm:text-sm">
-            {config && (
-                <div className="truncate">
-                    stakes{" "}
-                    <span className="font-semibold text-fg">
-                        {config.sb}/{config.bb}
-                    </span>
-                </div>
-            )}
-            <div className="truncate phone:hidden">
-                table <span className="font-semibold text-fg">{table}</span>
-            </div>
-            {watching > 0 && <div className="phone:hidden">watching {watching}</div>}
             <div className="flex items-center justify-end gap-1">
                 <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center">
                     <span
@@ -53,6 +41,18 @@ export default function GameInfo() {
                     </ActionIcon>
                 )}
             </div>
+            {config && (
+                <div className="truncate">
+                    stakes{" "}
+                    <span className="font-semibold text-fg">
+                        {config.sb}/{config.bb}
+                    </span>
+                </div>
+            )}
+            <div className="truncate phone:hidden">
+                table <span className="font-semibold text-fg">{table}</span>
+            </div>
+            {watching > 0 && <div className="phone:hidden">watching {watching}</div>}
         </div>
     );
 }
