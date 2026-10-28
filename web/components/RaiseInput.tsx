@@ -2,7 +2,7 @@ import { useState } from "react";
 import classNames from "classnames";
 import { Betting, clampRaise, potRaiseTo } from "../lib/betting";
 import { tall, useMedia } from "../hooks/useMedia";
-import { Button } from "@mantine/core";
+import { ActionIcon, Button, Slider, TextInput } from "@mantine/core";
 import { bar } from "../lib/theme";
 
 type raiseProps = {
@@ -28,32 +28,25 @@ export default function RaiseInput({ b, onRaise, onClose, step }: raiseProps) {
     ];
 
     const by = (d: number) => setText(String(clampRaise(b, amount + d)));
-    const chip =
-        "mx-0.5 rounded-md border border-line p-1.5 text-sm font-light whitespace-nowrap text-fg hover:bg-line sm:p-2 sm:text-base";
     // steppers, at the ends, stand in for the slider on a tall screen
     const stepper = (label: string, d: number, sign: string) =>
         onTall && (
-            <button
-                type="button"
-                className={classNames(chip, "px-3")}
-                aria-label={label}
-                onClick={() => by(d)}
-            >
+            <ActionIcon variant="default" size="input-sm" aria-label={label} onClick={() => by(d)}>
                 {sign}
-            </button>
+            </ActionIcon>
         );
     const presetRow = (
-        <div className="flex w-full flex-row">
+        <div className={classNames("flex w-full flex-row gap-1", !onTall && "my-1.5")}>
             {stepper("less", -step, "−")}
             {presets.map(([label, to]) => (
-                <button
+                <Button
                     key={label}
-                    type="button"
-                    className={classNames(chip, "flex-1", !onTall && "my-1.5")}
+                    size={onTall ? "sm" : "xs"}
+                    className="flex-1 px-1 font-normal"
                     onClick={() => setText(String(clampRaise(b, to)))}
                 >
                     {label}
-                </button>
+                </Button>
             ))}
             {stepper("more", step, "+")}
         </div>
@@ -69,7 +62,7 @@ export default function RaiseInput({ b, onRaise, onClose, step }: raiseProps) {
             onKeyDown={(e) => {
                 if (e.key === "Escape") onClose();
                 // the slider handles its own arrows
-                if ((e.target as HTMLInputElement).type === "range") return;
+                if ((e.target as HTMLElement).getAttribute("role") === "slider") return;
                 if (e.key === "ArrowUp" || e.key === "ArrowDown") {
                     e.preventDefault();
                     by(e.key === "ArrowUp" ? step : -step);
@@ -84,15 +77,16 @@ export default function RaiseInput({ b, onRaise, onClose, step }: raiseProps) {
             ) : (
                 <div className="absolute right-0 bottom-full left-0 z-40 mb-2 flex flex-col items-center rounded-md border border-line bg-surface px-2 sm:left-auto">
                     {presetRow}
-                    <input
-                        type="range"
-                        className="w-full cursor-pointer accent-zinc-400 sm:w-64"
+                    <Slider
+                        className="w-full sm:w-64"
+                        color="gray"
+                        label={null}
                         value={amount}
-                        onChange={(e) => setText(e.target.value)}
+                        onChange={(v) => setText(String(v))}
                         min={b.minTo}
                         max={b.maxTo}
                     />
-                    <div className="flex w-full flex-row justify-between gap-2 pb-1 text-xs text-subtle sm:w-64">
+                    <div className="mt-1 flex w-full flex-row justify-between gap-2 pb-1 text-xs text-subtle sm:w-64">
                         <span>min {b.minTo}</span>
                         {clamped && <span>{`${b.opening ? "bet" : "raise"} is ${amount}`}</span>}
                         <span>max {b.maxTo}</span>
@@ -100,10 +94,12 @@ export default function RaiseInput({ b, onRaise, onClose, step }: raiseProps) {
                 </div>
             )}
             <div className="flex items-end gap-2">
-                <input
+                <TextInput
                     // focusing it on a phone would open the keyboard over the table
                     autoFocus={!onTall}
-                    className="h-10.5 w-24 rounded-md border border-line bg-surface px-2 text-lg text-fg focus:outline-hidden sm:h-12 sm:w-28 sm:text-xl tall:h-12"
+                    size="md"
+                    className="w-24 sm:w-28"
+                    classNames={{ input: "text-lg sm:h-12 sm:text-xl tall:h-12" }}
                     id="raise"
                     inputMode="numeric"
                     value={text}

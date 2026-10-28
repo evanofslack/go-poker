@@ -4,7 +4,7 @@ import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import Footer from "./Footer";
 import { joinTable } from "../actions/actions";
-import { Button } from "@mantine/core";
+import { Button, PasswordInput, TextInput } from "@mantine/core";
 import { invitedPassword, invitedTable } from "../lib/invite";
 import CreateTable from "./CreateTable";
 import PublicTables from "./PublicTables";
@@ -88,42 +88,42 @@ export default function Join() {
                     className="flex w-full max-w-xs flex-col gap-2 px-4 sm:w-auto sm:max-w-none sm:flex-row sm:gap-0 sm:px-0"
                     onSubmit={handleSubmit}
                 >
-                    <input
+                    <TextInput
                         autoFocus
-                        className="rounded-md bg-raised py-2 pl-4 text-white focus:outline-hidden sm:m-2"
+                        size="md"
+                        className="sm:m-2"
                         id="username"
-                        type="text"
                         maxLength={20}
                         value={username}
                         placeholder="name"
                         onChange={handleUsername}
                     />
-                    <div className="flex flex-row rounded-md bg-raised text-white sm:my-2 sm:mr-2">
-                        <input
-                            className="w-full min-w-0 rounded-md bg-raised py-2 pl-4 text-white focus:outline-hidden sm:w-28"
-                            id="tablename"
-                            type="text"
-                            maxLength={32}
-                            value={tablename}
-                            placeholder="table"
-                            onChange={handleTablename}
-                        />
-                        <Button
-                            type="button"
-                            variant="subtle"
-                            size="xs"
-                            className="m-1.5 shrink-0"
-                            onClick={() => setTablename(randomTableGen(5))}
-                        >
-                            random
-                        </Button>
-                    </div>
+                    <TextInput
+                        size="md"
+                        className="sm:my-2 sm:mr-2 sm:w-48"
+                        id="tablename"
+                        maxLength={32}
+                        value={tablename}
+                        placeholder="table"
+                        onChange={handleTablename}
+                        rightSectionWidth="auto"
+                        rightSection={
+                            <Button
+                                variant="subtle"
+                                size="xs"
+                                className="mr-1.5"
+                                onClick={() => setTablename(randomTableGen(5))}
+                            >
+                                random
+                            </Button>
+                        }
+                    />
                     {showPassword && (
-                        <input
+                        <PasswordInput
                             autoFocus={appState.needPassword}
-                            className="rounded-md bg-raised py-2 pl-4 text-white focus:outline-hidden sm:my-2 sm:mr-2 sm:w-32"
+                            size="md"
+                            className="sm:my-2 sm:mr-2 sm:w-40"
                             id="password"
-                            type="password"
                             maxLength={32}
                             value={password}
                             placeholder="password"

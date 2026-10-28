@@ -5,7 +5,7 @@ import { AppContext } from "../../providers/AppStore";
 import useChatScroll from "../../hooks/useChatScroll";
 import { FiSend } from "react-icons/fi";
 import { sendMessage } from "../../actions/actions";
-import { ActionIcon } from "@mantine/core";
+import { ActionIcon, TextInput } from "@mantine/core";
 
 export default function Chat() {
     const socket = useSocket();
@@ -57,16 +57,17 @@ export default function Chat() {
                 ))}
             </div>
             <div className="flex w-full flex-row items-center justify-between bg-surface pr-1 text-muted">
-                <input
-                    className="w-full bg-surface p-2 text-muted placeholder-zinc-600 focus:outline-hidden"
+                <TextInput
+                    variant="unstyled"
+                    className="flex-1"
+                    classNames={{ input: "px-2" }}
                     id="input"
-                    type="text"
                     maxLength={200}
                     value={inputValue}
                     placeholder="say something..."
                     onChange={handleChange}
                     ref={messageRef}
-                ></input>
+                />
                 <ActionIcon size="lg" aria-label="send" title="send" onClick={handleClick}>
                     <FiSend />
                 </ActionIcon>

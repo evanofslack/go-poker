@@ -3,11 +3,10 @@ import { adjustChips, hostAction, HostAction } from "../../actions/actions";
 import { useSocket } from "../../hooks/useSocket";
 import { PlayerLine } from "../../lib/ledger";
 import { AppContext } from "../../providers/AppStore";
-import { Button } from "@mantine/core";
+import { Button, TextInput } from "@mantine/core";
 import Dialog from "../Dialog";
 import Segmented from "../Segmented";
 
-const input = "w-full rounded-md bg-raised px-2 py-1 text-fg focus:outline-hidden";
 
 // ManagePlayer holds the host's actions on one player. Each closes the dialog;
 // the result shows in the panel and the log.
@@ -92,8 +91,7 @@ export default function ManagePlayer({ line, onClose }: { line: PlayerLine; onCl
                         value={mode}
                         onChange={setMode}
                     />
-                    <input
-                        className={input}
+                    <TextInput
                         id="chipAmount"
                         inputMode="numeric"
                         placeholder="amount"
@@ -101,8 +99,7 @@ export default function ManagePlayer({ line, onClose }: { line: PlayerLine; onCl
                         value={amount}
                         onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
                     />
-                    <input
-                        className={input}
+                    <TextInput
                         id="chipReason"
                         maxLength={60}
                         placeholder="reason (optional)"

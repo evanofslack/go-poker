@@ -3,6 +3,7 @@ import { addBot } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { View } from "../interfaces/index";
 import { randomBotName } from "../lib/bots";
+import { TextInput } from "@mantine/core";
 import BuyIn from "./BuyIn";
 import Segmented from "./Segmented";
 
@@ -37,15 +38,15 @@ export default function AddBot({ seat, view: game, onDone }: addBotProps) {
                     onChange={setLevel}
                 />
             </div>
-            <label className="flex flex-col gap-1 px-3 text-sm text-subtle">
-                name
-                <input
-                    className="rounded-md bg-field p-1 text-fg focus:outline-hidden"
-                    maxLength={maxNameLength}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                />
-            </label>
+            <TextInput
+                label="name"
+                size="xs"
+                className="px-3"
+                classNames={{ label: "font-normal text-subtle" }}
+                maxLength={maxNameLength}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+            />
             <BuyIn
                 min={game.settings.minBuy}
                 max={game.settings.maxBuy}

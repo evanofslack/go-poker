@@ -81,7 +81,7 @@ export async function join(page, name, table) {
 // sit takes the open seat with the default buy-in
 export async function sit(page, seat) {
     await page.locator("button", { hasText: "Open" }).filter({ hasText: String(seat) }).click();
-    await page.locator("#buyIn ~ button").first().click();
+    await page.locator("form:has(#buyIn) button[type=submit]").click();
     await page.waitForSelector("#buyIn", { state: "detached" });
 }
 

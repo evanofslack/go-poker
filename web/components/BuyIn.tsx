@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "@mantine/core";
+import { Button, TextInput } from "@mantine/core";
 
 type buyInProps = {
     min: number;
@@ -26,9 +26,10 @@ export default function BuyIn({ min, max, initial, label, onSubmit, onCancel }: 
             onKeyDown={(e) => e.key === "Escape" && onCancel()}
         >
             <div className="flex flex-row items-center gap-1">
-                <input
+                <TextInput
                     autoFocus
-                    className="w-20 min-w-16 flex-1 rounded-md bg-field p-1 text-fg focus:outline-hidden"
+                    size="xs"
+                    className="w-20 min-w-16 flex-1"
                     id="buyIn"
                     inputMode="numeric"
                     value={text}
