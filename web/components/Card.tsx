@@ -141,7 +141,8 @@ export default function Card({ card, placeholder, folded, hidden, highlight, big
     }
 
     // a face-down card is the same element as the face it turns to, so it flips over
-    // when it's shown
+    // when it's shown. The faces sit a pixel apart, since Safari draws a seam through
+    // two faces in one plane.
     const c = card ? cardToString(card) : "";
     const label = !c
         ? "face-down card"
@@ -154,7 +155,7 @@ export default function Card({ card, placeholder, folded, hidden, highlight, big
                     !c && "rotate-y-180"
                 )}
             >
-                <div className={classNames(color(c, highlight && !folded, big, small), "absolute inset-0 backface-hidden")}>
+                <div className={classNames(color(c, highlight && !folded, big, small), "absolute inset-0 translate-z-px backface-hidden")}>
                     {c && (
                         <>
                             <div
@@ -170,7 +171,7 @@ export default function Card({ card, placeholder, folded, hidden, highlight, big
                         </>
                     )}
                 </div>
-                <div className={classNames(back, "absolute inset-0 rotate-y-180 backface-hidden")}></div>
+                <div className={classNames(back, "absolute inset-0 -translate-z-px rotate-y-180 backface-hidden")}></div>
             </div>
         </div>
     );
