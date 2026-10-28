@@ -176,7 +176,7 @@ export const last = (rec) => rec.views.at(-1);
 
 // panel opens tab in the table panel, opening the panel if it isn't
 export async function panel(page, tab) {
-    if (!(await page.locator('[aria-label="table"]').count())) await page.click('header button:has-text("table")');
+    if (!(await page.locator('[aria-label="table"]').count())) await page.click('header button:has-text("menu")');
     await page.click(`[aria-label="table"] ${btn(tab)}`);
 }
 

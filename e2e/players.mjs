@@ -11,7 +11,7 @@ const carol = await open(browser, { viewport: { width: 375, height: 667 }, isMob
 await carol.goto(`${URL}/?table=${table}`);
 await carol.fill("#username", "carol");
 await carol.press("#username", "Enter");
-await carol.waitForSelector("text=watching");
+await carol.waitForSelector("text=Open");
 
 await panel(alice, "players");
 check("host is the banker", await rowHas(alice, "alice", "banker"));

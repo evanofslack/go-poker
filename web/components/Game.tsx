@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FiChevronDown } from "react-icons/fi";
+import { FiMenu } from "react-icons/fi";
 import AfterHand from "./AfterHand";
 import StraddlePrompt from "./StraddlePrompt";
 import RunItPrompt from "./RunItPrompt";
@@ -24,11 +24,11 @@ export default function Game() {
                     <Button
                         variant="subtle"
                         size="compact-sm"
-                        rightSection={<FiChevronDown />}
+                        leftSection={<FiMenu />}
                         aria-expanded={tableOpen}
                         onClick={() => setTableOpen(!tableOpen)}
                     >
-                        table
+                        menu
                     </Button>
                 </div>
                 <GameInfo />
