@@ -195,7 +195,6 @@ func (r *reducer) hunt(p *Person) error {
 		return fail("there's nothing to hunt")
 	}
 	r.res.Events = append(r.res.Events, events...)
-	r.log("%s went duck hunting", p.Name)
 	if at, ok := s.Timers[TimerDeal]; ok && at.Sub(r.now) < huntShow {
 		r.schedule(TimerDeal, huntShow)
 	}

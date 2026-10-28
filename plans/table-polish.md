@@ -1,6 +1,6 @@
 # Table polish
 
-**Status: in progress.** Stage 13 in `todo.md`.
+**Status: done.** Stage 13 in `todo.md`.
 
 Give the table some depth and short, quiet motion, and a display tab where each viewer picks how it
 looks. Before this, every change on the table appeared in the next frame, and everything was
@@ -30,23 +30,23 @@ Stacked. Each runs `just check` and the e2e scripts for its area, with screensho
 2. **dealing and flipping** (#154): cards slide in as they're dealt, the flop one after another;
    hidden cards flip over at showdown (the same element, so it turns rather than swaps); folded
    cards slide away.
-3. **gliding dealer button**: one dealer button, drawn by the table rather than by each seat, so
+3. **gliding dealer button** (#156): one dealer button, drawn by the table rather than by each seat, so
    it glides to the next seat each hand. Each seat's markers run toward the middle, with the
    button just outside them. Blinds only show preflop, so they pop in rather than glide. Phones
    keep both on the seat plates.
-4. **stack changes and turn pulse**: stacks and the pot count to their new value; the seat to act
+4. **stack changes and turn pulse** (#158, landed in #162): stacks and the pot count to their new value; the seat to act
    pulses once as its turn starts.
-5. **display tab**: a `prefs` object in the store (one localStorage key, merged with defaults, one
-   `setPref` action), with the keyboard shortcuts toggle moved into it, out of the settings tab.
-   Options, each a data attribute set before first paint by a small script in `_document.tsx`:
-   - [ ] animations: system, on or off
-   - [ ] deck: four colors (now) or two
-   - [ ] table color: presets for the felt and rail tokens
-   - [ ] card backs: presets for `card-back`
-   - [ ] e2e `display.mjs`: each option sets its attribute and survives a reload
+5. **options tab** (#159, landed in #162): a `prefs` object in the store (one localStorage key,
+   merged with defaults, one `setPref` action), with the keyboard shortcuts toggle and the mute
+   moved into it. Looks are data attributes on `<html>`, set before first paint by a small script
+   in `_document.tsx`.
+   - [x] animations: system, on or off (#159)
+   - [x] deck: four color or two (#163)
+   - [x] table and card back colors, ten each, picked from swatches (#163)
+   - [x] recorded sounds (Kenney, CC0) by group: turn (always, when away, off), turn timer,
+     decisions, cards, chips and chat, with a volume, the header's full mute, and a test button
+     each; a hidden tab keeps only your own (`lib/sound.ts`, #165)
+   - [x] e2e `options.mjs` and `sound.mjs`
 
 ## Later
-- Light mode: Mantine's color scheme instead of forced dark, light values for the role tokens, an
-  audit of hard-coded colors (`ring-black/20`, the seat glows), screenshots of every panel and
-  dialog. It covers the home page too, so it needs a toggle outside the table panel as well.
 - Chip styles, if still wanted once the rest is in.

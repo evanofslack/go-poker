@@ -1,0 +1,4 @@
+These sounds are from Kenney's Casino Audio and Interface Sounds packs
+(https://kenney.nl), by Kenney Vleugels, released under Creative Commons Zero
+(CC0, http://creativecommons.org/publicdomain/zero/1.0/). They were converted
+to mono MP3 and some were renamed (glass_002.ogg is glass-002.mp3).

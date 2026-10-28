@@ -42,7 +42,11 @@ function plateStyle(player: PlayerView, view: View) {
 }
 
 const tag =
-    "absolute -bottom-3 left-1/2 z-20 -translate-x-1/2 animate-pop rounded-full px-2 text-xs font-semibold whitespace-nowrap shadow-md sm:text-sm short:-bottom-2 short:text-xs";
+    "absolute left-1/2 z-20 -translate-x-1/2 animate-pop rounded-full px-2 text-xs font-semibold whitespace-nowrap shadow-md sm:text-sm short:text-xs";
+// a tag hangs off the bottom of the plate, or while your turn counts down, sits
+// below the countdown along the bottom, a little shorter so it ends in the same place
+const hang = "-bottom-3 short:-bottom-2";
+const below = "bottom-1 translate-y-full leading-3.5 sm:leading-4";
 
 // ResultTag shows what a player won and with what once the hand is over, and
 // on your own seat, your best hand while you're in one
@@ -51,7 +55,7 @@ function ResultTag({ player, view, own }: { player: PlayerView; view: View; own:
     if (won) {
         const hand = winningHand(view, player.seat);
         return (
-            <span className={classNames(tag, "bg-won text-ink")} data-won>
+            <span className={classNames(tag, hang, "bg-won text-ink")} data-won>
                 won {won}
                 {hand && (
                     <>
@@ -67,8 +71,13 @@ function ResultTag({ player, view, own }: { player: PlayerView; view: View; own:
     }
     const made = own && player.in && view.street !== "" ? madeHand([...player.cards, ...view.board]) : "";
     if (!made) return null;
+    const counting = view.betting && player.seat === view.toAct && view.turnEndsIn > 0;
     return (
-        <span key={made} className={classNames(tag, "border border-line bg-panel font-normal text-fg")} data-made-hand>
+        <span
+            key={made}
+            className={classNames(tag, counting ? below : hang, "border border-line bg-panel font-normal text-fg")}
+            data-made-hand
+        >
             {made}
         </span>
     );

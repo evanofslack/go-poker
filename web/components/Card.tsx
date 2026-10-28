@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import classNames from "classnames";
 import { Card as CardType } from "../interfaces";
 
@@ -116,7 +117,26 @@ export function MiniCards({ count }: { count: number }) {
     );
 }
 
+// useFlip is true for the moment a face-down card turns face up. Only then is a
+// card drawn in 3D: a card left in 3D gets seams drawn through it in Safari and
+// Firefox. It's set before the paint, so the face doesn't show first.
+function useFlip(face: string) {
+    const [flipping, setFlipping] = useState(false);
+    const was = useRef(face);
+    useLayoutEffect(() => {
+        const turned = !was.current && !!face;
+        was.current = face;
+        if (!turned) return;
+        setFlipping(true);
+        const id = setTimeout(() => setFlipping(false), 300);
+        return () => clearTimeout(id);
+    }, [face]);
+    return flipping;
+}
+
 export default function Card({ card, placeholder, folded, hidden, highlight, big = false, small = false, order = 0 }: cardProps) {
+    const c = card ? cardToString(card) : "";
+    const flipping = useFlip(c);
     const box = big ? bigCardSize.box : small ? smallCardSize.box : cardSize.box;
     const rank = big ? bigRankSize : small ? smallRankSize : rankSize;
     if (placeholder) {
@@ -134,44 +154,41 @@ export default function Card({ card, placeholder, folded, hidden, highlight, big
     }
     // cards dealt together come in one after another
     const delay = { animationDelay: `${order * 80}ms` };
-    const back = classNames(box, "card-back rounded-md border-2 border-card lg:border-4");
+    // the back's color stays inside its border, so none shows round the corners
+    const back = classNames(box, "card-back rounded-md border-2 border-card bg-clip-padding lg:border-4");
     if (hidden && folded) {
         // another player's mucked cards slide away, keeping their space
         return <div aria-hidden className={classNames(back, "opacity-0 motion:animate-muck")}></div>;
     }
 
-    // a face-down card is the same element as the face it turns to, so it flips over
-    // when it's shown
-    const c = card ? cardToString(card) : "";
     const label = !c
         ? "face-down card"
         : cardName(c) + (folded ? ", folded" : highlight ? ", in the winning hand" : "");
+    const face = (
+        <div className={classNames(color(c, highlight && !folded, big, small), flipping && "absolute inset-0 backface-hidden")}>
+            {c && (
+                <>
+                    <div className={classNames("flex w-full items-start justify-start font-semibold", folded && "opacity-40", rank)}>
+                        {c[0]}
+                    </div>
+                    <div className={classNames(folded && "opacity-40")}>{getSuitChar(c[1])}</div>
+                </>
+            )}
+        </div>
+    );
     return (
-        <div role="img" aria-label={label} className={classNames(box, "perspective-[40rem] motion:animate-deal")} style={delay}>
-            <div
-                className={classNames(
-                    "relative size-full transform-3d motion:transition-transform motion:duration-300",
-                    !c && "rotate-y-180"
-                )}
-            >
-                <div className={classNames(color(c, highlight && !folded, big, small), "absolute inset-0 backface-hidden")}>
-                    {c && (
-                        <>
-                            <div
-                                className={classNames(
-                                    "flex w-full items-start justify-start font-semibold",
-                                    folded && "opacity-40",
-                                    rank
-                                )}
-                            >
-                                {c[0]}
-                            </div>
-                            <div className={classNames(folded && "opacity-40")}>{getSuitChar(c[1])}</div>
-                        </>
-                    )}
+        <div role="img" aria-label={label} className={classNames(box, "motion:animate-deal", flipping && "perspective-[40rem]")} style={delay}>
+            {flipping ? (
+                // the face and back, back to back, turning over
+                <div className="relative size-full transform-3d motion:animate-flip">
+                    {face}
+                    <div className={classNames(back, "absolute inset-0 rotate-y-180 backface-hidden")}></div>
                 </div>
-                <div className={classNames(back, "absolute inset-0 rotate-y-180 backface-hidden")}></div>
-            </div>
+            ) : c ? (
+                face
+            ) : (
+                <div className={back}></div>
+            )}
         </div>
     );
 }

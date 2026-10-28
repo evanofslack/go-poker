@@ -94,10 +94,5 @@ func (r *reducer) endRunVote() {
 	if s.Game.SetRuns(runs) != nil {
 		return
 	}
-	if runs == 1 {
-		r.log("running it once")
-	} else {
-		r.log("running it %d times", runs)
-	}
 	r.schedule(TimerStreet, s.Timing.StreetDelay)
 }
