@@ -4,12 +4,13 @@ import History from "./History";
 import Host from "./Host";
 import Players from "./Players";
 import Settings from "./Settings";
+import Options from "./Options";
 import Stats from "./Stats";
 import { ActionIcon, Tabs } from "@mantine/core";
 import { FiX } from "react-icons/fi";
 
-type tab = "players" | "hands" | "stats" | "settings" | "host";
-const tabs: tab[] = ["players", "hands", "stats", "settings", "host"];
+type tab = "players" | "hands" | "stats" | "settings" | "options" | "host";
+const tabs: tab[] = ["players", "hands", "stats", "settings", "options", "host"];
 const tabKey = "tablePanelTab";
 
 // savedTab is the last tab opened. The host starts on the host tab.
@@ -23,7 +24,7 @@ function savedTab(host: boolean): tab {
 }
 
 // TablePanel is a drawer over the left of the table with the players, ledger,
-// stats, table settings and the host's session controls. It isn't modal, so you can still act
+// stats, table settings, your own options and the host's session controls. It isn't modal, so you can still act
 // while it's open.
 export default function TablePanel({ onClose }: { onClose: () => void }) {
     const { appState } = useContext(AppContext);
@@ -89,6 +90,9 @@ export default function TablePanel({ onClose }: { onClose: () => void }) {
                 </Tabs.Panel>
                 <Tabs.Panel value="settings" className="min-h-0 flex-1">
                     <Settings />
+                </Tabs.Panel>
+                <Tabs.Panel value="options" className="min-h-0 flex-1">
+                    <Options />
                 </Tabs.Panel>
                 <Tabs.Panel value="host" className="min-h-0 flex-1">
                     <Host />

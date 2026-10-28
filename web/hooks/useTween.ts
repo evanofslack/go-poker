@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 
-// moving reports whether the table animates now: it has settled after a join
-// (data-motion) and the viewer hasn't asked for less motion. Matches the motion
-// variant in styles/index.css.
+// moving reports whether the table animates now, as the motion variant in
+// styles/index.css decides: it has settled after a join, and the viewer's
+// animations option allows it
 function moving() {
-    return !!document.querySelector("[data-motion]") && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const motion = document.querySelector("[data-motion]")?.getAttribute("data-motion");
+    return motion === "on" || (motion === "system" && !matchMedia("(prefers-reduced-motion: reduce)").matches);
 }
 
 // useTween counts a number to its new value over a moment, so a stack changing
