@@ -72,11 +72,15 @@ check("a reload stays on the join form", await has(bob, "#username"));
 
 // light mode
 const scheme = () => bob.evaluate(() => document.documentElement.dataset.mantineColorScheme);
-check("dark by default", (await scheme()) === "dark");
+check("follows a dark system", (await scheme()) === "dark");
+await bob.emulateMedia({ colorScheme: "light" });
+await bob.waitForFunction(() => document.documentElement.dataset.mantineColorScheme === "light", null, { timeout: 2000 }).catch(() => {});
+check("follows a light system", (await scheme()) === "light");
 await bob.click('button[aria-label="light or dark"]');
-check("the toggle switches to light", (await scheme()) === "light");
+check("the toggle switches to dark", (await scheme()) === "dark");
 await bob.reload();
-check("light mode is remembered", (await scheme()) === "light");
+check("the choice is remembered", (await scheme()) === "dark");
+await bob.click('button[aria-label="light or dark"]');
 await shot(bob, "ux-light");
 
 await browser.close();

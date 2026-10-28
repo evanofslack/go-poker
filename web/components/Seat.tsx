@@ -237,7 +237,7 @@ function OpenSeat({ id, view, host }: { id: number; view: View; host: boolean })
             <button
                 className={classNames(
                     plate,
-                    "border-2 border-dashed border-line bg-raised/60 text-fg hover:bg-raised"
+                    "border-2 border-dashed border-subtle/60 bg-raised/60 text-fg hover:bg-raised dark:border-line"
                 )}
                 onClick={() => setOpen("sit")}
             >
@@ -283,7 +283,7 @@ function BotSeat({ id, view }: { id: number; view: View }) {
             <button
                 className={classNames(
                     plate,
-                    "border-2 border-dashed border-line bg-raised/40 dark:border-raised text-muted hover:bg-raised hover:text-fg"
+                    "border-2 border-dashed border-subtle/60 bg-raised/40 dark:border-raised text-muted hover:bg-raised hover:text-fg"
                 )}
                 onClick={() => setOpen(true)}
             >

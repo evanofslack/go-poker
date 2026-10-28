@@ -95,12 +95,12 @@
 }
 
 
-/* the light scheme: the same roles from the light end of zinc. The table and cards keep
-   their colors. */
+/* the light scheme: the same roles from the light end of zinc, on a warm off-white page.
+   The table and cards keep their colors. */
 :root[data-mantine-color-scheme="light"] {
-  --color-surface: var(--mantine-color-white);
+  --color-surface: var(--color-stone-100);
   --color-panel: var(--mantine-color-gray-2);
-  --color-raised: var(--mantine-color-gray-1);
+  --color-raised: var(--mantine-color-white); /* lifted off the page */
   --color-fg: var(--mantine-color-gray-9);
   --color-muted: var(--mantine-color-gray-6);
   --color-subtle: var(--mantine-color-gray-5);
@@ -113,7 +113,7 @@
   --color-error: var(--mantine-color-red-6);
   --color-gain: var(--color-green-600);
   --color-loss: var(--mantine-color-red-6);
-  --color-plate-active: var(--color-cyan-100); /* the light plates are already near white */
+  --color-plate-active: var(--mantine-color-gray-4); /* darker than the light plates */
   --shadow-float: 0 4px 16px rgb(0 0 0 / 0.12), 0 1px 3px rgb(0 0 0 / 0.1);
 }
 

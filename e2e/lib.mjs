@@ -33,9 +33,10 @@ export async function shot(page, name) {
     if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/${name}.png` });
 }
 
-// open makes a page in a new browser context, so it's a separate person
+// open makes a page in a new browser context, so it's a separate person. The system is
+// dark unless the context says otherwise.
 export async function open(browser, context = {}) {
-    return (await browser.newContext(context)).newPage();
+    return (await browser.newContext({ colorScheme: "dark", ...context })).newPage();
 }
 
 // confirmCreate creates the table from the settings dialog

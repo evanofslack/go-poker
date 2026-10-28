@@ -9,7 +9,7 @@ import "../styles/index.css";
 
 function MyApp({ Component, pageProps }: AppProps) {
     return (
-        <MantineProvider theme={theme} cssVariablesResolver={resolver} defaultColorScheme="dark">
+        <MantineProvider theme={theme} cssVariablesResolver={resolver} defaultColorScheme="auto">
             <AppStoreProvider>
                 <SocketProvider>
                     <Component {...pageProps} />

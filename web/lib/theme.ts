@@ -94,7 +94,11 @@ export const theme = createTheme({
 // which suits its own palettes but lands near white in Tailwind's. Use the 400s instead.
 export const resolver: CSSVariablesResolver = () => ({
     variables: {},
-    light: {},
+    // default buttons filled, as they are in dark, so they stand off the page
+    light: {
+        "--mantine-color-default": "var(--mantine-color-gray-2)",
+        "--mantine-color-default-hover": "var(--mantine-color-gray-3)",
+    },
     dark: Object.fromEntries(
         ["gray", "cyan", "red"].flatMap((c) => [
             [`--mantine-color-${c}-outline`, `var(--mantine-color-${c}-4)`],
