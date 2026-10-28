@@ -92,7 +92,7 @@ function color(card: string, highlight = false, big = false, small = false) {
             "text-club": card[1] == "C",
             "text-spade": card[1] == "S",
         },
-        "rounded-md border border-card-edge shadow-2xl bg-card pt-0.5 px-1 text-2xl sm:text-3xl lg:pt-1 lg:px-2.5 lg:text-5xl phone:text-3xl short:text-base short:px-0.5 short:pt-0 font-normal flex items-center justify-start flex-col",
+        "rounded-md border border-card-edge shadow-card bg-card pt-0.5 px-1 text-2xl sm:text-3xl lg:pt-1 lg:px-2.5 lg:text-5xl phone:text-3xl short:text-base short:px-0.5 short:pt-0 font-normal flex items-center justify-start flex-col",
         big ? "sm:text-5xl lg:text-6xl phone:text-3xl short:text-base" : "",
         small ? "text-base sm:text-xl lg:text-3xl phone:text-lg short:text-[0.6rem] lg:pt-0.5 lg:px-1.5" : "",
         big ? bigCardSize.box : small ? smallCardSize.box : cardSize.box
@@ -143,7 +143,7 @@ export default function Card({ card, placeholder, folded, hidden, highlight, big
                 aria-label="face-down card"
                 className={classNames(
                     box,
-                    "rounded-md border-2 border-card bg-card-back lg:border-4"
+                    "card-back rounded-md border-2 border-card lg:border-4"
                 )}
             ></div>
         );

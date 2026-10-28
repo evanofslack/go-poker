@@ -7,6 +7,7 @@ import { blind } from "../lib/hands";
 import { phone, tall, useMedia } from "../hooks/useMedia";
 import Seat from "./Seat";
 import Pot from "./Pot";
+import Chips from "./Chips";
 import CommunityCards from "./CommunityCards";
 import TableHint from "./TableHint";
 import BuyRequests from "./BuyRequests";
@@ -41,18 +42,21 @@ function Markers({ view, player, above, badges }: { view: View; player: PlayerVi
     return (
         <div className="relative flex items-center gap-1" data-markers>
             {dealer && (
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-card text-sm font-bold text-dealer lg:h-7 lg:w-7 lg:text-base">
+                <span className="puck flex h-6 w-6 items-center justify-center rounded-full text-sm font-bold text-ink lg:h-7 lg:w-7 lg:text-base">
                     D
                 </span>
             )}
             {label && (
-                <span className="flex h-6 items-center rounded-full bg-blind px-1.5 text-xs font-bold text-ink">
+                <span className="puck flex h-6 items-center rounded-full px-1.5 text-xs font-bold text-ink [--puck:var(--color-blind)]">
                     {label}
                 </span>
             )}
             {player.bet !== 0 && (
-                <span className="flex h-6 min-w-10 items-center justify-center rounded-full bg-gold px-2 text-sm font-semibold text-ink lg:h-8 lg:text-lg">
-                    {player.bet}
+                <span className="flex items-center gap-1">
+                    <Chips amount={player.bet} bb={view.settings.bb} className="size-5 lg:size-6" />
+                    <span className="flex h-6 items-center rounded-full bg-felt-dark/80 px-1.5 text-sm font-semibold text-on-felt lg:h-7 lg:text-lg">
+                        {player.bet}
+                    </span>
                 </span>
             )}
             {/* off the row, so the row stays put */}
@@ -93,13 +97,15 @@ export default function Table() {
 
     return (
         <div className={"absolute inset-0 " + seatSize}>
-            <div className="absolute top-1/2 left-1/2 h-[calc(0.8*(100%-2*var(--seat-hh)))] w-[calc(0.84*(100%-2*var(--seat-hw)))] -translate-1/2 rounded-full border-8 border-felt-edge bg-felt" />
+            <div className="absolute top-1/2 left-1/2 h-[calc(0.8*(100%-2*var(--seat-hh)))] w-[calc(0.84*(100%-2*var(--seat-hw)))] -translate-1/2 rounded-full felt" />
             {/* on a tall table, the board takes the band across the middle, between the side seats */}
             <div
                 className={classNames(
                     "pointer-events-none absolute top-1/2 left-1/2 z-30 flex -translate-1/2 flex-col items-center gap-2 short:top-[53%]",
                     onTall ? "w-full px-2" : "w-[calc(0.66*(100%-2*var(--seat-hw)))] portrait:top-[40%]"
                 )}
+                // each extra run of the board lifts the column, so the runs clear the markers below it
+                style={!onTall && view.runs > 1 ? { marginTop: `${-(view.runs - 1) * 1.75}rem` } : undefined}
             >
                 <Pot />
                 <CommunityCards />
