@@ -3,6 +3,7 @@ import { FiCopy } from "react-icons/fi";
 import classNames from "classnames";
 import { AppContext } from "../providers/AppStore";
 import { copyInvite } from "../lib/invite";
+import { gameName } from "../lib/settings";
 import TurnAlert from "./TurnAlert";
 import ColorSchemeToggle from "./ColorSchemeToggle";
 import { ActionIcon } from "@mantine/core";
@@ -45,6 +46,7 @@ export default function GameInfo() {
                 <div className="truncate">
                     stakes{" "}
                     <span className="font-semibold text-fg">
+                        {gameName(config) !== "NLH" && `${gameName(config)} `}
                         {config.sb}/{config.bb}
                     </span>
                 </div>

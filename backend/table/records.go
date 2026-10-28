@@ -17,6 +17,7 @@ const handsPerPage = 20
 type HandRecord struct {
 	Hand    int          `json:"hand"`    // counts from 1
 	Started int64        `json:"started"` // unix ms
+	Game    string       `json:"game"`    // like "NLH" or "PLO", see GameName
 	SB      uint         `json:"sb"`
 	BB      uint         `json:"bb"`
 	Ante    uint         `json:"ante,omitempty"`
@@ -128,6 +129,7 @@ func (r *reducer) recordEvent(e holdem.Event, timeout bool) {
 		h = &HandRecord{
 			Hand:    e.Hand,
 			Started: r.now.UnixMilli(),
+			Game:    GameName(s.Settings),
 			SB:      s.Game.Config.SmallBlind,
 			BB:      s.Game.Config.BigBlind,
 			Ante:    s.Game.Config.Ante,

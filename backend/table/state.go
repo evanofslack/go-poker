@@ -135,7 +135,7 @@ func New(name string, settings Settings, timing Timing, password, creatorIP stri
 		Settings:  settings,
 		Timing:    timing,
 		CreatorIP: creatorIP,
-		Game:      holdem.New(holdem.Config{SmallBlind: settings.SmallBlind, BigBlind: settings.BigBlind, Ante: settings.Ante}, seed),
+		Game:      holdem.New(settings.config(), seed),
 		People:    map[string]*Person{},
 		Seats:     map[int]*Seat{},
 		Requests:  map[string]BuyRequest{},
@@ -255,6 +255,9 @@ func Restore(s *State, now time.Time) {
 	}
 	if s.Settings.Straddle == "" {
 		s.Settings.Straddle = StraddleOff
+	}
+	if s.Settings.Game == "" {
+		s.Settings.Game, s.Settings.Limit = GameHoldem, LimitNo
 	}
 	if _, ok := s.Timers[TimerTurn]; ok {
 		s.Timers[TimerTurn] = now.Add(time.Duration(s.Settings.TurnTime) * time.Millisecond)

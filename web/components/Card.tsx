@@ -114,7 +114,11 @@ export function MiniCards({ count }: { count: number }) {
             className="absolute -top-2 right-3 z-20 flex gap-0.5"
         >
             {Array.from({ length: count }, (_, i) => (
-                <div key={i} className="h-5 w-3.5 rounded-sm border border-card bg-card-back" />
+                // past two they overlap, so Omaha's fit the seat
+                <div
+                    key={i}
+                    className={classNames("h-5 w-3.5 rounded-sm border border-card bg-card-back", i > 0 && count > 2 && "-ml-2")}
+                />
             ))}
         </div>
     );

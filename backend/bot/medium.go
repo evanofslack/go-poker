@@ -210,7 +210,7 @@ func straight(m uint16) bool {
 // mediumPreflop raises or folds when nobody has raised, with more hands the
 // later it acts, and reraises strong hands and a few bluffs.
 func mediumPreflop(s spot, r *rand.Rand) Action {
-	c := chen(s.hole) + s.style.loose
+	c := starting(s.hole) + s.style.loose
 	owe := s.top - s.bet
 	switch {
 	case s.top <= s.bb: // unopened, maybe limped
@@ -276,7 +276,7 @@ func openAt(s spot) float64 {
 // suitedPlayable is a suited ace or suited connector, a hand worth reraising
 // as a bluff now and then.
 func suitedPlayable(hole []eval.Card) bool {
-	if hole[0]&hole[1]&0xF000 == 0 {
+	if len(hole) != 2 || hole[0]&hole[1]&0xF000 == 0 {
 		return false
 	}
 	a, b := rank(hole[0]), rank(hole[1])
@@ -301,8 +301,8 @@ func because(a Action, format string, args ...any) Action {
 }
 
 // size turns a bet or raise of about add chips into a legal move: at least a
-// min-raise, and all in once that's the whole stack. A bot that can't raise
-// checks or calls instead.
+// min-raise, at most the pot in pot limit, and all in once that's the whole
+// stack. A bot that can't raise checks or calls instead.
 func (s spot) size(add uint) Action {
 	owe := s.top - s.bet
 	switch {
@@ -312,6 +312,9 @@ func (s spot) size(add uint) Action {
 		return Action{Kind: Call, Reason: "can't raise, call"}
 	}
 	add = max(add, owe+s.minRaise)
+	if s.game.Pot {
+		add = min(add, s.pot+2*owe) // call, then raise the pot
+	}
 	if add >= s.stack {
 		return Action{Kind: Raise, Amount: s.stack}
 	}
@@ -384,7 +387,7 @@ func equity(g holdem.Game, hole, board []eval.Card, others int, minChen float64,
 // scoring minChen preflop, and against a bet one that connects with the board,
 // or now and then a bluff.
 func plays(hole, board []eval.Card, minChen float64, bet bool, r *rand.Rand) bool {
-	if chen(hole) < minChen {
+	if starting(hole) < minChen {
 		return false
 	}
 	if !bet || len(board) < 3 || r.Float64() < 0.15 {
@@ -404,6 +407,58 @@ func connects(hole, board []eval.Card) bool {
 		return true
 	}
 	return drawOf(hole, board) != noDraw
+}
+
+// starting scores a starting hand on chen's scale: chen for hold'em, omaha
+// for more cards.
+func starting(hole []eval.Card) float64 {
+	if len(hole) > 2 {
+		return omaha(hole)
+	}
+	return chen(hole)
+}
+
+// omaha scores an Omaha hand on chen's scale, roughly: its best two cards,
+// more for being double suited or connected all through, less for a card that
+// works with no other or for three of a rank.
+func omaha(hole []eval.Card) float64 {
+	best := -2.0
+	suits := map[eval.Card]int{}
+	ranks := map[int]int{}
+	for i, a := range hole {
+		suits[a&0xF000]++
+		ranks[rank(a)]++
+		for _, b := range hole[i+1:] {
+			best = max(best, chen([]eval.Card{a, b}))
+		}
+	}
+	pairs := 0
+	for _, n := range suits {
+		if n == 2 {
+			pairs++
+		}
+	}
+	if pairs == 2 {
+		best += 2 // double suited
+	}
+	for _, n := range ranks {
+		if n >= 3 {
+			best -= 4 // the third card of a rank can't play
+		}
+	}
+	// a dangler is more than three ranks from every other card
+	for _, a := range hole {
+		near := false
+		for _, b := range hole {
+			if d := rank(a) - rank(b); a != b && d >= -3 && d <= 3 {
+				near = true
+			}
+		}
+		if !near {
+			best -= 2
+		}
+	}
+	return best
 }
 
 // chen scores a starting hand with Bill Chen's formula, from -1 for 7-2 off

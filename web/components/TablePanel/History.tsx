@@ -114,6 +114,7 @@ function Hand({ record: r, me, open, onToggle }: { record: HandRecord; me: strin
                 onClick={onToggle}
             >
                 <span className="w-8 shrink-0 text-subtle tabular-nums">#{r.hand}</span>
+                {r.game && r.game !== "NLH" && <span className="shrink-0 text-subtle">{r.game}</span>}
                 <span className="min-w-0 flex-1 truncate text-fg">{winnersText(r)}</span>
                 {you && <Cards cards={you.cards} />}
                 {you && (

@@ -23,6 +23,9 @@ type Settings struct {
 	Public        bool `json:"public"`        // listed on the home page
 	ApproveRebuys bool `json:"approveRebuys"` // rebuys, and sitting back down, wait for the host
 
+	Game  string `json:"game"`  // GameHoldem, GameOmaha or GameOmaha5
+	Limit string `json:"limit"` // LimitNo or LimitPot
+
 	// house rules
 	Ante     uint `json:"ante"`     // from every player each hand, 0 for none
 	DuckHunt bool `json:"duckHunt"` // players can turn up the rest of the board after a hand ends early
@@ -31,6 +34,37 @@ type Settings struct {
 	SevenDeuce uint   `json:"sevenDeuce"`
 	Straddle   string `json:"straddle"` // StraddleOff, StraddleOptional or StraddleForced
 	RunIt      bool   `json:"runIt"`    // once everyone left is all in, or all but one, they vote to run the rest of the board out more than once
+}
+
+// Games and limits
+const (
+	GameHoldem = "holdem"
+	GameOmaha  = "omaha"
+	GameOmaha5 = "omaha5"
+	LimitNo    = "no"
+	LimitPot   = "pot"
+)
+
+// holeCards is how many hole cards each game deals.
+var holeCards = map[string]int{GameHoldem: 2, GameOmaha: 4, GameOmaha5: 5}
+
+// config is the game's config for set.
+func (set Settings) config() holdem.Config {
+	return holdem.Config{
+		Game:       holdem.Game{Hole: holeCards[set.Game], Pot: set.Limit == LimitPot},
+		SmallBlind: set.SmallBlind,
+		BigBlind:   set.BigBlind,
+		Ante:       set.Ante,
+	}
+}
+
+// GameName names set's game the short way, like "NLH" or "PLO5".
+func GameName(set Settings) string {
+	name := map[string]string{GameHoldem: "H", GameOmaha: "O", GameOmaha5: "O5"}[set.Game]
+	if set.Limit == LimitPot {
+		return "PL" + name
+	}
+	return "NL" + name
 }
 
 // Straddle settings. Forced posts under the gun's straddle for them;
@@ -54,6 +88,8 @@ var DefaultSettings = Settings{
 	DuckHunt:      true,
 	RunIt:         true,
 	Straddle:      StraddleOff,
+	Game:          GameHoldem,
+	Limit:         LimitNo,
 }
 
 // settings limits, mirrored by the create table form
@@ -95,6 +131,14 @@ func (s Settings) Validate() error {
 		return fmt.Errorf("decision time must be between %d and %d seconds", minDecisionTime/1000, maxDecisionTime/1000)
 	case s.Straddle != StraddleOff && s.Straddle != StraddleOptional && s.Straddle != StraddleForced:
 		return errors.New("straddle must be off, optional or forced")
+	case holeCards[s.Game] == 0:
+		return errors.New("game must be holdem, omaha or omaha5")
+	case s.Limit != LimitNo && s.Limit != LimitPot:
+		return errors.New("limit must be no or pot")
+	case int(s.Seats)*holeCards[s.Game]+5 > len(holdem.Deck(s.config().Game)):
+		return fmt.Errorf("%s deals too many cards for %d seats", GameName(s), s.Seats)
+	case s.SevenDeuce > 0 && holeCards[s.Game] != 2:
+		return errors.New("the 7-2 bounty is for hold'em")
 	}
 	return nil
 }
@@ -135,7 +179,7 @@ func (r *reducer) applySettings(who string, set Settings) {
 		r.dropStraddles() // asked at the old blinds
 	}
 	s.Settings, s.Next = set, nil
-	s.Game.SetConfig(holdem.Config{SmallBlind: set.SmallBlind, BigBlind: set.BigBlind, Ante: set.Ante})
+	s.Game.SetConfig(set.config())
 	if changes != "" {
 		r.log("%s %s", who, changes)
 	}
@@ -163,6 +207,7 @@ func settingsChanges(old, set Settings) string {
 		}
 		return fmt.Sprint(n)
 	}
+	add(old.Game != set.Game || old.Limit != set.Limit, "the game to %s", GameName(set))
 	add(old.SmallBlind != set.SmallBlind || old.BigBlind != set.BigBlind, "the blinds to %d/%d", set.SmallBlind, set.BigBlind)
 	add(old.Ante != set.Ante, "the ante to %s", chips(set.Ante))
 	add(old.MinBuy != set.MinBuy || old.MaxBuy != set.MaxBuy, "the buy-in to %d-%d", set.MinBuy, set.MaxBuy)

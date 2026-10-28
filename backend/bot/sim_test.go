@@ -26,7 +26,7 @@ func TestSim(t *testing.T) {
 		t.Skip("set BOTSIM=1 to run")
 	}
 	const hands = 2000
-	res := sim(t, []string{Medium, Easy}, hands, 100*simBB, false)
+	res := sim(t, holdem.Game{}, []string{Medium, Easy}, hands, 100*simBB, false)
 	report(t, res)
 	if res[0].net <= 0 {
 		t.Errorf("medium lost %d chips to easy over %d hands", -res[0].net, hands)
@@ -40,7 +40,7 @@ func TestSimBaseline(t *testing.T) {
 		t.Skip("set BOTSIM=1 to run")
 	}
 	levels := []string{Medium, baselineLevel, Medium, baselineLevel, Medium, baselineLevel}
-	res := sim(t, levels, 4000, 100*simBB, false)
+	res := sim(t, holdem.Game{}, levels, 4000, 100*simBB, false)
 	report(t, res)
 	net := 0
 	for _, s := range res {
@@ -65,15 +65,36 @@ func TestSimTable(t *testing.T) {
 			for i := range levels {
 				levels[i] = level
 			}
-			report(t, sim(t, levels, 2000, 100*simBB, false))
+			report(t, sim(t, holdem.Game{}, levels, 2000, 100*simBB, false))
 		})
+	}
+}
+
+// TestBotsPlayOmaha plays PLO and PLO5, and checks bots only make legal moves.
+func TestBotsPlayOmaha(t *testing.T) {
+	for _, g := range []holdem.Game{{Hole: 4, Pot: true}, {Hole: 5, Pot: true}, {Hole: 4}} {
+		sim(t, g, []string{Medium, Easy, Medium, Easy}, 50, 100*simBB, false)
+	}
+}
+
+// TestSimOmaha plays medium against easy at PLO heads up and checks medium
+// comes out ahead.
+func TestSimOmaha(t *testing.T) {
+	if os.Getenv("BOTSIM") == "" {
+		t.Skip("set BOTSIM=1 to run")
+	}
+	const hands = 2000
+	res := sim(t, holdem.Game{Hole: 4, Pot: true}, []string{Medium, Easy}, hands, 100*simBB, false)
+	report(t, res)
+	if res[0].net <= 0 {
+		t.Errorf("medium lost %d chips to easy at PLO over %d hands", -res[0].net, hands)
 	}
 }
 
 // TestBotsFacingStraddles plays six bots with every straddle posted, and
 // checks they only make legal moves.
 func TestBotsFacingStraddles(t *testing.T) {
-	sim(t, []string{Medium, Easy, Medium, Easy, Medium, Easy}, 300, 100*simBB, true)
+	sim(t, holdem.Game{}, []string{Medium, Easy, Medium, Easy, Medium, Easy}, 300, 100*simBB, true)
 }
 
 // stats is how one seat played over a sim.
@@ -102,11 +123,11 @@ type handFlags struct {
 	start                            uint // stack before the blinds, 0 if not dealt in
 }
 
-// sim plays hands between bots of levels, in seats from 1, rebuying busted
+// sim plays game between bots of levels, in seats from 1, rebuying busted
 // ones, and returns how each one played. straddle posts every straddle there
 // can be.
-func sim(t *testing.T, levels []string, hands int, buyIn uint, straddle bool) []stats {
-	g := holdem.New(holdem.Config{SmallBlind: simBB / 2, BigBlind: simBB}, [32]byte{byte(rand.Uint64())})
+func sim(t *testing.T, game holdem.Game, levels []string, hands int, buyIn uint, straddle bool) []stats {
+	g := holdem.New(holdem.Config{Game: game, SmallBlind: simBB / 2, BigBlind: simBB}, [32]byte{byte(rand.Uint64())})
 	res := make([]stats, len(levels))
 	bought := make([]uint, len(levels))
 	for i, level := range levels {

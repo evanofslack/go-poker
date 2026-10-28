@@ -2,6 +2,15 @@ import { Settings } from "../interfaces/index";
 
 // Presets for the settings form. The server takes any value within its
 // limits (backend/server/validate.go), which these mirror.
+export const games = [
+    { label: "hold'em", value: "holdem" },
+    { label: "Omaha", value: "omaha" },
+    { label: "Omaha 5", value: "omaha5" },
+];
+export const limits = [
+    { label: "no limit", value: "no" },
+    { label: "pot limit", value: "pot" },
+];
 export const stakes = ["1/2", "5/10", "10/20", "25/50", "100/200"];
 export const seatCounts = [2, 6, 8, 9];
 export const turnTimes = [0, 15000, 30000, 60000, 120000]; // 0 is no turn timer
@@ -17,6 +26,8 @@ export const maxPasswordLen = 32;
 
 // SettingsForm is what the form edits: blinds as typed, buy-ins in big blinds
 export type SettingsForm = {
+    game: string; // holdem, omaha or omaha5
+    limit: string; // no or pot
     stakes: string; // a preset, or "custom" to use sb and bb
     sb: string;
     bb: string;
@@ -37,6 +48,8 @@ export type SettingsForm = {
 
 // the server's defaults
 export const defaultForm: SettingsForm = {
+    game: "holdem",
+    limit: "no",
     stakes: "10/20",
     sb: "10",
     bb: "20",
@@ -83,6 +96,8 @@ export function anteChips(ante: number, bb: number): number {
 export function toSettings(f: SettingsForm): Settings {
     const [sb, bb] = blinds(f);
     return {
+        game: f.game,
+        limit: f.limit,
         seats: f.seats,
         sb,
         bb,
@@ -110,6 +125,8 @@ function nearest(presets: number[], n: number, chips: (preset: number) => number
 export function fromSettings(s: Settings): SettingsForm {
     const preset = `${s.sb}/${s.bb}`;
     return {
+        game: s.game,
+        limit: s.limit,
         stakes: stakes.includes(preset) ? preset : "custom",
         sb: String(s.sb),
         bb: String(s.bb),
@@ -127,4 +144,16 @@ export function fromSettings(s: Settings): SettingsForm {
         decisionTime: s.decisionTime,
         runIt: s.runIt,
     };
+}
+
+// gameName names a table's game the short way, like "NLH" or "PLO5", as the server does
+export function gameName(s: Pick<Settings, "game" | "limit">): string {
+    const name = { holdem: "H", omaha: "O", omaha5: "O5" }[s.game] ?? "H";
+    return (s.limit === "pot" ? "PL" : "NL") + name;
+}
+
+// gameTitle spells a table's game out, like "pot limit Omaha"
+export function gameTitle(s: Pick<Settings, "game" | "limit">): string {
+    const name = { holdem: "texas hold'em", omaha: "Omaha", omaha5: "5 card Omaha" }[s.game] ?? "texas hold'em";
+    return (s.limit === "pot" ? "pot limit " : "no limit ") + name;
 }

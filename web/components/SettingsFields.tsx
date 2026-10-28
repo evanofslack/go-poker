@@ -2,6 +2,8 @@ import {
     blinds,
     antes,
     decisionTimes,
+    games,
+    limits,
     straddleModes,
     sevenDeuces,
     handDelays,
@@ -49,6 +51,24 @@ export default function SettingsFields({ form, set, password, setPassword, seats
         <div className="grid gap-5 sm:grid-cols-2 sm:gap-x-8">
             <div className="flex flex-col gap-5">
                 <Section title="game">
+                    <div className="flex flex-wrap gap-x-4 gap-y-5">
+                        <Segmented
+                            legend="game"
+                            name="game"
+                            options={games}
+                            value={form.game}
+                            // the 7-2 bounty is a hold'em game
+                            onChange={(g) => set({ game: g, sevenDeuce: g === "holdem" ? form.sevenDeuce : 0 })}
+                        />
+                        <Segmented
+                            legend="limit"
+                            hint="pot limit caps every bet and raise at the size of the pot"
+                            name="limit"
+                            options={limits}
+                            value={form.limit}
+                            onChange={(l) => set({ limit: l })}
+                        />
+                    </div>
                     <div>
                         <Segmented
                             legend="stakes"
@@ -187,14 +207,16 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                     </div>
                 </Section>
                 <Section title="house rules">
-                    <Segmented
-                        legend="7-2 bounty"
-                        hint="win the pot with 7-2 and show it, and everyone dealt in pays you this"
-                        name="sevenDeuce"
-                        options={sevenDeuces.map((n) => ({ label: n ? `${n} bb` : "off", value: n }))}
-                        value={form.sevenDeuce}
-                        onChange={(n) => set({ sevenDeuce: n })}
-                    />
+                    {form.game === "holdem" && (
+                        <Segmented
+                            legend="7-2 bounty"
+                            hint="win the pot with 7-2 and show it, and everyone dealt in pays you this"
+                            name="sevenDeuce"
+                            options={sevenDeuces.map((n) => ({ label: n ? `${n} bb` : "off", value: n }))}
+                            value={form.sevenDeuce}
+                            onChange={(n) => set({ sevenDeuce: n })}
+                        />
+                    )}
                     <Segmented
                         legend="straddles"
                         hint="under the gun can post 2 bb before the deal, and each next player double that; forced posts the first one"

@@ -93,6 +93,7 @@ export const MaxHands = 1000;
 export interface HandRecord {
   hand: number /* int */; // counts from 1
   started: number /* int64 */; // unix ms
+  game: string; // like "NLH" or "PLO", see GameName
   sb: number /* uint */;
   bb: number /* uint */;
   ante?: number /* uint */;
@@ -216,6 +217,8 @@ export interface Settings {
   decisionTime: number /* uint */; // to answer a straddle ask or a run-it vote
   public: boolean; // listed on the home page
   approveRebuys: boolean; // rebuys, and sitting back down, wait for the host
+  game: string; // GameHoldem, GameOmaha or GameOmaha5
+  limit: string; // LimitNo or LimitPot
   /**
    * house rules
    */
@@ -229,6 +232,26 @@ export interface Settings {
   straddle: string; // StraddleOff, StraddleOptional or StraddleForced
   runIt: boolean; // once everyone left is all in, or all but one, they vote to run the rest of the board out more than once
 }
+/**
+ * Games and limits
+ */
+export const GameHoldem = "holdem";
+/**
+ * Games and limits
+ */
+export const GameOmaha = "omaha";
+/**
+ * Games and limits
+ */
+export const GameOmaha5 = "omaha5";
+/**
+ * Games and limits
+ */
+export const LimitNo = "no";
+/**
+ * Games and limits
+ */
+export const LimitPot = "pot";
 /**
  * Straddle settings. Forced posts under the gun's straddle for them;
  * re-straddles stay optional.

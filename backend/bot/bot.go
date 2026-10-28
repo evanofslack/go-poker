@@ -188,6 +188,16 @@ func strengthOf(g holdem.Game, hole, board []eval.Card) strength {
 }
 
 func preflop(hole []eval.Card) strength {
+	if len(hole) > 2 {
+		// Omaha: as good as the best two cards
+		best := weak
+		for i := range hole {
+			for j := i + 1; j < len(hole); j++ {
+				best = max(best, preflop([]eval.Card{hole[i], hole[j]}))
+			}
+		}
+		return best
+	}
 	a, b := rank(hole[0]), rank(hole[1])
 	suited := hole[0]&hole[1]&0xF000 != 0
 	switch {

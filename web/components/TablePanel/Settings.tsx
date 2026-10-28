@@ -2,6 +2,7 @@ import { ReactNode, useContext, useState } from "react";
 import { FiCopy } from "react-icons/fi";
 import { AppContext } from "../../providers/AppStore";
 import { copyInvite } from "../../lib/invite";
+import { gameTitle } from "../../lib/settings";
 import { Button } from "@mantine/core";
 import EditSettings from "../EditSettings";
 
@@ -36,7 +37,7 @@ export default function Settings() {
                 </Button>
             </span>,
         ],
-        ["game", "no limit texas hold'em"],
+        ["game", gameTitle(s)],
         ["stakes", `${chips(s.sb)}/${chips(s.bb)}`],
         ["ante", s.ante ? chips(s.ante) : "none"],
         [

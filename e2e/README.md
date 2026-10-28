@@ -14,6 +14,7 @@ protect what you run them on.
 | `houserules.mjs` | antes, the 7-2 setting, showing cards after the hand, duck hunting |
 | `standup.mjs` | stand-up rounds: starting one, showing to sit down, the payout, running it again |
 | `turn.mjs` | turn countdown |
+| `variants.mjs` | pot limit Omaha and Omaha 5: cards on desktop and phones, the header, pot limit presets |
 | `seat.mjs` | seat menu: sit out and in, rebuy, sit out next hand, leave |
 | `forms.mjs` | join, create table and buy-in forms |
 | `password.mjs` | password tables and invite links |

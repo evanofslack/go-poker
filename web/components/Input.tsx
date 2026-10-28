@@ -166,7 +166,13 @@ export default function Input() {
 
     if (showRaise) {
         return (
-            <RaiseInput b={b} step={view.settings.bb} onRaise={raiseTo} onClose={() => setShowRaise(false)} />
+            <RaiseInput
+                b={b}
+                step={view.settings.bb}
+                potLimit={view.settings.limit === "pot"}
+                onRaise={raiseTo}
+                onClose={() => setShowRaise(false)}
+            />
         );
     }
 

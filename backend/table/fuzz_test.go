@@ -25,6 +25,11 @@ func TestRandomCommands(t *testing.T) {
 		set.SevenDeuce = r.UintN(3) * set.BigBlind
 		set.Straddle = []string{StraddleOff, StraddleOptional, StraddleForced}[r.IntN(3)]
 		set.RunIt = r.IntN(2) == 0
+		set.Game = []string{GameHoldem, GameOmaha, GameOmaha5}[r.IntN(3)]
+		set.Limit = []string{LimitNo, LimitPot}[r.IntN(2)]
+		if set.Game != GameHoldem {
+			set.SevenDeuce = 0
+		}
 		if r.IntN(3) == 0 {
 			set.TurnTime = 0
 		}
