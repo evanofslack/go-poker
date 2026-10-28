@@ -16,7 +16,7 @@
 | 12 | Mantine UI (`mantine.md`) and light mode | done |
 | 13 | Table polish (`table-polish.md`) | done |
 | 14 | Time bank (`extensions.md`) | planned |
-| 15 | Game refactor (`extensions.md`) | planned |
+| 15 | Game refactor (`extensions.md`) | done |
 | 16 | Pot-limit Omaha (`extensions.md`) | planned |
 | 17 | Bomb pots and double board (`extensions.md`) | planned |
 | 18 | Short deck (`extensions.md`) | planned |
@@ -653,8 +653,8 @@ button or automatically when time runs out. Parallel with stage 15.
 Planned in `extensions.md`: hole cards as a slice, one `Game.Best` for hand strength, the hand hint
 from the server. Hold'em plays exactly as before.
 
-- [ ] PR 3: hole cards as a slice, `Game.Best`
-- [ ] PR 4: server hand hint, cards by count (web)
+- [x] PR 3: hole cards as a slice, `Game.Best` (#168)
+- [x] PR 4: server hand hint, cards by count (web) (#169)
 
 # Stage 16: pot-limit Omaha
 
