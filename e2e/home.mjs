@@ -66,6 +66,10 @@ check("short deck deals nothing under a six", short.length > 0 && !short.some((r
 await p.click('label[for="demo-limit-pot"]');
 check("pot limit names the game", await p.locator(`${games} :text("pot limit 6+ 5 card omaha")`).isVisible());
 
+await p.click('label[for="demo-bot-hard"]');
+check("the hard bot 3-bets", await p.locator(':text("3-bet to 180")').isVisible());
+check("the hard bot says how it plays", await p.locator(':text("hard reads ranges")').isVisible());
+
 await p.click('[data-ledger] button:text-is("eric")');
 const settles = await p.locator("[data-settle]").allTextContents();
 check("the banker moves", settles.includes("banker") && settles.filter((s) => s.includes("eric")).length === 3, settles.join(" | "));

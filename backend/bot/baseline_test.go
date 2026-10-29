@@ -10,10 +10,19 @@ import (
 // measure against.
 const baselineLevel = "baseline"
 
-// decide is choose, plus the baseline level.
+// decide is choose, plus the levels only the sims play.
 func decide(level string, s spot, r *rand.Rand) Action {
-	if level == baselineLevel {
+	switch level {
+	case baselineLevel:
 		return baseline(s, r)
+	case station:
+		return stationPlay(s, r)
+	case jammer:
+		return jammerPlay(s, r)
+	case nit:
+		return nitPlay(s, r)
+	case trapper:
+		return trapperPlay(s, r)
 	}
 	return choose(level, s, r)
 }
@@ -22,7 +31,7 @@ func baseline(s spot, r *rand.Rand) Action {
 		return baselinePreflop(s, r)
 	}
 	owe := s.top - s.bet
-	e := equity(holdem.Game{}, s.hole, s.board, s.others, anyHand, false, trials, r)
+	e := equity(holdem.Game{}, s.hole, s.board, s.others, anyHand, 0, trials, r)
 	slowPlay := e > 0.85 && r.Float64() < 0.2
 
 	if owe == 0 {

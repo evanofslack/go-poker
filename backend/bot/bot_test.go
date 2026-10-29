@@ -110,7 +110,7 @@ func TestSpotOf(t *testing.T) {
 	}
 	_, err := g.StartHand(holdem.Deal{})
 	must(t, err)
-	s := spotOf(g.View(g.ToAct), g.ToAct, 0)
+	s := spotOf(g.View(g.ToAct), g.ToAct, nil)
 	if len(s.board) != 0 || s.top != 20 || s.pot != 30 || s.others != 2 || s.bb != 20 || s.hole[0] == 0 {
 		t.Fatalf("preflop spot %+v", s)
 	}
@@ -129,7 +129,7 @@ func TestSpotPositions(t *testing.T) {
 	_, err = g.Act(g.ToAct, holdem.Call{})
 	must(t, err)
 	for seat := 1; seat <= 6; seat++ {
-		s := spotOf(g.View(seat), seat, 0)
+		s := spotOf(g.View(seat), seat, nil)
 		if seat == g.Button && s.behind != 0 {
 			t.Errorf("button: behind = %d, want 0", s.behind)
 		}
@@ -138,6 +138,23 @@ func TestSpotPositions(t *testing.T) {
 		}
 		if seat == g.BB && (!s.bbs || s.limpers != 1) {
 			t.Errorf("big blind spot %+v", s)
+		}
+	}
+}
+
+func TestAggressor(t *testing.T) {
+	line := []holdem.Acted{
+		{Seat: 1, Street: holdem.Preflop, Kind: holdem.KindSmallBlind},
+		{Seat: 2, Street: holdem.Preflop, Kind: holdem.KindBigBlind},
+		{Seat: 3, Street: holdem.Preflop, Kind: holdem.KindRaise},
+		{Seat: 1, Street: holdem.Preflop, Kind: holdem.KindCall},
+		{Seat: 1, Street: holdem.Flop, Kind: holdem.KindCheck},
+		{Seat: 3, Street: holdem.Flop, Kind: holdem.KindCheck},
+		{Seat: 1, Street: holdem.Turn, Kind: holdem.KindBet},
+	}
+	for street, want := range map[holdem.Street]int{holdem.Preflop: 0, holdem.Flop: 3, holdem.Turn: 3, holdem.River: 1} {
+		if got := aggressor(line, street); got != want {
+			t.Errorf("aggressor before %s = %d, want %d", street, got, want)
 		}
 	}
 }

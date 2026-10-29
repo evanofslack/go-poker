@@ -353,18 +353,17 @@ Differences from the plan:
 - `backend/bot/sim_test.go` plays bots against each other on the real engine (`BOTSIM=1`). Medium beats
   easy by about +120 to +165 big blinds per 100 hands heads up.
 
-### Later: hard bot
+### PR 3-5: add hard bot
 
-- [ ] **Position:** tighter ranges early, wider on the button and in the blinds.
-- [ ] **Ranges, not random hands:** run equity against the hands an opponent likely holds given how they
-  bet this hand (raised preflop: strong range; called: medium).
-- [ ] **Sizing:** pick bet sizes by board texture and stack depth; shove short stacks preflop.
-- [ ] **Balanced bluffing:** bluff with draws and blockers at a frequency matched to bet size, so it's
-  hard to exploit by always calling or always folding.
-- [ ] **Light opponent modelling:** track each player's VPIP/aggression at the table and adjust (bluff
-  tight players more, value bet loose ones).
-- [ ] Optional personalities on the same settings (tight-passive, loose-aggressive) for variety.
-- [ ] Check that hard beats medium in `bot/sim_test.go` (`BOTSIM=1 go test ./bot -run Sim -v`).
+See `hard-bot.md`.
+
+- [x] Bots get the hand's actions and each player's public totals. The sims play duplicate matches
+  and exploiter bots; medium reads a big bet as polar, bomb pots as any hand, and both boards.
+- [x] **Hard**: ranges as weights from every action this hand, preflop charts by percentile with
+  push/fold when short, after the flop the move worth the most chips against a fold model fit to
+  each player's fold-to-bet. Every game, bomb pots and double board.
+- [x] Totals count fold-to-bet after the flop.
+- [x] Level picker and home page tile offer hard.
 
 ## 5.3 Ledger, players panel and host controls
 

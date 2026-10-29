@@ -79,7 +79,8 @@ func TestValidBotLevel(t *testing.T) {
 		{"medium", true},
 		{"", false},
 		{"Easy", false},
-		{"hard", false}, // not yet
+		{"hard", true},
+		{"expert", false},
 	}
 	for _, tt := range tests {
 		if got := validBotLevel(tt.s); got != tt.want {

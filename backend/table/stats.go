@@ -13,6 +13,8 @@ type Totals struct {
 	ThreeBets     int    `json:"threeBets"`     // and re-raised
 	Aggressive    int    `json:"aggressive"`    // bets and raises
 	Calls         int    `json:"calls"`
+	FacedBets     int    `json:"facedBets"`    // times they acted facing a bet after the flop
+	FoldedToBets  int    `json:"foldedToBets"` // and folded
 	SawFlop       int    `json:"sawFlop"`      // hands still in when the flop came
 	Showdowns     int    `json:"showdowns"`    // hands they showed
 	ShowdownWins  int    `json:"showdownWins"` // and won a pot
@@ -23,6 +25,12 @@ type Totals struct {
 
 // tally adds a finished hand to everyone's totals.
 func tally(totals map[string]*Totals, r *HandRecord) {
+	count := func(b bool) int {
+		if b {
+			return 1
+		}
+		return 0
+	}
 	won := map[string]bool{}
 	for _, pot := range r.Pots {
 		for _, w := range pot.Winners {
@@ -33,7 +41,23 @@ func tally(totals map[string]*Totals, r *HandRecord) {
 	// preflop, once a hand each
 	vpip, pfr, spot, threeBet, foldedPreflop := map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}
 	raises := 0
+	var street string
+	var top uint
+	bets := map[string]uint{} // what each player has bet this street
 	for _, a := range r.Actions {
+		if a.Street != street {
+			street, top = a.Street, 0
+			clear(bets)
+		}
+		if street != "preflop" && a.Kind != "bomb" && a.Kind != "ante" && top > bets[a.Name] {
+			s := totalsFor(totals, a.Name)
+			s.FacedBets++
+			s.FoldedToBets += count(a.Kind == "fold")
+		}
+		if a.Amount > 0 {
+			bets[a.Name] = a.To
+			top = max(top, a.To)
+		}
 		if a.Kind == "ante" || a.Kind == "small blind" || a.Kind == "big blind" || a.Kind == "straddle" || a.Kind == "bomb" {
 			continue
 		}
@@ -61,12 +85,6 @@ func tally(totals map[string]*Totals, r *HandRecord) {
 		}
 	}
 
-	count := func(b bool) int {
-		if b {
-			return 1
-		}
-		return 0
-	}
 	for _, p := range r.Players {
 		s := totalsFor(totals, p.Name)
 		s.Hands++

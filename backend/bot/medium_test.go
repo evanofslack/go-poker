@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"fmt"
 	"math"
 	"math/rand/v2"
 	"testing"
@@ -36,17 +37,17 @@ func TestEquity(t *testing.T) {
 			t.Errorf("%s: equity = %.3f, want about %.2f", name, got, want)
 		}
 	}
-	near("aces heads up", equity(holdem.Game{}, hole("As", "Ad"), nil, 1, anyHand, false, 4000, r), 0.85)
-	near("seven deuce heads up", equity(holdem.Game{}, hole("7s", "2d"), nil, 1, anyHand, false, 4000, r), 0.35)
-	if e := equity(holdem.Game{}, hole("As", "Ks"), cards("Qs", "Js", "Ts", "2d", "3c"), 3, anyHand, false, 500, r); e != 1 {
+	near("aces heads up", equity(holdem.Game{}, hole("As", "Ad"), nil, 1, anyHand, 0, 4000, r), 0.85)
+	near("seven deuce heads up", equity(holdem.Game{}, hole("7s", "2d"), nil, 1, anyHand, 0, 4000, r), 0.35)
+	if e := equity(holdem.Game{}, hole("As", "Ks"), cards("Qs", "Js", "Ts", "2d", "3c"), 3, anyHand, 0, 500, r); e != 1 {
 		t.Errorf("royal flush: equity = %v, want 1", e)
 	}
-	one := equity(holdem.Game{}, hole("Qs", "Qd"), nil, 1, anyHand, false, 2000, r)
-	five := equity(holdem.Game{}, hole("Qs", "Qd"), nil, 5, anyHand, false, 2000, r)
+	one := equity(holdem.Game{}, hole("Qs", "Qd"), nil, 1, anyHand, 0, 2000, r)
+	five := equity(holdem.Game{}, hole("Qs", "Qd"), nil, 5, anyHand, 0, 2000, r)
 	if five >= one {
 		t.Errorf("queens: equity against 5 (%.2f) should be below against 1 (%.2f)", five, one)
 	}
-	if e := equity(holdem.Game{}, hole("7s", "2d"), nil, 0, anyHand, false, 100, r); e != 1 {
+	if e := equity(holdem.Game{}, hole("7s", "2d"), nil, 0, anyHand, 0, 100, r); e != 1 {
 		t.Errorf("no opponents: equity = %v, want 1", e)
 	}
 }
@@ -54,7 +55,7 @@ func TestEquity(t *testing.T) {
 func BenchmarkEquity(b *testing.B) {
 	r := rand.New(rand.NewPCG(1, 2))
 	for b.Loop() {
-		equity(holdem.Game{}, hole("As", "Kd"), nil, 8, anyHand, false, trials, r)
+		equity(holdem.Game{}, hole("As", "Kd"), nil, 8, anyHand, 0, trials, r)
 	}
 }
 
@@ -243,5 +244,37 @@ func TestStyleOf(t *testing.T) {
 		if s.loose < -1 || s.loose > 1.5 || s.aggro < -0.3 || s.aggro > 0.3 {
 			t.Errorf("style %+v out of range", s)
 		}
+	}
+}
+
+func BenchmarkHard(b *testing.B) {
+	for _, g := range []holdem.Game{{}, {Hole: 4, Pot: true}, {Hole: 5, Pot: true}} {
+		b.Run(fmt.Sprint(g.HoleCards()), func(b *testing.B) {
+			st := holdem.New(holdem.Config{Game: g, SmallBlind: 10, BigBlind: 20}, [32]byte{1})
+			for seat := 1; seat <= 6; seat++ {
+				st.Sit(seat, 2000)
+			}
+			st.StartHand(holdem.Deal{})
+			var line []holdem.Acted
+			for st.Street == holdem.Preflop {
+				events, err := st.Act(st.ToAct, holdem.Call{})
+				if err != nil {
+					events, _ = st.Act(st.ToAct, holdem.Check{})
+				}
+				for _, e := range events {
+					if a, ok := e.(holdem.Acted); ok {
+						line = append(line, a)
+					}
+				}
+				if !st.Betting {
+					st.NextStreet()
+				}
+			}
+			r := rand.New(rand.NewPCG(1, 2))
+			for b.Loop() {
+				s := spotOf(st.View(st.ToAct), st.ToAct, line)
+				hard(s, r)
+			}
+		})
 	}
 }

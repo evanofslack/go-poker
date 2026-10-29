@@ -3,10 +3,13 @@ package bot
 import (
 	"fmt"
 	"io"
+	"math"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/alexclewontin/riverboat/eval"
@@ -14,107 +17,247 @@ import (
 )
 
 // The sims play bots against each other on the real engine and log how each
-// one plays, like a poker tracker would. Shuffles aren't seeded and they take
-// a while, so they only run with BOTSIM=1. With BOTSIM_LOG=<dir> they also
-// write every hand, with each bot's cards and reasons, to <dir>/<test>.log.
+// one plays, like a poker tracker would. They take a while, so they only run
+// with BOTSIM=1. With BOTSIM_LOG=<dir> they also write every hand, with each
+// bot's cards and reasons, to <dir>/<test>.log.
+//
+// Matches are duplicate: the same cards are played twice with the lineup
+// swapped, so luck mostly cancels and a few thousand hands tell bots apart.
 
 const simBB = 20
 
-// TestSim plays medium against easy heads up and checks medium comes out ahead.
+// games are the games the sims play, by name.
+var games = []struct {
+	name string
+	game holdem.Game
+	bomb bool // every hand a double board bomb pot
+}{
+	{"nlh", holdem.Game{}, false},
+	{"plo", holdem.Game{Hole: 4, Pot: true}, false},
+	{"short", holdem.Game{Short: true}, false},
+	{"bomb", holdem.Game{}, true},
+}
+
+// TestSim plays medium against easy heads up and checks medium comes out
+// ahead in every game.
 func TestSim(t *testing.T) {
-	if os.Getenv("BOTSIM") == "" {
-		t.Skip("set BOTSIM=1 to run")
+	simOnly(t)
+	for _, g := range games {
+		t.Run(g.name, func(t *testing.T) {
+			m := versus(t, table{game: g.game, bombs: g.bomb, hands: 1000}, Medium, Easy, 2)
+			if m.lo() <= 0 {
+				t.Errorf("medium against easy: %v", m)
+			}
+		})
 	}
-	const hands = 2000
-	res := sim(t, holdem.Game{}, []string{Medium, Easy}, hands, 100*simBB, false)
-	report(t, res)
-	if res[0].net <= 0 {
-		t.Errorf("medium lost %d chips to easy over %d hands", -res[0].net, hands)
+}
+
+// TestSimHard plays hard against medium in every game and against each
+// exploiter at no limit, heads up and six handed, and checks it comes out
+// ahead. It takes about an hour on ten cores.
+func TestSimHard(t *testing.T) {
+	simOnly(t)
+	type duelOf struct {
+		game     int
+		opponent string
+	}
+	var duels []duelOf
+	for i := range games {
+		duels = append(duels, duelOf{i, Medium})
+	}
+	for _, x := range []string{station, jammer, nit, trapper} {
+		duels = append(duels, duelOf{0, x})
+	}
+	for _, d := range duels {
+		g := games[d.game]
+		for _, seats := range []int{2, 6} {
+			t.Run(fmt.Sprintf("%s/%s/%d", g.name, d.opponent, seats), func(t *testing.T) {
+				var mu sync.Mutex
+				var all []float64
+				t.Run("shards", func(t *testing.T) {
+					for k := range 10 {
+						t.Run(strconv.Itoa(k), func(t *testing.T) {
+							t.Parallel()
+							chips := duel(t, table{game: g.game, bombs: g.bomb, hands: 500}, Hard, d.opponent, seats)
+							mu.Lock()
+							all = append(all, chips...)
+							mu.Unlock()
+						})
+					}
+				})
+				m := matchOf(all, seats/2)
+				t.Logf("hard against %s: %v", d.opponent, m)
+				if m.lo() <= 0 {
+					t.Errorf("hard against %s at %s, %d seats: %v", d.opponent, g.name, seats, m)
+				}
+			})
+		}
 	}
 }
 
 // TestSimBaseline seats three medium bots with three playing as medium did
 // before its rewrite, and checks the new one comes out ahead.
 func TestSimBaseline(t *testing.T) {
-	if os.Getenv("BOTSIM") == "" {
-		t.Skip("set BOTSIM=1 to run")
+	simOnly(t)
+	if m := versus(t, table{hands: 1500}, Medium, baselineLevel, 6); m.mean <= 0 {
+		t.Errorf("medium against baseline: %v", m)
 	}
-	levels := []string{Medium, baselineLevel, Medium, baselineLevel, Medium, baselineLevel}
-	res := sim(t, holdem.Game{}, levels, 4000, 100*simBB, false)
-	report(t, res)
-	net := 0
-	for _, s := range res {
-		if s.level == Medium {
-			net += s.net
+}
+
+// TestSimVersus plays the first of BOTSIM_LEVELS (medium,easy by default)
+// against each of the others in BOTSIM_GAMES (all by default), heads up and
+// six handed, BOTSIM_HANDS hands in each of BOTSIM_SHARDS shards at once.
+func TestSimVersus(t *testing.T) {
+	simOnly(t)
+	levels := strings.Split(or(os.Getenv("BOTSIM_LEVELS"), Medium+","+Easy), ",")
+	only := os.Getenv("BOTSIM_GAMES")
+	hands, err := strconv.Atoi(or(os.Getenv("BOTSIM_HANDS"), "1500"))
+	must(t, err)
+	shards, err := strconv.Atoi(or(os.Getenv("BOTSIM_SHARDS"), "1"))
+	must(t, err)
+	a := levels[0]
+	for _, g := range games {
+		if only != "" && !strings.Contains(only, g.name) {
+			continue
 		}
-	}
-	if net <= 0 {
-		t.Errorf("medium lost %d chips to baseline", -net)
+		for _, b := range levels[1:] {
+			for _, seats := range []int{2, 6} {
+				var mu sync.Mutex
+				var all []float64
+				t.Run(fmt.Sprintf("%s/%s-%s/%d", g.name, a, b, seats), func(t *testing.T) {
+					for k := range shards {
+						t.Run(strconv.Itoa(k), func(t *testing.T) {
+							t.Parallel()
+							chips := duel(t, table{game: g.game, bombs: g.bomb, hands: hands}, a, b, seats)
+							mu.Lock()
+							all = append(all, chips...)
+							mu.Unlock()
+						})
+					}
+				})
+				t.Logf("%s %s against %s, %d seats, %d hands twice: %v", g.name, a, b, seats, len(all), matchOf(all, seats/2))
+			}
+		}
 	}
 }
 
 // TestSimTable plays six bots of a level at one table, the lineup a person
 // joining a bot table meets.
 func TestSimTable(t *testing.T) {
-	if os.Getenv("BOTSIM") == "" {
-		t.Skip("set BOTSIM=1 to run")
-	}
+	simOnly(t)
 	for _, level := range []string{Medium, Easy} {
 		t.Run(level, func(t *testing.T) {
 			levels := make([]string, 6)
 			for i := range levels {
 				levels[i] = level
 			}
-			report(t, sim(t, holdem.Game{}, levels, 2000, 100*simBB, false))
+			report(t, sim(t, table{levels: levels, hands: 2000}))
 		})
 	}
 }
 
-// TestBotsPlayOmaha plays PLO and PLO5, and checks bots only make legal moves.
-func TestBotsPlayOmaha(t *testing.T) {
-	for _, g := range []holdem.Game{{Hole: 4, Pot: true}, {Hole: 5, Pot: true}, {Hole: 4}} {
-		sim(t, g, []string{Medium, Easy, Medium, Easy}, 50, 100*simBB, false)
+// TestBotsPlayEveryGame plays a few hands of every game, with straddles, bomb
+// pots and double boards, and checks bots only make legal moves.
+func TestBotsPlayEveryGame(t *testing.T) {
+	levels := []string{Hard, Medium, Easy, Hard, Medium, Easy}
+	for _, g := range []holdem.Game{{}, {Hole: 4, Pot: true}, {Hole: 5, Pot: true}, {Hole: 4}, {Short: true}, {Hole: 4, Pot: true, Short: true}} {
+		sim(t, table{game: g, levels: levels[:4], hands: 30})
+		sim(t, table{game: g, levels: levels[:4], hands: 8, bombs: true})
 	}
+	sim(t, table{levels: levels, hands: 200, straddle: true})
 }
 
-func TestBotsPlayShortDeck(t *testing.T) {
-	for _, g := range []holdem.Game{{Short: true}, {Hole: 4, Pot: true, Short: true}} {
-		sim(t, g, []string{Medium, Easy, Medium, Easy}, 50, 100*simBB, false)
-	}
-}
-
-// TestSimShortDeck plays medium against easy at short deck hold'em heads up
-// and checks medium comes out ahead.
-func TestSimShortDeck(t *testing.T) {
+func simOnly(t *testing.T) {
 	if os.Getenv("BOTSIM") == "" {
 		t.Skip("set BOTSIM=1 to run")
 	}
-	const hands = 2000
-	res := sim(t, holdem.Game{Short: true}, []string{Medium, Easy}, hands, 100*simBB, false)
-	report(t, res)
-	if res[0].net <= 0 {
-		t.Errorf("medium lost %d chips to easy at short deck over %d hands", -res[0].net, hands)
-	}
 }
 
-// TestSimOmaha plays medium against easy at PLO heads up and checks medium
-// comes out ahead.
-func TestSimOmaha(t *testing.T) {
-	if os.Getenv("BOTSIM") == "" {
-		t.Skip("set BOTSIM=1 to run")
+func or(s, otherwise string) string {
+	if s == "" {
+		return otherwise
 	}
-	const hands = 2000
-	res := sim(t, holdem.Game{Hole: 4, Pot: true}, []string{Medium, Easy}, hands, 100*simBB, false)
-	report(t, res)
-	if res[0].net <= 0 {
-		t.Errorf("medium lost %d chips to easy at PLO over %d hands", -res[0].net, hands)
-	}
+	return s
 }
 
-// TestBotsFacingStraddles plays six bots with every straddle posted, and
-// checks they only make legal moves.
-func TestBotsFacingStraddles(t *testing.T) {
-	sim(t, holdem.Game{}, []string{Medium, Easy, Medium, Easy, Medium, Easy}, 300, 100*simBB, true)
+// table is a sim to play.
+type table struct {
+	game     holdem.Game
+	levels   []string // by seat, from 1
+	hands    int
+	straddle bool   // post every straddle there can be
+	bombs    bool   // every hand a double board bomb pot of a big blind
+	seed     uint64 // the cards, 0 for any
+	reset    bool   // every stack back to 100 big blinds before each hand
+}
+
+// match is how one level did against another, in big blinds per 100 hands
+// a seat, with a 95% interval.
+type match struct {
+	mean, ci float64
+}
+
+func (m match) lo() float64 { return m.mean - m.ci }
+
+func (m match) String() string { return fmt.Sprintf("%+.1f ± %.1f bb/100", m.mean, m.ci) }
+
+// versus plays a against b at seats seats, a and b taking turns around the
+// table, then again on the same cards with a and b swapped, and returns how
+// a did.
+func versus(t *testing.T, tb table, a, b string, seats int) match {
+	t.Helper()
+	m := matchOf(duel(t, tb, a, b, seats), seats/2)
+	t.Logf("%s against %s, %d seats, %d hands twice: %v", a, b, seats, tb.hands, m)
+	return m
+}
+
+// duel plays a against b at seats seats, a and b taking turns around the
+// table, then again on the same cards with a and b swapped, and returns a's
+// chips each hand over both, so the same cards pair up.
+func duel(t *testing.T, tb table, a, b string, seats int) []float64 {
+	t.Helper()
+	tb.seed, tb.reset = rand.Uint64()|1, true
+	var runs [2][]stats
+	for k := range runs {
+		tb.levels = make([]string, seats)
+		for i := range tb.levels {
+			tb.levels[i] = a
+			if (i+k)%2 == 1 {
+				tb.levels[i] = b
+			}
+		}
+		runs[k] = sim(t, tb)
+		report(t, runs[k])
+	}
+	sum := make([]float64, tb.hands)
+	for _, run := range runs {
+		for _, s := range run {
+			if s.level != a {
+				continue
+			}
+			for i, net := range s.nets {
+				sum[i] += float64(net)
+			}
+		}
+	}
+	return sum
+}
+
+// matchOf is how a level did from its chips each hand over two runs, with
+// seats of it in each.
+func matchOf(sum []float64, seats int) match {
+	var mean, sq float64
+	for _, x := range sum {
+		mean += x
+	}
+	mean /= float64(len(sum))
+	for _, x := range sum {
+		sq += (x - mean) * (x - mean)
+	}
+	sd := math.Sqrt(sq / float64(len(sum)-1))
+	// per seat, per 100 hands, in big blinds
+	scale := 100 / float64(2*seats) / simBB
+	return match{mean: mean * scale, ci: 1.96 * sd / math.Sqrt(float64(len(sum))) * scale}
 }
 
 // stats is how one seat played over a sim.
@@ -122,6 +265,7 @@ type stats struct {
 	level string
 	net   int
 	hands int
+	nets  []int // chips won or lost each hand
 
 	vpip, pfr           int // hands it called or raised preflop, and raised
 	reraiseSpots, bets3 int // hands it faced a preflop raise, and reraised
@@ -143,26 +287,34 @@ type handFlags struct {
 	start                            uint // stack before the blinds, 0 if not dealt in
 }
 
-// sim plays game between bots of levels, in seats from 1, rebuying busted
-// ones, and returns how each one played. straddle posts every straddle there
-// can be.
-func sim(t *testing.T, game holdem.Game, levels []string, hands int, buyIn uint, straddle bool) []stats {
-	g := holdem.New(holdem.Config{Game: game, SmallBlind: simBB / 2, BigBlind: simBB}, [32]byte{byte(rand.Uint64())})
-	res := make([]stats, len(levels))
-	bought := make([]uint, len(levels))
-	for i, level := range levels {
+// sim plays tb, rebuying busted bots, and returns how each one played.
+func sim(t *testing.T, tb table) []stats {
+	seed := [32]byte{}
+	s := tb.seed
+	if s == 0 {
+		s = rand.Uint64()
+	}
+	for i := range 8 {
+		seed[i] = byte(s >> (8 * i))
+	}
+	buyIn := uint(100 * simBB)
+	g := holdem.New(holdem.Config{Game: tb.game, SmallBlind: simBB / 2, BigBlind: simBB}, seed)
+	res := make([]stats, len(tb.levels))
+	bought := make([]uint, len(tb.levels))
+	reads := map[int]Read{}
+	for i, level := range tb.levels {
 		must(t, g.Sit(i+1, buyIn))
 		res[i].level, bought[i] = level, buyIn
 	}
 	r := rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))
-	name := func(seat int) string { return fmt.Sprintf("%s%d", levels[seat-1], seat) }
+	name := func(seat int) string { return fmt.Sprintf("%s%d", tb.levels[seat-1], seat) }
 	log := simLog(t)
 
-	flags := make([]handFlags, len(levels))
-	var board []eval.Card
+	flags := make([]handFlags, len(tb.levels))
+	var line []holdem.Acted
+	var top uint           // this street's biggest bet
+	bets := map[int]uint{} // and each seat's
 	flopped := false
-	// who made the last bet or raise before this street, and on it
-	aggressor, latest := 0, 0
 	// see follows what events did to the hand, and reports whether it ended
 	see := func(events []holdem.Event) bool {
 		ended := false
@@ -176,23 +328,41 @@ func sim(t *testing.T, game holdem.Game, levels []string, hands int, buyIn uint,
 				for _, seat := range e.Seats {
 					p := g.Player(seat)
 					flags[seat-1].start = p.Stack + p.Committed
-					fmt.Fprintf(log, "  %-9s %5d  %s\n", name(seat), flags[seat-1].start, cardList(p.Cards[:]))
+					fmt.Fprintf(log, "  %-9s %5d  %s\n", name(seat), flags[seat-1].start, cardList(p.Cards))
 				}
-				board, flopped, aggressor, latest = nil, false, 0, 0
+				line, flopped, top = nil, false, 0
+				clear(bets)
 			case holdem.Acted:
-				if e.Kind == holdem.KindBet || e.Kind == holdem.KindRaise {
-					latest = e.Seat
+				rd := reads[e.Seat]
+				if len(line) > 0 && line[len(line)-1].Street != e.Street {
+					top = 0
+					clear(bets)
 				}
+				if e.Street != holdem.Preflop && e.Kind != holdem.KindBomb && e.Kind != holdem.KindAnte && top > bets[e.Seat] {
+					rd.FacedBets++
+					rd.FoldedToBets += b2i(e.Kind == holdem.KindFold)
+				}
+				if e.Amount > 0 {
+					bets[e.Seat] = e.To
+					top = max(top, e.To)
+				}
+				line = append(line, e)
+				switch e.Kind {
+				case holdem.KindBet, holdem.KindRaise:
+					rd.Aggressive++
+				case holdem.KindCall:
+					rd.Calls++
+				}
+				reads[e.Seat] = rd
 			case holdem.StreetDealt:
 				if e.Run > 0 {
 					continue
 				}
-				board = append(board, e.Cards...)
 				flopped = true
-				if latest != 0 {
-					aggressor, latest = latest, 0
+				fmt.Fprintf(log, "  board %s\n", cardList(g.Board))
+				if g.Double && len(g.Boards) > 1 {
+					fmt.Fprintf(log, "  board %s\n", cardList(g.Boards[1]))
 				}
-				fmt.Fprintf(log, "  board %s\n", cardList(board))
 			case holdem.PotWon:
 				var names []string
 				for _, seat := range e.Winners {
@@ -206,7 +376,7 @@ func sim(t *testing.T, game holdem.Game, levels []string, hands int, buyIn uint,
 					}
 				}
 			case holdem.Shown:
-				fmt.Fprintf(log, "  %s shows %s\n", name(e.Seat), cardList(e.Cards[:]))
+				fmt.Fprintf(log, "  %s shows %s\n", name(e.Seat), cardList(e.Cards))
 			case holdem.HandEnded:
 				ended = true
 			}
@@ -214,23 +384,30 @@ func sim(t *testing.T, game holdem.Game, levels []string, hands int, buyIn uint,
 		return ended
 	}
 
-	for played := 0; played < hands; {
+	for played := 0; played < tb.hands; {
 		var events []holdem.Event
 		var err error
 		switch {
 		case !g.InHand():
 			for i, p := range g.Players {
-				if p.Stack == 0 {
-					must(t, g.AddChips(p.Seat, buyIn))
+				switch {
+				case tb.reset && p.Stack > buyIn:
+					must(t, g.RemoveChips(p.Seat, p.Stack-buyIn))
+					bought[i] -= p.Stack - buyIn
+				case tb.reset && p.Stack < buyIn, p.Stack == 0:
+					bought[i] += buyIn - p.Stack
+					must(t, g.AddChips(p.Seat, buyIn-p.Stack))
 					must(t, g.SetSittingOut(p.Seat, false))
-					bought[i] += buyIn
 				}
 			}
-			n := 0
-			if straddle {
-				n = len(g.Positions().Straddle)
+			d := holdem.Deal{}
+			if tb.straddle {
+				d.Straddles = len(g.Positions().Straddle)
 			}
-			events, err = g.StartHand(holdem.Deal{Straddles: n})
+			if tb.bombs {
+				d.Bomb, d.Boards = simBB, 2
+			}
+			events, err = g.StartHand(d)
 			must(t, err)
 		case !g.Betting:
 			events, err = g.NextStreet()
@@ -238,11 +415,17 @@ func sim(t *testing.T, game holdem.Game, levels []string, hands int, buyIn uint,
 		default:
 			seat := g.ToAct
 			view := g.View(seat)
-			s := spotOf(view, seat, aggressor)
+			s := spotOf(view, seat, line)
 			s.style = styleOf(name(seat))
-			a := decide(levels[seat-1], s, r)
+			s.reads = map[int]Read{}
+			for k, rd := range reads {
+				if k != seat {
+					s.reads[k] = rd
+				}
+			}
+			a := decide(tb.levels[seat-1], s, r)
 			note(&res[seat-1], &flags[seat-1], view, seat, a)
-			fmt.Fprintf(log, "    %-7s %-9s %-5s %-5s %5s  %s\n", g.Street, name(seat), cardList(s.hole[:]), kindNames[a.Kind], amount(a), a.Reason)
+			fmt.Fprintf(log, "    %-7s %-9s %-5s %-5s %5s  %s\n", g.Street, name(seat), cardList(s.hole), kindNames[a.Kind], amount(a), a.Reason)
 			events, err = g.Act(seat, toHoldem(s, a))
 			if err != nil {
 				t.Fatalf("%s's %+v rejected: %v", name(seat), a, err)
@@ -253,10 +436,13 @@ func sim(t *testing.T, game holdem.Game, levels []string, hands int, buyIn uint,
 		}
 		played++
 		for i, f := range flags {
+			s := &res[i]
 			if f.start == 0 {
+				s.nets = append(s.nets, 0)
 				continue // not dealt in
 			}
-			s := &res[i]
+			net := int(g.Players[i].Stack) - int(f.start)
+			s.nets = append(s.nets, net)
 			s.hands++
 			s.vpip += b2i(f.vpip)
 			s.pfr += b2i(f.pfr)
@@ -265,7 +451,15 @@ func sim(t *testing.T, game holdem.Game, levels []string, hands int, buyIn uint,
 			s.sawFlop += b2i(flopped && !f.foldedPreflop)
 			s.showdowns += b2i(f.showdown)
 			s.wonSD += b2i(f.showdown && f.won)
-			if net := int(g.Players[i].Stack) - int(f.start); net != 0 {
+			rd := reads[i+1]
+			rd.Hands++
+			rd.Bombs += b2i(tb.bombs)
+			rd.VPIP += b2i(f.vpip)
+			rd.PFR += b2i(f.pfr)
+			rd.ThreeBetSpots += b2i(f.reraiseSpot)
+			rd.ThreeBets += b2i(f.reraised)
+			reads[i+1] = rd
+			if net != 0 {
 				fmt.Fprintf(log, "  %-9s %+d\n", name(i+1), net)
 			}
 		}
@@ -333,9 +527,12 @@ func sizeOf(amount, owe, pot, stack uint) int {
 }
 
 // report logs a row of stats for each seat, then a solid human 6-max player's
-// for comparison.
+// for comparison, when the test is verbose.
 func report(t *testing.T, res []stats) {
 	t.Helper()
+	if !testing.Verbose() {
+		return
+	}
 	t.Logf("%-9s %6s %5s %5s %5s %5s %5s %5s %5s %7s   postflop sizes %v",
 		"seat", "hands", "vpip", "pfr", "3bet", "af", "fold", "wtsd", "w$sd", "bb/100", sizeNames)
 	for i, s := range res {

@@ -373,6 +373,8 @@ export interface Totals {
   threeBets: number /* int */; // and re-raised
   aggressive: number /* int */; // bets and raises
   calls: number /* int */;
+  facedBets: number /* int */; // times they acted facing a bet after the flop
+  foldedToBets: number /* int */; // and folded
   sawFlop: number /* int */; // hands still in when the flop came
   showdowns: number /* int */; // hands they showed
   showdownWins: number /* int */; // and won a pot
