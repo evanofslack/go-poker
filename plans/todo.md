@@ -694,7 +694,7 @@ From playing the stack locally.
 Planned in `admin.md`: who did what at a table, by person, IP and connection, refused commands
 included, saved for 30 days; and a read-only admin page on a private port.
 
-- [ ] PR 1: audit log
+- [x] PR 1: audit log
 - [ ] PR 2: admin API
 - [ ] PR 3: admin page
 - [ ] Later: admin actions (close a table, drop a connection, remove a player)

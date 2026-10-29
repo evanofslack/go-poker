@@ -5,6 +5,7 @@ import (
 	"io"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -132,5 +133,73 @@ func testStore(t *testing.T, s Store) {
 	}
 	if got := open()["t"]; got.ID != "b" || len(got.Hands) != 1 {
 		t.Fatalf("pruning touched the open table: %+v", got)
+	}
+
+	testAuditStore(t, s)
+}
+
+func testAuditStore(t *testing.T, s Store) {
+	ctx := context.Background()
+	ids := func(q AuditQuery) []int64 {
+		t.Helper()
+		got, err := s.Audit(ctx, q)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var ids []int64
+		for _, e := range got {
+			ids = append(ids, e.ID)
+		}
+		return ids
+	}
+	if id, err := s.LastAuditID(ctx); err != nil || id != 0 {
+		t.Fatalf("last id %d, %v", id, err)
+	}
+	entries := []AuditEntry{
+		{ID: 1, Time: 1000, Table: "a", TableName: "t", Person: "p1", Name: "al", IP: "1.1.1.1", Conn: "c1", Kind: "join", Data: []byte(`{"token":false}`)},
+		{ID: 2, Time: 2000, Table: "a", TableName: "t", Person: "p2", Name: "bo", IP: "2.2.2.2", Conn: "c2", Kind: "play-check", Error: "not your turn"},
+		{ID: 3, Time: 3000, TableName: "u", IP: "2.2.2.2", Conn: "c3", Kind: "join-table", Error: "table not found"},
+	}
+	if err := s.AppendAudit(ctx, entries[:2]); err != nil {
+		t.Fatal(err)
+	}
+	// a batch tried again after a failure writes each entry once
+	if err := s.AppendAudit(ctx, entries); err != nil {
+		t.Fatal(err)
+	}
+	if id, err := s.LastAuditID(ctx); err != nil || id != 3 {
+		t.Fatalf("last id %d, %v", id, err)
+	}
+	got, err := s.Audit(ctx, AuditQuery{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []AuditEntry{entries[2], entries[1], entries[0]}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v\nwant %+v", got, want)
+	}
+	for _, c := range []struct {
+		q    AuditQuery
+		want []int64
+	}{
+		{AuditQuery{Table: "a"}, []int64{2, 1}},
+		{AuditQuery{Table: "u"}, []int64{3}},
+		{AuditQuery{IP: "2.2.2.2"}, []int64{3, 2}},
+		{AuditQuery{Name: "al"}, []int64{1}},
+		{AuditQuery{Person: "p2"}, []int64{2}},
+		{AuditQuery{Kind: "join"}, []int64{1}},
+		{AuditQuery{Refused: true}, []int64{3, 2}},
+		{AuditQuery{Before: 3, Limit: 1}, []int64{2}},
+	} {
+		if got := ids(c.q); !slices.Equal(got, c.want) {
+			t.Errorf("%+v: got %v, want %v", c.q, got, c.want)
+		}
+	}
+
+	// the tables are pruned above, and their entries stay; age prunes them
+	if n, err := s.PruneAudit(ctx, time.UnixMilli(2500)); err != nil || n != 2 {
+		t.Fatalf("pruned %d, %v", n, err)
+	}
+	if got := ids(AuditQuery{}); !slices.Equal(got, []int64{3}) {
+		t.Fatalf("after pruning %v", got)
 	}
 }

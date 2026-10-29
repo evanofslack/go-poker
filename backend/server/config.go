@@ -11,13 +11,14 @@ import (
 
 // Vars so loadConfig and tests can change them.
 var (
-	maxConns       = 1000    // websocket connections across all clients
-	maxConnsPerIP  = 10      // websocket connections from one address
-	maxTablesPerIP = 3       // open tables created from one address
-	trustProxy     = false   // take the client address from X-Forwarded-For
-	metricsAddr    = ":2112" // where /metrics is served, empty for off; never the public port
-	retainDays     = 30      // closed tables are kept this long
-	databaseURL    = ""      // postgres://… or sqlite:path; empty keeps tables in memory
+	maxConns        = 1000    // websocket connections across all clients
+	maxConnsPerIP   = 10      // websocket connections from one address
+	maxTablesPerIP  = 3       // open tables created from one address
+	trustProxy      = false   // take the client address from X-Forwarded-For
+	metricsAddr     = ":2112" // where /metrics is served, empty for off; never the public port
+	retainDays      = 30      // closed tables are kept this long
+	auditRetainDays = 30      // audit entries are kept this long, even past their table
+	databaseURL     = ""      // postgres://… or sqlite:path; empty keeps tables in memory
 
 	timing = table.DefaultTiming // how long tables wait for things
 )
@@ -31,6 +32,7 @@ func loadConfig() {
 	envInt("MAX_CONNS_PER_IP", &maxConnsPerIP)
 	envInt("MAX_TABLES_PER_IP", &maxTablesPerIP)
 	envInt("RETAIN_DAYS", &retainDays)
+	envInt("AUDIT_RETAIN_DAYS", &auditRetainDays)
 	envDuration("RECONNECT_GRACE", &timing.ReconnectGrace)
 	envDuration("ENDED_TABLE_TTL", &timing.EndedTTL)
 	envDuration("IDLE_TABLE_TIMEOUT", &timing.IdleTimeout)

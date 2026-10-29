@@ -37,6 +37,9 @@ var (
 	saveErrors = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "poker_save_errors_total", Help: "Tables that failed to save.",
 	})
+	auditDropped = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "poker_audit_dropped_total", Help: "Audit entries dropped for a full queue or a failing store.",
+	})
 	saveSeconds = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name: "poker_save_seconds", Help: "How long saving a table took.",
 		Buckets: prometheus.ExponentialBuckets(0.0005, 4, 8),

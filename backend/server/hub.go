@@ -31,22 +31,28 @@ type Hub struct {
 
 	store  Store
 	timing table.Timing
+
+	audits      chan AuditEntry    // waiting to be written by writeAudits
+	flushAudits chan chan struct{} // asks writeAudits to write now
 }
 
 func newHub(store Store) *Hub {
 	return &Hub{
-		clients:    make(map[*Client]bool),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		stop:       make(chan chan []*Client),
-		tables:     make(map[string]*tableActor),
-		conns:      make(map[string]int),
-		store:      store,
-		timing:     timing,
+		clients:     make(map[*Client]bool),
+		register:    make(chan *Client),
+		unregister:  make(chan *Client),
+		stop:        make(chan chan []*Client),
+		tables:      make(map[string]*tableActor),
+		conns:       make(map[string]int),
+		store:       store,
+		timing:      timing,
+		audits:      make(chan AuditEntry, auditQueueLen),
+		flushAudits: make(chan chan struct{}),
 	}
 }
 
 func (h *Hub) run() {
+	go h.writeAudits()
 	for {
 		select {
 		case client := <-h.register:
@@ -120,18 +126,26 @@ func (h *Hub) restore(ctx context.Context) error {
 	return nil
 }
 
-// pruneEvery is how often closed tables past retention are deleted.
+// pruneEvery is how often closed tables and audit entries past retention
+// are deleted.
 const pruneEvery = time.Hour
 
-// prune deletes closed tables older than the retention, now and then every
-// pruneEvery, until ctx is done.
+// prune deletes closed tables and audit entries older than their retention,
+// now and then every pruneEvery, until ctx is done.
 func (h *Hub) prune(ctx context.Context) {
 	for {
-		n, err := h.store.Prune(ctx, time.Now().Add(-time.Duration(retainDays)*24*time.Hour))
+		now := time.Now()
+		n, err := h.store.Prune(ctx, now.Add(-time.Duration(retainDays)*24*time.Hour))
 		if err != nil {
 			slog.Default().Error("prune tables", "error", err)
 		} else if n > 0 {
 			slog.Default().Info("pruned tables", "count", n)
+		}
+		n, err = h.store.PruneAudit(ctx, now.Add(-time.Duration(auditRetainDays)*24*time.Hour))
+		if err != nil {
+			slog.Default().Error("prune audit", "error", err)
+		} else if n > 0 {
+			slog.Default().Info("pruned audit", "count", n)
 		}
 		select {
 		case <-time.After(pruneEvery):
@@ -221,12 +235,13 @@ func (h *Hub) releaseConn(ip string) {
 }
 
 // shutdown closes every table, telling its players the server is restarting,
-// then closes every connection once its pending messages are written, or ctx
-// is done.
+// writes the audit, then closes every connection once its pending messages
+// are written, or ctx is done.
 func (h *Hub) shutdown(ctx context.Context) {
 	for _, a := range h.allTables() {
 		a.shutdown()
 	}
+	h.flushAudit(ctx)
 
 	reply := make(chan []*Client, 1)
 	h.stop <- reply

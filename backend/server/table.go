@@ -18,6 +18,7 @@ var errClosed = errors.New("table not found")
 // tableActor runs one table. Its goroutine owns the state and the clients
 // bound to it; everyone else talks to it through the inbox.
 type tableActor struct {
+	id        string
 	name      string
 	hub       *Hub
 	creatorIP string // fixed at creation
@@ -62,6 +63,7 @@ type reply struct {
 
 func newTableActor(h *Hub, s *table.State) *tableActor {
 	a := &tableActor{
+		id:        s.ID,
 		name:      s.Name,
 		hub:       h,
 		creatorIP: s.CreatorIP,
@@ -143,11 +145,22 @@ func (a *tableActor) handle(env envelope) {
 		return // a connection already replaced by a reconnect
 	}
 
+	// who sent it, before it changes: a Leave takes them away
+	person := table.PersonOf(env.cmd)
+	var name string
+	if p := a.state.People[person]; p != nil {
+		name = p.Name
+	}
+	logSeq := a.state.LogSeq
+
 	now := time.Now()
 	res, err := a.reduce(now, env.cmd)
 	if err != nil {
-		r.err = err
+		r.err = err // the client records it
 		return
+	}
+	if env.client != nil {
+		a.auditCommand(env.client, env.cmd, person, name, logSeq, res)
 	}
 	// the lobby sees the change before anyone hears of it, so a client that
 	// lists tables on an update finds it there

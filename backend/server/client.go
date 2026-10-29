@@ -41,6 +41,7 @@ type Client struct {
 	quit chan struct{}   // closed by the hub on shutdown
 	done chan struct{}   // closed when writePump returns
 	ip   string          // remote address, counted against the per-ip limits
+	id   string          // names the connection in the audit
 
 	// owned by readPump
 	table  *tableActor // the table joined, nil before
@@ -54,6 +55,7 @@ func newClient(conn *websocket.Conn, hub *Hub, ip string) *Client {
 		conn: conn,
 		send: make(chan []byte, 1024),
 		ip:   ip,
+		id:   uuid.NewString()[:8],
 		quit: make(chan struct{}),
 		done: make(chan struct{}),
 	}
@@ -102,6 +104,7 @@ func (c *Client) readPump() {
 		if count > maxMessagesPerSecond {
 			slog.Default().Warn("Websocket rate limit exceeded, closing", "ip", c.ip)
 			limitHits.WithLabelValues("messages").Inc()
+			c.hub.audit(AuditEntry{Person: c.person, IP: c.ip, Conn: c.id, Kind: "limit", Error: "messages"})
 			break
 		}
 		if err = c.safeProcessEvents(message); err != nil {
@@ -171,6 +174,7 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	ip := clientIP(r, trustProxy)
 	if ok, limit := hub.reserveConn(ip); !ok {
 		limitHits.WithLabelValues(limit).Inc()
+		hub.audit(AuditEntry{IP: ip, Kind: "limit", Error: limit})
 		http.Error(w, "too many connections", http.StatusTooManyRequests)
 		return
 	}
@@ -191,15 +195,22 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 }
 
 // safeProcessEvents recovers from a panic while handling a message, so one bad
-// message cannot take down the server.
+// message cannot take down the server, and records a refused message.
 func (c *Client) safeProcessEvents(rawMessage []byte) (err error) {
+	var in Inbound
 	defer func() {
 		if r := recover(); r != nil {
 			panicsTotal.Inc()
 			err = fmt.Errorf("panic processing message: %v", r)
 		}
+		if err != nil {
+			c.auditRefused(in, err)
+		}
 	}()
-	return c.processEvents(rawMessage)
+	if err := json.Unmarshal(rawMessage, &in); err != nil {
+		return err
+	}
+	return c.processEvents(in)
 }
 
 // sendError tells c why its message was refused.
@@ -227,11 +238,7 @@ var hostKinds = map[string]table.HostKind{
 	ActionDenyBuy:         table.DenyBuy,
 }
 
-func (c *Client) processEvents(raw []byte) error {
-	var in Inbound
-	if err := json.Unmarshal(raw, &in); err != nil {
-		return err
-	}
+func (c *Client) processEvents(in Inbound) error {
 	switch in.Action {
 	case "":
 		return errors.New("deserialize message")

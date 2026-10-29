@@ -59,6 +59,10 @@ Tables are saved between hands and on shutdown. A graceful restart carries on mi
 back to the end of the last hand, which is then dealt again. Closed tables are kept for
 `RETAIN_DAYS` (default 30) and then deleted.
 
+The same store keeps an audit of what each connection did and tried, refused messages included, with
+its IP: for settling disputes, never shown to players. Entries outlive their table and are deleted
+after `AUDIT_RETAIN_DAYS` (default 30).
+
 ## metrics
 
 Prometheus metrics are served at `/metrics` on a separate port, `METRICS_ADDR` (default `:2112`, or set it empty to turn off).
@@ -75,7 +79,8 @@ Prometheus metrics are served at `/metrics` on a separate port, `METRICS_ADDR` (
 | `poker_seat_grace_total` | `outcome`: reconnected, expired | dropped players who came back or lost their seat |
 | `poker_slow_client_drops_total` | | clients dropped for falling behind |
 | `poker_panics_total` | | panics recovered while handling a message |
-| `poker_save_errors_total` | | tables that failed to save |
+| `poker_save_errors_total` | | tables or audit batches that failed to save |
+| `poker_audit_dropped_total` | | audit entries dropped for a full queue or a failing store |
 | `poker_save_seconds` | | how long saving a table took |
 
 Plus the standard `go_*` and `process_*` metrics.

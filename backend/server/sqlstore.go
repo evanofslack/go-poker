@@ -255,6 +255,84 @@ func (s *sqlStore) Prune(ctx context.Context, closedBefore time.Time) (int, erro
 	return int(n), err
 }
 
+func (s *sqlStore) AppendAudit(ctx context.Context, entries []AuditEntry) error {
+	return s.tx(ctx, func(tx *sql.Tx) error {
+		for _, e := range entries {
+			_, err := tx.ExecContext(ctx, `
+				insert into audit (id, time, table_id, table_name, person, name, ip, conn, kind, error, data)
+				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (id) do nothing`,
+				e.ID, e.Time, e.Table, e.TableName, e.Person, e.Name, e.IP, e.Conn, e.Kind, e.Error, string(e.Data))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (s *sqlStore) Audit(ctx context.Context, q AuditQuery) ([]AuditEntry, error) {
+	var where []string
+	var args []any
+	add := func(cond string, arg any) {
+		args = append(args, arg)
+		where = append(where, strings.ReplaceAll(cond, "?", "$"+strconv.Itoa(len(args))))
+	}
+	if q.Table != "" {
+		add("(table_id = ? or table_name = ?)", q.Table)
+	}
+	for _, f := range []struct{ col, v string }{{"person", q.Person}, {"name", q.Name}, {"ip", q.IP}, {"kind", q.Kind}} {
+		if f.v != "" {
+			add(f.col+" = ?", f.v)
+		}
+	}
+	if q.Refused {
+		where = append(where, "error <> ''")
+	}
+	if q.Before > 0 {
+		add("id < ?", q.Before)
+	}
+	query := `select id, time, table_id, table_name, person, name, ip, conn, kind, error, data from audit`
+	if len(where) > 0 {
+		query += " where " + strings.Join(where, " and ")
+	}
+	args = append(args, q.limit())
+	query += " order by id desc limit $" + strconv.Itoa(len(args))
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []AuditEntry
+	for rows.Next() {
+		var e AuditEntry
+		var data string
+		if err := rows.Scan(&e.ID, &e.Time, &e.Table, &e.TableName, &e.Person, &e.Name, &e.IP, &e.Conn, &e.Kind, &e.Error, &data); err != nil {
+			return nil, err
+		}
+		if data != "" {
+			e.Data = json.RawMessage(data)
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
+func (s *sqlStore) LastAuditID(ctx context.Context) (int64, error) {
+	var id int64
+	err := s.db.QueryRowContext(ctx, `select coalesce(max(id), 0) from audit`).Scan(&id)
+	return id, err
+}
+
+func (s *sqlStore) PruneAudit(ctx context.Context, before time.Time) (int, error) {
+	res, err := s.db.ExecContext(ctx, `delete from audit where time < $1`, before.UnixMilli())
+	if err != nil {
+		return 0, err
+	}
+	n, err := res.RowsAffected()
+	return int(n), err
+}
+
 // Close closes the database.
 func (s *sqlStore) Close() error {
 	return s.db.Close()
