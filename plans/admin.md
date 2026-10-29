@@ -14,8 +14,8 @@ the live tables, on a private port.
 - Read-only first. Admin actions come later.
 - Raw IPs, rows pruned after 30 days (`AUDIT_RETAIN_DAYS`).
 - Audit rows outlive their table: `Prune` doesn't touch them, so closed tables can still be looked up.
-- Accepted `Play`, `Chat` and `GetHands` aren't recorded: hands already hold every action, and chat
-  stays out. Every other command is, and every refused one of any kind.
+- Accepted `Play` and `GetHands` aren't recorded: hands already hold every action. Every other
+  command is, chat included with its text, and every refused one of any kind.
 - Same SQL on SQLite and Postgres (`sqlStore`). The memory store keeps the last 10,000 entries.
 - The admin page polls. No websocket.
 
@@ -65,8 +65,8 @@ change and refusals mid-hand are kept.
 
 **Tests**: `TestStores` appends, queries, prunes and numbers on every store, and `Prune` leaves audit
 rows. A raise out of turn is recorded with its ip and error; a client-side refusal is recorded; a
-reconnect with a token is recorded as reclaimed; passwords and tokens never reach `data`; accepted
-`Play` and `Chat` aren't recorded.
+reconnect with a token is recorded as reclaimed; chat is recorded with its text; passwords and
+tokens never reach `data`; an accepted `Play` isn't recorded.
 
 ## PR 2: admin API (`feat/admin-api`)
 - Config: `ADMIN_ADDR` (empty for off), `ADMIN_ORIGINS` (CORS, for the dev server only).
