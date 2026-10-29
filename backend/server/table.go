@@ -18,6 +18,7 @@ var errClosed = errors.New("table not found")
 // tableActor runs one table. Its goroutine owns the state and the clients
 // bound to it; everyone else talks to it through the inbox.
 type tableActor struct {
+	id        string
 	name      string
 	hub       *Hub
 	creatorIP string // fixed at creation
@@ -48,11 +49,13 @@ type armedTimer struct {
 
 // envelope is a command for the table, or a shutdown when cmd is nil. client
 // is who sent it, for a Join, Leave or Disconnect; reply, when set, gets the
-// result once the command is done.
+// result once the command is done. inspect, when set, is run in the actor
+// instead, to read its state.
 type envelope struct {
-	cmd    table.Command
-	client *Client
-	reply  chan reply
+	cmd     table.Command
+	client  *Client
+	reply   chan reply
+	inspect func()
 }
 
 type reply struct {
@@ -62,6 +65,7 @@ type reply struct {
 
 func newTableActor(h *Hub, s *table.State) *tableActor {
 	a := &tableActor{
+		id:        s.ID,
 		name:      s.Name,
 		hub:       h,
 		creatorIP: s.CreatorIP,
@@ -84,9 +88,20 @@ func newTableActor(h *Hub, s *table.State) *tableActor {
 
 // ask sends cmd and waits for it to be done.
 func (a *tableActor) ask(cmd table.Command, c *Client) reply {
+	return a.call(envelope{cmd: cmd, client: c})
+}
+
+// inspect runs f in the actor, so f can read its state, and waits for it.
+func (a *tableActor) inspect(f func()) error {
+	return a.call(envelope{inspect: f}).err
+}
+
+// call sends env and waits for it to be done.
+func (a *tableActor) call(env envelope) reply {
 	r := make(chan reply, 1)
+	env.reply = r
 	select {
-	case a.inbox <- envelope{cmd, c, r}:
+	case a.inbox <- env:
 	case <-a.done:
 		return reply{err: errClosed}
 	}
@@ -134,6 +149,10 @@ func (a *tableActor) handle(env envelope) {
 			env.reply <- r
 		}
 	}()
+	if env.inspect != nil {
+		env.inspect()
+		return
+	}
 	if env.cmd == nil {
 		a.save()
 		a.close("shutdown", table.Error{Code: table.CodeRestarting, Message: "the server is restarting"}, false)
@@ -143,11 +162,22 @@ func (a *tableActor) handle(env envelope) {
 		return // a connection already replaced by a reconnect
 	}
 
+	// who sent it, before it changes: a Leave takes them away
+	person := table.PersonOf(env.cmd)
+	var name string
+	if p := a.state.People[person]; p != nil {
+		name = p.Name
+	}
+	logSeq := a.state.LogSeq
+
 	now := time.Now()
 	res, err := a.reduce(now, env.cmd)
 	if err != nil {
-		r.err = err
+		r.err = err // the client records it
 		return
+	}
+	if env.client != nil {
+		a.auditCommand(env.client, env.cmd, person, name, logSeq, res)
 	}
 	// the lobby sees the change before anyone hears of it, so a client that
 	// lists tables on an update finds it there

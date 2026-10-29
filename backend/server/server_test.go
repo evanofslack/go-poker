@@ -755,3 +755,102 @@ func TestClientIP(t *testing.T) {
 		t.Errorf("trusted: got %q, want the entry the proxy added", ip)
 	}
 }
+
+// audited writes the queued audit entries and returns those q picks, oldest
+// first.
+func audited(t *testing.T, hub *Hub, q AuditQuery) []AuditEntry {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	hub.flushAudit(ctx)
+	got, err := hub.store.Audit(ctx, q)
+	if err != nil {
+		t.Fatal(err)
+	}
+	slices.Reverse(got)
+	return got
+}
+
+func kinds(entries []AuditEntry) []string {
+	var ks []string
+	for _, e := range entries {
+		ks = append(ks, e.Kind)
+	}
+	return ks
+}
+
+func TestAudit(t *testing.T) {
+	srv, hub := newTestServerHub(t, newMemStore())
+	a := dial(t, srv)
+	a.send(`{"action":"create-table","tablename":"t","username":"a","password":"secret"}`)
+	a.wait(ActionWelcome, nil)
+	b := dial(t, srv)
+	b.send(`{"action":"join-table","tablename":"t","username":"b","password":"secret"}`)
+	b.wait(ActionWelcome, nil)
+	a.send(seatMsg(1))
+	b.update(func(v table.View) bool { return len(v.Players) == 1 })
+	b.send(seatMsg(2))
+	var tok TokenOut
+	b.wait(ActionToken, nil).decode(t, &tok)
+	a.update(func(v table.View) bool { return len(v.Players) == 2 })
+	a.send(`{"action":"start-game"}`)
+	a.update(func(v table.View) bool { return v.Street == "preflop" })
+
+	b.send(`{"action":"player-check"}`) // out of turn
+	b.errorMsg()
+	b.send(`{"action":"take-seat","seat":3,"amount":-5}`) // refused before the table
+	b.errorMsg()
+	// recorded just after the error is sent
+	eventually(t, func() bool { return len(audited(t, hub, AuditQuery{Refused: true})) == 2 }, "refused buy-in not recorded")
+	a.send(`{"action":"send-message","message":"hello"}`)
+	a.send(`{"action":"player-call"}`) // done, so not recorded
+	a.send(`{"action":"set-password","password":"other"}`)
+	a.wait(ActionPassword, nil)
+	b.conn.Close()
+	a.update(func(v table.View) bool { return v.Players[1].Disconnected })
+	back := dial(t, srv)
+	back.send(`{"action":"join-table","tablename":"t","username":"x","password":"other","token":"` + tok.Token + `"}`)
+	back.wait(ActionWelcome, nil)
+	nope := dial(t, srv)
+	nope.send(joinMsg("missing", "c"))
+	nope.errorMsg()
+
+	all := audited(t, hub, AuditQuery{})
+	want := []string{"join", "join", "take-seat", "take-seat", "start", "play-check", "take-seat", "chat", "set-password",
+		"disconnect", "join", "join-table"}
+	if got := kinds(all); !slices.Equal(got, want) {
+		t.Fatalf("kinds %v\nwant  %v", got, want)
+	}
+	for _, e := range all {
+		if strings.Contains(string(e.Data), "secret") || strings.Contains(string(e.Data), "other") || strings.Contains(string(e.Data), tok.Token) {
+			t.Errorf("%s keeps a secret: %s", e.Kind, e.Data)
+		}
+		if e.IP != "127.0.0.1" || e.Conn == "" {
+			t.Errorf("%s from %q on %q", e.Kind, e.IP, e.Conn)
+		}
+	}
+
+	check := all[5]
+	if check.Name != "b" || check.Error != "not your turn" || check.TableName != "t" || check.Table == "" {
+		t.Errorf("out of turn %+v", check)
+	}
+	if bad := all[6]; bad.Error != "invalid buy-in" || bad.Name != "" || bad.Person != check.Person || bad.Table != check.Table {
+		t.Errorf("refused buy-in %+v", bad)
+	}
+	if chat := all[7]; !strings.Contains(string(chat.Data), "hello") {
+		t.Errorf("chat %s", chat.Data)
+	}
+	if seat := all[2]; !strings.Contains(string(seat.Data), "a sits down with 1000") {
+		t.Errorf("seat logs %s", seat.Data)
+	}
+	if re := all[10]; re.Name != "b" || re.Person != check.Person || re.Conn == check.Conn ||
+		!strings.Contains(string(re.Data), `"reclaimed":true`) || !strings.Contains(string(re.Data), `"token":true`) {
+		t.Errorf("reconnect %+v %s", re, re.Data)
+	}
+	if missing := all[11]; missing.TableName != "missing" || missing.Name != "c" || missing.Error != "table not found" {
+		t.Errorf("missing table %+v", missing)
+	}
+	if got := kinds(audited(t, hub, AuditQuery{Table: "t", Refused: true})); !slices.Equal(got, []string{"play-check", "take-seat"}) {
+		t.Errorf("refused at t: %v", got)
+	}
+}

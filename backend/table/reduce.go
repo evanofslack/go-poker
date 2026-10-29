@@ -14,6 +14,7 @@ type Result struct {
 	Close   *Close  // the table should close
 	Changed bool    // views need sending again
 	Grace   string  // "reconnected" or "expired" when a disconnected player did either
+	Err     *Error  // the command was refused, and this sent to whoever sent it
 
 	// Checkpoint is set when no hand is being played, so the table is worth
 	// saving: a table brought back from it replays nothing half done.
@@ -79,8 +80,9 @@ func Reduce(s *State, now time.Time, cmd Command) Result {
 		if j, ok := cmd.(Join); ok {
 			r.send(j.ID, *e)
 		} else {
-			r.send(personOf(cmd), *e)
+			r.send(PersonOf(cmd), *e)
 		}
+		r.res.Err = e
 		return r.res
 	}
 	r.askStraddles()
@@ -89,8 +91,8 @@ func Reduce(s *State, now time.Time, cmd Command) Result {
 	return r.res
 }
 
-// personOf is who sent cmd, empty for a timer.
-func personOf(cmd Command) string {
+// PersonOf is who sent cmd, empty for a timer.
+func PersonOf(cmd Command) string {
 	switch c := cmd.(type) {
 	case Leave:
 		return c.Person
@@ -172,7 +174,7 @@ func (r *reducer) do(cmd Command) error {
 		return r.join(j)
 	}
 
-	p := r.s.People[personOf(cmd)]
+	p := r.s.People[PersonOf(cmd)]
 	if _, leaving := cmd.(Leave); leaving && p == nil {
 		r.quiet = true // already gone, like after the host removed them
 		return nil

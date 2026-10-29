@@ -5,13 +5,13 @@ default:
 install:
     cd web && [ -d node_modules ] || npm ci
 
-# go server on :8080, accepting websockets from the web dev server
+# go server on :8080, accepting websockets from the web dev server, with the admin api on :2113
 backend:
-    cd backend && ALLOWED_ORIGINS=http://localhost:3000 go run ./cmd/go-poker
+    cd backend && ALLOWED_ORIGINS=http://localhost:3000 ADMIN_ADDR=localhost:2113 ADMIN_ORIGINS=http://localhost:3000 go run ./cmd/go-poker
 
 # next dev server on :3000, connecting to the go server
 web: install
-    cd web && NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws npm run dev
+    cd web && NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws NEXT_PUBLIC_ADMIN_URL=http://localhost:2113 npm run dev
 
 # backend and web together; ctrl-c stops both
 start:
@@ -19,10 +19,10 @@ start:
     trap 'kill 0' EXIT
     just backend & just web & wait
 
-# production-like: static export served by the go server on :8080
+# production-like: static export served by the go server on :8080, the admin page on :2113
 serve: install
     cd web && npm run build
-    cd backend && STATIC_DIR=../web/out go run ./cmd/go-poker
+    cd backend && STATIC_DIR=../web/out ADMIN_ADDR=localhost:2113 go run ./cmd/go-poker
 
 # format go code
 fmt:
@@ -42,6 +42,7 @@ e2e *scripts: install
     #!/usr/bin/env bash
     set -euo pipefail
     ! curl -s localhost:8099 >/dev/null || { echo "port 8099 is already in use"; exit 1; }
+    ! curl -s localhost:8098 >/dev/null || { echo "port 8098 is already in use"; exit 1; }
     (cd e2e && [ -d node_modules ] || npm ci)
     (cd web && npm run build)
     bin="$(mktemp -d)/go-poker"
@@ -49,7 +50,7 @@ e2e *scripts: install
     # short timers, which the scripts read too
     export RECONNECT_GRACE=20s BOT_DELAY=100ms
     # every browser connects from one address; seated players' tables outlive a script by the reconnect grace
-    PORT=8099 STATIC_DIR=web/out MAX_TABLES_PER_IP=200 MAX_CONNS_PER_IP=200 METRICS_ADDR= "$bin" >/dev/null 2>&1 &
+    PORT=8099 STATIC_DIR=web/out MAX_TABLES_PER_IP=200 MAX_CONNS_PER_IP=200 METRICS_ADDR= ADMIN_ADDR=localhost:8098 "$bin" >/dev/null 2>&1 &
     # restart.mjs runs its own server from the same binary
     export BIN="$bin"
     server=$!

@@ -59,6 +59,30 @@ Tables are saved between hands and on shutdown. A graceful restart carries on mi
 back to the end of the last hand, which is then dealt again. Closed tables are kept for
 `RETAIN_DAYS` (default 30) and then deleted.
 
+The same store keeps an audit of what each connection did and tried, refused messages included, with
+its IP: for settling disputes, never shown to players. Entries outlive their table and are deleted
+after `AUDIT_RETAIN_DAYS` (default 30).
+
+## admin
+
+`ADMIN_ADDR` (off by default) serves a read-only admin page at `/admin` on its own address: open
+tables, who is behind each name with their IP, and the audit. It has no login, so keep it off the
+internet and reach it over an SSH tunnel (`ssh -L 2113:localhost:2113 host`) or a private network
+such as Tailscale. Outside Docker, set `ADMIN_ADDR=127.0.0.1:2113`. In Docker, the container has to
+listen on every interface, so set `ADMIN_ADDR=:2113` and publish the port on the host's loopback
+only:
+
+```yaml
+    ports:
+      - 8080:8080
+      - 127.0.0.1:2113:2113
+    environment:
+      ADMIN_ADDR: ":2113"
+```
+
+The public port never serves it. With `just start` it's at `localhost:3000/admin`, and with `just serve` at
+`localhost:2113/admin`.
+
 ## metrics
 
 Prometheus metrics are served at `/metrics` on a separate port, `METRICS_ADDR` (default `:2112`, or set it empty to turn off).
@@ -75,7 +99,8 @@ Prometheus metrics are served at `/metrics` on a separate port, `METRICS_ADDR` (
 | `poker_seat_grace_total` | `outcome`: reconnected, expired | dropped players who came back or lost their seat |
 | `poker_slow_client_drops_total` | | clients dropped for falling behind |
 | `poker_panics_total` | | panics recovered while handling a message |
-| `poker_save_errors_total` | | tables that failed to save |
+| `poker_save_errors_total` | | tables or audit batches that failed to save |
+| `poker_audit_dropped_total` | | audit entries dropped for a full queue or a failing store |
 | `poker_save_seconds` | | how long saving a table took |
 
 Plus the standard `go_*` and `process_*` metrics.

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"cmp"
 	"context"
 	"slices"
 	"sync"
@@ -21,8 +22,27 @@ type Store interface {
 	// Open is every table not closed, with its last table.MaxHands hands and
 	// table.MaxLogs log lines.
 	Open(ctx context.Context) ([]Saved, error)
+	// Closed is the closed tables not yet pruned, last closed first: those
+	// closed before before (unix ms, 0 for any), at most limit.
+	Closed(ctx context.Context, before int64, limit int) ([]ClosedTable, error)
+	// Load is the table with id, open or closed, with its last
+	// table.MaxHands hands and table.MaxLogs log lines; errNoTable if it's
+	// not kept.
+	Load(ctx context.Context, id string) (Saved, error)
 	// Prune deletes the tables closed before closedBefore, and says how many.
+	// Their audit entries stay.
 	Prune(ctx context.Context, closedBefore time.Time) (int, error)
+
+	// AppendAudit adds audit entries, already numbered. An entry written
+	// before is left as it was.
+	AppendAudit(ctx context.Context, entries []AuditEntry) error
+	// Audit is the entries q picks, newest first.
+	Audit(ctx context.Context, q AuditQuery) ([]AuditEntry, error)
+	// LastAuditID is the highest audit id written, 0 for none.
+	LastAuditID(ctx context.Context) (int64, error)
+	// PruneAudit deletes the audit entries from before before, and says how
+	// many.
+	PruneAudit(ctx context.Context, before time.Time) (int, error)
 }
 
 // Checkpoint is a table to save: its state, and what it added since it was
@@ -57,10 +77,15 @@ type Saved struct {
 type memStore struct {
 	mu     sync.Mutex
 	tables map[string]*memTable // by id
+	audit  []AuditEntry         // oldest first, the last maxMemAudit
 }
+
+// maxMemAudit is how many audit entries the memory store keeps.
+const maxMemAudit = 10_000
 
 type memTable struct {
 	Saved
+	created  time.Time
 	closedAt time.Time
 	reason   string
 }
@@ -74,7 +99,7 @@ func (m *memStore) Save(_ context.Context, c Checkpoint) error {
 	defer m.mu.Unlock()
 	t := m.tables[c.ID]
 	if t == nil {
-		t = &memTable{Saved: Saved{ID: c.ID, Name: c.Name}}
+		t = &memTable{Saved: Saved{ID: c.ID, Name: c.Name}, created: c.At}
 		m.tables[c.ID] = t
 	}
 	t.Version, t.State = c.Version, c.State
@@ -115,6 +140,37 @@ func (m *memStore) Open(context.Context) ([]Saved, error) {
 	return out, nil
 }
 
+func (m *memStore) Closed(_ context.Context, before int64, limit int) ([]ClosedTable, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []ClosedTable
+	for _, t := range m.tables {
+		closed := t.closedAt.UnixMilli()
+		if t.closedAt.IsZero() || before > 0 && closed >= before {
+			continue
+		}
+		c := ClosedTable{ID: t.ID, Name: t.Name, Created: t.created.UnixMilli(), Closed: closed, Reason: t.reason}
+		if n := len(t.Hands); n > 0 {
+			c.Hands = t.Hands[n-1].Record.Hand
+		}
+		out = append(out, c)
+	}
+	slices.SortFunc(out, func(a, b ClosedTable) int { return cmp.Or(cmp.Compare(b.Closed, a.Closed), cmp.Compare(a.ID, b.ID)) })
+	return out[:min(len(out), limit)], nil
+}
+
+func (m *memStore) Load(_ context.Context, id string) (Saved, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	t := m.tables[id]
+	if t == nil {
+		return Saved{}, errNoTable
+	}
+	s := t.Saved
+	s.Hands, s.Logs = slices.Clone(s.Hands), slices.Clone(s.Logs)
+	return s, nil
+}
+
 func (m *memStore) Prune(_ context.Context, closedBefore time.Time) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -126,4 +182,45 @@ func (m *memStore) Prune(_ context.Context, closedBefore time.Time) (int, error)
 		}
 	}
 	return n, nil
+}
+
+func (m *memStore) AppendAudit(_ context.Context, entries []AuditEntry) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, e := range entries {
+		if n := len(m.audit); n == 0 || e.ID > m.audit[n-1].ID {
+			m.audit = append(m.audit, e)
+		}
+	}
+	m.audit = m.audit[max(len(m.audit)-maxMemAudit, 0):]
+	return nil
+}
+
+func (m *memStore) Audit(_ context.Context, q AuditQuery) ([]AuditEntry, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []AuditEntry
+	for i := len(m.audit) - 1; i >= 0 && len(out) < q.limit(); i-- {
+		if q.match(m.audit[i]) {
+			out = append(out, m.audit[i])
+		}
+	}
+	return out, nil
+}
+
+func (m *memStore) LastAuditID(context.Context) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if n := len(m.audit); n > 0 {
+		return m.audit[n-1].ID, nil
+	}
+	return 0, nil
+}
+
+func (m *memStore) PruneAudit(_ context.Context, before time.Time) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := len(m.audit)
+	m.audit = slices.DeleteFunc(m.audit, func(e AuditEntry) bool { return e.Time < before.UnixMilli() })
+	return n - len(m.audit), nil
 }

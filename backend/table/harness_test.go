@@ -67,7 +67,7 @@ func (h *harness) ok(cmd Command) Result {
 	h.t.Helper()
 	res := h.do(cmd)
 	for _, o := range res.Out {
-		if e, isErr := o.Msg.(Error); isErr && o.To == personOf(cmd) && e.Code == "" {
+		if e, isErr := o.Msg.(Error); isErr && o.To == PersonOf(cmd) && e.Code == "" {
 			h.t.Fatalf("%T refused: %s", cmd, e.Message)
 		}
 	}

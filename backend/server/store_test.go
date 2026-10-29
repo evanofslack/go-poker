@@ -2,9 +2,11 @@ package server
 
 import (
 	"context"
+	"errors"
 	"io"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -123,6 +125,34 @@ func testStore(t *testing.T, s Store) {
 		t.Fatalf("reused name got %+v", got)
 	}
 
+	// closed tables are listed, last closed first, and load like open ones
+	if err := s.MarkClosed(ctx, "b", "ended", at.Add(3*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	closed, err := s.Closed(ctx, 0, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantClosed := []ClosedTable{
+		{ID: "b", Name: "t", Created: at.UnixMilli(), Closed: at.Add(3 * time.Hour).UnixMilli(), Reason: "ended", Hands: 1},
+		{ID: "a", Name: "t", Created: at.UnixMilli(), Closed: at.Add(time.Hour).UnixMilli(), Reason: "idle", Hands: table.MaxHands + 5},
+	}
+	if !reflect.DeepEqual(closed, wantClosed) {
+		t.Fatalf("closed %+v\nwant %+v", closed, wantClosed)
+	}
+	if closed, err := s.Closed(ctx, at.Add(3*time.Hour).UnixMilli(), 10); err != nil || len(closed) != 1 || closed[0].ID != "a" {
+		t.Fatalf("closed before b: %+v, %v", closed, err)
+	}
+	if closed, err := s.Closed(ctx, 0, 1); err != nil || len(closed) != 1 || closed[0].ID != "b" {
+		t.Fatalf("one closed: %+v, %v", closed, err)
+	}
+	if sv, err := s.Load(ctx, "a"); err != nil || sv.Name != "t" || len(sv.Hands) != table.MaxHands || len(sv.Logs) != table.MaxLogs {
+		t.Fatalf("load a: %d hands, %d logs, %v", len(sv.Hands), len(sv.Logs), err)
+	}
+	if _, err := s.Load(ctx, "nope"); !errors.Is(err, errNoTable) {
+		t.Fatalf("load nope: %v", err)
+	}
+
 	// pruning deletes closed tables older than the retention
 	if n, err := s.Prune(ctx, at.Add(time.Hour)); err != nil || n != 0 {
 		t.Fatalf("pruned %d, %v", n, err)
@@ -130,7 +160,75 @@ func testStore(t *testing.T, s Store) {
 	if n, err := s.Prune(ctx, at.Add(2*time.Hour)); err != nil || n != 1 {
 		t.Fatalf("pruned %d, %v", n, err)
 	}
-	if got := open()["t"]; got.ID != "b" || len(got.Hands) != 1 {
-		t.Fatalf("pruning touched the open table: %+v", got)
+	if closed, err := s.Closed(ctx, 0, 10); err != nil || len(closed) != 1 || closed[0].ID != "b" {
+		t.Fatalf("pruning left %+v, %v", closed, err)
+	}
+
+	testAuditStore(t, s)
+}
+
+func testAuditStore(t *testing.T, s Store) {
+	ctx := context.Background()
+	ids := func(q AuditQuery) []int64 {
+		t.Helper()
+		got, err := s.Audit(ctx, q)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var ids []int64
+		for _, e := range got {
+			ids = append(ids, e.ID)
+		}
+		return ids
+	}
+	if id, err := s.LastAuditID(ctx); err != nil || id != 0 {
+		t.Fatalf("last id %d, %v", id, err)
+	}
+	entries := []AuditEntry{
+		{ID: 1, Time: 1000, Table: "a", TableName: "t", Person: "p1", Name: "al", IP: "1.1.1.1", Conn: "c1", Kind: "join", Data: []byte(`{"token":false}`)},
+		{ID: 2, Time: 2000, Table: "a", TableName: "t", Person: "p2", Name: "bo", IP: "2.2.2.2", Conn: "c2", Kind: "play-check", Error: "not your turn"},
+		{ID: 3, Time: 3000, TableName: "u", IP: "2.2.2.2", Conn: "c3", Kind: "join-table", Error: "table not found"},
+	}
+	if err := s.AppendAudit(ctx, entries[:2]); err != nil {
+		t.Fatal(err)
+	}
+	// a batch tried again after a failure writes each entry once
+	if err := s.AppendAudit(ctx, entries); err != nil {
+		t.Fatal(err)
+	}
+	if id, err := s.LastAuditID(ctx); err != nil || id != 3 {
+		t.Fatalf("last id %d, %v", id, err)
+	}
+	got, err := s.Audit(ctx, AuditQuery{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []AuditEntry{entries[2], entries[1], entries[0]}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v\nwant %+v", got, want)
+	}
+	for _, c := range []struct {
+		q    AuditQuery
+		want []int64
+	}{
+		{AuditQuery{Table: "a"}, []int64{2, 1}},
+		{AuditQuery{Table: "u"}, []int64{3}},
+		{AuditQuery{IP: "2.2.2.2"}, []int64{3, 2}},
+		{AuditQuery{Name: "al"}, []int64{1}},
+		{AuditQuery{Person: "p2"}, []int64{2}},
+		{AuditQuery{Kind: "join"}, []int64{1}},
+		{AuditQuery{Refused: true}, []int64{3, 2}},
+		{AuditQuery{Before: 3, Limit: 1}, []int64{2}},
+	} {
+		if got := ids(c.q); !slices.Equal(got, c.want) {
+			t.Errorf("%+v: got %v, want %v", c.q, got, c.want)
+		}
+	}
+
+	// the tables are pruned above, and their entries stay; age prunes them
+	if n, err := s.PruneAudit(ctx, time.UnixMilli(2500)); err != nil || n != 2 {
+		t.Fatalf("pruned %d, %v", n, err)
+	}
+	if got := ids(AuditQuery{}); !slices.Equal(got, []int64{3}) {
+		t.Fatalf("after pruning %v", got)
 	}
 }

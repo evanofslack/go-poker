@@ -21,6 +21,7 @@
 | 17 | Bomb pots and double board (`extensions.md`) | done |
 | 18 | Short deck (`extensions.md`) | done |
 | 19 | Extension follow-ups | done |
+| 20 | Audit log and admin page (`admin.md`) | done |
 | - | Backlog | unranked |
 
 ## How items are ranked
@@ -688,13 +689,20 @@ From playing the stack locally.
 - [x] Tables with no small blind, for short deck's antes and big blind (#183)
 - [x] Tucked folded hands, same size double boards, game and stakes lines in the header (#184)
 
+# Stage 20: audit log and admin page
+
+Planned in `admin.md`: who did what at a table, by person, IP and connection, refused commands
+included, saved for 30 days; and a read-only admin page on a private port.
+
+- [x] PR 1: audit log
+- [x] PR 2: admin API
+- [x] PR 3: admin page
+- [ ] Later: admin actions (close a table, drop a connection, remove a player)
+
 # Backlog (unranked)
 
-- More house rules: see stages 9 and 11
+- More side games: anything that pays between stacks fits `sidegames.go`
 - Game backlog (big blind ante, button blind, dealer's choice, hi-lo, crazy pineapple): see
   `extensions.md`
 - Sit-n-go / tournament mode with a blind schedule
 - Accounts and persistent stats (only if this should be more than a play-with-friends app)
-- Admin view: a protected page listing tables, player counts, connections, uptime; close a table or
-  kick a connection
-- Audit log: structured per-table logs of actions for debugging disputes

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"path"
 	"slices"
 	"strconv"
@@ -27,12 +28,15 @@ var migrations embed.FS
 func openStore(ctx context.Context, url string) (Store, error) {
 	var db *sql.DB
 	var err error
+	var kind string
 	switch {
 	case url == "":
 		return newMemStore(), nil
 	case strings.HasPrefix(url, "postgres://"), strings.HasPrefix(url, "postgresql://"):
+		kind = "postgres"
 		db, err = sql.Open("pgx", url)
 	case strings.HasPrefix(url, "sqlite:"):
+		kind = "sqlite"
 		file := strings.TrimPrefix(strings.TrimPrefix(url, "sqlite:"), "//")
 		db, err = sql.Open("sqlite", "file:"+file+"?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)")
 		// SQLite takes one writer at a time
@@ -43,7 +47,7 @@ func openStore(ctx context.Context, url string) (Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &sqlStore{db}
+	s := &sqlStore{db, kind}
 	if err := s.migrate(ctx); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
@@ -53,7 +57,8 @@ func openStore(ctx context.Context, url string) (Store, error) {
 
 // sqlStore keeps tables in Postgres or SQLite. Both take the same SQL.
 type sqlStore struct {
-	db *sql.DB
+	db   *sql.DB
+	kind string // "postgres" or "sqlite"
 }
 
 // migrate applies the migrations not yet applied, in order. Each is named
@@ -233,6 +238,50 @@ func (s *sqlStore) logs(ctx context.Context, id string) ([]table.Log, error) {
 	return logs, rows.Err()
 }
 
+func (s *sqlStore) Closed(ctx context.Context, before int64, limit int) ([]ClosedTable, error) {
+	if before <= 0 {
+		before = math.MaxInt64
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		select id, name, created_at, closed_at, coalesce(close_reason, ''),
+			coalesce((select max(hand) from hands where table_id = tables.id), 0)
+		from tables where closed_at is not null and closed_at < $1
+		order by closed_at desc, id limit $2`, before, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ClosedTable
+	for rows.Next() {
+		var c ClosedTable
+		if err := rows.Scan(&c.ID, &c.Name, &c.Created, &c.Closed, &c.Reason, &c.Hands); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+func (s *sqlStore) Load(ctx context.Context, id string) (Saved, error) {
+	t := Saved{ID: id}
+	var state string
+	err := s.db.QueryRowContext(ctx, `select name, version, state from tables where id = $1`, id).Scan(&t.Name, &t.Version, &state)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Saved{}, errNoTable
+	}
+	if err != nil {
+		return Saved{}, err
+	}
+	t.State = []byte(state)
+	if t.Hands, err = s.hands(ctx, id); err != nil {
+		return Saved{}, err
+	}
+	if t.Logs, err = s.logs(ctx, id); err != nil {
+		return Saved{}, err
+	}
+	return t, nil
+}
+
 func (s *sqlStore) Prune(ctx context.Context, closedBefore time.Time) (int, error) {
 	var n int64
 	err := s.tx(ctx, func(tx *sql.Tx) error {
@@ -252,6 +301,84 @@ func (s *sqlStore) Prune(ctx context.Context, closedBefore time.Time) (int, erro
 		n, err = res.RowsAffected()
 		return err
 	})
+	return int(n), err
+}
+
+func (s *sqlStore) AppendAudit(ctx context.Context, entries []AuditEntry) error {
+	return s.tx(ctx, func(tx *sql.Tx) error {
+		for _, e := range entries {
+			_, err := tx.ExecContext(ctx, `
+				insert into audit (id, time, table_id, table_name, person, name, ip, conn, kind, error, data)
+				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (id) do nothing`,
+				e.ID, e.Time, e.Table, e.TableName, e.Person, e.Name, e.IP, e.Conn, e.Kind, e.Error, string(e.Data))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (s *sqlStore) Audit(ctx context.Context, q AuditQuery) ([]AuditEntry, error) {
+	var where []string
+	var args []any
+	add := func(cond string, arg any) {
+		args = append(args, arg)
+		where = append(where, strings.ReplaceAll(cond, "?", "$"+strconv.Itoa(len(args))))
+	}
+	if q.Table != "" {
+		add("(table_id = ? or table_name = ?)", q.Table)
+	}
+	for _, f := range []struct{ col, v string }{{"person", q.Person}, {"name", q.Name}, {"ip", q.IP}, {"kind", q.Kind}} {
+		if f.v != "" {
+			add(f.col+" = ?", f.v)
+		}
+	}
+	if q.Refused {
+		where = append(where, "error <> ''")
+	}
+	if q.Before > 0 {
+		add("id < ?", q.Before)
+	}
+	query := `select id, time, table_id, table_name, person, name, ip, conn, kind, error, data from audit`
+	if len(where) > 0 {
+		query += " where " + strings.Join(where, " and ")
+	}
+	args = append(args, q.limit())
+	query += " order by id desc limit $" + strconv.Itoa(len(args))
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []AuditEntry
+	for rows.Next() {
+		var e AuditEntry
+		var data string
+		if err := rows.Scan(&e.ID, &e.Time, &e.Table, &e.TableName, &e.Person, &e.Name, &e.IP, &e.Conn, &e.Kind, &e.Error, &data); err != nil {
+			return nil, err
+		}
+		if data != "" {
+			e.Data = json.RawMessage(data)
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
+func (s *sqlStore) LastAuditID(ctx context.Context) (int64, error) {
+	var id int64
+	err := s.db.QueryRowContext(ctx, `select coalesce(max(id), 0) from audit`).Scan(&id)
+	return id, err
+}
+
+func (s *sqlStore) PruneAudit(ctx context.Context, before time.Time) (int, error) {
+	res, err := s.db.ExecContext(ctx, `delete from audit where time < $1`, before.UnixMilli())
+	if err != nil {
+		return 0, err
+	}
+	n, err := res.RowsAffected()
 	return int(n), err
 }
 
