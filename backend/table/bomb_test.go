@@ -82,6 +82,23 @@ func TestBombPotCancel(t *testing.T) {
 	}
 }
 
+func TestBombPotAmountMidHand(t *testing.T) {
+	h := bombTable(t, nil)
+	h.ok(Start{Person: h.ids["a"]})
+	set := h.s.Settings
+	set.BombPot = 100
+	h.ok(UpdateSettings{Person: h.ids["a"], Settings: set})
+	h.ok(SpecialHand{Person: h.ids["a"], Kind: SpecialBomb})
+	h.mustLog("a makes the next hand a bomb pot of 100 each")
+	for h.s.Game.InHand() {
+		h.play(holdem.Fold{})
+	}
+	h.nextHand()
+	if h.s.Game.Bomb != 100 {
+		t.Fatalf("bomb %d, want the new amount", h.s.Game.Bomb)
+	}
+}
+
 func TestBombPotEvery(t *testing.T) {
 	h := bombTable(t, func(s *Settings) { s.SpecialEvery = 3 })
 	h.ok(Start{Person: h.ids["a"]})

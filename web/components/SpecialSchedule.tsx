@@ -40,7 +40,10 @@ export default function SpecialSchedule({ id, special, specialEvery, specialUnit
                     }
                 />
                 {specialEvery > 0 && (
+                    // a new set of options starts afresh: in place, the selection
+                    // lags behind them
                     <Segmented
+                        key={specialUnit}
                         legend="every"
                         name="specialEvery"
                         options={(orbits ? everyOrbits : everyHands).map((n) => ({ label: String(n), value: n }))}

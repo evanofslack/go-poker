@@ -1,7 +1,7 @@
 import { useContext, useState } from "react";
 import classNames from "classnames";
 import { cancelStandUp, sessionAction, specialHand, startStandUp, updateSettings } from "../../actions/actions";
-import { specialName, standUpPayouts } from "../../lib/settings";
+import { bombPots, nearest, specialName, standUpPayouts } from "../../lib/settings";
 import { useSocket } from "../../hooks/useSocket";
 import { AppContext } from "../../providers/AppStore";
 import { Button } from "@mantine/core";
@@ -172,6 +172,35 @@ function SpecialHands() {
             title="bomb pots"
             hint={`a bomb pot takes ${s.bombPot.toLocaleString("en")} from everyone and starts on the flop`}
         >
+            {/* the amount, for a bomb pot called or scheduled */}
+            <Segmented
+                legend="bomb pot"
+                hint="what everyone puts in, from the next bomb pot on"
+                name="hostBombPot"
+                options={bombPots.map((n) => ({
+                    label: (
+                        <>
+                            <span>{n} bb</span>{" "}
+                            <span className="font-normal opacity-60">{(n * s.bb).toLocaleString("en")}</span>
+                        </>
+                    ),
+                    value: n,
+                }))}
+                value={nearest(bombPots, s.bombPot, (n) => n * s.bb)}
+                onChange={(n) => updateSettings(socket, { ...s, bombPot: n * s.bb })}
+            />
+            <SpecialSchedule
+                id="hostDoubleBoard"
+                special={s.special}
+                specialEvery={s.specialEvery}
+                specialUnit={s.specialUnit}
+                onChange={(change) => updateSettings(socket, { ...s, ...change })}
+            />
+            {game.specialIn > 0 && !next && (
+                <p className="text-xs text-muted" aria-label="next special hand">
+                    next {specialName(s.special)} in {game.specialIn === 1 ? "1 hand" : `${game.specialIn} hands`}
+                </p>
+            )}
             {next ? (
                 <>
                     <p className="flex flex-wrap items-center gap-2 text-fg" aria-label="special hand">
@@ -186,18 +215,6 @@ function SpecialHands() {
                 <Button variant="filled" className="self-start" onClick={() => specialHand(socket, s.special)}>
                     deal one next hand
                 </Button>
-            )}
-            <SpecialSchedule
-                id="hostDoubleBoard"
-                special={s.special}
-                specialEvery={s.specialEvery}
-                specialUnit={s.specialUnit}
-                onChange={(change) => updateSettings(socket, { ...s, ...change })}
-            />
-            {game.specialIn > 0 && !next && (
-                <p className="text-xs text-muted" aria-label="next special hand">
-                    next {specialName(s.special)} in {game.specialIn === 1 ? "1 hand" : `${game.specialIn} hands`}
-                </p>
             )}
         </Section>
     );

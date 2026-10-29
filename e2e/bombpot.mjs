@@ -56,6 +56,24 @@ check("the schedule is set", await has(alice, '[aria-label="next special hand"] 
 await alice.click('label[for="hostDoubleBoard"]');
 check("and one board", await has(alice, '[aria-label="next special hand"] >> text=/next bomb pot in/'));
 await shot(alice, "bomb-6-schedule");
+// switching units picks the new unit's first gap at once
+// the picked option of a segmented control, once the server's answer is in
+const picked = async (p, name) => {
+    await p.waitForTimeout(300);
+    return p.locator(`input[name="${name}"]:checked`).getAttribute("value", { timeout: 500 });
+};
+check("orbits start at 1", (await picked(alice, "specialEvery")) === "1");
+await alice.click('fieldset:has(input[name="specialSchedule"]) >> text="by hands"');
+check("hands start at 10", (await picked(alice, "specialEvery")) === "10");
+await alice.click('fieldset:has(input[name="specialSchedule"]) >> text="by orbits"');
+check("four orbits is a choice", await has(alice, 'fieldset:has(input[name="specialEvery"]) >> text="4"'));
+check("and back to 1", (await picked(alice, "specialEvery")) === "1");
+await shot(alice, "bomb-7-orbits");
+
+// the host sets the amount from the host tab
+await alice.click('fieldset:has(input[name="hostBombPot"]) >> text="10 bb"');
+const set = () => rec.views.at(-1).next ?? rec.views.at(-1).settings;
+check("the bomb pot is 10 bb", (await picked(alice, "hostBombPot")) === "10" && set().bombPot === 200, JSON.stringify(set().bombPot));
 
 await browser.close();
 finish();

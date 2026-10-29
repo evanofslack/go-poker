@@ -26,7 +26,7 @@ export const sevenDeuces = [0, 1, 2, 5]; // 7-2 bounties in big blinds, 0 is off
 export const standUpPayouts = [1, 2, 5, 10]; // stand-up payouts in big blinds
 export const bombPots = [1, 2, 5, 10]; // bomb pots in big blinds
 export const everyHands = [5, 10, 20, 50]; // hands between scheduled bomb pots
-export const everyOrbits = [1, 2, 3, 5];
+export const everyOrbits = [1, 2, 3, 4, 5];
 export const maxBigBlind = 1_000_000;
 export const maxBuyInBB = 1000;
 export const maxPasswordLen = 32;
@@ -140,7 +140,7 @@ export function toSettings(f: SettingsForm): Settings {
 }
 
 // nearest is the preset whose amount in chips comes closest to n
-function nearest(presets: number[], n: number, chips: (preset: number) => number): number {
+export function nearest(presets: number[], n: number, chips: (preset: number) => number): number {
     return presets.reduce((best, p) => (Math.abs(chips(p) - n) < Math.abs(chips(best) - n) ? p : best));
 }
 
