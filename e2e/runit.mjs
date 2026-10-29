@@ -1,7 +1,7 @@
 // Run it: two players all in preflop vote on how many times to run the board out.
 import { btn, check, finish, has, launch, panel, seat, shot, until } from "./lib.mjs";
 
-const setting = (p, label) => p.locator('dl[aria-label="table settings"] > div', { hasText: label }).innerText();
+const setting = (p, label) => p.locator('[aria-label="table settings"] dl > div', { hasText: label }).innerText();
 // run it is on by default
 let runItDefault;
 const offRunIt = (p) => p.click("label[for=runIt]");

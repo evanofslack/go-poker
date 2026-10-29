@@ -27,7 +27,7 @@ export default function Host() {
     else if (game.paused) status = midHand ? "pausing after this hand" : "paused";
 
     return (
-        <div className="flex h-full flex-col gap-6 overflow-auto bg-surface p-3 text-sm">
+        <div className="flex h-full flex-col gap-6 overflow-auto p-3 text-sm">
             <div className="flex items-center gap-2" aria-label="game status">
                 <span
                     className={classNames(

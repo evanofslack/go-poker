@@ -2,7 +2,7 @@
 // host can change it.
 import { URL, btn, check, create, finish, fold, launch, open, panel, shot, sit, until } from "./lib.mjs";
 
-const row = (p, label) => p.locator(`[aria-label="table settings"] div:has(dt:text-is("${label}")) dd`).innerText();
+const row = (p, label) => p.locator(`[aria-label="table settings"] dl > div:has(dt:text-is("${label}")) > dd`).innerText();
 const table = "settings" + Date.now();
 const browser = await launch();
 
@@ -32,9 +32,10 @@ for (const [who, page] of [["host", host], ["a player", p]]) {
     check(`${who} sees the buy-in`, (await row(page, "buy-in")) === "1,000–5,000 (20–100 bb)", await row(page, "buy-in"));
     check(`${who} sees the timer is off`, (await row(page, "turn timer")) === "off");
     check(`${who} sees the password is on`, (await row(page, "password")) === "on");
-    check(`${who} sees the host`, (await row(page, "host")) === "host");
+    check(`${who} sees the host`, (await page.locator('[aria-label="table settings"] p:has-text("hosted by")').innerText()) === "hosted by host");
+    check(`${who} sees the sections`, (await page.locator('[aria-label="table settings"] section').count()) === 5);
 }
-check("shows the table name", (await row(host, "table")).includes(table));
+check("shows the table name", await host.locator(`[aria-label="table settings"] >> text="${table}"`).isVisible());
 await host.click('[aria-label="table settings"] button[aria-label="copy invite link"]');
 const invite = await host.evaluate(() => navigator.clipboard.readText());
 check("copies the invite link", invite.endsWith(`?table=${table}#pw=s3cret`), invite);

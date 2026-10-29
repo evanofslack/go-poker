@@ -1,4 +1,4 @@
-// The options tab: the viewer's own animations, looks, mute and keyboard shortcuts,
+// The display tab: the viewer's own animations, looks, mute and keyboard shortcuts,
 // kept in this browser across reloads, and carried over from the old settings.
 import { btn, check, finish, has, launch, open, join, panel, quiet, seat, shot } from "./lib.mjs";
 
@@ -15,12 +15,12 @@ const [alice] = await seat(browser, table, ["alice", "bob"]);
 
 await quiet(700);
 check("animations follow the system by default", (await motion(alice)) === "system");
-await panel(alice, "options");
-check("the tab has display, sound and keys", (await has(alice, 'section[aria-label="display"]')) && (await has(alice, 'section[aria-label="sound"]')) && (await has(alice, 'section[aria-label="keys"]')));
+await panel(alice, "display");
+check("the tab has look, sound and keys", (await has(alice, 'section[aria-label="look"]')) && (await has(alice, 'section[aria-label="sound"]')) && (await has(alice, 'section[aria-label="keys"]')));
 check("the settings tab no longer has the keys", await (async () => {
     await panel(alice, "settings");
     const gone = (await alice.locator('[aria-label="keyboard shortcuts"]').count()) === 0;
-    await panel(alice, "options");
+    await panel(alice, "display");
     return gone;
 })());
 await shot(alice, "options-1");
@@ -49,7 +49,7 @@ check("shortcuts off", !(await on(alice, "shortcuts")));
 await alice.reload();
 await alice.waitForSelector('p:text-is("alice")');
 await quiet(700);
-await panel(alice, "options");
+await panel(alice, "display");
 check("animations stay on after a reload", (await motion(alice)) === "on");
 check("looks stay after a reload", (await look(alice, "deck")) === "two" && (await look(alice, "felt")) === "blue" && (await look(alice, "back")) === "black");
 check("mute stays on after a reload", await on(alice, "muted"));
@@ -65,7 +65,7 @@ await carol.addInitScript(() => {
     }
 });
 await join(carol, "carol", table);
-await panel(carol, "options");
+await panel(carol, "display");
 check("an old mute carries over", await on(carol, "muted"));
 check("old shortcuts off carry over", !(await on(carol, "shortcuts")));
 
@@ -83,7 +83,7 @@ if (process.env.SHOTS) {
             await alice.click('[aria-label="table"] button[aria-label="close table panel"]');
             await alice.waitForTimeout(300);
             await shot(alice, `options-${scheme}-${felt}-${back}`);
-            await panel(alice, "options");
+            await panel(alice, "display");
         }
     }
 }

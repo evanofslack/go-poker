@@ -9,6 +9,7 @@ type segmentedProps<T> = {
     options: { label: ReactNode; value: T }[];
     value: T;
     onChange: (value: T) => void;
+    disabled?: boolean;
 };
 
 // Segmented picks one of a few options, with a legend. Mantine's values are
@@ -20,6 +21,7 @@ export default function Segmented<T extends string | number>({
     options,
     value,
     onChange,
+    disabled,
 }: segmentedProps<T>) {
     return (
         <fieldset>
@@ -34,6 +36,7 @@ export default function Segmented<T extends string | number>({
                 className="bg-panel"
                 data={options.map((o) => ({ label: o.label, value: String(o.value) }))}
                 value={String(value)}
+                disabled={disabled}
                 onChange={(v) => onChange(options.find((o) => String(o.value) === v)!.value)}
             />
         </fieldset>

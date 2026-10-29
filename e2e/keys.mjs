@@ -48,8 +48,8 @@ await quiet(500);
 check("typing in chat isn't a shortcut", (await myTurn(alice, "call 40")) && (await alice.inputValue("#input")) === "fcr");
 await alice.click(btn("chat"));
 
-await panel(alice, "options");
-check("the options tab lists the keys", await has(alice, '[aria-label="keyboard shortcuts"]'));
+await panel(alice, "display");
+check("the display tab lists the keys", await has(alice, '[aria-label="keyboard shortcuts"]'));
 await shot(alice, "keys-2-options");
 await alice.click('label:text-is("keyboard shortcuts")');
 await alice.keyboard.press("c");

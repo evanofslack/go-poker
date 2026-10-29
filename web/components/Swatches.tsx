@@ -34,7 +34,7 @@ export default function Swatches<T extends string>({ legend, hint, name, look, o
                             looks[look],
                             "flex h-8 w-16 cursor-pointer items-center justify-center text-xs font-medium",
                             "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent",
-                            o === value && "ring-2 ring-accent ring-offset-2 ring-offset-surface"
+                            o === value && "ring-3 ring-accent ring-offset-2 ring-offset-surface"
                         )}
                     >
                         <input type="radio" className="sr-only" name={name} value={o} checked={o === value} onChange={() => onChange(o)} />

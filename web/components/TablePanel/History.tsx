@@ -68,7 +68,7 @@ export default function History() {
     const isOpen = (hand: number) => (open === undefined ? hand === newest : open === hand);
 
     return (
-        <div className="flex h-full flex-col bg-surface">
+        <div className="flex h-full flex-col">
             <div className="flex items-center gap-2 border-b border-raised px-2 py-1.5 text-xs">
                 <Checkbox
                     size="xs"

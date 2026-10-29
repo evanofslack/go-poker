@@ -19,7 +19,7 @@ export default function Players() {
     const managed = lines.find((l) => l.name === managing);
 
     return (
-        <div className="flex h-full flex-col bg-surface">
+        <div className="flex h-full flex-col">
             <ul className="min-h-0 flex-1 overflow-auto p-2" aria-label="players">
                 {lines.map(({ name, status, seat, row, bot }) => (
                     <li key={name} className="border-b border-raised py-1.5 last:border-b-0">

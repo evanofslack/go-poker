@@ -9,8 +9,8 @@ import Stats from "./Stats";
 import { ActionIcon, Tabs } from "@mantine/core";
 import { FiX } from "react-icons/fi";
 
-type tab = "players" | "hands" | "stats" | "settings" | "options" | "host";
-const tabs: tab[] = ["players", "hands", "stats", "settings", "options", "host"];
+type tab = "players" | "hands" | "stats" | "settings" | "display" | "host";
+const tabs: tab[] = ["players", "hands", "stats", "settings", "display", "host"];
 const tabKey = "tablePanelTab";
 
 // savedTab is the last tab opened. The host starts on the host tab.
@@ -19,12 +19,14 @@ function savedTab(host: boolean): tab {
     try {
         saved = localStorage.getItem(tabKey);
     } catch {}
+    // display was called options
+    if (saved === "options") return "display";
     if (tabs.includes(saved as tab)) return saved as tab;
     return host ? "host" : "players";
 }
 
 // TablePanel is a drawer over the left of the table with the players, ledger,
-// stats, table settings, your own options and the host's session controls. It isn't modal, so you can still act
+// stats, table settings, your own display and sound options and the host's session controls. It isn't modal, so you can still act
 // while it's open.
 export default function TablePanel({ onClose }: { onClose: () => void }) {
     const { appState } = useContext(AppContext);
@@ -57,7 +59,7 @@ export default function TablePanel({ onClose }: { onClose: () => void }) {
         <div
             role="region"
             aria-label="table"
-            className="absolute inset-y-2 right-2 left-2 z-40 flex flex-col rounded-xl bg-raised p-2 text-muted shadow-float ring-1 ring-black/20 sm:right-auto sm:w-[28rem]"
+            className="absolute inset-y-2 right-2 left-2 z-40 flex flex-col rounded-xl bg-surface p-2 text-muted shadow-float ring-1 ring-line sm:right-auto sm:w-[28rem]"
         >
             <Tabs
                 value={tab}
@@ -91,7 +93,7 @@ export default function TablePanel({ onClose }: { onClose: () => void }) {
                 <Tabs.Panel value="settings" className="min-h-0 flex-1">
                     <Settings />
                 </Tabs.Panel>
-                <Tabs.Panel value="options" className="min-h-0 flex-1">
+                <Tabs.Panel value="display" className="min-h-0 flex-1">
                     <Options />
                 </Tabs.Panel>
                 <Tabs.Panel value="host" className="min-h-0 flex-1">
