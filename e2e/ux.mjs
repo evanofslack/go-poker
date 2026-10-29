@@ -1,5 +1,5 @@
 // Invite links, table hints, error toasts, connection status, header, leaving and light mode.
-import { URL, btn, check, confirmCreate, finish, gone, has, launch, open, shot, sit } from "./lib.mjs";
+import { URL, btn, check, confirmCreate, finish, gone, has, launch, open, shot, sit, until } from "./lib.mjs";
 
 const browser = await launch();
 const alice = await open(browser, { permissions: ["clipboard-read", "clipboard-write"] });
@@ -34,7 +34,8 @@ check("one player hint", await has(alice, "text=waiting for another player"));
 
 // bob opens the invite link: only a name is needed
 await bob.goto(copied);
-check("invite link fills the table", (await bob.inputValue("#tablename")) === table);
+// the form fills in once the page has hydrated
+check("invite link fills the table", await until(async () => (await bob.inputValue("#tablename")) === table));
 await bob.fill("#username", "bob");
 await bob.press("#username", "Enter");
 check("spectator hint before sitting", await has(bob, "text=pick an open seat to play"));

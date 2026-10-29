@@ -92,7 +92,7 @@ function ResultTag({ player, view, own }: { player: PlayerView; view: View; own:
 }
 
 // BotIcon marks a bot's seat, with its level on hover
-function BotIcon({ level }: { level: string }) {
+export function BotIcon({ level }: { level: string }) {
     return (
         <span
             className="ml-1 inline-flex shrink-0 opacity-70"

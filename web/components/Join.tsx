@@ -80,9 +80,8 @@ export default function Join() {
     }, []);
 
     return (
-        <div className="flex flex-col">
-            {/* fills the first screen, so the features start below the fold */}
-            <div className="flex min-h-svh flex-col items-center justify-center">
+        <div className="flex min-h-screen flex-col">
+            <div className="flex flex-col items-center pt-[14vh]">
                 <h1 className="mb-10 text-4xl font-semibold text-fg sm:mb-16 sm:text-5xl">
                     GoPoker
                 </h1>
