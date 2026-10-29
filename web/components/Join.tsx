@@ -8,6 +8,7 @@ import { Button, PasswordInput, TextInput } from "@mantine/core";
 import { invitedPassword, invitedTable } from "../lib/invite";
 import CreateTable from "./CreateTable";
 import PublicTables from "./PublicTables";
+import Features from "./Features";
 import { TableSummary } from "../interfaces";
 
 function randomTableGen(length: number): string {
@@ -79,8 +80,9 @@ export default function Join() {
     }, []);
 
     return (
-        <div className="flex min-h-screen flex-col">
-            <div className="flex grow flex-col items-center justify-center ">
+        <div className="flex flex-col">
+            {/* fills the first screen, so the features start below the fold */}
+            <div className="flex min-h-svh flex-col items-center justify-center">
                 <h1 className="mb-10 text-4xl font-semibold text-fg sm:mb-16 sm:text-5xl">
                     GoPoker
                 </h1>
@@ -157,6 +159,7 @@ export default function Join() {
                     />
                 )}
             </div>
+            <Features />
             <Footer />
         </div>
     );
