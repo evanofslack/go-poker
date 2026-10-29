@@ -1,5 +1,5 @@
 // Join form, create table dialog and buy-in form behavior.
-import { URL, btn, check, confirmCreate, finish, has, launch, open, shot } from "./lib.mjs";
+import { URL, btn, check, confirmCreate, finish, gone, has, launch, open, shot } from "./lib.mjs";
 const browser = await launch();
 const p = await open(browser);
 const table = "forms" + Date.now();
@@ -16,8 +16,11 @@ check("create opens the settings dialog", await has(p, `text=create table ${tabl
 check("old join error is cleared", (await p.locator('[role="dialog"] >> text=/not found/i').count()) === 0);
 check("buy-in shows chips", (await p.locator("text=1,000–4,000 chips").count()) === 1);
 await p.click('[aria-label="about ante"]');
-check("a hint opens under its label", await p.locator("text=a share of the big blind").isVisible());
+check("a hint opens", await p.locator("text=a share of the big blind").isVisible());
 await shot(p, "create-table");
+await p.keyboard.press("Escape");
+check("escape closes the hint", await gone(p, "text=a share of the big blind"));
+check("and leaves the dialog open", await p.locator('[role="dialog"]').isVisible());
 await p.fill("#maxBuy", "1001");
 check("over-cap max buy-in is explained", await p.locator("text=max buy-in can't be more than 1000 big blinds").isVisible());
 check("over-cap max buy-in disables create", await p.locator(btn("create table")).isDisabled());

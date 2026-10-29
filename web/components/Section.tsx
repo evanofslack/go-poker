@@ -9,11 +9,15 @@ type sectionProps = {
     children: ReactNode;
 };
 
-// Section groups related controls under a small heading.
+// Section groups related controls under a heading, with a rule between it and
+// the section before
 export default function Section({ title, hint, className, children }: sectionProps) {
     return (
-        <section aria-label={title} className={classNames("flex flex-col gap-3", className)}>
-            <h3 className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs font-semibold tracking-wide text-subtle uppercase">
+        <section
+            aria-label={title}
+            className={classNames("flex flex-col gap-3 border-line not-first:border-t not-first:pt-5", className)}
+        >
+            <h3 className="flex items-center gap-1 text-sm font-semibold text-fg">
                 {title}
                 {hint && <Hint about={title} text={hint} />}
             </h3>

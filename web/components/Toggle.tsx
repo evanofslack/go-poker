@@ -14,7 +14,7 @@ type toggleProps = {
 // Toggle is an on/off setting: the label on the left, a switch on the right
 export default function Toggle({ id, label, hint, checked, onChange, extra }: toggleProps) {
     return (
-        <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm">
+        <div className="flex items-center gap-1 text-sm">
             <label htmlFor={id} className="cursor-pointer">
                 {label}
             </label>

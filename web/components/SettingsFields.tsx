@@ -35,14 +35,13 @@ type settingsFieldsProps = {
     seats: boolean; // the seat count can't change once the table exists
 };
 
-const label = "mb-1 block text-xs text-muted";
 const digits = (s: string) => s.replace(/\D/g, "");
 const chips = (n: number) => n.toLocaleString("en");
 
 // FieldLabel labels a text input, with an optional hint
 function FieldLabel({ htmlFor, hint, children }: { htmlFor: string; hint?: string; children: string }) {
     return (
-        <div className="mb-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-muted">
+        <div className="mb-1 flex items-center gap-1 text-xs text-muted">
             <label htmlFor={htmlFor}>{children}</label>
             {hint && <Hint about={children} text={hint} />}
         </div>
@@ -56,8 +55,8 @@ export default function SettingsFields({ form, set, password, setPassword, seats
     const buyInChips = bb > 0 && min > 0 && max > 0 ? `${chips(min * bb)}–${chips(max * bb)} chips` : "";
 
     return (
-        <div className="grid gap-5 sm:grid-cols-2 sm:gap-x-8">
-            <div className="flex flex-col gap-5">
+        <div className="grid gap-6 sm:grid-cols-2 sm:gap-x-8">
+            <div className="flex flex-col gap-6">
                 <Section title="game">
                     <div className="flex flex-wrap gap-x-4 gap-y-5">
                         <Segmented
@@ -96,10 +95,9 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                         {form.stakes === "custom" && (
                             <div className="mt-2 flex gap-2">
                                 <div className="flex-1">
-                                    <label className={`${label} flex items-center gap-1`} htmlFor="sb">
+                                    <FieldLabel htmlFor="sb" hint="0 for none: antes and a big blind, as short deck often plays">
                                         small blind
-                                        <Hint about="small blind" text="0 for none: antes and a big blind, as short deck often plays" />
-                                    </label>
+                                    </FieldLabel>
                                     <TextInput
                                         id="sb"
                                         inputMode="numeric"
@@ -108,9 +106,7 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                                     />
                                 </div>
                                 <div className="flex-1">
-                                    <label className={label} htmlFor="bb">
-                                        big blind
-                                    </label>
+                                    <FieldLabel htmlFor="bb">big blind</FieldLabel>
                                     <TextInput
                                         id="bb"
                                         inputMode="numeric"
@@ -221,7 +217,7 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                     )}
                 </Section>
             </div>
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-6">
                 <Section title="access">
                     <Toggle
                         id="public"

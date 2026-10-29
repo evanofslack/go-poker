@@ -45,7 +45,7 @@ export default function Options() {
     const set = (p: Partial<Prefs>) => dispatch({ type: "setPref", payload: p });
 
     return (
-        <div className="flex h-full flex-col gap-5 overflow-auto bg-surface p-3 text-sm">
+        <div className="flex h-full flex-col gap-6 overflow-auto bg-surface p-3 text-sm">
             <Section title="display">
                 <Segmented
                     legend="animations"

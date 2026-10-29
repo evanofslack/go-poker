@@ -38,10 +38,10 @@ export default function TablePanel({ onClose }: { onClose: () => void }) {
     close.current = onClose;
 
     useEffect(() => {
-        // a dialog opened from the panel handles its own Escape. Listen in the capture phase,
-        // before the dialog closes, so it's still there to see.
-        const key = (e: KeyboardEvent) =>
-            e.key === "Escape" && !document.querySelector('[aria-modal="true"]') && close.current();
+        // a dialog or popover opened from the panel handles its own Escape. Listen in the
+        // capture phase, before it closes, so it's still there to see.
+        const open = '[aria-modal="true"], [aria-haspopup][aria-expanded="true"]';
+        const key = (e: KeyboardEvent) => e.key === "Escape" && !document.querySelector(open) && close.current();
         window.addEventListener("keydown", key, true);
         return () => window.removeEventListener("keydown", key, true);
     }, []);

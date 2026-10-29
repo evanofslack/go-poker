@@ -21,7 +21,7 @@ const looks = {
 export default function Swatches<T extends string>({ legend, hint, name, look, options, value, onChange }: swatchesProps<T>) {
     return (
         <fieldset>
-            <legend className="mb-1 flex w-full flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-muted">
+            <legend className="mb-1 flex items-center gap-1 text-xs text-muted">
                 {legend}
                 {hint && <Hint about={legend} text={hint} />}
             </legend>
