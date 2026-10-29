@@ -149,6 +149,9 @@ func (a *tableActor) handle(env envelope) {
 		r.err = err
 		return
 	}
+	// the lobby sees the change before anyone hears of it, so a client that
+	// lists tables on an update finds it there
+	a.publish()
 	if res.Joined != nil {
 		r.joined = res.Joined
 		a.bind(res.Joined, env.client)
@@ -166,7 +169,6 @@ func (a *tableActor) handle(env envelope) {
 	if res.Checkpoint {
 		a.save()
 	}
-	a.publish()
 	if res.Close != nil {
 		a.close(res.Close.Reason, table.Error{Code: table.CodeClosed, Message: res.Close.Message}, true)
 	}
