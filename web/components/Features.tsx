@@ -142,10 +142,6 @@ const botLevels = [
     { label: "easy", value: "easy" },
     { label: "medium", value: "medium" },
 ];
-const botPlay: Record<string, string> = {
-    easy: "a calling station: checks when it can and calls most bets.",
-    medium: "tight and aggressive: raises by position, bets its draws.",
-};
 
 // pill sits on the felt like a seat's bet
 const pill = "flex items-center gap-1.5 rounded-full bg-felt-dark/80 px-2 py-0.5 text-sm font-semibold whitespace-nowrap";
@@ -175,7 +171,6 @@ function Bots() {
             <div className="mt-2">
                 <Segmented legend="level" name="demo-bot" options={botLevels} value={level} onChange={setLevel} />
             </div>
-            <p className="mt-1 text-sm text-muted">{botPlay[level]}</p>
         </Tile>
     );
 }
