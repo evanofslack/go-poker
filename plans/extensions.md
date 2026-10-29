@@ -1,6 +1,6 @@
 # Game extensions
 
-**Status: planned.** Stages 14-18 in `todo.md`: time bank, a game refactor, Omaha, bomb pots and
+**Status: done.** Stages 14-18 in `todo.md`: time bank, a game refactor, Omaha, bomb pots and
 double board, short deck, then a backlog of smaller variants. Each engine change gets `holdem/` tests, including `rollout_test.go`'s random
 hands, before any table or web work, as in `straddle.md`.
 
