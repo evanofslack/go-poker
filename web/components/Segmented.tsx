@@ -34,6 +34,8 @@ export default function Segmented<T extends string | number>({
                 size="xs"
                 color="cyan"
                 className="bg-panel"
+                // the pick moves at once, as dialogs open and close
+                transitionDuration={0}
                 data={options.map((o) => ({ label: o.label, value: String(o.value) }))}
                 value={String(value)}
                 disabled={disabled}
