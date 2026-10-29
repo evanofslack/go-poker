@@ -13,6 +13,7 @@ import (
 const (
 	Easy   = "easy"
 	Medium = "medium"
+	Hard   = "hard"
 )
 
 // Kind is the kind of move a bot makes.
@@ -35,19 +36,22 @@ type Action struct {
 
 // Valid reports whether level is a bot level.
 func Valid(level string) bool {
-	return level == Easy || level == Medium
+	return level == Easy || level == Medium || level == Hard
 }
 
 // Read is what everyone at the table has seen of a player over the session,
 // like the table's totals.
 type Read struct {
 	Hands         int // dealt in
+	Bombs         int // of them bomb pots, with no preflop to count
 	VPIP          int // hands they chose to put money in preflop
 	PFR           int // hands they raised preflop
 	ThreeBetSpots int // hands they acted preflop facing one raise
 	ThreeBets     int // and reraised
 	Aggressive    int // bets and raises
 	Calls         int
+	FacedBets     int // times they acted facing a bet after the flop
+	FoldedToBets  int // and folded
 }
 
 // Decide picks a move for the bot called name in seat, whose turn it is. view
@@ -62,8 +66,11 @@ func Decide(level, name string, view holdem.View, seat int, line []holdem.Acted,
 }
 
 func choose(level string, s spot, r *rand.Rand) Action {
-	if level == Medium {
+	switch level {
+	case Medium:
 		return medium(s, r)
+	case Hard:
+		return hard(s, r)
 	}
 	return easy(s, r)
 }

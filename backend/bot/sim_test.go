@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/alexclewontin/riverboat/eval"
@@ -60,27 +61,38 @@ func TestSimBaseline(t *testing.T) {
 	}
 }
 
-// TestSimVersus plays every pair of BOTSIM_LEVELS (medium,easy by default)
-// in BOTSIM_GAMES (all by default), heads up and six handed, BOTSIM_HANDS
-// hands each.
+// TestSimVersus plays the first of BOTSIM_LEVELS (medium,easy by default)
+// against each of the others in BOTSIM_GAMES (all by default), heads up and
+// six handed, BOTSIM_HANDS hands in each of BOTSIM_SHARDS shards at once.
 func TestSimVersus(t *testing.T) {
 	simOnly(t)
 	levels := strings.Split(or(os.Getenv("BOTSIM_LEVELS"), Medium+","+Easy), ",")
 	only := os.Getenv("BOTSIM_GAMES")
 	hands, err := strconv.Atoi(or(os.Getenv("BOTSIM_HANDS"), "1500"))
 	must(t, err)
+	shards, err := strconv.Atoi(or(os.Getenv("BOTSIM_SHARDS"), "1"))
+	must(t, err)
+	a := levels[0]
 	for _, g := range games {
 		if only != "" && !strings.Contains(only, g.name) {
 			continue
 		}
-		for i, a := range levels {
-			for _, b := range levels[i+1:] {
-				for _, seats := range []int{2, 6} {
-					t.Run(fmt.Sprintf("%s/%s-%s/%d", g.name, a, b, seats), func(t *testing.T) {
-						t.Parallel()
-						versus(t, table{game: g.game, bombs: g.bomb, hands: hands}, a, b, seats)
-					})
-				}
+		for _, b := range levels[1:] {
+			for _, seats := range []int{2, 6} {
+				var mu sync.Mutex
+				var all []float64
+				t.Run(fmt.Sprintf("%s/%s-%s/%d", g.name, a, b, seats), func(t *testing.T) {
+					for k := range shards {
+						t.Run(strconv.Itoa(k), func(t *testing.T) {
+							t.Parallel()
+							chips := duel(t, table{game: g.game, bombs: g.bomb, hands: hands}, a, b, seats)
+							mu.Lock()
+							all = append(all, chips...)
+							mu.Unlock()
+						})
+					}
+				})
+				t.Logf("%s %s against %s, %d seats, %d hands twice: %v", g.name, a, b, seats, len(all), matchOf(all, seats/2))
 			}
 		}
 	}
@@ -104,7 +116,7 @@ func TestSimTable(t *testing.T) {
 // TestBotsPlayEveryGame plays a few hands of every game, with straddles, bomb
 // pots and double boards, and checks bots only make legal moves.
 func TestBotsPlayEveryGame(t *testing.T) {
-	levels := []string{Medium, Easy, Medium, Easy, Medium, Easy}
+	levels := []string{Hard, Medium, Easy, Hard, Medium, Easy}
 	for _, g := range []holdem.Game{{}, {Hole: 4, Pot: true}, {Hole: 5, Pot: true}, {Hole: 4}, {Short: true}, {Hole: 4, Pot: true, Short: true}} {
 		sim(t, table{game: g, levels: levels[:4], hands: 30})
 		sim(t, table{game: g, levels: levels[:4], hands: 8, bombs: true})
@@ -151,6 +163,16 @@ func (m match) String() string { return fmt.Sprintf("%+.1f ± %.1f bb/100", m.me
 // a did.
 func versus(t *testing.T, tb table, a, b string, seats int) match {
 	t.Helper()
+	m := matchOf(duel(t, tb, a, b, seats), seats/2)
+	t.Logf("%s against %s, %d seats, %d hands twice: %v", a, b, seats, tb.hands, m)
+	return m
+}
+
+// duel plays a against b at seats seats, a and b taking turns around the
+// table, then again on the same cards with a and b swapped, and returns a's
+// chips each hand over both, so the same cards pair up.
+func duel(t *testing.T, tb table, a, b string, seats int) []float64 {
+	t.Helper()
 	tb.seed, tb.reset = rand.Uint64()|1, true
 	var runs [2][]stats
 	for k := range runs {
@@ -164,20 +186,23 @@ func versus(t *testing.T, tb table, a, b string, seats int) match {
 		runs[k] = sim(t, tb)
 		report(t, runs[k])
 	}
-	// a's chips each hand over both runs, so the same cards pair up
 	sum := make([]float64, tb.hands)
-	n := 0
 	for _, run := range runs {
 		for _, s := range run {
 			if s.level != a {
 				continue
 			}
-			n++
 			for i, net := range s.nets {
 				sum[i] += float64(net)
 			}
 		}
 	}
+	return sum
+}
+
+// matchOf is how a level did from its chips each hand over two runs, with
+// seats of it in each.
+func matchOf(sum []float64, seats int) match {
 	var mean, sq float64
 	for _, x := range sum {
 		mean += x
@@ -187,11 +212,9 @@ func versus(t *testing.T, tb table, a, b string, seats int) match {
 		sq += (x - mean) * (x - mean)
 	}
 	sd := math.Sqrt(sq / float64(len(sum)-1))
-	// per seat of a, per 100 hands, in big blinds
-	scale := 100 / float64(n) / simBB
-	m := match{mean: mean * scale, ci: 1.96 * sd / math.Sqrt(float64(len(sum))) * scale}
-	t.Logf("%s against %s, %d seats, %d hands twice: %v", a, b, seats, tb.hands, m)
-	return m
+	// per seat, per 100 hands, in big blinds
+	scale := 100 / float64(2*seats) / simBB
+	return match{mean: mean * scale, ci: 1.96 * sd / math.Sqrt(float64(len(sum))) * scale}
 }
 
 // stats is how one seat played over a sim.
@@ -246,6 +269,8 @@ func sim(t *testing.T, tb table) []stats {
 
 	flags := make([]handFlags, len(tb.levels))
 	var line []holdem.Acted
+	var top uint           // this street's biggest bet
+	bets := map[int]uint{} // and each seat's
 	flopped := false
 	// see follows what events did to the hand, and reports whether it ended
 	see := func(events []holdem.Event) bool {
@@ -262,10 +287,23 @@ func sim(t *testing.T, tb table) []stats {
 					flags[seat-1].start = p.Stack + p.Committed
 					fmt.Fprintf(log, "  %-9s %5d  %s\n", name(seat), flags[seat-1].start, cardList(p.Cards))
 				}
-				line, flopped = nil, false
+				line, flopped, top = nil, false, 0
+				clear(bets)
 			case holdem.Acted:
-				line = append(line, e)
 				rd := reads[e.Seat]
+				if len(line) > 0 && line[len(line)-1].Street != e.Street {
+					top = 0
+					clear(bets)
+				}
+				if e.Street != holdem.Preflop && e.Kind != holdem.KindBomb && e.Kind != holdem.KindAnte && top > bets[e.Seat] {
+					rd.FacedBets++
+					rd.FoldedToBets += b2i(e.Kind == holdem.KindFold)
+				}
+				if e.Amount > 0 {
+					bets[e.Seat] = e.To
+					top = max(top, e.To)
+				}
+				line = append(line, e)
 				switch e.Kind {
 				case holdem.KindBet, holdem.KindRaise:
 					rd.Aggressive++
@@ -372,6 +410,7 @@ func sim(t *testing.T, tb table) []stats {
 			s.wonSD += b2i(f.showdown && f.won)
 			rd := reads[i+1]
 			rd.Hands++
+			rd.Bombs += b2i(tb.bombs)
 			rd.VPIP += b2i(f.vpip)
 			rd.PFR += b2i(f.pfr)
 			rd.ThreeBetSpots += b2i(f.reraiseSpot)

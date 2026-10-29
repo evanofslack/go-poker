@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"fmt"
 	"math"
 	"math/rand/v2"
 	"testing"
@@ -243,5 +244,37 @@ func TestStyleOf(t *testing.T) {
 		if s.loose < -1 || s.loose > 1.5 || s.aggro < -0.3 || s.aggro > 0.3 {
 			t.Errorf("style %+v out of range", s)
 		}
+	}
+}
+
+func BenchmarkHard(b *testing.B) {
+	for _, g := range []holdem.Game{{}, {Hole: 4, Pot: true}, {Hole: 5, Pot: true}} {
+		b.Run(fmt.Sprint(g.HoleCards()), func(b *testing.B) {
+			st := holdem.New(holdem.Config{Game: g, SmallBlind: 10, BigBlind: 20}, [32]byte{1})
+			for seat := 1; seat <= 6; seat++ {
+				st.Sit(seat, 2000)
+			}
+			st.StartHand(holdem.Deal{})
+			var line []holdem.Acted
+			for st.Street == holdem.Preflop {
+				events, err := st.Act(st.ToAct, holdem.Call{})
+				if err != nil {
+					events, _ = st.Act(st.ToAct, holdem.Check{})
+				}
+				for _, e := range events {
+					if a, ok := e.(holdem.Acted); ok {
+						line = append(line, a)
+					}
+				}
+				if !st.Betting {
+					st.NextStreet()
+				}
+			}
+			r := rand.New(rand.NewPCG(1, 2))
+			for b.Loop() {
+				s := spotOf(st.View(st.ToAct), st.ToAct, line)
+				hard(s, r)
+			}
+		})
 	}
 }

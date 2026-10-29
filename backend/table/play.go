@@ -223,7 +223,10 @@ func (r *reducer) botMove() {
 	for _, p := range g.Players {
 		if s := r.s.Seats[p.Seat]; s != nil && p.Seat != g.ToAct {
 			if t := r.s.Totals[s.Name]; t != nil {
-				reads[p.Seat] = bot.Read{Hands: t.Hands, VPIP: t.VPIP, PFR: t.PFR, ThreeBetSpots: t.ThreeBetSpots, ThreeBets: t.ThreeBets, Aggressive: t.Aggressive, Calls: t.Calls}
+				reads[p.Seat] = bot.Read{
+					Hands: t.Hands, Bombs: t.Bombs, VPIP: t.VPIP, PFR: t.PFR, ThreeBetSpots: t.ThreeBetSpots, ThreeBets: t.ThreeBets,
+					Aggressive: t.Aggressive, Calls: t.Calls, FacedBets: t.FacedBets, FoldedToBets: t.FoldedToBets,
+				}
 			}
 		}
 	}
