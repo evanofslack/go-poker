@@ -236,11 +236,10 @@ export interface Settings {
   straddle: string; // StraddleOff, StraddleOptional or StraddleForced
   runIt: boolean; // once everyone left is all in, or all but one, they vote to run the rest of the board out more than once
   /**
-   * special hands: bomb pots and double board, called by the host or on a
-   * schedule
+   * bomb pots, on one board or two, called by the host or on a schedule
    */
   bombPot: number /* uint */; // what everyone puts in a bomb pot, 0 for no bomb pots
-  special: string; // what the schedule deals: SpecialBomb, SpecialDouble or SpecialDoubleBomb
+  special: string; // which bomb pot: SpecialBomb or SpecialDoubleBomb
   specialEvery: number /* uint */; // one every this many hands or orbits, 0 for only when the host calls one
   specialUnit: string; // UnitHands or UnitOrbits
 }
@@ -248,10 +247,6 @@ export interface Settings {
  * Special hands, and the units of their schedule
  */
 export const SpecialBomb = "bomb";
-/**
- * Special hands, and the units of their schedule
- */
-export const SpecialDouble = "double";
 /**
  * Special hands, and the units of their schedule
  */

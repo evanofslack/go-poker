@@ -2,7 +2,6 @@ import {
     blinds,
     antes,
     bombPots,
-    isBomb,
     bountyHand,
     decisionTimes,
     decks,
@@ -253,32 +252,32 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                         onChange={(on) => set({ duckHunt: on })}
                     />
                 </Section>
-                <Section title="special hands">
+                <Section title="bomb pots">
                     <Toggle
                         id="bombPots"
                         label="bomb pots"
-                        hint="everyone puts in the same amount and the hand starts on the flop. the host can call one, or double board, any time from the host tab"
+                        hint="everyone puts in the same amount and the hand starts on the flop. the host can call one any time from the host tab"
                         checked={form.bombPot > 0}
-                        onChange={(on) =>
-                            set({ bombPot: on ? 2 : 0, special: !on && isBomb(form.special) ? "double" : form.special })
-                        }
+                        onChange={(on) => set({ bombPot: on ? 2 : 0 })}
                     />
                     {form.bombPot > 0 && (
-                        <Segmented
-                            legend="bomb pot"
-                            name="bombPot"
-                            options={bombPots.map((n) => ({ label: `${n} bb`, value: n }))}
-                            value={form.bombPot}
-                            onChange={(n) => set({ bombPot: n })}
-                        />
+                        <>
+                            <Segmented
+                                legend="bomb pot"
+                                name="bombPot"
+                                options={bombPots.map((n) => ({ label: `${n} bb`, value: n }))}
+                                value={form.bombPot}
+                                onChange={(n) => set({ bombPot: n })}
+                            />
+                            <SpecialSchedule
+                                id="doubleBoard"
+                                special={form.special}
+                                specialEvery={form.specialEvery}
+                                specialUnit={form.specialUnit}
+                                onChange={set}
+                            />
+                        </>
                     )}
-                    <SpecialSchedule
-                        special={form.special}
-                        specialEvery={form.specialEvery}
-                        specialUnit={form.specialUnit}
-                        bombs={form.bombPot > 0}
-                        onChange={set}
-                    />
                 </Section>
             </div>
         </div>

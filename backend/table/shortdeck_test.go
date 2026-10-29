@@ -92,8 +92,10 @@ func TestShortDeckSettings(t *testing.T) {
 		{"PLO for 8", func(s *Settings) { s.Seats, s.Game = 8, GameOmaha }, false},
 		{"PLO5 for 6", func(s *Settings) { s.Seats, s.Game = 6, GameOmaha5 }, true},
 		{"PLO5 for 7", func(s *Settings) { s.Seats, s.Game = 7, GameOmaha5 }, false},
-		{"hold'em double board for 9", func(s *Settings) { s.Seats, s.Special, s.SpecialEvery = 9, SpecialDouble, 1 }, true},
-		{"PLO double board for 7", func(s *Settings) { s.Seats, s.Game, s.Special, s.SpecialEvery = 7, GameOmaha, SpecialDouble, 1 }, false},
+		{"hold'em double board for 9", func(s *Settings) { s.Seats, s.BombPot, s.Special, s.SpecialEvery = 9, 20, SpecialDoubleBomb, 1 }, true},
+		{"PLO double board for 7", func(s *Settings) {
+			s.Seats, s.Game, s.BombPot, s.Special, s.SpecialEvery = 7, GameOmaha, 20, SpecialDoubleBomb, 1
+		}, false},
 		{"another deck", func(s *Settings) { s.Deck = "tiny" }, false},
 	} {
 		set := DefaultSettings

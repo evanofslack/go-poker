@@ -25,13 +25,8 @@ export const antes = [0, 0.1, 0.25, 0.5, 1]; // in big blinds, 0 is no ante
 export const sevenDeuces = [0, 1, 2, 5]; // 7-2 bounties in big blinds, 0 is off
 export const standUpPayouts = [1, 2, 5, 10]; // stand-up payouts in big blinds
 export const bombPots = [1, 2, 5, 10]; // bomb pots in big blinds
-export const specialKinds = [
-    { label: "bomb pot", value: "bomb" },
-    { label: "double board", value: "double" },
-    { label: "both", value: "double-bomb" },
-];
-export const everyHands = [0, 5, 10, 20, 50]; // hands between scheduled special hands, 0 is only when the host calls one
-export const everyOrbits = [0, 1, 2, 3, 5];
+export const everyHands = [5, 10, 20, 50]; // hands between scheduled bomb pots
+export const everyOrbits = [1, 2, 3, 5];
 export const maxBigBlind = 1_000_000;
 export const maxBuyInBB = 1000;
 export const maxPasswordLen = 32;
@@ -58,7 +53,7 @@ export type SettingsForm = {
     decisionTime: number;
     runIt: boolean;
     bombPot: number; // in big blinds, 0 for no bomb pots
-    special: string; // what the schedule deals: bomb, double or double-bomb
+    special: string; // which bomb pot: bomb, or double-bomb on two boards
     specialEvery: number; // 0 for only when the host calls one
     specialUnit: string; // hands or orbits
 };
@@ -139,7 +134,7 @@ export function toSettings(f: SettingsForm): Settings {
         bombPot: f.bombPot * bb,
         special: f.special,
         // a schedule of bomb pots needs them on
-        specialEvery: isBomb(f.special) && !f.bombPot ? 0 : f.specialEvery,
+        specialEvery: f.bombPot ? f.specialEvery : 0,
         specialUnit: f.specialUnit,
     };
 }
@@ -196,11 +191,10 @@ export function bountyHand(s: Pick<Settings, "deck">): string {
     return s.deck === "short" ? "J-6" : "7-2";
 }
 
-// isBomb and isDouble say what a special hand is
-export const isBomb = (kind: string) => kind === "bomb" || kind === "double-bomb";
-export const isDouble = (kind: string) => kind === "double" || kind === "double-bomb";
+// isDouble says whether a bomb pot is on two boards
+export const isDouble = (kind: string) => kind === "double-bomb";
 
-// specialName names a special hand, like "double board bomb pot"
+// specialName names a bomb pot, like "double board bomb pot"
 export function specialName(kind: string): string {
-    return { bomb: "bomb pot", double: "double board", "double-bomb": "double board bomb pot" }[kind] ?? "";
+    return { bomb: "bomb pot", "double-bomb": "double board bomb pot" }[kind] ?? "";
 }

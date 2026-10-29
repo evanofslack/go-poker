@@ -116,7 +116,7 @@ type State struct {
 	Acts     map[int]Act           `json:"acts"` // by seat
 
 	StandUp      *StandUp     `json:"standUp"`      // the stand-up round going, if any
-	SpecialNext  string       `json:"specialNext"`  // the next hand's special: SpecialBomb, SpecialDouble, SpecialDoubleBomb, or "" for none
+	SpecialNext  string       `json:"specialNext"`  // the next hand's bomb pot: SpecialBomb, SpecialDoubleBomb, or "" for none
 	SpecialHands int          `json:"specialHands"` // normal hands since the schedule last dealt a special one
 	StraddleAsk  *StraddleAsk `json:"straddleAsk"`  // the straddles for the next hand, being asked
 	RunVote      *RunVote     `json:"runVote"`      // how many times to run the board out, being voted on

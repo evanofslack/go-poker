@@ -19,7 +19,7 @@ export default function CommunityCards() {
     const runs = view.double ? 2 : view.runs > 1 ? view.runs : 1;
     const label = view.double ? "board" : "run";
     // the special hand being played, or the one coming next
-    const playing = view.bomb > 0 ? (view.double ? "double-bomb" : "bomb") : view.double ? "double" : "";
+    const playing = view.bomb > 0 ? (view.double ? "double-bomb" : "bomb") : "";
     const special = playing
         ? specialName(playing) + (view.bomb > 0 ? ` · ${view.bomb.toLocaleString("en")} each` : "")
         : view.specialNext && view.street === ""

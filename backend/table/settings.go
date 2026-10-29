@@ -37,10 +37,9 @@ type Settings struct {
 	Straddle   string `json:"straddle"` // StraddleOff, StraddleOptional or StraddleForced
 	RunIt      bool   `json:"runIt"`    // once everyone left is all in, or all but one, they vote to run the rest of the board out more than once
 
-	// special hands: bomb pots and double board, called by the host or on a
-	// schedule
+	// bomb pots, on one board or two, called by the host or on a schedule
 	BombPot      uint   `json:"bombPot"`      // what everyone puts in a bomb pot, 0 for no bomb pots
-	Special      string `json:"special"`      // what the schedule deals: SpecialBomb, SpecialDouble or SpecialDoubleBomb
+	Special      string `json:"special"`      // which bomb pot: SpecialBomb or SpecialDoubleBomb
 	SpecialEvery uint   `json:"specialEvery"` // one every this many hands or orbits, 0 for only when the host calls one
 	SpecialUnit  string `json:"specialUnit"`  // UnitHands or UnitOrbits
 }
@@ -48,7 +47,6 @@ type Settings struct {
 // Special hands, and the units of their schedule
 const (
 	SpecialBomb       = "bomb"
-	SpecialDouble     = "double"
 	SpecialDoubleBomb = "double-bomb"
 	UnitHands         = "hands"
 	UnitOrbits        = "orbits"
@@ -57,12 +55,10 @@ const (
 // specialNames say what each special hand is.
 var specialNames = map[string]string{
 	SpecialBomb:       "bomb pot",
-	SpecialDouble:     "double board",
 	SpecialDoubleBomb: "double board bomb pot",
 }
 
-func isBomb(kind string) bool   { return kind == SpecialBomb || kind == SpecialDoubleBomb }
-func isDouble(kind string) bool { return kind == SpecialDouble || kind == SpecialDoubleBomb }
+func isDouble(kind string) bool { return kind == SpecialDoubleBomb }
 
 // scheduled is whether set deals special hands on its own.
 func (set Settings) scheduled() bool { return set.SpecialEvery > 0 }
@@ -191,14 +187,14 @@ func (s Settings) Validate() error {
 	case s.BombPot > maxBombBB*s.BigBlind:
 		return fmt.Errorf("bomb pot can't be more than %d big blinds", maxBombBB)
 	case specialNames[s.Special] == "":
-		return errors.New("special hand must be bomb, double or double-bomb")
+		return errors.New("special hand must be bomb or double-bomb")
 	case s.SpecialUnit != UnitHands && s.SpecialUnit != UnitOrbits:
 		return errors.New("the special hand schedule must be in hands or orbits")
 	case s.SpecialUnit == UnitHands && s.SpecialEvery > maxEveryHands:
 		return fmt.Errorf("special hands can't be further apart than %d hands", maxEveryHands)
 	case s.SpecialUnit == UnitOrbits && s.SpecialEvery > maxEveryOrbits:
 		return fmt.Errorf("special hands can't be further apart than %d orbits", maxEveryOrbits)
-	case s.scheduled() && isBomb(s.Special) && s.BombPot == 0:
+	case s.scheduled() && s.BombPot == 0:
 		return errors.New("turn on bomb pots to schedule them")
 	case s.scheduled() && isDouble(s.Special) && !s.fitsDouble():
 		return fmt.Errorf("%s deals too many cards for two boards at %d seats", GameName(s), s.Seats)
@@ -246,7 +242,7 @@ func (r *reducer) applySettings(who string, set Settings) {
 		r.dropStraddles() // asked at the old blinds
 	}
 	s.Settings, s.Next = set, nil
-	if isBomb(s.SpecialNext) && set.BombPot == 0 {
+	if set.BombPot == 0 {
 		s.SpecialNext = ""
 	}
 	if !set.scheduled() {
@@ -299,7 +295,8 @@ func settingsChanges(old, set Settings) string {
 	add(old.DecisionTime != set.DecisionTime, "the decision time to %ds", set.DecisionTime/1000)
 	add(old.BombPot != set.BombPot, "bomb pots to %s", chips(set.BombPot))
 	if !set.scheduled() {
-		add(old.scheduled(), "special hands only when called")
+		add(old.scheduled(), "bomb pots only when called")
+		add(set.BombPot > 0 && old.Special != set.Special, "double board bomb pots %s", onOff(isDouble(set.Special)))
 	} else {
 		add(old.Special != set.Special || old.SpecialEvery != set.SpecialEvery || old.SpecialUnit != set.SpecialUnit,
 			"a %s every %s", specialNames[set.Special], every(set.SpecialEvery, set.SpecialUnit))

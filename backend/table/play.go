@@ -56,11 +56,11 @@ func (r *reducer) dealHand(waiting bool) {
 		straddles = len(a.Yes)
 	}
 	deal := holdem.Deal{Straddles: straddles}
-	if isBomb(s.SpecialNext) {
+	if s.SpecialNext != "" {
 		deal = holdem.Deal{Bomb: s.Settings.BombPot}
-	}
-	if isDouble(s.SpecialNext) {
-		deal.Boards = 2
+		if isDouble(s.SpecialNext) {
+			deal.Boards = 2
+		}
 	}
 	events, err := s.Game.StartHand(deal)
 	if err != nil {

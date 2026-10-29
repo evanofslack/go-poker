@@ -34,10 +34,10 @@ func TestRandomCommands(t *testing.T) {
 			set.SevenDeuce = 0
 		}
 		set.BombPot = r.UintN(3) * set.BigBlind
-		set.Special = []string{SpecialBomb, SpecialDouble, SpecialDoubleBomb}[r.IntN(3)]
+		set.Special = []string{SpecialBomb, SpecialDoubleBomb}[r.IntN(2)]
 		set.SpecialEvery = r.UintN(4)
 		set.SpecialUnit = []string{UnitHands, UnitOrbits}[r.IntN(2)]
-		if isBomb(set.Special) && set.BombPot == 0 || isDouble(set.Special) && !set.fitsDouble() {
+		if set.BombPot == 0 || isDouble(set.Special) && !set.fitsDouble() {
 			set.SpecialEvery = 0
 		}
 		if r.IntN(3) == 0 {
@@ -130,7 +130,7 @@ func TestRandomCommands(t *testing.T) {
 			case 26, 27:
 				cmd = RunIt{Person: id, Runs: r.IntN(6)}
 			case 28:
-				cmd = SpecialHand{Person: id, Kind: []string{"", SpecialBomb, SpecialDouble, SpecialDoubleBomb}[r.IntN(4)]}
+				cmd = SpecialHand{Person: id, Kind: []string{"", SpecialBomb, "double", SpecialDoubleBomb}[r.IntN(4)]}
 			case 25:
 				cmd = StraddlePreset{Person: id, Preset: []string{PresetAsk, PresetAlways, PresetNever}[r.IntN(3)]}
 			default:

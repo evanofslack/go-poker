@@ -8,7 +8,7 @@ import { Button } from "@mantine/core";
 import Confirm from "../Confirm";
 import Section from "../Section";
 import Segmented from "../Segmented";
-import SpecialSchedule, { kindsFor } from "../SpecialSchedule";
+import SpecialSchedule from "../SpecialSchedule";
 
 // Host holds the host's controls for the whole session. Controls for one
 // player are on their row in the players tab.
@@ -150,27 +150,27 @@ function StandUp({ payoutBB, setPayoutBB }: { payoutBB: number; setPayoutBB: (n:
     );
 }
 
-// SpecialHands calls a bomb pot, double board, or both for the next hand, and
-// sets how often they come round on their own
+// SpecialHands calls a bomb pot for the next hand, and sets whether they're on
+// two boards and how often they come round on their own
 function SpecialHands() {
     const socket = useSocket();
     const { appState } = useContext(AppContext);
     const game = appState.view;
-    const [picked, setPicked] = useState("");
     if (!socket || !game) return null;
     // the settings the next hand will have, if the host changed them mid-hand
     const s = game.next ?? game.settings;
-    const kinds = kindsFor(s.bombPot > 0);
-    const kind = kinds.some((k) => k.value === picked) ? picked : kinds[0].value;
     const next = game.specialNext;
+    if (!s.bombPot) {
+        return (
+            <Section title="bomb pots">
+                <p className="text-xs text-muted">off at this table; turn them on in the settings tab</p>
+            </Section>
+        );
+    }
     return (
         <Section
-            title="special hands"
-            hint={
-                (s.bombPot > 0
-                    ? `a bomb pot takes ${s.bombPot.toLocaleString("en")} from everyone and starts on the flop. `
-                    : "") + "double board deals two boards from the flop, and each pot splits between them"
-            }
+            title="bomb pots"
+            hint={`a bomb pot takes ${s.bombPot.toLocaleString("en")} from everyone and starts on the flop`}
         >
             {next ? (
                 <>
@@ -183,24 +183,16 @@ function SpecialHands() {
                     </Button>
                 </>
             ) : (
-                <>
-                    <Segmented legend="next hand" name="specialNext" options={kinds} value={kind} onChange={setPicked} />
-                    <Button variant="filled" className="self-start" onClick={() => specialHand(socket, kind)}>
-                        deal it next hand
-                    </Button>
-                </>
+                <Button variant="filled" className="self-start" onClick={() => specialHand(socket, s.special)}>
+                    deal one next hand
+                </Button>
             )}
             <SpecialSchedule
+                id="hostDoubleBoard"
                 special={s.special}
                 specialEvery={s.specialEvery}
                 specialUnit={s.specialUnit}
-                bombs={s.bombPot > 0}
-                onChange={(change) => {
-                    const set = { ...s, ...change };
-                    // the kind shown is the first allowed when the saved one isn't
-                    if (!kinds.some((k) => k.value === set.special)) set.special = kinds[0].value;
-                    updateSettings(socket, set);
-                }}
+                onChange={(change) => updateSettings(socket, { ...s, ...change })}
             />
             {game.specialIn > 0 && !next && (
                 <p className="text-xs text-muted" aria-label="next special hand">

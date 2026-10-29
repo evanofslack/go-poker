@@ -1,27 +1,30 @@
-// Special hands: the host calls a double board bomb pot, everyone posts and the
+// Bomb pots: the host calls a double board bomb pot, everyone posts and the
 // hand starts on the flop with two boards and a pot each; then a schedule.
 import { btn, check, checkDown, finish, has, launch, panel, record, seat, shot } from "./lib.mjs";
 
 const phone = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 };
 const browser = await launch();
 
-// bomb pots of 5 bb
+// double board bomb pots of 5 bb, called by the host
+let hidden = false;
 const setup = async (p) => {
+    hidden = (await p.locator('label[for="doubleBoard"]').count()) === 0;
     await p.click('label[for="bombPots"]');
     await p.click('fieldset:has(input[name="bombPot"]) >> text="5 bb"');
+    await p.click('label[for="doubleBoard"]');
 };
 const [alice, bob, carol] = await seat(browser, "bomb" + Date.now(), ["alice", { name: "bob", context: phone }, "carol"], setup);
+check("the bomb pot options wait for bomb pots", hidden);
 const rec = record(bob);
 await bob.reload();
 
 await panel(alice, "host");
-await alice.click('fieldset:has(input[name="specialNext"]) >> text="both"');
 await shot(alice, "bomb-0-host");
-await alice.click(btn("deal it next hand"));
+await alice.click(btn("deal one next hand"));
 check("the host sees it coming", await has(alice, '[aria-label="special hand"] >> text=next hand'));
 await alice.click('[aria-label="close table panel"]');
 check("everyone sees it coming", await has(bob, "[data-bomb] >> text=double board bomb pot next hand"));
-check("only the host calls one", (await bob.locator(btn("deal it next hand")).count()) === 0);
+check("only the host calls one", (await bob.locator(btn("deal one next hand")).count()) === 0);
 
 await alice.click(btn("start"));
 check("the flop is out", await has(bob, "[data-bomb] >> text=double board bomb pot · 100 each"));
@@ -46,13 +49,12 @@ await panel(alice, "hands");
 check("history says bomb, and board 2", await has(alice, "[data-history-run] >> text=board 2"));
 await shot(alice, "bomb-5-history");
 
-// a double board every orbit from the host tab, three handed: in 3 hands at most
+// one every orbit from the host tab, three handed: in 3 hands at most
 await panel(alice, "host");
-await alice.click('fieldset:has(input[name="specialUnit"]) >> text="orbits"');
-await alice.click('fieldset:has(input[name="specialEvery"]) >> text="1"');
-check("the schedule is set", await has(alice, '[aria-label="next special hand"] >> text=/next bomb pot in [123] hands?/'));
-await alice.click('fieldset:has(input[name="special"]) >> text="double board"');
-check("and deals double board", await has(alice, '[aria-label="next special hand"] >> text=/next double board in/'));
+await alice.click('fieldset:has(input[name="specialSchedule"]) >> text="by orbits"');
+check("the schedule is set", await has(alice, '[aria-label="next special hand"] >> text=/next double board bomb pot in [123] hands?/'));
+await alice.click('label[for="hostDoubleBoard"]');
+check("and one board", await has(alice, '[aria-label="next special hand"] >> text=/next bomb pot in/'));
 await shot(alice, "bomb-6-schedule");
 
 await browser.close();

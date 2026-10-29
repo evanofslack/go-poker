@@ -1,56 +1,54 @@
-import { everyHands, everyOrbits, isBomb, specialKinds } from "../lib/settings";
+import { everyHands, everyOrbits, isDouble } from "../lib/settings";
 import Segmented from "./Segmented";
+import Toggle from "./Toggle";
 
 type schedule = { special: string; specialEvery: number; specialUnit: string };
 
 type specialScheduleProps = schedule & {
-    bombs: boolean; // bomb pots are on, so the schedule can deal them
+    id: string; // tells the create form's double board switch from the host tab's
     onChange: (change: Partial<schedule>) => void;
 };
 
-// kindsFor are the special hands a table can deal: double board always, bomb
-// pots only when they're on
-export const kindsFor = (bombs: boolean) => specialKinds.filter((k) => bombs || !isBomb(k.value));
-
-// SpecialSchedule picks how often special hands come round on their own, and
-// which kind: in the create form and live in the host tab
-export default function SpecialSchedule({ special, specialEvery, specialUnit, bombs, onChange }: specialScheduleProps) {
+// SpecialSchedule sets up bomb pots once they're on: on one board or two, and
+// whether they come round on their own or only when the host calls one. In the
+// create form and live in the host tab.
+export default function SpecialSchedule({ id, special, specialEvery, specialUnit, onChange }: specialScheduleProps) {
     const orbits = specialUnit === "orbits";
-    const kinds = kindsFor(bombs);
     return (
         <>
+            <Toggle
+                id={id}
+                label="double board"
+                hint="two boards from the flop, and each pot splits between them"
+                checked={isDouble(special)}
+                onChange={(on) => onChange({ special: on ? "double-bomb" : "bomb" })}
+            />
             <div className="flex flex-wrap items-end gap-x-2 gap-y-3">
                 <Segmented
-                    legend="every"
-                    hint="an orbit is a hand for each player dealt in"
-                    name="specialEvery"
-                    options={(orbits ? everyOrbits : everyHands).map((n) => ({ label: n ? String(n) : "off", value: n }))}
-                    value={specialEvery}
-                    onChange={(n) => onChange({ specialEvery: n })}
-                />
-                <Segmented
-                    legend="counted in"
-                    name="specialUnit"
+                    legend="deal them"
+                    hint="when called, the host deals one from the host tab; an orbit is a hand for each player dealt in"
+                    name="specialSchedule"
                     options={[
-                        { label: "hands", value: "hands" },
-                        { label: "orbits", value: "orbits" },
+                        { label: "when called", value: "" },
+                        { label: "by hands", value: "hands" },
+                        { label: "by orbits", value: "orbits" },
                     ]}
-                    value={specialUnit}
-                    // keep a schedule going in the new unit, at its shortest sensible gap
+                    value={specialEvery ? specialUnit : ""}
+                    // a schedule starts at its shortest sensible gap
                     onChange={(u) =>
-                        onChange({ specialUnit: u, specialEvery: specialEvery ? (u === "orbits" ? 1 : 10) : 0 })
+                        onChange(u ? { specialUnit: u, specialEvery: u === "orbits" ? 1 : 10 } : { specialEvery: 0 })
                     }
                 />
+                {specialEvery > 0 && (
+                    <Segmented
+                        legend="every"
+                        name="specialEvery"
+                        options={(orbits ? everyOrbits : everyHands).map((n) => ({ label: String(n), value: n }))}
+                        value={specialEvery}
+                        onChange={(n) => onChange({ specialEvery: n })}
+                    />
+                )}
             </div>
-            {specialEvery > 0 && (
-                <Segmented
-                    legend="deal"
-                    name="special"
-                    options={kinds}
-                    value={kinds.some((k) => k.value === special) ? special : kinds[0].value}
-                    onChange={(k) => onChange({ special: k })}
-                />
-            )}
         </>
     );
 }

@@ -197,8 +197,8 @@ func (UpdateSettings) command() {}
 func (SetPassword) command()    {}
 func (TimerFired) command()     {}
 
-// SpecialHand makes the next hand a special one: Kind is SpecialBomb,
-// SpecialDouble or SpecialDoubleBomb, or "" to call it off.
+// SpecialHand makes the next hand a bomb pot: Kind is SpecialBomb or
+// SpecialDoubleBomb, or "" to call it off.
 type SpecialHand struct {
 	Person string
 	Kind   string

@@ -1,6 +1,6 @@
 package table
 
-// specialHand makes the next hand a special one, or calls it off with kind
+// specialHand makes the next hand a bomb pot, on one board or two, or calls it off with kind
 // "". Mid-hand it's the hand after this one.
 func (r *reducer) specialHand(p *Person, kind string) error {
 	s := r.s
@@ -15,7 +15,7 @@ func (r *reducer) specialHand(p *Person, kind string) error {
 		return nil
 	case specialNames[kind] == "":
 		return fail("that isn't a special hand")
-	case isBomb(kind) && s.Settings.BombPot == 0:
+	case s.Settings.BombPot == 0:
 		return fail("bomb pots are off at this table")
 	case isDouble(kind) && !s.Settings.fitsDouble():
 		return fail("there aren't enough cards for two boards at %d seats", s.Settings.Seats)
@@ -23,11 +23,7 @@ func (r *reducer) specialHand(p *Person, kind string) error {
 		return fail("the next hand is already a %s", specialNames[kind])
 	}
 	s.SpecialNext = kind
-	if isBomb(kind) {
-		r.log("%s makes the next hand a %s of %d each", p.Name, specialNames[kind], s.Settings.BombPot)
-	} else {
-		r.log("%s makes the next hand %s", p.Name, specialNames[kind])
-	}
+	r.log("%s makes the next hand a %s of %d each", p.Name, specialNames[kind], s.Settings.BombPot)
 	return nil
 }
 
