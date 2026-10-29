@@ -416,7 +416,11 @@ func TestRoundTrip(t *testing.T) {
 	h.ok(Join{ID: "host", Name: "host", Password: "pw"})
 	h.ids["host"] = "host"
 	for i, name := range []string{"bob", "sue", "al"} {
-		h.ok(AddBot{Person: "host", Seat: i + 1, BuyIn: 1000, Name: name, Level: "medium"})
+		level := "medium"
+		if name == "al" {
+			level = "hard" // reads the others from their saved totals
+		}
+		h.ok(AddBot{Person: "host", Seat: i + 1, BuyIn: 1000, Name: name, Level: level})
 	}
 	h.ok(Start{Person: "host"})
 	h.advance(37 * time.Second)

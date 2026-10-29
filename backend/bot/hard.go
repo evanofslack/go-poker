@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"cmp"
 	"fmt"
 	"math"
 	"math/rand/v2"
@@ -116,23 +117,13 @@ func cutoff(edge, w []float64, share float64) float64 {
 		idx[i] = i
 		total += w[i]
 	}
-	slices.SortFunc(idx, func(a, b int) int { return cmpFloat(edge[b], edge[a]) })
+	slices.SortFunc(idx, func(a, b int) int { return cmp.Compare(edge[b], edge[a]) })
 	kept := 0.0
 	for _, i := range idx {
 		kept += w[i]
 		if kept >= share*total {
 			return edge[i]
 		}
-	}
-	return 0
-}
-
-func cmpFloat(a, b float64) int {
-	switch {
-	case a < b:
-		return -1
-	case a > b:
-		return 1
 	}
 	return 0
 }
@@ -157,8 +148,10 @@ func hardPostflop(s spot, p *pool, ws map[int][]float64, r *rand.Rand) Action {
 	// bet sizes, as a share of the pot after calling
 	sizes := []float64{0.33, 0.7}
 	switch {
-	case river && !s.game.Pot:
-		sizes = []float64{0.5, 0.8, 1.4}
+	case river && s.game.Pot:
+		sizes = []float64{0.5, 0.8, 1}
+	case river:
+		sizes = []float64{0.5, 0.8, 1.4} // an overbet, polar
 	case len(s.board) == 4:
 		sizes = []float64{0.5, 0.8}
 	}
@@ -328,9 +321,8 @@ func hardPreflop(s spot, p *pool, ws map[int][]float64, r *rand.Rand) Action {
 	if behind == 0 && !s.bbs && !s.sb {
 		realize = 0.95 // in position
 	}
-	if raises >= 2 {
-		realize -= 0.1 // against a strong range, with less behind
-	}
+	// against a stronger range each raise, with less behind
+	realize -= 0.1 * float64(raises-1)
 	if s.game.HoleCards() > 2 {
 		realize = 0.9 // Omaha equities run close
 	}

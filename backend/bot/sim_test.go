@@ -52,6 +52,49 @@ func TestSim(t *testing.T) {
 	}
 }
 
+// TestSimHard plays hard against medium in every game and against each
+// exploiter at no limit, heads up and six handed, and checks it comes out
+// ahead. It takes about an hour on ten cores.
+func TestSimHard(t *testing.T) {
+	simOnly(t)
+	type duelOf struct {
+		game     int
+		opponent string
+	}
+	var duels []duelOf
+	for i := range games {
+		duels = append(duels, duelOf{i, Medium})
+	}
+	for _, x := range []string{station, jammer, nit, trapper} {
+		duels = append(duels, duelOf{0, x})
+	}
+	for _, d := range duels {
+		g := games[d.game]
+		for _, seats := range []int{2, 6} {
+			t.Run(fmt.Sprintf("%s/%s/%d", g.name, d.opponent, seats), func(t *testing.T) {
+				var mu sync.Mutex
+				var all []float64
+				t.Run("shards", func(t *testing.T) {
+					for k := range 10 {
+						t.Run(strconv.Itoa(k), func(t *testing.T) {
+							t.Parallel()
+							chips := duel(t, table{game: g.game, bombs: g.bomb, hands: 500}, Hard, d.opponent, seats)
+							mu.Lock()
+							all = append(all, chips...)
+							mu.Unlock()
+						})
+					}
+				})
+				m := matchOf(all, seats/2)
+				t.Logf("hard against %s: %v", d.opponent, m)
+				if m.lo() <= 0 {
+					t.Errorf("hard against %s at %s, %d seats: %v", d.opponent, g.name, seats, m)
+				}
+			})
+		}
+	}
+}
+
 // TestSimBaseline seats three medium bots with three playing as medium did
 // before its rewrite, and checks the new one comes out ahead.
 func TestSimBaseline(t *testing.T) {
