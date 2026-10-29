@@ -8,8 +8,9 @@ import Dialog from "./Dialog";
 import SettingsFields from "./SettingsFields";
 
 // EditSettings lets the host change the table's settings, all but the seat
-// count. Mid-hand they apply once the hand ends.
-export default function EditSettings({ onClose }: { onClose: () => void }) {
+// count. Mid-hand they apply once the hand ends. open names closed sections
+// to start open, like bomb pots when the host goes to turn them on.
+export default function EditSettings({ onClose, open }: { onClose: () => void; open?: string[] }) {
     const socket = useSocket();
     const { appState } = useContext(AppContext);
     const game = appState.view;
@@ -39,7 +40,7 @@ export default function EditSettings({ onClose }: { onClose: () => void }) {
                     onClose();
                 }}
             >
-                <SettingsFields form={form} set={set} password={password} setPassword={setPassword} seats={false} />
+                <SettingsFields form={form} set={set} password={password} setPassword={setPassword} seats={false} open={open} />
                 {invalid && (
                     <p className="text-sm text-error" role="alert">
                         {invalid}

@@ -37,6 +37,7 @@ type settingsFieldsProps = {
     password: string;
     setPassword: (password: string) => void;
     seats: boolean; // the seat count can't change once the table exists
+    open?: string[]; // closed sections to start open
 };
 
 const digits = (s: string) => s.replace(/\D/g, "");
@@ -70,7 +71,7 @@ function More({ title, summary, children }: { title: string; summary: string; ch
 // SettingsFields edits a table's settings, for a new table or the host changing one.
 // The game and who can join are always open; the rest have good defaults, so
 // they start closed.
-export default function SettingsFields({ form, set, password, setPassword, seats }: settingsFieldsProps) {
+export default function SettingsFields({ form, set, password, setPassword, seats, open }: settingsFieldsProps) {
     const bb = blinds(form)[1];
     const [min, max] = [parseInt(form.minBuyBB), parseInt(form.maxBuyBB)];
     const buyInChips = bb > 0 && min > 0 && max > 0 ? `${chips(min * bb)}–${chips(max * bb)} chips` : "";
@@ -215,6 +216,7 @@ export default function SettingsFields({ form, set, password, setPassword, seats
             </Section>
             <Accordion
                 multiple
+                defaultValue={open}
                 classNames={{
                     root: "border-t border-line",
                     item: "border-line",

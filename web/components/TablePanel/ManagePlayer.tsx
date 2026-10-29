@@ -7,6 +7,8 @@ import { Button, TextInput } from "@mantine/core";
 import Dialog from "../Dialog";
 import Segmented from "../Segmented";
 
+// label styles a text input's label like the rest of the form's
+const label = { label: "mb-1 text-xs font-normal text-muted" };
 
 // ManagePlayer holds the host's actions on one player. Each closes the dialog;
 // the result shows in the panel and the log.
@@ -30,11 +32,22 @@ export default function ManagePlayer({ line, onClose }: { line: PlayerLine; onCl
         hostAction(socket, action, name);
         onClose();
     };
-    const actions: [string, HostAction, boolean][] = [
-        ["make host", "make-host", here && !self && !bot],
-        ["make banker", "set-banker", game.ledger.banker !== name && !bot],
-        ["sit out", "sit-out-player", status === "playing"],
-        ["move to watching", "move-to-spectator", seat !== null && !bot],
+    // the actions that apply to this player, by what they change
+    const groups: [string, [string, HostAction, boolean][]][] = [
+        [
+            "role",
+            [
+                ["make host", "make-host", here && !self && !bot],
+                ["make banker", "set-banker", game.ledger.banker !== name && !bot],
+            ],
+        ],
+        [
+            "seat",
+            [
+                ["sit out", "sit-out-player", status === "playing"],
+                ["move to watching", "move-to-spectator", seat !== null && !bot],
+            ],
+        ],
     ];
 
     if (removing) {
@@ -58,14 +71,21 @@ export default function ManagePlayer({ line, onClose }: { line: PlayerLine; onCl
 
     return (
         <Dialog title={`manage ${name}`} onClose={onClose}>
-            <div className="flex flex-col gap-1">
-                {actions
-                    .filter(([, , show]) => show)
-                    .map(([label, action]) => (
-                        <Button key={action} justify="flex-start" onClick={() => act(action)}>
-                            {label}
-                        </Button>
-                    ))}
+            <div className="flex flex-col gap-3">
+                {groups.map(([group, actions]) => {
+                    const shown = actions.filter(([, , show]) => show);
+                    if (!shown.length) return null;
+                    return (
+                        <div key={group} role="group" aria-label={group} className="flex flex-col gap-1">
+                            <p className="text-xs text-muted">{group}</p>
+                            {shown.map(([label, action]) => (
+                                <Button key={action} justify="flex-start" onClick={() => act(action)}>
+                                    {label}
+                                </Button>
+                            ))}
+                        </div>
+                    );
+                })}
                 {!self && status !== "left" && (
                     <Button variant="outline" color="red" justify="flex-start" onClick={() => setRemoving(true)}>
                         remove from table
@@ -74,7 +94,7 @@ export default function ManagePlayer({ line, onClose }: { line: PlayerLine; onCl
             </div>
             {player && (
                 <form
-                    className="mt-4 flex flex-col gap-2 border-t border-raised pt-3"
+                    className="mt-4 flex flex-col gap-3 border-t border-line pt-3"
                     onSubmit={(e) => {
                         e.preventDefault();
                         adjustChips(socket, name, mode === "add" ? chips : -chips, reason.trim());
@@ -93,28 +113,30 @@ export default function ManagePlayer({ line, onClose }: { line: PlayerLine; onCl
                     />
                     <TextInput
                         id="chipAmount"
+                        label="amount"
+                        classNames={label}
                         inputMode="numeric"
-                        placeholder="amount"
-                        aria-label="amount"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
                     />
                     <TextInput
                         id="chipReason"
+                        label="reason"
+                        classNames={label}
                         maxLength={60}
-                        placeholder="reason (optional)"
-                        aria-label="reason"
+                        placeholder="optional"
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
                     />
                     {player.in && <p className="text-xs text-subtle">chips can change once this hand ends</p>}
-                    <Button
-                        type="submit"
-                        variant="filled"
-                        disabled={!(chips > 0) || player.in}
-                    >
-                        {mode === "add" ? "add chips" : "take chips"}
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                        <Button type="button" variant="subtle" onClick={onClose}>
+                            cancel
+                        </Button>
+                        <Button type="submit" variant="filled" disabled={!(chips > 0) || player.in}>
+                            {mode === "add" ? "add chips" : "take chips"}
+                        </Button>
+                    </div>
                 </form>
             )}
         </Dialog>
