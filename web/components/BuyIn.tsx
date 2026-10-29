@@ -38,7 +38,7 @@ export default function BuyIn({ min, max, initial, label, onSubmit, onCancel }: 
                 <Button type="submit" variant="filled" size="compact-sm" className="shrink-0" disabled={!valid}>
                     {label}
                 </Button>
-                <Button type="button" variant="subtle" color="red" size="compact-sm" className="shrink-0" onClick={onCancel}>
+                <Button type="button" variant="subtle" size="compact-sm" className="shrink-0" onClick={onCancel}>
                     cancel
                 </Button>
             </div>

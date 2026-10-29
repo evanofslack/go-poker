@@ -1,4 +1,4 @@
-import { ActionIcon, Button, createTheme, CSSVariablesResolver, MantineColorsTuple } from "@mantine/core";
+import { ActionIcon, Badge, Button, createTheme, CSSVariablesResolver, MantineColorsTuple } from "@mantine/core";
 
 // The palette lives here; the role tokens in styles/index.css point at these colors.
 // Shades are Tailwind's, in hex so Mantine can work out contrast.
@@ -87,6 +87,8 @@ export const theme = createTheme({
                     : { root: {} },
         }),
         ActionIcon: ActionIcon.extend({ defaultProps: { variant: "subtle", color: "gray" } }),
+        // badges are small tags like "next hand", in the case the rest of the app writes
+        Badge: Badge.extend({ defaultProps: { variant: "default", size: "sm", radius: "sm", tt: "none", fw: 500 } }),
     },
 });
 

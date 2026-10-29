@@ -1,5 +1,5 @@
-import { useId, useState } from "react";
-import { ActionIcon } from "@mantine/core";
+import { KeyboardEvent, useState } from "react";
+import { ActionIcon, Popover } from "@mantine/core";
 import { FiInfo } from "react-icons/fi";
 
 type hintProps = {
@@ -7,31 +7,44 @@ type hintProps = {
     text: string;
 };
 
-// Hint is an info button that shows a line of explanation under its label. Put
-// it in a flex-wrap row with the label; the text wraps onto its own line.
+// Hint is an info button that shows a line of explanation in a popover, so
+// nothing around it moves
 export default function Hint({ about, text }: hintProps) {
-    const id = useId();
     const [open, setOpen] = useState(false);
+    // Escape closes just the hint, not the dialog it's in, which skips keys from
+    // elements marked data-mantine-stop-propagation
+    const escape = (e: KeyboardEvent) => {
+        if (e.key !== "Escape" || !open) return;
+        e.stopPropagation();
+        setOpen(false);
+    };
+    const stop = { "data-mantine-stop-propagation": open || undefined };
     return (
-        <>
-            <ActionIcon
-                size="xs"
-                radius="xl"
-                aria-label={`about ${about}`}
-                aria-expanded={open}
-                aria-controls={id}
-                title={text}
-                onClick={() => setOpen(!open)}
-            >
-                <FiInfo className="size-3.5" />
-            </ActionIcon>
-            <span
-                id={id}
-                hidden={!open}
-                className="order-last basis-full text-xs font-normal tracking-normal text-subtle normal-case"
-            >
+        <Popover
+            opened={open}
+            onChange={setOpen}
+            closeOnEscape={false}
+            withArrow
+            position="bottom-start"
+            width={256}
+            shadow="md"
+            transitionProps={{ duration: 0 }}
+        >
+            <Popover.Target>
+                <ActionIcon
+                    size="xs"
+                    radius="xl"
+                    aria-label={`about ${about}`}
+                    onClick={() => setOpen(!open)}
+                    onKeyDown={escape}
+                    {...stop}
+                >
+                    <FiInfo className="size-3.5" />
+                </ActionIcon>
+            </Popover.Target>
+            <Popover.Dropdown className="px-3 py-2 text-xs font-normal text-muted" onKeyDown={escape} {...stop}>
                 {text}
-            </span>
-        </>
+            </Popover.Dropdown>
+        </Popover>
     );
 }

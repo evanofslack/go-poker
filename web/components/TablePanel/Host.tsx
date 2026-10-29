@@ -4,8 +4,9 @@ import { cancelStandUp, sessionAction, specialHand, startStandUp, updateSettings
 import { bombPots, nearest, specialName, standUpPayouts } from "../../lib/settings";
 import { useSocket } from "../../hooks/useSocket";
 import { AppContext } from "../../providers/AppStore";
-import { Button } from "@mantine/core";
+import { Badge, Button } from "@mantine/core";
 import Confirm from "../Confirm";
+import EditSettings from "../EditSettings";
 import Section from "../Section";
 import Segmented from "../Segmented";
 import SpecialSchedule from "../SpecialSchedule";
@@ -27,7 +28,7 @@ export default function Host() {
     else if (game.paused) status = midHand ? "pausing after this hand" : "paused";
 
     return (
-        <div className="flex h-full flex-col gap-5 overflow-auto bg-surface p-3 text-sm">
+        <div className="flex h-full flex-col gap-6 overflow-auto p-3 text-sm">
             <div className="flex items-center gap-2" aria-label="game status">
                 <span
                     className={classNames(
@@ -79,9 +80,9 @@ function Names({ label, names }: { label: string; names: string[] }) {
         <div className="flex flex-wrap items-center gap-1">
             <span className="mr-1 text-xs text-subtle">{label}</span>
             {names.map((n) => (
-                <span key={n} className="rounded bg-badge px-1.5 text-fg">
+                <Badge key={n} c="var(--color-fg)">
                     {n}
-                </span>
+                </Badge>
             ))}
         </div>
     );
@@ -104,9 +105,7 @@ function StandUp({ payoutBB, setPayoutBB }: { payoutBB: number; setPayoutBB: (n:
             <Section title="stand-up" hint={rules}>
                 <p className="flex flex-wrap items-center gap-2 text-fg" aria-label="stand-up round">
                     {u.payout.toLocaleString("en")} each
-                    <span className="rounded bg-badge px-1.5 text-xs text-muted">
-                        {u.pending ? "starts with the next hand" : "in play"}
-                    </span>
+                    <Badge>{u.pending ? "starts with the next hand" : "in play"}</Badge>
                 </p>
                 {!u.pending && (
                     <>
@@ -140,7 +139,6 @@ function StandUp({ payoutBB, setPayoutBB }: { payoutBB: number; setPayoutBB: (n:
                 onChange={setPayoutBB}
             />
             <Button
-                variant="filled"
                 className="self-start"
                 onClick={() => startStandUp(socket, payoutBB * game.settings.bb)}
             >
@@ -155,6 +153,7 @@ function StandUp({ payoutBB, setPayoutBB }: { payoutBB: number; setPayoutBB: (n:
 function SpecialHands() {
     const socket = useSocket();
     const { appState } = useContext(AppContext);
+    const [editing, setEditing] = useState(false);
     const game = appState.view;
     if (!socket || !game) return null;
     // the settings the next hand will have, if the host changed them mid-hand
@@ -163,7 +162,13 @@ function SpecialHands() {
     if (!s.bombPot) {
         return (
             <Section title="bomb pots">
-                <p className="text-xs text-muted">off at this table; turn them on in the settings tab</p>
+                <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                    off at this table
+                    <Button size="compact-xs" onClick={() => setEditing(true)}>
+                        turn them on
+                    </Button>
+                </p>
+                {editing && <EditSettings open={["bomb pots"]} onClose={() => setEditing(false)} />}
             </Section>
         );
     }
@@ -175,7 +180,6 @@ function SpecialHands() {
             {/* the amount, for a bomb pot called or scheduled */}
             <Segmented
                 legend="bomb pot"
-                hint="what everyone puts in, from the next bomb pot on"
                 name="hostBombPot"
                 options={bombPots.map((n) => ({
                     label: (
@@ -196,6 +200,7 @@ function SpecialHands() {
                 specialUnit={s.specialUnit}
                 onChange={(change) => updateSettings(socket, { ...s, ...change })}
             />
+            <p className="text-xs text-subtle">changes here save right away, from the next bomb pot on</p>
             {game.specialIn > 0 && !next && (
                 <p className="text-xs text-muted" aria-label="next special hand">
                     next {specialName(s.special)} in {game.specialIn === 1 ? "1 hand" : `${game.specialIn} hands`}
@@ -205,14 +210,14 @@ function SpecialHands() {
                 <>
                     <p className="flex flex-wrap items-center gap-2 text-fg" aria-label="special hand">
                         {specialName(next)}
-                        <span className="rounded bg-badge px-1.5 text-xs text-muted">next hand</span>
+                        <Badge>next hand</Badge>
                     </p>
                     <Button className="self-start" onClick={() => specialHand(socket, "")}>
                         call it off
                     </Button>
                 </>
             ) : (
-                <Button variant="filled" className="self-start" onClick={() => specialHand(socket, s.special)}>
+                <Button className="self-start" onClick={() => specialHand(socket, s.special)}>
                     deal one next hand
                 </Button>
             )}

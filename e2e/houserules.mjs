@@ -3,7 +3,7 @@ import { btn, check, finish, gone, has, launch, panel, seat, shot } from "./lib.
 
 // face-up cards in seats, not on the board
 const faceUp = '[role=img]:not([aria-label="face-down card"]):not([aria-label$=", folded"])';
-const setting = (p, label) => p.locator('dl[aria-label="table settings"] > div', { hasText: label }).innerText();
+const setting = (p, label) => p.locator('[aria-label="table settings"] dl > div', { hasText: label }).innerText();
 const count = (p, selector, n) =>
     p.waitForFunction(([s, n]) => document.querySelectorAll(s).length === n, [selector, n], { timeout: 3000 }).then(() => true, () => false);
 
@@ -19,7 +19,7 @@ check("duck hunt is allowed by default", huntDefault);
 
 await panel(alice, "settings");
 const ante = await setting(alice, "ante");
-check("settings show the ante", /ante\s+5$/.test(ante.trim()), ante);
+check("settings show the ante", /ante\s+25% · 5$/.test(ante.trim()), ante);
 const hunt = await setting(alice, "duck hunt");
 check("and duck hunting", /allowed$/.test(hunt.trim()), hunt);
 const sevenDeuce = await setting(alice, "7-2");

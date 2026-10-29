@@ -8,7 +8,7 @@ type dialogProps = {
     size?: "sm" | "md" | "lg"; // md and lg are for forms; they scroll when taller than the screen
 };
 
-const widths = { sm: "18rem", md: "24rem", lg: "42rem" };
+const widths = { sm: "18rem", md: "24rem", lg: "32rem" };
 
 // Dialog is a modal over the page. Escape or a click outside closes it, and focus stays in
 // it while it's open. It's open while it's rendered; callers show and hide it.

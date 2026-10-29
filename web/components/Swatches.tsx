@@ -21,7 +21,7 @@ const looks = {
 export default function Swatches<T extends string>({ legend, hint, name, look, options, value, onChange }: swatchesProps<T>) {
     return (
         <fieldset>
-            <legend className="mb-1 flex w-full flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-muted">
+            <legend className="mb-1 flex items-center gap-1 text-xs text-muted">
                 {legend}
                 {hint && <Hint about={legend} text={hint} />}
             </legend>
@@ -34,7 +34,7 @@ export default function Swatches<T extends string>({ legend, hint, name, look, o
                             looks[look],
                             "flex h-8 w-16 cursor-pointer items-center justify-center text-xs font-medium",
                             "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent",
-                            o === value && "ring-2 ring-accent ring-offset-2 ring-offset-surface"
+                            o === value && "ring-3 ring-accent ring-offset-2 ring-offset-surface"
                         )}
                     >
                         <input type="radio" className="sr-only" name={name} value={o} checked={o === value} onChange={() => onChange(o)} />

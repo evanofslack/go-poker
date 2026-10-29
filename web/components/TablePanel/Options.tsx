@@ -45,8 +45,8 @@ export default function Options() {
     const set = (p: Partial<Prefs>) => dispatch({ type: "setPref", payload: p });
 
     return (
-        <div className="flex h-full flex-col gap-5 overflow-auto bg-surface p-3 text-sm">
-            <Section title="display">
+        <div className="flex h-full flex-col gap-6 overflow-auto p-3 text-sm">
+            <Section title="look">
                 <Segmented
                     legend="animations"
                     hint="system follows your device's reduce motion setting"
@@ -82,7 +82,8 @@ export default function Options() {
                     onChange={(muted) => set({ muted })}
                     extra={<span className="w-[22px]" />}
                 />
-                <div className={prefs.muted ? "flex flex-col gap-3 opacity-50" : "flex flex-col gap-3"}>
+                {/* muted, the rest waits; the test buttons still play */}
+                <div className="flex flex-col gap-3">
                     <fieldset>
                         <legend className="mb-1 text-xs text-muted">volume</legend>
                         <Slider
@@ -92,6 +93,7 @@ export default function Options() {
                             step={0.05}
                             label={(v) => `${Math.round(v * 100)}%`}
                             value={prefs.volume}
+                            disabled={prefs.muted}
                             onChange={(volume) => set({ volume })}
                         />
                     </fieldset>
@@ -106,6 +108,7 @@ export default function Options() {
                                 { label: "off", value: "off" },
                             ]}
                             value={prefs.turn}
+                            disabled={prefs.muted}
                             onChange={(turn) => set({ turn })}
                         />
                         <Test group="turn" />
@@ -117,6 +120,7 @@ export default function Options() {
                             label={label}
                             hint={hint}
                             checked={prefs[group]}
+                            disabled={prefs.muted}
                             onChange={(on) => set({ [group]: on })}
                             extra={<Test group={group} />}
                         />

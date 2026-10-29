@@ -8,8 +8,9 @@ import Dialog from "./Dialog";
 import SettingsFields from "./SettingsFields";
 
 // EditSettings lets the host change the table's settings, all but the seat
-// count. Mid-hand they apply once the hand ends.
-export default function EditSettings({ onClose }: { onClose: () => void }) {
+// count. Mid-hand they apply once the hand ends. open names closed sections
+// to start open, like bomb pots when the host goes to turn them on.
+export default function EditSettings({ onClose, open }: { onClose: () => void; open?: string[] }) {
     const socket = useSocket();
     const { appState } = useContext(AppContext);
     const game = appState.view;
@@ -39,14 +40,14 @@ export default function EditSettings({ onClose }: { onClose: () => void }) {
                     onClose();
                 }}
             >
-                <SettingsFields form={form} set={set} password={password} setPassword={setPassword} seats={false} />
+                <SettingsFields form={form} set={set} password={password} setPassword={setPassword} seats={false} open={open} />
                 {invalid && (
                     <p className="text-sm text-error" role="alert">
                         {invalid}
                     </p>
                 )}
-                <div className="flex flex-wrap items-center justify-end gap-2 border-t border-raised pt-3">
-                    {midHand && <p className="mr-auto text-xs text-subtle">changes apply after this hand</p>}
+                <div className="sticky bottom-0 z-10 -mx-4 -mb-4 flex flex-wrap items-center justify-end gap-2 border-t border-line bg-(--mantine-color-body) px-4 py-3">
+                    {midHand && <p className="basis-full text-xs text-subtle">changes apply after this hand</p>}
                     <Button type="button" variant="subtle" onClick={onClose}>
                         cancel
                     </Button>

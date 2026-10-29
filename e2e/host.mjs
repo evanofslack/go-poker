@@ -1,4 +1,5 @@
-// Host controls in the players panel: chips, banker, sit out, move to watching, remove, and passing host on.
+// Host controls in the players panel: chips, banker, sit out, move to watching, remove, and passing host on;
+// and turning bomb pots on from the host tab.
 import { btn, check, finish, gone, has, launch, panel, playerRow, seat, shot, until } from "./lib.mjs";
 
 const rowHas = (p, name, text) => until(async () => (await playerRow(p, name)).includes(text));
@@ -50,6 +51,15 @@ check("they're told why", await has(bob, "text=the host removed you from the tab
 check("they're listed as left", await rowHas(alice, "bob", "left"));
 await bob.reload();
 check("a removed player doesn't rejoin on reload", await has(bob, "#username"));
+
+// bomb pots are off, and the host tab goes straight to them in the settings
+await panel(alice, "host");
+await alice.click(btn("turn them on"));
+check("turning bomb pots on opens their section", await alice.locator("#bombPots").isVisible());
+await alice.click('label[for="bombPots"]');
+await alice.click(`[role=dialog] ${btn("save")}`);
+check("then the host tab has their controls", await has(alice, btn("deal one next hand")));
+await panel(alice, "players");
 
 // handing the host role to carol
 await manage(alice, "carol", "make host");

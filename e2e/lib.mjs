@@ -53,8 +53,19 @@ async function enter(page, name, table, setup) {
     await page.fill("#username", name);
     await page.fill("#tablename", table);
     await page.click(btn(setup ? "create" : "join"));
-    if (typeof setup === "function") await setup(page);
+    if (typeof setup === "function") {
+        await openRules(page);
+        await setup(page);
+    }
     if (setup) await confirmCreate(page);
+}
+
+// openRules opens the settings dialog's closed sections (pace, house rules, bomb
+// pots), so their controls can be clicked
+export async function openRules(page) {
+    await page.waitForSelector("[role=dialog] [data-accordion-control]");
+    const closed = page.locator('[role=dialog] [data-accordion-control][aria-expanded="false"]');
+    while (await closed.count()) await closed.first().click();
 }
 
 // quick sets the shortest pause between hands in the create dialog, for scripts

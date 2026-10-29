@@ -8,14 +8,15 @@ type toggleProps = {
     hint?: string;
     checked: boolean;
     onChange: (checked: boolean) => void;
+    disabled?: boolean;
     extra?: ReactNode; // after the switch, like a sound's test button
 };
 
 // Toggle is an on/off setting: the label on the left, a switch on the right
-export default function Toggle({ id, label, hint, checked, onChange, extra }: toggleProps) {
+export default function Toggle({ id, label, hint, checked, onChange, disabled, extra }: toggleProps) {
     return (
-        <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm">
-            <label htmlFor={id} className="cursor-pointer">
+        <div className="flex items-center gap-1 text-sm">
+            <label htmlFor={id} className={disabled ? "text-subtle" : "cursor-pointer"}>
                 {label}
             </label>
             {hint && <Hint about={label} text={hint} />}
@@ -23,6 +24,7 @@ export default function Toggle({ id, label, hint, checked, onChange, extra }: to
                 id={id}
                 className="ml-auto"
                 checked={checked}
+                disabled={disabled}
                 onChange={(e) => onChange(e.currentTarget.checked)}
             />
             {extra}

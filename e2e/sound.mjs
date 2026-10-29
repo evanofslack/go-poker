@@ -43,7 +43,7 @@ check("mute plays nothing", (await heard(alice)).length === 0, (await heard(alic
 await alice.click('button[aria-label="mute all sound"]');
 
 // chips off: the next hand deals with no chips for alice
-await panel(alice, "options");
+await panel(alice, "display");
 await alice.click('label:text-is("chips")');
 await clear(pages);
 check("the next hand still deals cards", await hears(alice, "cards", 6000));

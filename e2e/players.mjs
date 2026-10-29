@@ -20,7 +20,7 @@ check("spectators are listed", await rowHas(alice, "carol", "watching"));
 check("ledger starts balanced", await has(alice, "text=· balanced"));
 
 // a rebuy adds to bought in
-await seatMenu(alice, "rebuy");
+await seatMenu(alice, "top up");
 await alice.fill("#buyIn", "500");
 await alice.press("#buyIn", "Enter");
 check("rebuy counts as bought in", await rowHas(alice, "alice", "in 2500"));

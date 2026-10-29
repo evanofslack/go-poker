@@ -6,7 +6,7 @@ const [alice, bob] = await seat(browser, "approve" + Date.now(), ["alice", "bob"
 check("a first buy-in needs no approval", await has(alice, 'p:text-is("bob")'));
 
 const requests = 'ul[aria-label="buy-in requests"]';
-await seatMenu(bob, "rebuy");
+await seatMenu(bob, "top up");
 await bob.fill("#buyIn", "500");
 await bob.press("#buyIn", "Enter");
 check("the host sees the request", await has(alice, `${requests} >> text=wants to rebuy for 500`));
@@ -17,7 +17,7 @@ await alice.click(`${requests} ${btn("deny")}`);
 check("deny clears the request", await gone(bob, "text=waiting for the host"));
 check("a denied rebuy adds nothing", !(await has(alice, "text=2500", 500)));
 
-await seatMenu(bob, "rebuy");
+await seatMenu(bob, "top up");
 await bob.fill("#buyIn", "500");
 await bob.press("#buyIn", "Enter");
 await alice.click(`${requests} ${btn("approve")}`);
