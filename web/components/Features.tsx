@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useContext, useEffect, useRef, useState } from "react";
 import classNames from "classnames";
 import { Button } from "@mantine/core";
 import { FiClock } from "react-icons/fi";
@@ -11,6 +11,7 @@ import { HandStats, LedgerRow } from "../interfaces";
 import { settleLine, signed } from "../lib/ledger";
 import { decks, gameTitle, games, limits } from "../lib/settings";
 import { seriesColor, styleColumns } from "../lib/stats";
+import { AppContext } from "../providers/AppStore";
 
 // The tiles are demos on made-up data: nothing here talks to the server. The data is
 // fixed, so the prerendered page matches what the browser draws. The e2e scripts wait for
@@ -433,8 +434,17 @@ function HouseRules() {
 
 // Features shows what the app does, under the public tables on the home page
 export default function Features() {
+    const { appState } = useContext(AppContext);
+    // cards animate under data-motion, as at the table. Prefs live in the browser, so it's
+    // set once mounted, keeping the prerendered page the same as the first render.
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
     return (
-        <section aria-label="features" className="mx-auto mt-24 mb-16 w-full max-w-4xl px-4">
+        <section
+            aria-label="features"
+            className="mx-auto mt-24 mb-16 w-full max-w-4xl px-4"
+            data-motion={mounted ? appState.prefs.motion : undefined}
+        >
             <h2 className="text-2xl font-semibold text-fg">poker with friends</h2>
             <p className="mt-1 text-muted">no accounts, no downloads, just send a link.</p>
             <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
