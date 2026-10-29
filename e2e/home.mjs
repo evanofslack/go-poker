@@ -1,6 +1,6 @@
 // The home page on desktop and phone, dark and light: the join form near the top, the
 // features under the public tables, and their demos answering clicks.
-import { URL, btn, check, finish, launch, open, shot } from "./lib.mjs";
+import { URL, btn, check, finish, has, launch, open, shot } from "./lib.mjs";
 
 const views = {
     desktop: { viewport: { width: 1280, height: 720 } },
@@ -72,6 +72,9 @@ check("the banker moves", settles.includes("banker") && settles.filter((s) => s.
 await p.click(`[data-ledger] li:has(button:text-is("gus")) ${btn("cash out")}`);
 check("cashing out leaves", await p.locator('[data-ledger] li:has(button:text-is("gus")) :text("left")').isVisible());
 check("stats list all four", (await p.locator('[aria-label="play style"] tbody tr').count()) === 4);
+await p.locator('[aria-label="play style"] th span:text-is("VPIP")').hover();
+check("style columns explain themselves", await has(p, '[role=tooltip]:has-text("voluntarily put money in")'));
+await p.mouse.move(0, 0);
 
 check("house rules show at once", (await p.locator('[data-rules] [role=img][aria-label*=" of "]').count()) === 12);
 await p.click('[aria-label="deal the 7-2 again"]');

@@ -1,12 +1,13 @@
 import { ReactNode, useContext, useEffect, useRef, useState } from "react";
 import classNames from "classnames";
-import { Button } from "@mantine/core";
+import { Button, Table } from "@mantine/core";
 import { FiClock } from "react-icons/fi";
 import Card from "./Card";
 import Chips from "./Chips";
 import Segmented from "./Segmented";
-import StackChart from "./StackChart";
+import NetChart from "./NetChart";
 import { BotIcon } from "./Seat";
+import StyleHeader from "./StyleHeader";
 import { HandStats, LedgerRow } from "../interfaces";
 import { settleLine, signed } from "../lib/ledger";
 import { decks, gameTitle, games, limits } from "../lib/settings";
@@ -235,6 +236,7 @@ function playNight(count: number) {
             stacks: Object.fromEntries(seated.map((p) => [p, stacks[p]])),
             played: seated,
             won: { [winner]: pot },
+            net: Object.fromEntries(seated.map((p) => [p, stacks[p] - rows[p].boughtIn])),
         });
         for (const p of seated) {
             if (leaves[p] === h) {
@@ -325,42 +327,42 @@ function Stats() {
     return (
         <Tile
             title="stats and history"
-            text="everyone's chips over the night, how they play, and every hand to look back on."
+            text="everyone's wins and losses over the night, how they play, and every hand to look back on."
             felt={false}
             className="sm:col-span-2"
             stage={
                 <div className="flex w-full flex-col gap-3">
-                    <StackChart hands={night.played} names={players} height={130} />
-                    <table className="w-full text-left text-xs" aria-label="play style">
-                        <thead className="text-subtle">
-                            <tr>
-                                <th className="font-normal">player</th>
+                    <NetChart hands={night.played} names={players} height={130} />
+                    <Table fz="xs" verticalSpacing={2} horizontalSpacing={4} withRowBorders={false} highlightOnHover aria-label="play style">
+                        <Table.Thead>
+                            <Table.Tr>
+                                <Table.Th className="font-normal text-subtle">player</Table.Th>
                                 {styleColumns
                                     .filter(([label]) => shownStyle.includes(label))
                                     .map(([label, title]) => (
-                                        <th key={label} className="text-right font-normal">
-                                            <abbr title={title} className="no-underline">
-                                                {label}
-                                            </abbr>
-                                        </th>
+                                        <Table.Th key={label} className="text-right font-normal text-subtle">
+                                            <StyleHeader label={label} title={title} />
+                                        </Table.Th>
                                     ))}
-                            </tr>
-                        </thead>
-                        <tbody className="text-fg tabular-nums">
+                            </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody className="text-fg tabular-nums">
                             {night.ledger.map((r, i) => (
-                                <tr key={r.name}>
-                                    <td className="flex items-center gap-1.5 font-semibold">
-                                        <span className="inline-block h-0.5 w-3 rounded-full" style={{ background: seriesColor(i) }} />
-                                        {r.name}
-                                    </td>
-                                    <td className="text-right">{style[r.name].vpip}%</td>
-                                    <td className="text-right">{style[r.name].pfr}%</td>
-                                    <td className="text-right">{style[r.name].af}</td>
-                                    <td className="text-right">{Math.round((100 * r.net) / bb / dealtIn(r.name))}</td>
-                                </tr>
+                                <Table.Tr key={r.name}>
+                                    <Table.Td>
+                                        <span className="flex items-center gap-1.5 font-semibold">
+                                            <span className="inline-block h-0.5 w-3 rounded-full" style={{ background: seriesColor(i) }} />
+                                            {r.name}
+                                        </span>
+                                    </Table.Td>
+                                    <Table.Td className="text-right">{style[r.name].vpip}%</Table.Td>
+                                    <Table.Td className="text-right">{style[r.name].pfr}%</Table.Td>
+                                    <Table.Td className="text-right">{style[r.name].af}</Table.Td>
+                                    <Table.Td className="text-right">{Math.round((100 * r.net) / bb / dealtIn(r.name))}</Table.Td>
+                                </Table.Tr>
                             ))}
-                        </tbody>
-                    </table>
+                        </Table.Tbody>
+                    </Table>
                 </div>
             }
         />

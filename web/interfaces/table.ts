@@ -145,6 +145,7 @@ export interface HandStats {
   stacks: { [key: string]: number /* uint */}; // everyone seated, after the pots are paid
   played: string[]; // names dealt in
   won: { [key: string]: number /* uint */}; // pots each winner took, their own chips included
+  net: { [key: string]: number /* int64 */}; // everyone seated, chips won or lost so far: the ledger's net
 }
 /**
  * HandDone is a hand finishing: its record, as the receiver may see it, its
