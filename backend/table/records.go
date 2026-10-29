@@ -198,26 +198,21 @@ func actLabel(e holdem.Acted) string {
 	return e.Kind
 }
 
-// aggressor is the seat that made the last bet or raise before street, 0 if
-// nobody did. Actions are in order, so the first on street ends the search.
-func (h *HandRecord) aggressor(street holdem.Street) int {
-	seat := 0
+// line is the hand's actions so far as the engine's events, for bots. Every
+// action is public.
+func (h *HandRecord) line() []holdem.Acted {
 	if h == nil {
-		return seat
+		return nil
 	}
-	for _, a := range h.Actions {
-		if a.Street == string(street) {
-			break
-		}
-		if a.Kind == holdem.KindBet || a.Kind == holdem.KindRaise {
-			for _, p := range h.Players {
-				if p.Name == a.Name {
-					seat = p.Seat
-				}
-			}
-		}
+	seats := map[string]int{}
+	for _, p := range h.Players {
+		seats[p.Name] = p.Seat
 	}
-	return seat
+	line := make([]holdem.Acted, len(h.Actions))
+	for i, a := range h.Actions {
+		line[i] = holdem.Acted{Seat: seats[a.Name], Street: holdem.Street(a.Street), Kind: a.Kind, Amount: a.Amount, To: a.To, AllIn: a.AllIn}
+	}
+	return line
 }
 
 func (h *HandRecord) player(seat int) *HandPlayer {

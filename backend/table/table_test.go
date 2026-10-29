@@ -473,26 +473,25 @@ func TestRestore(t *testing.T) {
 	h.checkInvariants()
 }
 
-func TestAggressor(t *testing.T) {
+func TestLine(t *testing.T) {
 	h := &HandRecord{
-		Players: []HandPlayer{{Name: "a", Seat: 1}, {Name: "b", Seat: 2}, {Name: "c", Seat: 3}},
+		Players: []HandPlayer{{Name: "a", Seat: 1}, {Name: "b", Seat: 3}},
 		Actions: []HandAction{
-			{Street: "preflop", Name: "a", Kind: "small blind"},
-			{Street: "preflop", Name: "b", Kind: "big blind"},
-			{Street: "preflop", Name: "c", Kind: "raise"},
-			{Street: "preflop", Name: "a", Kind: "call"},
+			{Street: "preflop", Name: "a", Kind: "small blind", Amount: 5, To: 5},
+			{Street: "preflop", Name: "b", Kind: "raise", Amount: 30, To: 30},
 			{Street: "flop", Name: "a", Kind: "check"},
-			{Street: "flop", Name: "c", Kind: "check"},
-			{Street: "turn", Name: "a", Kind: "bet"},
 		},
 	}
-	for street, want := range map[holdem.Street]int{holdem.Preflop: 0, holdem.Flop: 3, holdem.Turn: 3, holdem.River: 1} {
-		if got := h.aggressor(street); got != want {
-			t.Errorf("aggressor before %s = %d, want %d", street, got, want)
-		}
+	want := []holdem.Acted{
+		{Seat: 1, Street: holdem.Preflop, Kind: "small blind", Amount: 5, To: 5},
+		{Seat: 3, Street: holdem.Preflop, Kind: "raise", Amount: 30, To: 30},
+		{Seat: 1, Street: holdem.Flop, Kind: "check"},
 	}
-	if got := (*HandRecord)(nil).aggressor(holdem.Flop); got != 0 {
-		t.Errorf("aggressor with no hand = %d", got)
+	if got := h.line(); !slices.Equal(got, want) {
+		t.Errorf("line = %+v, want %+v", got, want)
+	}
+	if (*HandRecord)(nil).line() != nil {
+		t.Error("no hand has no line")
 	}
 }
 

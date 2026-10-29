@@ -28,12 +28,23 @@ func medium(s spot, r *rand.Rand) Action {
 	w := wet(s.board)
 
 	// opponents still in played their hands, and tighter ones in a raised pot
-	// or when they bet
+	// or when they bet. In a bomb pot nobody chose their hand.
 	minChen := 3.0
-	if s.raised {
+	switch {
+	case s.raised:
 		minChen = 6
+	case s.view.Bomb > 0:
+		minChen = anyHand
 	}
-	e := equity(s.game, s.hole, s.board, s.others, minChen, owe > 0, trials, r)
+	bet := 0.0 // the bet to call, as a share of the pot before it
+	if owe > 0 {
+		bet = float64(s.top) / float64(max(s.pot-s.top, 1))
+	}
+	e := equity(s.game, s.hole, s.board, s.others, minChen, bet, trials, r)
+	if s.view.Double && len(s.view.Boards) > 1 {
+		// half the pot on each board
+		e = (e + equity(s.game, s.hole, s.view.Boards[1], s.others, minChen, bet, trials, r)) / 2
+	}
 	why := fmt.Sprintf("equity %.2f, %s", e, d)
 
 	if owe == 0 {
@@ -325,10 +336,11 @@ func (s spot) size(add uint) Action {
 const anyHand = -2
 
 // equity estimates the chance hole wins against others hands scoring at
-// least minChen, by dealing out the rest of the board trials times. Against
-// a bet, opponents mostly hold a pair or a draw. A split counts as a share.
-// Opponents get as many cards as hole, from the game's deck.
-func equity(g holdem.Game, hole, board []eval.Card, others int, minChen float64, bet bool, trials int, r *rand.Rand) float64 {
+// least minChen, by dealing out the rest of the board trials times. bet is a
+// bet they made this street, as a share of the pot before it, 0 for none.
+// A split counts as a share. Opponents get as many cards as hole, from the
+// game's deck.
+func equity(g holdem.Game, hole, board []eval.Card, others int, minChen, bet float64, trials int, r *rand.Rand) float64 {
 	if others == 0 {
 		return 1
 	}
@@ -356,7 +368,7 @@ func equity(g holdem.Game, hole, board []eval.Card, others int, minChen float64,
 		}
 		// swap hands an opponent wouldn't play for cards past the runout
 		for o := range others {
-			for try := 0; try < 10 && !plays(deck[h*o:h*o+h], board, minChen, bet, r); try++ {
+			for try := 0; try < 10 && !plays(g, deck[h*o:h*o+h], board, minChen, bet, r); try++ {
 				for k := h * o; k < h*o+h; k++ {
 					j := need + r.IntN(len(deck)-need)
 					deck[k], deck[j] = deck[j], deck[k]
@@ -385,15 +397,25 @@ func equity(g holdem.Game, hole, board []eval.Card, others int, minChen float64,
 
 // plays reports whether an opponent would still be in with hole: a hand
 // scoring minChen preflop, and against a bet one that connects with the board,
-// or now and then a bluff.
-func plays(hole, board []eval.Card, minChen float64, bet bool, r *rand.Rand) bool {
+// or now and then a bluff. A bet of most of the pot or more is polar: two pair
+// or better, a draw before the river, or a bluff.
+func plays(g holdem.Game, hole, board []eval.Card, minChen, bet float64, r *rand.Rand) bool {
 	if starting(hole) < minChen {
 		return false
 	}
-	if !bet || len(board) < 3 || r.Float64() < 0.15 {
+	if bet == 0 || len(board) < 3 {
 		return true
 	}
-	return connects(hole, board)
+	if bet > 0.9 {
+		if r.Float64() < 0.25 {
+			return true
+		}
+		if _, score := g.Best(hole, board); score <= 3325 {
+			return true
+		}
+		return len(board) < 5 && drawOf(hole, board) != noDraw
+	}
+	return r.Float64() < 0.15 || connects(hole, board)
 }
 
 // connects reports whether hole makes a pair or better with board, using a

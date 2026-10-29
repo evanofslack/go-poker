@@ -219,7 +219,15 @@ func (r *reducer) botMove() {
 	if !g.Betting || seat == nil || seat.Bot == "" {
 		return
 	}
-	a := bot.Decide(seat.Bot, seat.Name, g.View(g.ToAct), g.ToAct, r.s.Current.aggressor(g.Street), r.s.rand())
+	reads := map[int]bot.Read{}
+	for _, p := range g.Players {
+		if s := r.s.Seats[p.Seat]; s != nil && p.Seat != g.ToAct {
+			if t := r.s.Totals[s.Name]; t != nil {
+				reads[p.Seat] = bot.Read{Hands: t.Hands, VPIP: t.VPIP, PFR: t.PFR, ThreeBetSpots: t.ThreeBetSpots, ThreeBets: t.ThreeBets, Aggressive: t.Aggressive, Calls: t.Calls}
+			}
+		}
+	}
+	a := bot.Decide(seat.Bot, seat.Name, g.View(g.ToAct), g.ToAct, r.s.Current.line(), reads, r.s.rand())
 	events, err := g.Act(g.ToAct, a)
 	if err != nil {
 		// a bad move from the bot shouldn't stall the table

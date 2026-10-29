@@ -38,13 +38,26 @@ func Valid(level string) bool {
 	return level == Easy || level == Medium
 }
 
+// Read is what everyone at the table has seen of a player over the session,
+// like the table's totals.
+type Read struct {
+	Hands         int // dealt in
+	VPIP          int // hands they chose to put money in preflop
+	PFR           int // hands they raised preflop
+	ThreeBetSpots int // hands they acted preflop facing one raise
+	ThreeBets     int // and reraised
+	Aggressive    int // bets and raises
+	Calls         int
+}
+
 // Decide picks a move for the bot called name in seat, whose turn it is. view
 // should be that player's own view, so the bot only knows what they would.
-// aggressor is the seat that made the last bet or raise before this street, 0
-// if nobody did.
-func Decide(level, name string, view holdem.View, seat, aggressor int, r *rand.Rand) holdem.Action {
-	s := spotOf(view, seat, aggressor)
+// line is every action this hand so far, blinds first, and reads are what's
+// known of the other players by seat. Both are public.
+func Decide(level, name string, view holdem.View, seat int, line []holdem.Acted, reads map[int]Read, r *rand.Rand) holdem.Action {
+	s := spotOf(view, seat, line)
 	s.style = styleOf(name)
+	s.reads = reads
 	return toHoldem(s, choose(level, s, r))
 }
 
@@ -86,10 +99,34 @@ type spot struct {
 	led      bool // the bot made the last bet or raise before this street
 	raised   bool // someone bet or raised before this street
 	style    style
+
+	view  holdem.View
+	seat  int
+	line  []holdem.Acted
+	reads map[int]Read
 }
 
-func spotOf(view holdem.View, seat, aggressor int) spot {
+// aggressor is the seat that made the last bet or raise before this street, 0
+// if nobody did.
+func aggressor(line []holdem.Acted, street holdem.Street) int {
+	seat := 0
+	for _, a := range line {
+		if a.Street == street {
+			break
+		}
+		if a.Kind == holdem.KindBet || a.Kind == holdem.KindRaise {
+			seat = a.Seat
+		}
+	}
+	return seat
+}
+
+func spotOf(view holdem.View, seat int, line []holdem.Acted) spot {
+	aggressor := aggressor(line, view.Street)
 	s := spot{
+		view:     view,
+		seat:     seat,
+		line:     line,
 		game:     view.Config.Game,
 		board:    view.Board,
 		bb:       view.Config.BigBlind << len(view.Straddles),
