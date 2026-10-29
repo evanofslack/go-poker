@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { fewHands, names, playerStats, seriesColor, styleStats } from "../../lib/stats";
+import { fewHands, names, playerStats, seriesColor, styleColumns, styleStats } from "../../lib/stats";
 import { AppContext } from "../../providers/AppStore";
 import StackChart from "../StackChart";
 
@@ -122,13 +122,3 @@ export default function Stats() {
 // minRateHours is how long hands are played before the hourly rate shows
 const minRateHours = 5 / 60;
 
-// styleColumns label the play style table, with what each one means on hover
-const styleColumns = [
-    ["VPIP", "voluntarily put money in: hands they called or raised before the flop"],
-    ["PFR", "preflop raise: hands they raised before the flop"],
-    ["3B", "3-bet: re-raised a raise before the flop, when they had the chance"],
-    ["AF", "aggression factor: bets and raises for each call"],
-    ["WTSD", "went to showdown, of the hands they saw a flop in"],
-    ["W$SD", "won at showdown, of the showdowns they went to"],
-    ["bb/100", "big blinds won per 100 hands"],
-];

@@ -81,3 +81,14 @@ export function styleStats(totals: Record<string, PlayerTotals>, order: string[]
         };
     });
 }
+
+// styleColumns label the play style table, with what each one means on hover
+export const styleColumns = [
+    ["VPIP", "voluntarily put money in: hands they called or raised before the flop"],
+    ["PFR", "preflop raise: hands they raised before the flop"],
+    ["3B", "3-bet: re-raised a raise before the flop, when they had the chance"],
+    ["AF", "aggression factor: bets and raises for each call"],
+    ["WTSD", "went to showdown, of the hands they saw a flop in"],
+    ["W$SD", "won at showdown, of the showdowns they went to"],
+    ["bb/100", "big blinds won per 100 hands"],
+];

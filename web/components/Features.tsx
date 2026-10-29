@@ -10,7 +10,7 @@ import { BotIcon } from "./Seat";
 import { HandStats, LedgerRow } from "../interfaces";
 import { settleLine, signed } from "../lib/ledger";
 import { decks, gameTitle, games, limits } from "../lib/settings";
-import { seriesColor } from "../lib/stats";
+import { seriesColor, styleColumns } from "../lib/stats";
 
 // The tiles are demos on made-up data: nothing here talks to the server. The data is
 // fixed, so the prerendered page matches what the browser draws. The e2e scripts wait for
@@ -26,21 +26,16 @@ function Tile({ title, text, stage, felt = true, className, children }: {
     title: string;
     text: string;
     stage: ReactNode;
-    felt?: boolean; // the stats chart sits on a panel, as it does at the table
+    felt?: boolean; // the ledger and chart sit on a panel, as they do at the table
     className?: string;
     children?: ReactNode;
 }) {
     return (
-        <li
-            className={classNames(
-                "flex flex-col overflow-hidden rounded-lg border border-line bg-raised transition-colors hover:border-accent/60",
-                className
-            )}
-        >
+        <li className={classNames("flex flex-col overflow-hidden rounded-lg border border-line bg-raised", className)}>
             <div
                 className={classNames(
-                    "m-3 mb-0 flex min-h-40 flex-col items-center justify-center gap-3 rounded-xl p-4",
-                    felt ? "felt text-on-felt" : "bg-panel"
+                    "m-3 mb-0 flex min-h-40 flex-col items-center justify-center gap-3",
+                    felt ? "felt rounded-[2.5rem] px-6 py-5 text-on-felt" : "rounded-xl bg-panel px-3 py-4"
                 )}
             >
                 {stage}
@@ -67,11 +62,21 @@ function useDeal() {
     return [dealt, deal] as const;
 }
 
-function Cards({ cards, faceUp, small }: { cards: number[]; faceUp: boolean; small?: boolean }) {
+// Cards lie face up from the start; still ones aren't dealt in when they first show
+function Cards({ cards, faceUp, small, still }: { cards: number[]; faceUp: boolean; small?: boolean; still?: boolean }) {
     return (
         <div className="flex gap-1.5">
             {cards.map((c, i) => (
-                <Card key={i} card={faceUp ? c : 0} hidden={!faceUp} placeholder={false} folded={false} small={small} order={i} />
+                <Card
+                    key={i}
+                    card={faceUp ? c : 0}
+                    hidden={!faceUp}
+                    placeholder={false}
+                    folded={false}
+                    small={small}
+                    order={i}
+                    still={still}
+                />
             ))}
         </div>
     );
@@ -97,10 +102,12 @@ function Games() {
     const [game, setGame] = useState("holdem");
     const [limit, setLimit] = useState("no");
     const [deck, setDeck] = useState("full");
+    const [changed, setChanged] = useState(false);
     const [dealt, deal] = useDeal();
     // a new game or deck deals a new hand
     const redeal = (set: (v: string) => void) => (v: string) => {
         set(v);
+        setChanged(true);
         deal();
     };
 
@@ -112,7 +119,7 @@ function Games() {
             stage={
                 <>
                     <div key={game + deck}>
-                        <Cards cards={hands[game][deck]} faceUp={dealt} />
+                        <Cards cards={hands[game][deck]} faceUp={dealt} still={!changed} />
                     </div>
                     <p className="text-sm">
                         {gameTitle({ game, limit, deck })}
@@ -139,6 +146,9 @@ const botPlay: Record<string, string> = {
     medium: "tight and aggressive: raises by position, bets its draws.",
 };
 
+// pill sits on the felt like a seat's bet
+const pill = "flex items-center gap-1.5 rounded-full bg-felt-dark/80 px-2 py-0.5 text-sm font-semibold whitespace-nowrap";
+
 function Bots() {
     const [level, setLevel] = useState("medium");
     return (
@@ -147,14 +157,14 @@ function Bots() {
             text="fill empty seats, or practice on your own."
             stage={
                 <div className="flex items-center gap-3">
-                    <div className="w-32 rounded-xl bg-panel px-2 py-1.5 text-center text-fg">
+                    <div className="w-24 rounded-xl bg-panel px-2 py-1.5 text-center text-fg">
                         <p className="flex items-center justify-center text-sm leading-tight">
-                            harper
+                            kenny
                             <BotIcon level={level} />
                         </p>
                         <p className="text-lg leading-tight font-semibold">1840</p>
                     </div>
-                    <span className="flex items-center gap-1.5 rounded-full bg-felt-dark/80 px-2 py-0.5 text-sm font-semibold whitespace-nowrap">
+                    <span className={pill}>
                         <Chips amount={level === "easy" ? 20 : 60} bb={20} className="size-5" />
                         {level === "easy" ? "call 20" : "raise to 60"}
                     </span>
@@ -169,16 +179,85 @@ function Bots() {
     );
 }
 
-const startRows: LedgerRow[] = [
-    { name: "ann", boughtIn: 2000, cashedOut: 0, stack: 2840, net: 840 },
-    { name: "bob", boughtIn: 3000, cashedOut: 0, stack: 2500, net: -500 },
-    { name: "cat", boughtIn: 2000, cashedOut: 1660, stack: 0, net: -340 },
-    { name: "dan", boughtIn: 2000, cashedOut: 0, stack: 2000, net: 0 },
-];
+// The night is one made-up session the ledger and stats both show: mostly small pots,
+// eric busts and buys back in, daria cashes out early.
+const bb = 20;
+const players = ["gus", "eric", "rishi", "daria"];
+const buyIn = 2000;
+const leaves: Record<string, number> = { daria: 30 }; // the hand they leave after
+// big pots: hand → [winner, loser, chips the loser puts in]
+const bigPots: Record<number, [string, string, number]> = {
+    9: ["gus", "eric", Infinity],
+    17: ["daria", "gus", 700],
+    22: ["rishi", "gus", 1200],
+    27: ["daria", "rishi", 500],
+    34: ["eric", "rishi", 900],
+};
+
+function playNight(count: number) {
+    let seed = 11;
+    const rand = (n: number) => {
+        seed = (seed * 16807) % 2147483647;
+        return seed % n;
+    };
+    const stacks: Record<string, number> = {};
+    const rows: Record<string, LedgerRow> = {};
+    for (const p of players) {
+        stacks[p] = buyIn;
+        rows[p] = { name: p, boughtIn: buyIn, cashedOut: 0, stack: 0, net: 0 };
+    }
+    const played: HandStats[] = [];
+    for (let h = 1; h <= count; h++) {
+        const seated = players.filter((p) => !(leaves[p] < h));
+        // a busted player buys back in
+        for (const p of seated) {
+            if (stacks[p] === 0) {
+                stacks[p] = buyIn;
+                rows[p].boughtIn += buyIn;
+            }
+        }
+        let winner: string;
+        let pot = 0;
+        if (bigPots[h]) {
+            const [w, loser, chips] = bigPots[h];
+            winner = w;
+            pot = Math.min(stacks[loser], chips);
+            stacks[loser] -= pot;
+        } else {
+            winner = seated[rand(seated.length)];
+            for (const p of seated) {
+                if (p === winner) continue;
+                const paid = Math.min(stacks[p], bb * rand(9));
+                stacks[p] -= paid;
+                pot += paid;
+            }
+        }
+        stacks[winner] += pot;
+        played.push({
+            hand: h,
+            started: h * 90_000,
+            stacks: Object.fromEntries(seated.map((p) => [p, stacks[p]])),
+            played: seated,
+            won: { [winner]: pot },
+        });
+        for (const p of seated) {
+            if (leaves[p] === h) {
+                rows[p].cashedOut = stacks[p];
+                stacks[p] = 0;
+            }
+        }
+    }
+    const ledger = players.map((p) => {
+        const r = { ...rows[p], stack: stacks[p] };
+        return { ...r, net: r.stack + r.cashedOut - r.boughtIn };
+    });
+    return { played, ledger };
+}
+const night = playNight(40);
 
 function Ledger() {
-    const [rows, setRows] = useState(startRows);
-    const [banker, setBanker] = useState("ann");
+    const [rows, setRows] = useState(night.ledger);
+    const [banker, setBanker] = useState("gus");
     // cashing out moves the stack off the table; the net stays as it was
     const cashOut = (name: string) =>
         setRows(rows.map((r) => (r.name === name ? { ...r, cashedOut: r.cashedOut + r.stack, stack: 0 } : r)));
@@ -219,11 +298,11 @@ function Ledger() {
                                         {signed(r.net)}
                                     </span>
                                 </div>
-                                <div className="flex gap-2 text-xs text-subtle">
-                                    <span>
+                                <div className="flex flex-wrap gap-x-2 text-xs text-subtle">
+                                    <span className="whitespace-nowrap">
                                         in {r.boughtIn} · out {r.cashedOut}
                                     </span>
-                                    <span className="ml-auto text-muted" data-settle>
+                                    <span className="ml-auto whitespace-nowrap text-muted" data-settle>
                                         {settleLine(r.name, r.net, banker)}
                                     </span>
                                 </div>
@@ -236,35 +315,17 @@ function Ledger() {
     );
 }
 
-// sampleHands plays made-up hands between three players: each hand someone wins
-// what the others put in
-const players = ["ann", "bob", "cat"];
-function sampleHands(count: number): HandStats[] {
-    let seed = 11;
-    const rand = (n: number) => {
-        seed = (seed * 16807) % 2147483647;
-        return seed % n;
-    };
-    const stacks: Record<string, number> = { ann: 2000, bob: 2000, cat: 2000 };
-    const out: HandStats[] = [];
-    for (let i = 0; i < count; i++) {
-        const winner = players[rand(3)];
-        let pot = 0;
-        for (const p of players) {
-            if (p === winner) continue;
-            const paid = Math.min(stacks[p], 20 * (1 + rand(10)));
-            stacks[p] -= paid;
-            pot += paid;
-        }
-        stacks[winner] += pot;
-        out.push({ hand: i + 1, started: i * 90_000, stacks: { ...stacks }, played: players, won: { [winner]: pot } });
-    }
-    return out;
-}
-const allHands = sampleHands(60);
+// how each played the night; bb/100 follows from their result
+const style: Record<string, { vpip: number; pfr: number; af: string }> = {
+    gus: { vpip: 24, pfr: 19, af: "3.1" },
+    eric: { vpip: 52, pfr: 8, af: "0.7" },
+    rishi: { vpip: 31, pfr: 22, af: "2.4" },
+    daria: { vpip: 18, pfr: 12, af: "1.6" },
+};
+const shownStyle = ["VPIP", "PFR", "AF", "bb/100"];
 
 function Stats() {
-    const [count, setCount] = useState(20);
+    const dealtIn = (p: string) => night.played.filter((h) => h.played.includes(p)).length;
     return (
         <Tile
             title="stats and history"
@@ -272,122 +333,108 @@ function Stats() {
             felt={false}
             className="sm:col-span-2"
             stage={
-                <div className="w-full">
-                    <ul className="mb-1 flex gap-3 text-xs text-muted">
-                        {players.map((n, i) => (
-                            <li key={n} className="flex items-center gap-1">
-                                <span className="inline-block h-0.5 w-3 rounded-full" style={{ background: seriesColor(i) }} />
-                                {n}
-                            </li>
-                        ))}
-                    </ul>
-                    <StackChart hands={allHands.slice(0, count)} names={players} height={120} />
+                <div className="flex w-full flex-col gap-3">
+                    <StackChart hands={night.played} names={players} height={130} />
+                    <table className="w-full text-left text-xs" aria-label="play style">
+                        <thead className="text-subtle">
+                            <tr>
+                                <th className="font-normal">player</th>
+                                {styleColumns
+                                    .filter(([label]) => shownStyle.includes(label))
+                                    .map(([label, title]) => (
+                                        <th key={label} className="text-right font-normal">
+                                            <abbr title={title} className="no-underline">
+                                                {label}
+                                            </abbr>
+                                        </th>
+                                    ))}
+                            </tr>
+                        </thead>
+                        <tbody className="text-fg tabular-nums">
+                            {night.ledger.map((r, i) => (
+                                <tr key={r.name}>
+                                    <td className="flex items-center gap-1.5 font-semibold">
+                                        <span className="inline-block h-0.5 w-3 rounded-full" style={{ background: seriesColor(i) }} />
+                                        {r.name}
+                                    </td>
+                                    <td className="text-right">{style[r.name].vpip}%</td>
+                                    <td className="text-right">{style[r.name].pfr}%</td>
+                                    <td className="text-right">{style[r.name].af}</td>
+                                    <td className="text-right">{Math.round((100 * r.net) / bb / dealtIn(r.name))}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             }
-        >
-            <div className="mt-2">
-                <Button size="compact-xs" disabled={count >= allHands.length} onClick={() => setCount(count + 10)}>
-                    play 10 more hands
-                </Button>
-            </div>
-        </Tile>
+        />
     );
 }
 
-const rules = ["7-2 bounty", "straddle", "run it twice", "bomb pots", "double board", "time bank"] as const;
-type Rule = (typeof rules)[number];
-const ruleText: Record<Rule, string> = {
-    "7-2 bounty": "win a hand with 7-2 and everyone pays you. tap the cards.",
-    straddle: "put in two big blinds before the deal and act last before the flop.",
-    "run it twice": "all in before the river? deal the rest twice, half the pot each.",
-    "bomb pots": "everyone puts in, and the hand starts on the flop.",
-    "double board": "a bomb pot on two boards, each wins half.",
-    "time bank": "time cards for the big decisions, earned as you play.",
-};
-const flop = [card(king, S), card(nine, D), card(four, C)];
-const boards: Record<string, number[][]> = {
-    "run it twice": [
-        [...flop, card(two, H), card(queen, C)],
-        [...flop, card(jack, S), card(seven, H)],
-    ],
-    "double board": [
-        [card(ace, H), card(ten, H), card(six, S), card(three, C), card(eight, D)],
-        [card(queen, S), card(jack, D), card(five, H), card(two, S), card(nine, C)],
-    ],
-};
+// Scene is one house rule on the shared felt
+function Scene({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
+    return (
+        <div className={classNames("flex flex-col items-center gap-2", className)}>
+            <div className="flex min-h-16 flex-col items-center justify-center gap-1">{children}</div>
+            <p className="text-xs opacity-80">{label}</p>
+        </div>
+    );
+}
 
-// pill sits on the felt like a seat's bet
-const pill = "flex items-center gap-1.5 rounded-full bg-felt-dark/80 px-2 py-0.5 text-sm font-semibold";
+const flop = [card(king, S), card(nine, D), card(four, C)];
+const runouts = [
+    [...flop, card(two, H), card(queen, C)],
+    [...flop, card(jack, S), card(eight, H)],
+];
 
 function HouseRules() {
-    const [rule, setRule] = useState<Rule>("7-2 bounty");
-    const [flipped, setFlipped] = useState(false);
-
-    let stage: ReactNode;
-    if (rule === "7-2 bounty") {
-        stage = (
-            <>
-                <button type="button" aria-label="turn over the cards" onClick={() => setFlipped(!flipped)}>
-                    <Cards cards={[card(seven, C), card(two, D)]} faceUp={flipped} />
-                </button>
-                <span className={classNames(pill, !flipped && "invisible")}>+2 bb from everyone</span>
-            </>
-        );
-    } else if (rule in boards) {
-        stage = boards[rule].map((b, i) => <Cards key={i} cards={b} faceUp small />);
-    } else if (rule === "straddle") {
-        stage = (
-            <span className={pill}>
-                <Chips amount={40} bb={20} className="size-5" />
-                straddle 40
-            </span>
-        );
-    } else if (rule === "bomb pots") {
-        stage = (
-            <span className={classNames(pill, "text-base")}>
-                <Chips amount={600} bb={20} className="size-6" />
-                pot 600
-            </span>
-        );
-    } else {
-        stage = (
-            <span className={pill}>
-                <FiClock />
-                +30s
-            </span>
-        );
-    }
-
+    const [dealt, deal] = useDeal();
     return (
         <Tile
             title="house rules"
-            text={ruleText[rule]}
+            text="7-2 bounties, straddles, running it twice, bomb pots on one board or two, and time cards for the big decisions."
             className="sm:col-span-2 lg:col-span-3"
-            stage={<div className="flex min-h-28 flex-col items-center justify-center gap-2">{stage}</div>}
-        >
-            <div className="mt-2 flex flex-wrap gap-1.5" data-rules>
-                {rules.map((r) => (
-                    <Button
-                        key={r}
-                        size="compact-xs"
-                        variant={r === rule ? "filled" : "default"}
-                        onClick={() => {
-                            setRule(r);
-                            setFlipped(false);
-                        }}
-                    >
-                        {r}
-                    </Button>
-                ))}
-            </div>
-        </Tile>
+            stage={
+                <div className="grid w-full grid-cols-2 items-end gap-x-4 gap-y-5 sm:flex sm:flex-wrap sm:justify-around sm:gap-x-6" data-rules>
+                    <Scene label="7-2 bounty">
+                        <button type="button" aria-label="deal the 7-2 again" onClick={deal}>
+                            <Cards cards={[card(seven, C), card(two, D)]} faceUp={dealt} small still />
+                        </button>
+                        <span className={classNames(pill, "text-xs")}>+2 bb from everyone</span>
+                    </Scene>
+                    <Scene label="straddle">
+                        <span className={pill}>
+                            <Chips amount={40} bb={bb} className="size-5" />
+                            straddle 40
+                        </span>
+                    </Scene>
+                    <Scene label="run it twice · double board" className="col-span-2">
+                        {runouts.map((b, i) => (
+                            <Cards key={i} cards={b} faceUp small still />
+                        ))}
+                    </Scene>
+                    <Scene label="bomb pots">
+                        <span className={pill}>
+                            <Chips amount={600} bb={bb} className="size-6" />
+                            pot 600
+                        </span>
+                    </Scene>
+                    <Scene label="time bank">
+                        <span className={pill}>
+                            <FiClock />
+                            +30s
+                        </span>
+                    </Scene>
+                </div>
+            }
+        />
     );
 }
 
 // Features shows what the app does, under the public tables on the home page
 export default function Features() {
     return (
-        <section aria-label="features" className="mx-auto mt-24 w-full max-w-4xl px-4">
+        <section aria-label="features" className="mx-auto mt-24 mb-16 w-full max-w-4xl px-4">
             <h2 className="text-2xl font-semibold text-fg">poker with friends</h2>
             <p className="mt-1 text-muted">no accounts, no downloads, just send a link.</p>
             <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

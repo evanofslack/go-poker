@@ -11,6 +11,7 @@ type cardProps = {
     big?: boolean; // your own cards, a size up from a tablet on
     small?: boolean; // the extra boards when the board runs out more than once
     order?: number; // its place among cards dealt together, which come in one after another
+    still?: boolean; // shown where it lies, without being dealt in
 };
 
 function cardToString(c: CardType) {
@@ -150,7 +151,7 @@ function useFlip(face: string) {
     return flipping;
 }
 
-export default function Card({ card, placeholder, folded, hidden, highlight, big = false, small = false, order = 0 }: cardProps) {
+export default function Card({ card, placeholder, folded, hidden, highlight, big = false, small = false, order = 0, still = false }: cardProps) {
     const c = card ? cardToString(card) : "";
     const flipping = useFlip(c);
     const box = big ? bigCardSize.box : small ? smallCardSize.box : cardSize.box;
@@ -198,7 +199,7 @@ export default function Card({ card, placeholder, folded, hidden, highlight, big
         <div
             role="img"
             aria-label={label}
-            className={classNames(box, "isolate motion:animate-deal", flipping && "perspective-[40rem]")}
+            className={classNames(box, "isolate", !still && "motion:animate-deal", flipping && "perspective-[40rem]")}
             style={delay}
         >
             {flipping ? (

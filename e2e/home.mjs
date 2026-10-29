@@ -27,6 +27,7 @@ for (const [kind, view] of Object.entries(views)) {
                 tables: rect('[aria-label="public tables"]').bottom,
                 features: rect('[aria-label="features"]').top,
                 height: window.innerHeight,
+                width: window.innerWidth,
                 wide: document.documentElement.scrollWidth > window.innerWidth,
             };
         });
@@ -34,6 +35,8 @@ for (const [kind, view] of Object.entries(views)) {
         check(`${name}: form on the first screen`, box.form <= box.height, `bottom ${box.form}`);
         check(`${name}: features under the tables`, box.features > box.tables, `top ${box.features}`);
         check(`${name}: no sideways scroll`, !box.wide);
+        const toggle = await p.locator('[aria-label="light or dark"]').boundingBox();
+        check(`${name}: scheme toggle top right`, toggle.y < 60 && toggle.x > box.width / 2, JSON.stringify(toggle));
         check(`${name}: five features`, (await p.locator('[aria-label="features"] > ul > li').count()) === 5);
         await shot(p, `home-${kind}-${colorScheme}`);
         await p.locator('[aria-label="features"]').scrollIntoViewIfNeeded();
@@ -63,17 +66,17 @@ check("short deck deals nothing under a six", short.length > 0 && !short.some((r
 await p.click('label[for="demo-limit-pot"]');
 check("pot limit names the game", await p.locator(`${games} :text("pot limit 6+ 5 card omaha")`).isVisible());
 
-await p.click('[data-ledger] button:text-is("bob")');
+await p.click('[data-ledger] button:text-is("eric")');
 const settles = await p.locator("[data-settle]").allTextContents();
-check("the banker moves", settles.includes("banker") && settles.some((s) => s.includes("from bob")), settles.join(" | "));
-await p.click(`[data-ledger] li:has(button:text-is("dan")) ${btn("cash out")}`);
-check("cashing out leaves", await p.locator('[data-ledger] li:has(button:text-is("dan")) :text("left")').isVisible());
+check("the banker moves", settles.includes("banker") && settles.filter((s) => s.includes("eric")).length === 3, settles.join(" | "));
+await p.click(`[data-ledger] li:has(button:text-is("gus")) ${btn("cash out")}`);
+check("cashing out leaves", await p.locator('[data-ledger] li:has(button:text-is("gus")) :text("left")').isVisible());
+check("stats list all four", (await p.locator('[aria-label="play style"] tbody tr').count()) === 4);
 
-await p.click('[aria-label="turn over the cards"]');
-await p.waitForTimeout(400);
-check("the 7-2 turns over", (await p.locator('[aria-label="turn over the cards"] [aria-label="7 of clubs"]').count()) === 1);
-await p.click(`[data-rules] ${btn("double board")}`);
-check("double board shows two boards", (await p.locator('li:has([data-rules]) [role=img][aria-label*=" of "]').count()) === 10);
+check("house rules show at once", (await p.locator('[data-rules] [role=img][aria-label*=" of "]').count()) === 12);
+await p.click('[aria-label="deal the 7-2 again"]');
+await p.waitForTimeout(600);
+check("the 7-2 deals again face up", (await p.locator('[aria-label="deal the 7-2 again"] [aria-label="7 of clubs"]').count()) === 1);
 await shot(p, "home-demos");
 
 await browser.close();
