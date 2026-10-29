@@ -2,12 +2,14 @@ import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
-import Footer from "./Footer";
+import { FiGithub } from "react-icons/fi";
+import ColorSchemeToggle from "./ColorSchemeToggle";
 import { joinTable } from "../actions/actions";
-import { Button, PasswordInput, TextInput } from "@mantine/core";
+import { ActionIcon, Button, PasswordInput, TextInput } from "@mantine/core";
 import { invitedPassword, invitedTable } from "../lib/invite";
 import CreateTable from "./CreateTable";
 import PublicTables from "./PublicTables";
+import Features from "./Features";
 import { TableSummary } from "../interfaces";
 
 function randomTableGen(length: number): string {
@@ -79,8 +81,14 @@ export default function Join() {
     }, []);
 
     return (
-        <div className="flex min-h-screen flex-col">
-            <div className="flex grow flex-col items-center justify-center ">
+        <div className="relative flex min-h-screen flex-col">
+            <div className="absolute top-3 right-4 flex items-center gap-2">
+                <ColorSchemeToggle size="md" />
+                <ActionIcon component="a" size="md" href="https://github.com/evanofslack/go-poker" title="source on github" aria-label="source on github">
+                    <FiGithub />
+                </ActionIcon>
+            </div>
+            <div className="flex flex-col items-center pt-[14vh]">
                 <h1 className="mb-10 text-4xl font-semibold text-fg sm:mb-16 sm:text-5xl">
                     GoPoker
                 </h1>
@@ -157,7 +165,7 @@ export default function Join() {
                     />
                 )}
             </div>
-            <Footer />
+            <Features />
         </div>
     );
 }
