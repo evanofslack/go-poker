@@ -15,7 +15,7 @@ func seated(t *testing.T, n int, stack uint) *State {
 
 func startStraddles(t *testing.T, s *State, n int) []Event {
 	t.Helper()
-	events, err := s.StartHand(n)
+	events, err := s.StartHand(Deal{Straddles: n})
 	return must(t, events, err)
 }
 
@@ -181,11 +181,11 @@ func TestStraddleIllegal(t *testing.T) {
 	s := seated(t, 4, 1000)
 	before := s.Clone()
 	for _, n := range []int{-1, 2} {
-		if _, err := s.StartHand(n); !errors.Is(err, ErrIllegal) {
-			t.Fatalf("StartHand(%d): %v, want ErrIllegal", n, err)
+		if _, err := s.StartHand(Deal{Straddles: n}); !errors.Is(err, ErrIllegal) {
+			t.Fatalf("StartHand(Deal{Straddles: %d}): %v, want ErrIllegal", n, err)
 		}
 		if !reflect.DeepEqual(*s, before) {
-			t.Fatalf("StartHand(%d) changed the state", n)
+			t.Fatalf("StartHand(Deal{Straddles: %d}) changed the state", n)
 		}
 	}
 	// straddles clear in the next hand

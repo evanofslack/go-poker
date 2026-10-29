@@ -10,9 +10,10 @@ type raiseProps = {
     onRaise: (to: number) => void;
     onClose: () => void;
     step: number; // the arrow keys change the amount by this
+    potLimit: boolean; // the most is the pot, so it gets the last preset
 };
 
-export default function RaiseInput({ b, onRaise, onClose, step }: raiseProps) {
+export default function RaiseInput({ b, onRaise, onClose, step, potLimit }: raiseProps) {
     const [text, setText] = useState(String(b.minTo));
     const onTall = useMedia(tall);
 
@@ -20,12 +21,19 @@ export default function RaiseInput({ b, onRaise, onClose, step }: raiseProps) {
     const amount = clampRaise(b, isNaN(typed) ? b.minTo : typed);
     const clamped = text !== "" && typed !== amount;
 
-    const presets: [string, number][] = [
-        ["min", b.minTo],
-        ["½ pot", potRaiseTo(b, 0.5)],
-        ["pot", potRaiseTo(b, 1)],
-        ["all in", b.maxTo],
-    ];
+    const presets: [string, number][] = potLimit
+        ? [
+              ["min", b.minTo],
+              ["½ pot", potRaiseTo(b, 0.5)],
+              ["¾ pot", potRaiseTo(b, 0.75)],
+              [b.maxTo === b.player.bet + b.player.stack ? "all in" : "pot", b.maxTo],
+          ]
+        : [
+              ["min", b.minTo],
+              ["½ pot", potRaiseTo(b, 0.5)],
+              ["pot", potRaiseTo(b, 1)],
+              ["all in", b.maxTo],
+          ];
 
     const by = (d: number) => setText(String(clampRaise(b, amount + d)));
     // steppers, at the ends, stand in for the slider on a tall screen

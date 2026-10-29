@@ -1,0 +1,79 @@
+// Bomb pots: the host calls a double board bomb pot, everyone posts and the
+// hand starts on the flop with two boards and a pot each; then a schedule.
+import { btn, check, checkDown, finish, has, launch, panel, record, seat, shot } from "./lib.mjs";
+
+const phone = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 };
+const browser = await launch();
+
+// double board bomb pots of 5 bb, called by the host
+let hidden = false;
+const setup = async (p) => {
+    hidden = (await p.locator('label[for="doubleBoard"]').count()) === 0;
+    await p.click('label[for="bombPots"]');
+    await p.click('fieldset:has(input[name="bombPot"]) >> text="5 bb"');
+    await p.click('label[for="doubleBoard"]');
+};
+const [alice, bob, carol] = await seat(browser, "bomb" + Date.now(), ["alice", { name: "bob", context: phone }, "carol"], setup);
+check("the bomb pot options wait for bomb pots", hidden);
+const rec = record(bob);
+await bob.reload();
+
+await panel(alice, "host");
+await shot(alice, "bomb-0-host");
+await alice.click(btn("deal one next hand"));
+check("the host sees it coming", await has(alice, '[aria-label="special hand"] >> text=next hand'));
+await alice.click('[aria-label="close table panel"]');
+check("everyone sees it coming", await has(bob, "[data-bomb] >> text=double board bomb pot next hand"));
+check("only the host calls one", (await bob.locator(btn("deal one next hand")).count()) === 0);
+
+await alice.click(btn("start"));
+check("the flop is out", await has(bob, "[data-bomb] >> text=double board bomb pot · 100 each"));
+const v = rec.views.at(-1);
+check("it starts on the flop", v.street === "flop" && v.board.length === 3 && v.boards[1].length === 3, `${v.street} ${v.boards}`);
+check("everyone put in 100", v.pots[0]?.amount === 300, JSON.stringify(v.pots));
+check("two boards on the table", (await bob.locator("[data-run]").count()) === 1 && (await bob.locator("[data-run-caption]").first().innerText()).startsWith("board 1"));
+check("a made hand for each board", (await bob.locator("[data-made-hand]").innerText()).includes("·"));
+await shot(alice, "bomb-1-flop");
+await shot(bob, "bomb-2-phone");
+
+await checkDown([alice, bob, carol], async () => rec.hands.length === 1, 20000);
+const h = rec.hands[0].record;
+check("the record has the bomb and both boards", h.bomb === 100 && h.double && h.boards.length === 2, JSON.stringify(h.boards));
+check("one pot a board", new Set(h.pots.map((p) => p.run ?? 0)).size === 2, JSON.stringify(h.pots));
+await shot(alice, "bomb-3-showdown");
+await shot(bob, "bomb-4-phone-showdown");
+
+// the next hand is a normal one
+check("then back to blinds", await has(bob, btn("fold"), 15000) && rec.views.at(-1).bomb === 0);
+await panel(alice, "hands");
+check("history says bomb, and board 2", await has(alice, "[data-history-run] >> text=board 2"));
+await shot(alice, "bomb-5-history");
+
+// one every orbit from the host tab, three handed: in 3 hands at most
+await panel(alice, "host");
+await alice.click('fieldset:has(input[name="specialSchedule"]) >> text="by orbits"');
+check("the schedule is set", await has(alice, '[aria-label="next special hand"] >> text=/next double board bomb pot in [123] hands?/'));
+await alice.click('label[for="hostDoubleBoard"]');
+check("and one board", await has(alice, '[aria-label="next special hand"] >> text=/next bomb pot in/'));
+await shot(alice, "bomb-6-schedule");
+// switching units picks the new unit's first gap at once
+// the picked option of a segmented control, once the server's answer is in
+const picked = async (p, name) => {
+    await p.waitForTimeout(300);
+    return p.locator(`input[name="${name}"]:checked`).getAttribute("value", { timeout: 500 });
+};
+check("orbits start at 1", (await picked(alice, "specialEvery")) === "1");
+await alice.click('fieldset:has(input[name="specialSchedule"]) >> text="by hands"');
+check("hands start at 10", (await picked(alice, "specialEvery")) === "10");
+await alice.click('fieldset:has(input[name="specialSchedule"]) >> text="by orbits"');
+check("four orbits is a choice", await has(alice, 'fieldset:has(input[name="specialEvery"]) >> text="4"'));
+check("and back to 1", (await picked(alice, "specialEvery")) === "1");
+await shot(alice, "bomb-7-orbits");
+
+// the host sets the amount from the host tab
+await alice.click('fieldset:has(input[name="hostBombPot"]) >> text="10 bb"');
+const set = () => rec.views.at(-1).next ?? rec.views.at(-1).settings;
+check("the bomb pot is 10 bb", (await picked(alice, "hostBombPot")) === "10" && set().bombPot === 200, JSON.stringify(set().bombPot));
+
+await browser.close();
+finish();

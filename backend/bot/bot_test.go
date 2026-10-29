@@ -16,19 +16,19 @@ func cards(s ...string) []eval.Card {
 	return cs
 }
 
-func hole(a, b string) [2]eval.Card {
+func hole(a, b string) []eval.Card {
 	c := cards(a, b)
-	return [2]eval.Card{c[0], c[1]}
+	return []eval.Card{c[0], c[1]}
 }
 
 func TestStrength(t *testing.T) {
 	tests := []struct {
 		name  string
-		hole  [2]eval.Card
+		hole  []eval.Card
 		board []eval.Card
 		want  strength
 	}{
-		{"hidden cards", [2]eval.Card{}, nil, weak},
+		{"hidden cards", []eval.Card{0, 0}, nil, weak},
 		{"aces", hole("As", "Ad"), nil, strong},
 		{"low pair", hole("2s", "2d"), nil, fair},
 		{"jack queen", hole("Js", "Qd"), nil, fair},
@@ -40,14 +40,14 @@ func TestStrength(t *testing.T) {
 		{"flush on the river", hole("As", "3s"), cards("7s", "9s", "Ks", "2d", "2c"), strong},
 	}
 	for _, tt := range tests {
-		if got := strengthOf(tt.hole, tt.board); got != tt.want {
+		if got := strengthOf(holdem.Game{}, tt.hole, tt.board); got != tt.want {
 			t.Errorf("%s: strength = %d, want %d", tt.name, got, tt.want)
 		}
 	}
 }
 
 // facing is player to act holding h, facing a bet of owe.
-func facing(h [2]eval.Card, owe, stack uint) spot {
+func facing(h []eval.Card, owe, stack uint) spot {
 	return spot{hole: h, top: owe, stack: stack, minRaise: 20}
 }
 
@@ -108,7 +108,7 @@ func TestSpotOf(t *testing.T) {
 	for seat := 1; seat <= 3; seat++ {
 		must(t, g.Sit(seat, 1000))
 	}
-	_, err := g.StartHand(0)
+	_, err := g.StartHand(holdem.Deal{})
 	must(t, err)
 	s := spotOf(g.View(g.ToAct), g.ToAct, 0)
 	if len(s.board) != 0 || s.top != 20 || s.pot != 30 || s.others != 2 || s.bb != 20 || s.hole[0] == 0 {
@@ -123,7 +123,7 @@ func TestSpotPositions(t *testing.T) {
 	for seat := 1; seat <= 6; seat++ {
 		must(t, g.Sit(seat, 1000))
 	}
-	_, err := g.StartHand(0)
+	_, err := g.StartHand(holdem.Deal{})
 	must(t, err)
 	// under the gun limps
 	_, err = g.Act(g.ToAct, holdem.Call{})

@@ -24,7 +24,7 @@ type StraddleAsk struct {
 }
 
 func (s *State) straddling() bool {
-	return s.Settings.Straddle == StraddleOptional || s.Settings.Straddle == StraddleForced
+	return (s.Settings.Straddle == StraddleOptional || s.Settings.Straddle == StraddleForced) && s.SpecialNext == ""
 }
 
 // askStraddles keeps the ask in step with the table, after every command: it

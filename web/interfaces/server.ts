@@ -147,6 +147,14 @@ export const ActionCancelStandUp = "cancel-stand-up";
 /**
  * inbound (client) actions
  */
+export const ActionSpecialHand = "special-hand"; // kind: the next hand is a bomb, double or double-bomb
+/**
+ * inbound (client) actions
+ */
+export const ActionCancelSpecialHand = "cancel-special-hand";
+/**
+ * inbound (client) actions
+ */
 export const ActionUpdateSettings = "update-settings"; // settings has all of them, but the seat count stays
 /**
  * inbound (client) actions
@@ -176,6 +184,7 @@ export interface Inbound {
   yes?: boolean; // straddle
   preset?: string; // straddle-preset: ask, always or never
   runs?: number /* int */; // run-it
+  kind?: string; // special-hand
 }
 /**
  * outbound (server) actions

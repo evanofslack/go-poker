@@ -93,9 +93,12 @@ export const MaxHands = 1000;
 export interface HandRecord {
   hand: number /* int */; // counts from 1
   started: number /* int64 */; // unix ms
+  game: string; // like "NLH" or "PLO", see GameName
   sb: number /* uint */;
   bb: number /* uint */;
   ante?: number /* uint */;
+  bomb?: number /* uint */; // a bomb pot of this much each
+  double?: boolean; // double board: Boards are the two boards
   dealer: string;
   players: HandPlayer[]; // dealt in, in seat order
   actions: HandAction[]; // antes and blinds first
@@ -216,6 +219,9 @@ export interface Settings {
   decisionTime: number /* uint */; // to answer a straddle ask or a run-it vote
   public: boolean; // listed on the home page
   approveRebuys: boolean; // rebuys, and sitting back down, wait for the host
+  game: string; // GameHoldem, GameOmaha or GameOmaha5
+  limit: string; // LimitNo or LimitPot
+  deck: string; // DeckFull or DeckShort
   /**
    * house rules
    */
@@ -223,12 +229,64 @@ export interface Settings {
   duckHunt: boolean; // players can turn up the rest of the board after a hand ends early
   /**
    * SevenDeuce is the bounty everyone dealt in pays a player who wins the
-   * main pot with 7-2 and shows it, 0 for none
+   * main pot with the worst hand, 7-2, or J-6 on a short deck, and shows
+   * it, 0 for none. Hold'em only.
    */
   sevenDeuce: number /* uint */;
   straddle: string; // StraddleOff, StraddleOptional or StraddleForced
   runIt: boolean; // once everyone left is all in, or all but one, they vote to run the rest of the board out more than once
+  /**
+   * bomb pots, on one board or two, called by the host or on a schedule
+   */
+  bombPot: number /* uint */; // what everyone puts in a bomb pot, 0 for no bomb pots
+  special: string; // which bomb pot: SpecialBomb or SpecialDoubleBomb
+  specialEvery: number /* uint */; // one every this many hands or orbits, 0 for only when the host calls one
+  specialUnit: string; // UnitHands or UnitOrbits
 }
+/**
+ * Special hands, and the units of their schedule
+ */
+export const SpecialBomb = "bomb";
+/**
+ * Special hands, and the units of their schedule
+ */
+export const SpecialDoubleBomb = "double-bomb";
+/**
+ * Special hands, and the units of their schedule
+ */
+export const UnitHands = "hands";
+/**
+ * Special hands, and the units of their schedule
+ */
+export const UnitOrbits = "orbits";
+/**
+ * Games and limits
+ */
+export const GameHoldem = "holdem";
+/**
+ * Games and limits
+ */
+export const GameOmaha = "omaha";
+/**
+ * Games and limits
+ */
+export const GameOmaha5 = "omaha5";
+/**
+ * Games and limits
+ */
+export const LimitNo = "no";
+/**
+ * Games and limits
+ */
+export const LimitPot = "pot";
+/**
+ * Games and limits
+ */
+export const DeckFull = "full";
+/**
+ * Games and limits
+ */
+export const DeckShort = "short"; // 6+: 2s to 5s out
 /**
  * Straddle settings. Forced posts under the gun's straddle for them;
  * re-straddles stay optional.
@@ -249,9 +307,13 @@ export const StraddleForced = "forced";
 // source: sidegames.go
 
 /**
- * Side game kinds
+ * Side game kinds. The worst hand bounty is 7-2, or J-6 on a short deck.
  */
 export const KindSevenDeuce = "7-2";
+/**
+ * Side game kinds. The worst hand bounty is 7-2, or J-6 on a short deck.
+ */
+export const KindJackSix = "J-6";
 /**
  * Payment is chips one player paid another for a side game.
  */
@@ -296,6 +358,7 @@ export interface StandUp {
  */
 export interface Totals {
   hands: number /* int */; // dealt in
+  bombs: number /* int */; // of them bomb pots, which have no preflop to count for VPIP and PFR
   vpip: number /* int */; // hands they chose to put money in preflop
   pfr: number /* int */; // hands they raised preflop
   threeBetSpots: number /* int */; // hands they acted preflop facing one raise
@@ -376,7 +439,9 @@ export interface View {
   hunted: number[]; // the rest of the board, from a duck hunt
   runs: number /* int */; // times the board runs out, 0 until decided
   runFrom: number /* int */; // board cards dealt before the runs split
-  boards: number[][]; // every finished runout, the first being Board
+  boards: number[][]; // every finished runout, the first being Board; on double board both, from the flop
+  bomb: number /* uint */; // this hand is a bomb pot of this much each, 0 if not
+  double: boolean; // this hand is double board
   pots: holdem.Pot[];
   minRaise: number /* uint */;
   hand: number /* int */;
@@ -405,6 +470,9 @@ export interface View {
   runVote?: RunVote;
   runVoteEndsIn: number /* int64 */; // ms the run it vote has left
   lastStandUp: number /* uint */; // the payout of the stand-up round that just ended
+  specialNext: string; // the next hand's special, if any: bomb, double or double-bomb
+  specialIn: number /* int */; // hands until the schedule's next special hand, 0 with no schedule
+  madeHand: string[]; // yours so far, like "two pair", on each board; empty when you're not in a hand
 }
 /**
  * Summary is what the home page shows of a public table.

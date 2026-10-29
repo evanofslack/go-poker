@@ -1,7 +1,12 @@
 import {
     blinds,
     antes,
+    bombPots,
+    bountyHand,
     decisionTimes,
+    decks,
+    games,
+    limits,
     straddleModes,
     sevenDeuces,
     handDelays,
@@ -15,6 +20,7 @@ import { TextInput } from "@mantine/core";
 import Hint from "./Hint";
 import Section from "./Section";
 import Segmented from "./Segmented";
+import SpecialSchedule from "./SpecialSchedule";
 import Toggle from "./Toggle";
 
 type settingsFieldsProps = {
@@ -49,6 +55,32 @@ export default function SettingsFields({ form, set, password, setPassword, seats
         <div className="grid gap-5 sm:grid-cols-2 sm:gap-x-8">
             <div className="flex flex-col gap-5">
                 <Section title="game">
+                    <div className="flex flex-wrap gap-x-4 gap-y-5">
+                        <Segmented
+                            legend="game"
+                            name="game"
+                            options={games}
+                            value={form.game}
+                            // the 7-2 bounty is a hold'em game
+                            onChange={(g) => set({ game: g, sevenDeuce: g === "holdem" ? form.sevenDeuce : 0 })}
+                        />
+                        <Segmented
+                            legend="limit"
+                            hint="pot limit caps every bet and raise at the size of the pot"
+                            name="limit"
+                            options={limits}
+                            value={form.limit}
+                            onChange={(l) => set({ limit: l })}
+                        />
+                        <Segmented
+                            legend="deck"
+                            hint="short deck takes out the 2s to 5s: a flush beats a full house, three of a kind beats a straight, and A-6-7-8-9 is a straight"
+                            name="deck"
+                            options={decks}
+                            value={form.deck}
+                            onChange={(d) => set({ deck: d })}
+                        />
+                    </div>
                     <div>
                         <Segmented
                             legend="stakes"
@@ -60,8 +92,9 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                         {form.stakes === "custom" && (
                             <div className="mt-2 flex gap-2">
                                 <div className="flex-1">
-                                    <label className={label} htmlFor="sb">
+                                    <label className={`${label} flex items-center gap-1`} htmlFor="sb">
                                         small blind
+                                        <Hint about="small blind" text="0 for none: antes and a big blind, as short deck often plays" />
                                     </label>
                                     <TextInput
                                         id="sb"
@@ -187,14 +220,16 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                     </div>
                 </Section>
                 <Section title="house rules">
-                    <Segmented
-                        legend="7-2 bounty"
-                        hint="win the pot with 7-2 and show it, and everyone dealt in pays you this"
-                        name="sevenDeuce"
-                        options={sevenDeuces.map((n) => ({ label: n ? `${n} bb` : "off", value: n }))}
-                        value={form.sevenDeuce}
-                        onChange={(n) => set({ sevenDeuce: n })}
-                    />
+                    {form.game === "holdem" && (
+                        <Segmented
+                            legend={`${bountyHand(form)} bounty`}
+                            hint={`win the pot with ${bountyHand(form)} and show it, and everyone dealt in pays you this`}
+                            name="sevenDeuce"
+                            options={sevenDeuces.map((n) => ({ label: n ? `${n} bb` : "off", value: n }))}
+                            value={form.sevenDeuce}
+                            onChange={(n) => set({ sevenDeuce: n })}
+                        />
+                    )}
                     <Segmented
                         legend="straddles"
                         hint="under the gun can post 2 bb before the deal, and each next player double that; forced posts the first one"
@@ -217,6 +252,33 @@ export default function SettingsFields({ form, set, password, setPassword, seats
                         checked={form.duckHunt}
                         onChange={(on) => set({ duckHunt: on })}
                     />
+                </Section>
+                <Section title="bomb pots">
+                    <Toggle
+                        id="bombPots"
+                        label="bomb pots"
+                        hint="everyone puts in the same amount and the hand starts on the flop. the host can call one any time from the host tab"
+                        checked={form.bombPot > 0}
+                        onChange={(on) => set({ bombPot: on ? 2 : 0 })}
+                    />
+                    {form.bombPot > 0 && (
+                        <>
+                            <Segmented
+                                legend="bomb pot"
+                                name="bombPot"
+                                options={bombPots.map((n) => ({ label: `${n} bb`, value: n }))}
+                                value={form.bombPot}
+                                onChange={(n) => set({ bombPot: n })}
+                            />
+                            <SpecialSchedule
+                                id="doubleBoard"
+                                special={form.special}
+                                specialEvery={form.specialEvery}
+                                specialUnit={form.specialUnit}
+                                onChange={set}
+                            />
+                        </>
+                    )}
                 </Section>
             </div>
         </div>

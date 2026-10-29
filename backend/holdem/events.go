@@ -17,13 +17,14 @@ type HandStarted struct {
 
 // Dealt is a player's hole cards. Only that player may see it.
 type Dealt struct {
-	Seat  int     `json:"seat"`
-	Cards [2]Card `json:"cards"`
+	Seat  int    `json:"seat"`
+	Cards []Card `json:"cards"`
 }
 
 // Action kinds
 const (
 	KindAnte       = "ante"
+	KindBomb       = "bomb"
 	KindSmallBlind = "small blind"
 	KindBigBlind   = "big blind"
 	KindStraddle   = "straddle"
@@ -60,8 +61,8 @@ type Returned struct {
 
 // Shown is a player's cards turned face up.
 type Shown struct {
-	Seat  int     `json:"seat"`
-	Cards [2]Card `json:"cards"`
+	Seat  int    `json:"seat"`
+	Cards []Card `json:"cards"`
 }
 
 // PotWon is a pot, or one run's share of it, paid out.

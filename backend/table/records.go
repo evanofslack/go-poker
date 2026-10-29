@@ -3,7 +3,6 @@ package table
 import (
 	"slices"
 
-	"github.com/alexclewontin/riverboat/eval"
 	"github.com/evanofslack/go-poker/holdem"
 )
 
@@ -18,9 +17,12 @@ const handsPerPage = 20
 type HandRecord struct {
 	Hand    int          `json:"hand"`    // counts from 1
 	Started int64        `json:"started"` // unix ms
+	Game    string       `json:"game"`    // like "NLH" or "PLO", see GameName
 	SB      uint         `json:"sb"`
 	BB      uint         `json:"bb"`
 	Ante    uint         `json:"ante,omitempty"`
+	Bomb    uint         `json:"bomb,omitempty"`   // a bomb pot of this much each
+	Double  bool         `json:"double,omitempty"` // double board: Boards are the two boards
 	Dealer  string       `json:"dealer"`
 	Players []HandPlayer `json:"players"` // dealt in, in seat order
 	Actions []HandAction `json:"actions"` // antes and blinds first
@@ -129,10 +131,16 @@ func (r *reducer) recordEvent(e holdem.Event, timeout bool) {
 		h = &HandRecord{
 			Hand:    e.Hand,
 			Started: r.now.UnixMilli(),
+			Game:    GameName(s.Settings),
 			SB:      s.Game.Config.SmallBlind,
 			BB:      s.Game.Config.BigBlind,
 			Ante:    s.Game.Config.Ante,
 			Dealer:  name(e.Button),
+			Bomb:    s.Game.Bomb,
+			Double:  s.Game.Double,
+		}
+		if h.Bomb > 0 {
+			h.Ante = 0
 		}
 		for _, n := range e.Seats {
 			p := s.Game.Player(n)
@@ -142,7 +150,7 @@ func (r *reducer) recordEvent(e holdem.Event, timeout bool) {
 		r.beginStandUp(e.Seats)
 	case holdem.Dealt:
 		if hp := h.player(e.Seat); hp != nil {
-			hp.Cards = cardNames(e.Cards[:]...)
+			hp.Cards = cardNames(e.Cards...)
 		}
 	case holdem.Acted:
 		a := HandAction{Street: string(e.Street), Name: name(e.Seat), Kind: e.Kind, Amount: e.Amount, AllIn: e.AllIn, Timeout: timeout}
@@ -150,7 +158,7 @@ func (r *reducer) recordEvent(e holdem.Event, timeout bool) {
 			a.To = e.To
 		}
 		h.Actions = append(h.Actions, a)
-		if e.Kind != holdem.KindAnte && e.Kind != holdem.KindSmallBlind && e.Kind != holdem.KindBigBlind && e.Kind != holdem.KindStraddle {
+		if e.Kind != holdem.KindAnte && e.Kind != holdem.KindSmallBlind && e.Kind != holdem.KindBigBlind && e.Kind != holdem.KindStraddle && e.Kind != holdem.KindBomb {
 			s.Acts[e.Seat] = Act{e.Street, actLabel(e)}
 		}
 	case holdem.StreetDealt:
@@ -248,7 +256,7 @@ func (r *reducer) finishHand() {
 		hp.Net = int(p.Stack) - int(hp.Stack)
 		hp.Showdown = showdown[hp.Seat]
 		if hp.Shown {
-			hp.bestHand(p.Cards, s.Game.Board)
+			hp.bestHand(s.Game.Config.Game, p.Cards, s.Game.Board)
 		}
 	}
 	if len(s.Game.Boards) > 1 {
@@ -280,10 +288,10 @@ func (r *reducer) finishHand() {
 }
 
 // bestHand names hp's best hand, with a full board.
-func (hp *HandPlayer) bestHand(c [2]holdem.Card, board []holdem.Card) {
+func (hp *HandPlayer) bestHand(g holdem.Game, hole, board []holdem.Card) {
 	if len(board) == 5 {
-		cards, score := eval.BestFiveOfSeven(c[0], c[1], board[0], board[1], board[2], board[3], board[4])
-		hp.Hand, hp.Score = holdem.HandName(score, cards), score
+		cards, score := g.Best(hole, board)
+		hp.Hand, hp.Score = g.HandName(score, cards), score
 	}
 }
 

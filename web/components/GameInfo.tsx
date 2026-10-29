@@ -3,13 +3,14 @@ import { FiCopy } from "react-icons/fi";
 import classNames from "classnames";
 import { AppContext } from "../providers/AppStore";
 import { copyInvite } from "../lib/invite";
+import { gameLabel } from "../lib/settings";
 import TurnAlert from "./TurnAlert";
 import ColorSchemeToggle from "./ColorSchemeToggle";
 import { ActionIcon } from "@mantine/core";
 
 // GameInfo shows the connection and the header's buttons, and below them the
-// stakes, table and watchers. A phone has room for the stakes only; the panel
-// shows the table's name.
+// game, stakes, table and watchers. A phone has room for the game and stakes
+// only; the panel shows the table's name.
 export default function GameInfo() {
     const { appState } = useContext(AppContext);
     const config = appState.view?.settings;
@@ -18,7 +19,9 @@ export default function GameInfo() {
     const table = appState.table;
 
     return (
-        <div className="ml-auto min-w-0 text-right text-xs text-subtle sm:text-sm">
+        // on a phone the game and stakes sit beside the buttons, so the header
+        // stays one row and the table keeps its height
+        <div className="ml-auto flex min-w-0 flex-col text-right text-xs text-subtle sm:text-sm phone:flex-row-reverse phone:items-center phone:gap-2">
             <div className="flex items-center justify-end gap-1">
                 <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center">
                     <span
@@ -41,18 +44,26 @@ export default function GameInfo() {
                     </ActionIcon>
                 )}
             </div>
-            {config && (
-                <div className="truncate">
-                    stakes{" "}
-                    <span className="font-semibold text-fg">
-                        {config.sb}/{config.bb}
-                    </span>
+            <div className="min-w-0 phone:text-[0.7rem] phone:leading-tight">
+                {config && (
+                    <>
+                        <div className="truncate">
+                            game <span className="font-semibold text-fg">{gameLabel(config)}</span>
+                        </div>
+                        <div className="truncate">
+                            stakes{" "}
+                            <span className="font-semibold text-fg">
+                                {config.sb}/{config.bb}
+                                {config.ante > 0 && ` · ante ${config.ante}`}
+                            </span>
+                        </div>
+                    </>
+                )}
+                <div className="truncate phone:hidden">
+                    table <span className="font-semibold text-fg">{table}</span>
                 </div>
-            )}
-            <div className="truncate phone:hidden">
-                table <span className="font-semibold text-fg">{table}</span>
+                {watching > 0 && <div className="phone:hidden">watching {watching}</div>}
             </div>
-            {watching > 0 && <div className="phone:hidden">watching {watching}</div>}
         </div>
     );
 }

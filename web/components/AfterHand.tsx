@@ -4,6 +4,7 @@ import { useSocket } from "../hooks/useSocket";
 import { AppContext } from "../providers/AppStore";
 import { Button } from "@mantine/core";
 import { bar } from "../lib/theme";
+import { bountyHand } from "../lib/settings";
 
 // AfterHand is what a player dealt into the last hand can do before the next:
 // show their cards, and duck hunt the rest of the board if it ended early.
@@ -23,8 +24,8 @@ export default function AfterHand() {
         <div role="group" aria-label="after the hand" className="flex gap-2">
             {canShow && (
                 <Button size="md" className={bar} onClick={() => showCards(socket)}>
-                    {view.showClaims.includes("7-2")
-                        ? "show to claim the 7-2"
+                    {view.showClaims.includes(bountyHand(view.settings))
+                        ? `show to claim the ${bountyHand(view.settings)}`
                         : view.showClaims.includes("stand-up")
                           ? "show to sit down"
                           : "show cards"}

@@ -10,7 +10,8 @@ import (
 
 func TestValidSettings(t *testing.T) {
 	ok := Settings{Seats: 8, SmallBlind: 10, BigBlind: 20, MinBuy: 1000, MaxBuy: 4000, TurnTime: 30000, NextHandDelay: 5000,
-		DecisionTime: 5000, Straddle: StraddleOff}
+		DecisionTime: 5000, Straddle: StraddleOff, Game: GameHoldem, Limit: LimitNo, Deck: DeckFull,
+		Special: SpecialBomb, SpecialUnit: UnitHands}
 	tests := []struct {
 		name  string
 		edit  func(*Settings)
@@ -22,7 +23,8 @@ func TestValidSettings(t *testing.T) {
 		{"one seat", func(s *Settings) { s.Seats = 1 }, false},
 		{"ten seats", func(s *Settings) { s.Seats = 10 }, false},
 		{"equal blinds", func(s *Settings) { s.SmallBlind = 20 }, true},
-		{"no small blind", func(s *Settings) { s.SmallBlind = 0 }, false},
+		{"no small blind", func(s *Settings) { s.SmallBlind = 0 }, true},
+		{"no big blind", func(s *Settings) { s.SmallBlind, s.BigBlind = 0, 0 }, false},
 		{"small above big", func(s *Settings) { s.SmallBlind = 21 }, false},
 		{"huge big blind", func(s *Settings) { s.BigBlind = maxBigBlind + 1 }, false},
 		{"min of one big blind", func(s *Settings) { s.MinBuy = 20 }, true},
@@ -44,6 +46,13 @@ func TestValidSettings(t *testing.T) {
 		{"forced straddles", func(s *Settings) { s.Straddle = StraddleForced }, true},
 		{"no straddle setting", func(s *Settings) { s.Straddle = "" }, false},
 		{"unknown straddle setting", func(s *Settings) { s.Straddle = "sometimes" }, false},
+		{"pot limit hold'em", func(s *Settings) { s.Limit = LimitPot }, true},
+		{"nine seats of omaha", func(s *Settings) { s.Game, s.Seats = GameOmaha, 9 }, true},
+		{"nine seats of omaha 5", func(s *Settings) { s.Game, s.Seats = GameOmaha5, 9 }, true},
+		{"no game", func(s *Settings) { s.Game = "" }, false},
+		{"unknown game", func(s *Settings) { s.Game = "stud" }, false},
+		{"unknown limit", func(s *Settings) { s.Limit = "fixed" }, false},
+		{"7-2 in omaha", func(s *Settings) { s.Game, s.SevenDeuce = GameOmaha, 20 }, false},
 	}
 	for _, tt := range tests {
 		s := ok
@@ -175,5 +184,42 @@ func TestSetPassword(t *testing.T) {
 	}
 	if res := h.do(Join{ID: "id-d", Name: "d"}); res.Joined == nil {
 		t.Fatal("couldn't join without a password")
+	}
+}
+
+func TestGameSettings(t *testing.T) {
+	h := pair(t)
+	set := h.s.Settings
+	set.Game, set.Limit = GameOmaha, LimitPot
+	h.ok(UpdateSettings{Person: h.ids["a"], Settings: set})
+	h.mustLog("the game to PLO")
+	if g := h.s.Game.Config.Game; g.HoleCards() != 4 || !g.Pot {
+		t.Fatalf("game %+v", g)
+	}
+	h.ok(Start{Person: h.ids["a"]})
+	if v := ViewFor(h.s, h.ids["a"], h.now); len(v.Players[0].Cards) != 4 || len(v.Players[1].Cards) != 4 {
+		t.Fatalf("dealt %v and %v", v.Players[0].Cards, v.Players[1].Cards)
+	}
+	if h.s.Current.Game != "PLO" {
+		t.Fatalf("hand recorded as %q", h.s.Current.Game)
+	}
+	// mid-hand a change waits for the next hand
+	set.Game, set.Limit = GameHoldem, LimitNo
+	h.ok(UpdateSettings{Person: h.ids["a"], Settings: set})
+	if h.s.Game.Config.Game.HoleCards() != 4 {
+		t.Fatal("game changed mid-hand")
+	}
+	h.play(holdem.Fold{})
+	if h.s.Game.Config.Game.HoleCards() != 2 || GameName(h.s.Settings) != "NLH" {
+		t.Fatalf("game after the hand %+v", h.s.Game.Config.Game)
+	}
+}
+
+func TestRestoreBeforeGames(t *testing.T) {
+	h := pair(t)
+	h.s.Settings.Game, h.s.Settings.Limit, h.s.Settings.Deck = "", "", ""
+	Restore(h.s, h.now)
+	if h.s.Settings.Game != GameHoldem || h.s.Settings.Limit != LimitNo || h.s.Settings.Deck != DeckFull || h.s.Settings.Validate() != nil {
+		t.Fatalf("restored as %q %q %q", h.s.Settings.Game, h.s.Settings.Limit, h.s.Settings.Deck)
 	}
 }

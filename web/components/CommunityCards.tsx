@@ -2,6 +2,7 @@ import { useContext } from "react";
 import classNames from "classnames";
 import { AppContext } from "../providers/AppStore";
 import { runWinners, winningCards } from "../lib/hands";
+import { specialName } from "../lib/settings";
 import { Card as CardType } from "../interfaces";
 import Card from "./Card";
 
@@ -13,8 +14,17 @@ export default function CommunityCards() {
     // a duck hunt fills the slots the hand didn't reach, faded: they count for nothing
     const hunted = (i: number) => view.hunted[i - view.board.length];
     // the board running out more than once deals each extra run under the first,
-    // from where they split
-    const runs = view.runs > 1 ? view.runs : 1;
+    // from where they split. Double board is two runs from the flop, shown from
+    // the deal
+    const runs = view.double ? 2 : view.runs > 1 ? view.runs : 1;
+    const label = view.double ? "board" : "run";
+    // the special hand being played, or the one coming next
+    const playing = view.bomb > 0 ? (view.double ? "double-bomb" : "bomb") : "";
+    const special = playing
+        ? specialName(playing) + (view.bomb > 0 ? ` · ${view.bomb.toLocaleString("en")} each` : "")
+        : view.specialNext && view.street === ""
+          ? `${specialName(view.specialNext)} next hand`
+          : "";
     const winners = runWinners(view);
     // the cards before the split are on every board, so they count for any run
     const shared = new Set(view.board.slice(0, view.runFrom));
@@ -23,6 +33,11 @@ export default function CommunityCards() {
     const highlight = (c: CardType) => first.has(c) || (shared.has(c) && all.has(c));
     return (
         <div className="relative flex flex-col items-center gap-1" data-boards={runs}>
+            {special && (
+                <p className="text-xs font-semibold text-felt-ink/80 short:text-[0.6rem]" data-bomb>
+                    {special}
+                </p>
+            )}
             <div className="relative flex flex-row gap-0.5 text-spade sm:gap-1" data-board>
                 {[0, 1, 2, 3, 4].map((i) => (
                     <div key={i}>
@@ -49,15 +64,18 @@ export default function CommunityCards() {
                     <span className="absolute inset-x-0 top-full mt-0.5 text-center text-xs text-muted">duck hunt</span>
                 )}
             </div>
-            {runs > 1 && <RunCaption run={0} winner={winners[0]} />}
+            {runs > 1 && <RunCaption label={label} run={0} winner={winners[0]} />}
             {Array.from({ length: runs - 1 }, (_, k) => k + 1).map((run) => (
                 <ExtraBoard
                     key={run}
+                    label={label}
                     run={run}
                     cards={(view.boards[run] ?? []).slice(view.runFrom)}
                     from={view.runFrom}
                     winning={winningCards(view, run)}
                     winner={winners[run]}
+                    // double board's two boards are worth the same, so the same size
+                    small={!view.double}
                 />
             ))}
         </div>
@@ -65,14 +83,18 @@ export default function CommunityCards() {
 }
 
 // ExtraBoard is one more run of the board, small, with its cards lined up
-// under the slots they replace
+// under the slots they replace; or double board's second board
 function ExtraBoard({
+    label,
     run,
     cards,
     from,
     winning,
     winner,
+    small,
 }: {
+    small: boolean;
+    label: string;
     run: number;
     cards: CardType[];
     from: number;
@@ -91,24 +113,32 @@ function ExtraBoard({
                                 folded={false}
                                 hidden={false}
                                 highlight={winning.has(cards[i - from])}
-                                small
+                                small={small}
                             />
                         ) : (
-                            <Card card={0} placeholder={true} folded={false} hidden={false} small />
+                            <Card card={0} placeholder={true} folded={false} hidden={false} small={small} />
                         )}
                     </div>
                 ))}
             </div>
-            <RunCaption run={run} winner={winner} />
+            <RunCaption label={label} run={run} winner={winner} />
         </div>
     );
 }
 
-// RunCaption says which run a board is, and who won it once it's settled
-function RunCaption({ run, winner }: { run: number; winner?: { names: string; hand: string } }) {
+// RunCaption says which run or board a board is, and who won it once it's settled
+function RunCaption({
+    label,
+    run,
+    winner,
+}: {
+    label: string;
+    run: number;
+    winner?: { names: string; hand: string };
+}) {
     return (
         <p className="text-xs text-felt-ink/80 short:text-[0.6rem]" data-run-caption>
-            run {run + 1}
+            {label} {run + 1}
             {winner && (
                 <>
                     {" "}

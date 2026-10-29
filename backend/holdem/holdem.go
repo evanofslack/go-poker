@@ -1,4 +1,5 @@
-// Package holdem is a no-limit Texas hold'em engine. State is plain data: no
+// Package holdem is a poker engine: Texas hold'em and Omaha, no limit or pot
+// limit. State is plain data: no
 // locks, no clock and no global randomness, so it can be copied, compared and
 // saved. Methods check an action is legal before changing anything, so one that
 // returns an error leaves the state as it was.
@@ -36,8 +37,9 @@ var (
 	ErrBadAmount        = errors.New("invalid amount")
 )
 
-// Config is the game's blinds and ante. It only changes between hands.
+// Config is the game and its blinds and ante. It only changes between hands.
 type Config struct {
+	Game       Game `json:"game"`
 	SmallBlind uint `json:"sb"`
 	BigBlind   uint `json:"bb"`
 	Ante       uint `json:"ante"` // from every player dealt in, 0 for none
@@ -45,16 +47,16 @@ type Config struct {
 
 // Player is someone in a seat.
 type Player struct {
-	Seat       int     `json:"seat"` // from 1
-	Stack      uint    `json:"stack"`
-	Bet        uint    `json:"bet"`        // this street
-	Committed  uint    `json:"committed"`  // this hand, Bet included
-	Dealt      bool    `json:"dealt"`      // dealt into the last or current hand
-	In         bool    `json:"in"`         // dealt in and not folded
-	SittingOut bool    `json:"sittingOut"` // not dealt in; busted players sit out
-	Acted      bool    `json:"acted"`      // since the last full raise, so a short all-in can't be re-raised
-	Cards      [2]Card `json:"cards"`      // zero when not dealt, or hidden in a view
-	Shown      bool    `json:"shown"`      // face up: once all in, at showdown if they must, or by choice after
+	Seat       int    `json:"seat"` // from 1
+	Stack      uint   `json:"stack"`
+	Bet        uint   `json:"bet"`        // this street
+	Committed  uint   `json:"committed"`  // this hand, Bet included
+	Dealt      bool   `json:"dealt"`      // dealt into the last or current hand
+	In         bool   `json:"in"`         // dealt in and not folded
+	SittingOut bool   `json:"sittingOut"` // not dealt in; busted players sit out
+	Acted      bool   `json:"acted"`      // since the last full raise, so a short all-in can't be re-raised
+	Cards      []Card `json:"cards"`      // empty when not dealt; zeros when hidden in a view
+	Shown      bool   `json:"shown"`      // face up: once all in, at showdown if they must, or by choice after
 }
 
 // allIn reports whether p is in the hand with no chips left to bet.
@@ -120,12 +122,14 @@ type State struct {
 	SB        int      `json:"sb"`
 	BB        int      `json:"bb"`
 	Straddles []int    `json:"straddles"` // seats that straddled this hand, in order
+	Bomb      uint     `json:"bomb"`      // this hand is a bomb pot of this much from each player, 0 if not
+	Double    bool     `json:"double"`    // this hand is double board: Boards holds both from the flop on
 	ToAct     int      `json:"toAct"`
 	Board     []Card   `json:"board"`
 	Hunted    []Card   `json:"hunted"`  // the rest of the board, turned up for fun after a hand ended early
-	Runs      int      `json:"runs"`    // times the board runs out, 0 until SetRuns, which means once
+	Runs      int      `json:"runs"`    // times the board runs out, 0 until SetRuns, which means once; 2 on double board
 	RunFrom   int      `json:"runFrom"` // board cards dealt before the runs split
-	Boards    [][]Card `json:"boards"`  // every finished runout, in order; Boards[0] is Board
+	Boards    [][]Card `json:"boards"`  // every finished runout, in order, or both boards on double board; Boards[0] is Board
 	Deck      []Card   `json:"deck"`    // kept after the hand for Hunt
 	Pots      []Pot    `json:"pots"`
 	MinRaise  uint     `json:"minRaise"`  // the smallest raise, by how much it adds to the top bet
@@ -152,6 +156,9 @@ func (s *State) SetConfig(cfg Config) error {
 // Clone returns a deep copy of s.
 func (s State) Clone() State {
 	s.Players = slices.Clone(s.Players)
+	for i := range s.Players {
+		s.Players[i].Cards = slices.Clone(s.Players[i].Cards)
+	}
 	s.Straddles = slices.Clone(s.Straddles)
 	s.Board = slices.Clone(s.Board)
 	s.Hunted = slices.Clone(s.Hunted)

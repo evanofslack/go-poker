@@ -16,10 +16,10 @@
 | 12 | Mantine UI (`mantine.md`) and light mode | done |
 | 13 | Table polish (`table-polish.md`) | done |
 | 14 | Time bank (`extensions.md`) | planned |
-| 15 | Game refactor (`extensions.md`) | planned |
-| 16 | Pot-limit Omaha (`extensions.md`) | planned |
-| 17 | Bomb pots and double board (`extensions.md`) | planned |
-| 18 | Short deck (`extensions.md`) | planned |
+| 15 | Game refactor (`extensions.md`) | done |
+| 16 | Pot-limit Omaha (`extensions.md`) | done |
+| 17 | Bomb pots and double board (`extensions.md`) | done |
+| 18 | Short deck (`extensions.md`) | done |
 | - | Backlog | unranked |
 
 ## How items are ranked
@@ -653,32 +653,40 @@ button or automatically when time runs out. Parallel with stage 15.
 Planned in `extensions.md`: hole cards as a slice, one `Game.Best` for hand strength, the hand hint
 from the server. Hold'em plays exactly as before.
 
-- [ ] PR 3: hole cards as a slice, `Game.Best`
-- [ ] PR 4: server hand hint, cards by count (web)
+- [x] PR 3: hole cards as a slice, `Game.Best` (#168)
+- [x] PR 4: server hand hint, cards by count (web) (#169)
 
 # Stage 16: pot-limit Omaha
 
 Planned in `extensions.md`: Omaha and Omaha 5, exactly two hole cards, pot limit for any game.
 
-- [ ] PR 5: omaha engine
-- [ ] PR 6: omaha table, bots and web
+- [x] PR 5: omaha engine (#174)
+- [x] PR 6: omaha table, bots and web (#175)
 
 # Stage 17: bomb pots and double board
 
 Planned in `extensions.md`: bomb pots straight to the flop, by the host or every N hands, and two
 boards splitting each pot.
 
-- [ ] PR 7: bomb pot engine
-- [ ] PR 8: live boards and double board engine
-- [ ] PR 9: bomb pots and double board table and server
-- [ ] PR 10: bomb pots and double board web
+- [x] PR 7: bomb pot engine (#176)
+- [x] PR 8: live boards and double board engine (#177)
+- [x] PR 9: bomb pots and double board table and server (#178)
+- [x] PR 10: bomb pots and double board web (#179)
 
 # Stage 18: short deck
 
 Planned in `extensions.md`: 36 cards, flush beats full house, A-6-7-8-9 straight, J-6 bounty.
 
-- [ ] PR 11: short deck engine
-- [ ] PR 12: short deck table and web
+- [x] PR 11: short deck engine (#180)
+- [x] PR 12: short deck table and web (#181)
+
+# Stage 19: extension follow-ups
+
+From playing the stack locally.
+
+- [x] Bomb pots run by the host, on one board or two, called or every N hands or orbits (#182)
+- [x] Tables with no small blind, for short deck's antes and big blind (#183)
+- [x] Tucked folded hands, same size double boards, game and stakes lines in the header (#184)
 
 # Backlog (unranked)
 

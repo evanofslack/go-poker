@@ -251,7 +251,7 @@ func (h *harness) checkInvariants() {
 	if s.Next != nil && !g.InHand() {
 		h.t.Fatal("settings left waiting between hands")
 	}
-	if s.Game.Config != (holdem.Config{SmallBlind: s.Settings.SmallBlind, BigBlind: s.Settings.BigBlind, Ante: s.Settings.Ante}) {
+	if s.Game.Config != s.Settings.config() {
 		h.t.Fatalf("game config %+v doesn't match the settings", s.Game.Config)
 	}
 	if s.Ended() && (g.InHand() || len(s.Requests) > 0) {

@@ -1,5 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import { AppContext } from "../../providers/AppStore";
+import { SystemName } from "../../interfaces/table";
 import Chat from "./Chat";
 import Log from "./Log";
 import { ActionIcon, Button, Tabs } from "@mantine/core";
@@ -12,7 +13,13 @@ export default function ChatLog() {
     const [tab, setTab] = useState<"chat" | "log">("chat");
     const [seen, setSeen] = useState(0);
 
-    const count = appState.messages.length;
+    // your own messages, and the line saying you joined, are never news to you
+    const me = appState.username;
+    const count = appState.messages.filter(
+        (m) =>
+            m.name !== me &&
+            !(m.name === SystemName && (m.message === `${me} has joined` || m.message.startsWith(`${me} rejoined`)))
+    ).length;
     useEffect(() => {
         if (open) setSeen(count);
     }, [open, count]);

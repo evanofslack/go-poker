@@ -6,6 +6,7 @@ protect what you run them on.
 | Script | Covers |
 | --- | --- |
 | `session.mjs` | hidden cards, next hand, reload and reconnect, turn timer and grace period |
+| `bombpot.mjs` | special hands: the host calls a double board bomb pot (everyone posts, flop first, two boards and a pot each), then schedules them by orbit |
 | `betting.mjs` | betting controls: labels, presets, raise, the waiting line |
 | `preaction.mjs` | picking an action before your turn: offers, clearing, playing it |
 | `keys.mjs` | keyboard shortcuts, the raise panel's arrows, turning them off |
@@ -14,6 +15,7 @@ protect what you run them on.
 | `houserules.mjs` | antes, the 7-2 setting, showing cards after the hand, duck hunting |
 | `standup.mjs` | stand-up rounds: starting one, showing to sit down, the payout, running it again |
 | `turn.mjs` | turn countdown |
+| `variants.mjs` | pot limit Omaha and Omaha 5: cards on desktop and phones, the header, pot limit presets; short deck |
 | `seat.mjs` | seat menu: sit out and in, rebuy, sit out next hand, leave |
 | `forms.mjs` | join, create table and buy-in forms |
 | `password.mjs` | password tables and invite links |

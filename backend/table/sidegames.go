@@ -10,10 +10,19 @@ import (
 // between hands. Nobody pays more than they have. The ledger needs nothing:
 // a player's net already follows their stack.
 
-// Side game kinds
+// Side game kinds. The worst hand bounty is 7-2, or J-6 on a short deck.
 const (
 	KindSevenDeuce = "7-2"
+	KindJackSix    = "J-6"
 )
+
+// bountyKind is the worst hand bounty in g: 7-2, or J-6 on a short deck.
+func bountyKind(g holdem.Game) string {
+	if g.Short {
+		return KindJackSix
+	}
+	return KindSevenDeuce
+}
 
 // Payment is chips one player paid another for a side game.
 type Payment struct {
@@ -48,13 +57,18 @@ func (r *reducer) pay(kind string, from, to int, amount uint) (Payment, bool) {
 	return Payment{kind, r.s.Seats[from].Name, r.s.Seats[to].Name, amt}, true
 }
 
-// isSevenDeuce reports whether cards are a seven and a deuce, of any suits.
-func isSevenDeuce(cards [2]holdem.Card) bool {
-	if cards[0] == 0 || cards[1] == 0 {
+// isWorstHand reports whether cards are g's worst hand, of any suits: a seven
+// and a deuce, or a jack and a six on a short deck. Omaha has none.
+func isWorstHand(g holdem.Game, cards []holdem.Card) bool {
+	if len(cards) != 2 || cards[0] == 0 || cards[1] == 0 {
 		return false
 	}
+	hi, lo := "7", "2"
+	if g.Short {
+		hi, lo = "J", "6"
+	}
 	a, b := cards[0].String()[:1], cards[1].String()[:1]
-	return a == "7" && b == "2" || a == "2" && b == "7"
+	return a == hi && b == lo || a == lo && b == hi
 }
 
 // winsSevenDeuce reports whether the player in seat won or split the main
@@ -63,10 +77,11 @@ func isSevenDeuce(cards [2]holdem.Card) bool {
 func winsSevenDeuce(s *State, seat int) bool {
 	p := s.Game.Player(seat)
 	return s.Settings.SevenDeuce > 0 && p != nil && p.Dealt && !s.Game.InHand() &&
-		len(s.Game.Pots) > 0 && slices.Contains(s.Game.Pots[0].Winners, seat) && isSevenDeuce(p.Cards)
+		len(s.Game.Pots) > 0 && slices.Contains(s.Game.Pots[0].Winners, seat) && isWorstHand(s.Game.Config.Game, p.Cards)
 }
 
-// sevenDeuce pays the 7-2 bounty to seat if it won with 7-2 and showed it:
+// sevenDeuce pays the worst hand bounty to seat if it won with 7-2, or J-6
+// on a short deck, and showed it:
 // from everyone else dealt into h who's still at their seat.
 func (r *reducer) sevenDeuce(h *HandRecord, seat int) []Payment {
 	s := r.s
@@ -79,13 +94,13 @@ func (r *reducer) sevenDeuce(h *HandRecord, seat int) []Payment {
 		if hp.Seat == seat || s.Seats[hp.Seat] == nil || s.Seats[hp.Seat].Name != hp.Name {
 			continue
 		}
-		if pm, ok := r.pay(KindSevenDeuce, hp.Seat, seat, s.Settings.SevenDeuce); ok {
+		if pm, ok := r.pay(bountyKind(s.Game.Config.Game), hp.Seat, seat, s.Settings.SevenDeuce); ok {
 			paid = append(paid, pm)
 			total += pm.Amount
 		}
 	}
 	if len(paid) > 0 {
-		r.log("%s wins the 7-2: %d from %s", s.Seats[seat].Name, total, plural(len(paid), "player"))
+		r.log("%s wins the %s: %d from %s", s.Seats[seat].Name, bountyKind(s.Game.Config.Game), total, plural(len(paid), "player"))
 		r.res.Events = append(r.res.Events, Paid{paid})
 	}
 	return paid
@@ -100,7 +115,7 @@ func ShowClaims(s *State, seat int) []string {
 		return claims
 	}
 	if winsSevenDeuce(s, seat) {
-		claims = append(claims, KindSevenDeuce)
+		claims = append(claims, bountyKind(s.Game.Config.Game))
 	}
 	if sitsDown(s, seat, s.Seats[seat].Name) {
 		claims = append(claims, KindStandUp)
@@ -123,7 +138,7 @@ func (r *reducer) lateShow(seat int) {
 		return
 	}
 	hp.Shown = true
-	hp.bestHand(s.Game.Player(seat).Cards, s.Game.Board)
+	hp.bestHand(s.Game.Config.Game, s.Game.Player(seat).Cards, s.Game.Board)
 	r.latePayments(h, append(r.sevenDeuce(h, seat), r.standUp()...))
 	r.res.Events = append(r.res.Events, HandUpdated{*h})
 }

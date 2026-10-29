@@ -514,8 +514,9 @@ func TestUpdateSettings(t *testing.T) {
 	host := create(t, srv, "t", "host")
 	a := join(t, srv, "t", "a")
 
+	// the rest are zero, so the buy-ins don't fit the blinds
 	host.send(`{"action":"update-settings","settings":{"bb":20}}`)
-	if e := host.errorMsg(); !strings.Contains(e.Message, "small blind") {
+	if e := host.errorMsg(); !strings.Contains(e.Message, "buy-in") {
 		t.Fatalf("partial settings: %+v", e)
 	}
 	set := table.DefaultSettings
@@ -735,7 +736,7 @@ func testCrashRestore(t *testing.T, saved Store) {
 	if v.Hand != 2 || v.Street == "" {
 		v = back.update(func(v table.View) bool { return v.Hand == 2 && v.Street != "" }).View
 	}
-	if v.Players[0].Cards != cards {
+	if !slices.Equal(v.Players[0].Cards, cards) {
 		t.Fatalf("hand 2 dealt %v, then %v", cards, v.Players[0].Cards)
 	}
 }

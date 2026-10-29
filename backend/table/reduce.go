@@ -136,6 +136,8 @@ func personOf(cmd Command) string {
 		return c.Person
 	case StartStandUp:
 		return c.Person
+	case SpecialHand:
+		return c.Person
 	case CancelStandUp:
 		return c.Person
 	case UpdateSettings:
@@ -234,6 +236,8 @@ func (r *reducer) do(cmd Command) error {
 		return r.endSession(p)
 	case StartStandUp:
 		return r.startStandUp(p, c.Payout)
+	case SpecialHand:
+		return r.specialHand(p, c.Kind)
 	case CancelStandUp:
 		return r.cancelStandUp(p)
 	case UpdateSettings:

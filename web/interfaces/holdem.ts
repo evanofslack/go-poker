@@ -29,7 +29,7 @@ export interface Legal {
   /**
    * RaiseMin and RaiseMax bound a bet or raise, as the whole bet this street.
    * Both 0 when the player can't raise. A short stack can only go all in, at
-   * RaiseMax, below RaiseMin.
+   * RaiseMax, below RaiseMin. Pot limit caps RaiseMax at the pot.
    */
   raiseMin: number /* uint */;
   raiseMax: number /* uint */;
@@ -64,6 +64,10 @@ export interface Dealt {
  * Action kinds
  */
 export const KindAnte = "ante";
+/**
+ * Action kinds
+ */
+export const KindBomb = "bomb";
 /**
  * Action kinds
  */
@@ -157,7 +161,8 @@ export interface Hunted {
 //////////
 // source: holdem.go
 /*
-Package holdem is a no-limit Texas hold'em engine. State is plain data: no
+Package holdem is a poker engine: Texas hold'em and Omaha, no limit or pot
+limit. State is plain data: no
 locks, no clock and no global randomness, so it can be copied, compared and
 saved. Methods check an action is legal before changing anything, so one that
 returns an error leaves the state as it was.
@@ -177,9 +182,10 @@ export const Flop: Street = "flop";
 export const Turn: Street = "turn";
 export const River: Street = "river";
 /**
- * Config is the game's blinds and ante. It only changes between hands.
+ * Config is the game and its blinds and ante. It only changes between hands.
  */
 export interface Config {
+  game: Game;
   sb: number /* uint */;
   bb: number /* uint */;
   ante: number /* uint */; // from every player dealt in, 0 for none
@@ -196,7 +202,7 @@ export interface Player {
   in: boolean; // dealt in and not folded
   sittingOut: boolean; // not dealt in; busted players sit out
   acted: boolean; // since the last full raise, so a short all-in can't be re-raised
-  cards: Card[]; // zero when not dealt, or hidden in a view
+  cards: Card[]; // empty when not dealt; zeros when hidden in a view
   shown: boolean; // face up: once all in, at showdown if they must, or by choice after
 }
 /**
@@ -240,18 +246,33 @@ export interface State {
   sb: number /* int */;
   bb: number /* int */;
   straddles: number /* int */[]; // seats that straddled this hand, in order
+  bomb: number /* uint */; // this hand is a bomb pot of this much from each player, 0 if not
+  double: boolean; // this hand is double board: Boards holds both from the flop on
   toAct: number /* int */;
   board: Card[];
   hunted: Card[]; // the rest of the board, turned up for fun after a hand ended early
-  runs: number /* int */; // times the board runs out, 0 until SetRuns, which means once
+  runs: number /* int */; // times the board runs out, 0 until SetRuns, which means once; 2 on double board
   runFrom: number /* int */; // board cards dealt before the runs split
-  boards: Card[][]; // every finished runout, in order; Boards[0] is Board
+  boards: Card[][]; // every finished runout, in order, or both boards on double board; Boards[0] is Board
   deck: Card[]; // kept after the hand for Hunt
   pots: Pot[];
   minRaise: number /* uint */; // the smallest raise, by how much it adds to the top bet
   aggressor: number /* int */; // the last to bet or raise this street, 0 for none
   hands: number /* int */; // dealt so far
   seed: string /* []byte */; // decks come from this and the hand number
+}
+
+//////////
+// source: rank.go
+
+/**
+ * Game is what's being played. The zero Game is no-limit hold'em; more than
+ * two hole cards is Omaha.
+ */
+export interface Game {
+  hole: number /* int */; // hole cards each, 0 for 2
+  pot: boolean; // pot limit
+  short: boolean; // short deck: 2s to 5s out, a flush beats a full house, trips beat a straight, A-6-7-8-9 is a straight
 }
 
 //////////
@@ -270,6 +291,8 @@ export interface View {
   sb: number /* int */;
   bb: number /* int */;
   straddles: number /* int */[];
+  bomb: number /* uint */;
+  double: boolean;
   toAct: number /* int */;
   board: Card[];
   hunted: Card[];

@@ -2,6 +2,7 @@ package holdem
 
 import (
 	"encoding/json"
+	"errors"
 	"math/rand/v2"
 	"reflect"
 	"slices"
@@ -82,8 +83,13 @@ func try(t *testing.T, s *State, f func() error) {
 func TestRollout(t *testing.T) {
 	for game := range 300 {
 		r := rand.New(rand.NewPCG(uint64(game), 1))
-		s := New(Config{SmallBlind: 1 + r.UintN(10), BigBlind: 20, Ante: r.UintN(3) * 5}, [32]byte{byte(game), byte(game >> 8)})
+		// hold'em, Omaha or Omaha 5, no limit or pot limit, full or short deck
+		g := Game{Hole: []int{0, 4, 5}[r.IntN(3)], Pot: r.IntN(2) == 0, Short: r.IntN(3) == 0}
+		s := New(Config{Game: g, SmallBlind: r.UintN(11), BigBlind: 20, Ante: r.UintN(3) * 5}, [32]byte{byte(game), byte(game >> 8)})
 		seats := 2 + r.IntN(8)
+		if g.Short {
+			seats = min(seats, (36-5)/g.HoleCards()) // one board's worth
+		}
 		for seat := 1; seat <= seats; seat++ {
 			if r.IntN(4) > 0 {
 				s.Sit(seat, 1+r.UintN(2000))
@@ -115,7 +121,16 @@ func TestRollout(t *testing.T) {
 					}
 				}
 			}
-			if _, err := s.StartHand(r.IntN(len(s.Positions().Straddle) + 1)); err != nil {
+			d := Deal{Straddles: r.IntN(len(s.Positions().Straddle) + 1)}
+			if r.IntN(5) == 0 {
+				d = Deal{Bomb: 1 + r.UintN(100)}
+			}
+			if r.IntN(4) == 0 {
+				d.Boards = 2
+			}
+			if _, err := s.StartHand(d); errors.Is(err, ErrIllegal) && d.Boards == 2 {
+				continue // too many players for two boards of this game
+			} else if err != nil {
 				// sit everyone with chips back in and top up
 				for _, p := range s.Players {
 					if p.Stack == 0 {
@@ -130,6 +145,11 @@ func TestRollout(t *testing.T) {
 				continue
 			}
 			check(t, &s, total)
+			for _, p := range s.Players {
+				if p.Dealt && len(p.Cards) != g.HoleCards() {
+					t.Fatalf("game %d: seat %d dealt %d cards", game, p.Seat, len(p.Cards))
+				}
+			}
 
 			for steps := 0; s.InHand(); steps++ {
 				if steps > 200 {
@@ -156,7 +176,11 @@ func TestRollout(t *testing.T) {
 						try(t, &s, func() error { _, err := s.Act(other, Call{}); return err })
 					}
 				}
-				a := randomAction(r, s.Legal(s.ToAct))
+				l := s.Legal(s.ToAct)
+				if g.Pot && l.RaiseMax > s.potRaise(s.topBet()-s.Player(s.ToAct).Bet) {
+					t.Fatalf("game %d: raise to %d over the pot", game, l.RaiseMax)
+				}
+				a := randomAction(r, l)
 				try(t, &s, func() error { _, err := s.Act(s.ToAct, a); return err })
 				check(t, &s, total)
 				// mid-hand seat changes are refused
@@ -166,7 +190,11 @@ func TestRollout(t *testing.T) {
 			}
 
 			// a showdown scores every board, each one from the same start
-			if len(s.Pots) > 0 && len(s.Pots[0].Runs) > 0 {
+			if len(s.Pots) > 0 && len(s.Pots[0].Runs) > 0 && s.Double {
+				if len(s.Boards) != 2 || len(s.Boards[0]) != 5 || len(s.Boards[1]) != 5 || len(s.Pots[0].Runs) != 2 {
+					t.Fatalf("game %d: double board showdown on %v", game, s.Boards)
+				}
+			} else if len(s.Pots) > 0 && len(s.Pots[0].Runs) > 0 {
 				if len(s.Boards) != max(s.Runs, 1) || len(s.Pots[0].Runs) != len(s.Boards) {
 					t.Fatalf("game %d: runs %d, boards %d, pot runs %d", game, s.Runs, len(s.Boards), len(s.Pots[0].Runs))
 				}

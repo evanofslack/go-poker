@@ -23,14 +23,87 @@ type Settings struct {
 	Public        bool `json:"public"`        // listed on the home page
 	ApproveRebuys bool `json:"approveRebuys"` // rebuys, and sitting back down, wait for the host
 
+	Game  string `json:"game"`  // GameHoldem, GameOmaha or GameOmaha5
+	Limit string `json:"limit"` // LimitNo or LimitPot
+	Deck  string `json:"deck"`  // DeckFull or DeckShort
+
 	// house rules
 	Ante     uint `json:"ante"`     // from every player each hand, 0 for none
 	DuckHunt bool `json:"duckHunt"` // players can turn up the rest of the board after a hand ends early
 	// SevenDeuce is the bounty everyone dealt in pays a player who wins the
-	// main pot with 7-2 and shows it, 0 for none
+	// main pot with the worst hand, 7-2, or J-6 on a short deck, and shows
+	// it, 0 for none. Hold'em only.
 	SevenDeuce uint   `json:"sevenDeuce"`
 	Straddle   string `json:"straddle"` // StraddleOff, StraddleOptional or StraddleForced
 	RunIt      bool   `json:"runIt"`    // once everyone left is all in, or all but one, they vote to run the rest of the board out more than once
+
+	// bomb pots, on one board or two, called by the host or on a schedule
+	BombPot      uint   `json:"bombPot"`      // what everyone puts in a bomb pot, 0 for no bomb pots
+	Special      string `json:"special"`      // which bomb pot: SpecialBomb or SpecialDoubleBomb
+	SpecialEvery uint   `json:"specialEvery"` // one every this many hands or orbits, 0 for only when the host calls one
+	SpecialUnit  string `json:"specialUnit"`  // UnitHands or UnitOrbits
+}
+
+// Special hands, and the units of their schedule
+const (
+	SpecialBomb       = "bomb"
+	SpecialDoubleBomb = "double-bomb"
+	UnitHands         = "hands"
+	UnitOrbits        = "orbits"
+)
+
+// specialNames say what each special hand is.
+var specialNames = map[string]string{
+	SpecialBomb:       "bomb pot",
+	SpecialDoubleBomb: "double board bomb pot",
+}
+
+func isDouble(kind string) bool { return kind == SpecialDoubleBomb }
+
+// scheduled is whether set deals special hands on its own.
+func (set Settings) scheduled() bool { return set.SpecialEvery > 0 }
+
+// fitsDouble is whether the deck has two boards' worth for every seat.
+func (set Settings) fitsDouble() bool {
+	return int(set.Seats)*holeCards[set.Game]+10 <= len(holdem.Deck(set.config().Game))
+}
+
+// Games and limits
+const (
+	GameHoldem = "holdem"
+	GameOmaha  = "omaha"
+	GameOmaha5 = "omaha5"
+	LimitNo    = "no"
+	LimitPot   = "pot"
+	DeckFull   = "full"
+	DeckShort  = "short" // 6+: 2s to 5s out
+)
+
+// holeCards is how many hole cards each game deals.
+var holeCards = map[string]int{GameHoldem: 2, GameOmaha: 4, GameOmaha5: 5}
+
+// config is the game's config for set.
+func (set Settings) config() holdem.Config {
+	return holdem.Config{
+		Game:       holdem.Game{Hole: holeCards[set.Game], Pot: set.Limit == LimitPot, Short: set.Deck == DeckShort},
+		SmallBlind: set.SmallBlind,
+		BigBlind:   set.BigBlind,
+		Ante:       set.Ante,
+	}
+}
+
+// GameName names set's game the short way, like "NLH", "PLO5" or "6+ NLH".
+func GameName(set Settings) string {
+	name := map[string]string{GameHoldem: "H", GameOmaha: "O", GameOmaha5: "O5"}[set.Game]
+	if set.Limit == LimitPot {
+		name = "PL" + name
+	} else {
+		name = "NL" + name
+	}
+	if set.Deck == DeckShort {
+		return "6+ " + name
+	}
+	return name
 }
 
 // Straddle settings. Forced posts under the gun's straddle for them;
@@ -54,6 +127,11 @@ var DefaultSettings = Settings{
 	DuckHunt:      true,
 	RunIt:         true,
 	Straddle:      StraddleOff,
+	Game:          GameHoldem,
+	Limit:         LimitNo,
+	Deck:          DeckFull,
+	Special:       SpecialBomb,
+	SpecialUnit:   UnitHands,
 }
 
 // settings limits, mirrored by the create table form
@@ -67,7 +145,10 @@ const (
 	maxNextHandDelay = 15_000
 	minDecisionTime  = 2000
 	maxDecisionTime  = 30_000
-	maxSevenDeuceBB  = 10 // the most a 7-2 bounty can be, in big blinds
+	maxSevenDeuceBB  = 10  // the most a 7-2 bounty can be, in big blinds
+	maxBombBB        = 20  // the most a bomb pot can be, in big blinds
+	maxEveryHands    = 100 // the most hands between scheduled special hands
+	maxEveryOrbits   = 20
 )
 
 // Validate returns why s can't be used for a new table, if it can't.
@@ -75,8 +156,10 @@ func (s Settings) Validate() error {
 	switch {
 	case s.Seats < 2 || s.Seats > maxSeats:
 		return fmt.Errorf("seats must be between 2 and %d", maxSeats)
-	case s.SmallBlind < 1 || s.SmallBlind > s.BigBlind:
-		return errors.New("small blind must be between 1 and the big blind")
+	case s.BigBlind < 1:
+		return errors.New("big blind must be at least 1")
+	case s.SmallBlind > s.BigBlind:
+		return errors.New("small blind can't be more than the big blind")
 	case s.BigBlind > maxBigBlind:
 		return fmt.Errorf("big blind can't be more than %d", maxBigBlind)
 	case s.MinBuy < s.BigBlind || s.MinBuy > s.MaxBuy:
@@ -95,6 +178,30 @@ func (s Settings) Validate() error {
 		return fmt.Errorf("decision time must be between %d and %d seconds", minDecisionTime/1000, maxDecisionTime/1000)
 	case s.Straddle != StraddleOff && s.Straddle != StraddleOptional && s.Straddle != StraddleForced:
 		return errors.New("straddle must be off, optional or forced")
+	case holeCards[s.Game] == 0:
+		return errors.New("game must be holdem, omaha or omaha5")
+	case s.Limit != LimitNo && s.Limit != LimitPot:
+		return errors.New("limit must be no or pot")
+	case s.Deck != DeckFull && s.Deck != DeckShort:
+		return errors.New("deck must be full or short")
+	case int(s.Seats)*holeCards[s.Game]+5 > len(holdem.Deck(s.config().Game)):
+		return fmt.Errorf("%s deals too many cards for %d seats", GameName(s), s.Seats)
+	case s.BombPot > maxBombBB*s.BigBlind:
+		return fmt.Errorf("bomb pot can't be more than %d big blinds", maxBombBB)
+	case specialNames[s.Special] == "":
+		return errors.New("special hand must be bomb or double-bomb")
+	case s.SpecialUnit != UnitHands && s.SpecialUnit != UnitOrbits:
+		return errors.New("the special hand schedule must be in hands or orbits")
+	case s.SpecialUnit == UnitHands && s.SpecialEvery > maxEveryHands:
+		return fmt.Errorf("special hands can't be further apart than %d hands", maxEveryHands)
+	case s.SpecialUnit == UnitOrbits && s.SpecialEvery > maxEveryOrbits:
+		return fmt.Errorf("special hands can't be further apart than %d orbits", maxEveryOrbits)
+	case s.scheduled() && s.BombPot == 0:
+		return errors.New("turn on bomb pots to schedule them")
+	case s.scheduled() && isDouble(s.Special) && !s.fitsDouble():
+		return fmt.Errorf("%s deals too many cards for two boards at %d seats", GameName(s), s.Seats)
+	case s.SevenDeuce > 0 && holeCards[s.Game] != 2:
+		return errors.New("the worst hand bounty is for hold'em")
 	}
 	return nil
 }
@@ -114,8 +221,7 @@ func (r *reducer) updateSettings(p *Person, set Settings) error {
 		r.applySettings(p.Name+" changed", set)
 		return nil
 	}
-	changes := settingsChanges(s.Settings, set)
-	if changes == "" {
+	if set == s.Settings {
 		if s.Next != nil {
 			s.Next = nil
 			r.log("%s undid the settings changes for the next hand", p.Name)
@@ -123,7 +229,10 @@ func (r *reducer) updateSettings(p *Person, set Settings) error {
 		return nil
 	}
 	s.Next = &set
-	r.log("%s changed %s, from the next hand", p.Name, changes)
+	// some changes, like the unit of an unused schedule, aren't worth a line
+	if changes := settingsChanges(s.Settings, set); changes != "" {
+		r.log("%s changed %s, from the next hand", p.Name, changes)
+	}
 	return nil
 }
 
@@ -135,7 +244,13 @@ func (r *reducer) applySettings(who string, set Settings) {
 		r.dropStraddles() // asked at the old blinds
 	}
 	s.Settings, s.Next = set, nil
-	s.Game.SetConfig(holdem.Config{SmallBlind: set.SmallBlind, BigBlind: set.BigBlind, Ante: set.Ante})
+	if set.BombPot == 0 {
+		s.SpecialNext = ""
+	}
+	if !set.scheduled() {
+		s.SpecialHands = 0
+	}
+	s.Game.SetConfig(set.config())
 	if changes != "" {
 		r.log("%s %s", who, changes)
 	}
@@ -163,6 +278,7 @@ func settingsChanges(old, set Settings) string {
 		}
 		return fmt.Sprint(n)
 	}
+	add(old.Game != set.Game || old.Limit != set.Limit || old.Deck != set.Deck, "the game to %s", GameName(set))
 	add(old.SmallBlind != set.SmallBlind || old.BigBlind != set.BigBlind, "the blinds to %d/%d", set.SmallBlind, set.BigBlind)
 	add(old.Ante != set.Ante, "the ante to %s", chips(set.Ante))
 	add(old.MinBuy != set.MinBuy || old.MaxBuy != set.MaxBuy, "the buy-in to %d-%d", set.MinBuy, set.MaxBuy)
@@ -175,11 +291,27 @@ func settingsChanges(old, set Settings) string {
 	add(old.Public != set.Public, "the table to %s", visibility(set.Public))
 	add(old.ApproveRebuys != set.ApproveRebuys, "rebuy approval %s", onOff(set.ApproveRebuys))
 	add(old.DuckHunt != set.DuckHunt, "duck hunt %s", onOff(set.DuckHunt))
-	add(old.SevenDeuce != set.SevenDeuce, "the 7-2 bounty to %s", chips(set.SevenDeuce))
+	add(old.SevenDeuce != set.SevenDeuce, "the %s bounty to %s", bountyKind(set.config().Game), chips(set.SevenDeuce))
 	add(old.Straddle != set.Straddle, "straddles %s", set.Straddle)
 	add(old.RunIt != set.RunIt, "run it %s", onOff(set.RunIt))
 	add(old.DecisionTime != set.DecisionTime, "the decision time to %ds", set.DecisionTime/1000)
+	add(old.BombPot != set.BombPot, "bomb pots to %s", chips(set.BombPot))
+	if !set.scheduled() {
+		add(old.scheduled(), "bomb pots only when called")
+		add(set.BombPot > 0 && old.Special != set.Special, "double board bomb pots %s", onOff(isDouble(set.Special)))
+	} else {
+		add(old.Special != set.Special || old.SpecialEvery != set.SpecialEvery || old.SpecialUnit != set.SpecialUnit,
+			"a %s every %s", specialNames[set.Special], every(set.SpecialEvery, set.SpecialUnit))
+	}
 	return strings.Join(c, ", ")
+}
+
+// every says how often, like "3 hands" or "orbit".
+func every(n uint, unit string) string {
+	if n == 1 {
+		return strings.TrimSuffix(unit, "s")
+	}
+	return fmt.Sprintf("%d %s", n, unit)
 }
 
 func visibility(public bool) string {

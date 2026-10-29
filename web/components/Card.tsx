@@ -78,6 +78,13 @@ export const bigCardSize = {
     h: "h-14 sm:h-24 lg:h-28 phone:h-[4.5rem] short:h-10",
     box: "w-10 h-14 sm:w-16 sm:h-24 lg:w-20 lg:h-28 phone:w-12 phone:h-[4.5rem] short:w-7 short:h-10",
 };
+// cardOverlap and bigCardOverlap pull a card half over the one before, so more than two fit
+export const cardOverlap = "-ml-5 sm:-ml-6 lg:-ml-8 phone:-ml-6 short:-ml-3.5";
+export const bigCardOverlap = "-ml-5 sm:-ml-8 lg:-ml-10 phone:-ml-6 short:-ml-3.5";
+// tuckedOverlap and bigTuckedOverlap stack a folded hand of more than two
+// almost wholly under its last card, a sliver of each showing
+export const tuckedOverlap = "-ml-9 sm:-ml-11 lg:-ml-[3.75rem] phone:-ml-11 short:-ml-6";
+export const bigTuckedOverlap = "-ml-9 sm:-ml-[3.75rem] lg:-ml-[4.75rem] phone:-ml-11 short:-ml-6";
 export const smallCardSize = {
     box: "w-7 h-10 sm:w-9 sm:h-12 lg:w-11 lg:h-16 phone:w-8 phone:h-11 short:w-5 short:h-7",
 };
@@ -94,9 +101,14 @@ function color(card: string, highlight = false, big = false, small = false) {
             "text-club": card[1] == "C",
             "text-spade": card[1] == "S",
         },
-        "rounded-md border border-card-edge shadow-card bg-card pt-0.5 px-1 text-2xl sm:text-3xl lg:pt-1 lg:px-2.5 lg:text-5xl phone:text-3xl short:text-base short:px-0.5 short:pt-0 font-normal flex items-center justify-start flex-col",
-        big ? "sm:text-5xl lg:text-6xl phone:text-3xl short:text-base" : "",
-        small ? "text-base sm:text-xl lg:text-3xl phone:text-lg short:text-[0.6rem] lg:pt-0.5 lg:px-1.5" : "",
+        "rounded-md border border-card-edge shadow-card bg-card pt-0.5 px-1 short:px-0.5 short:pt-0 font-normal flex items-center justify-start flex-col",
+        // one set of sizes each: two classes for the same breakpoint win by
+        // stylesheet order, not class order, so a small card would get big suits
+        big
+            ? "text-2xl sm:text-5xl lg:text-6xl phone:text-3xl short:text-base lg:pt-1 lg:px-2.5"
+            : small
+              ? "text-base sm:text-xl lg:text-3xl phone:text-lg short:text-[0.6rem] lg:pt-0.5 lg:px-1.5"
+              : "text-2xl sm:text-3xl lg:text-5xl phone:text-3xl short:text-base lg:pt-1 lg:px-2.5",
         big ? bigCardSize.box : small ? smallCardSize.box : cardSize.box
     );
 }
@@ -111,7 +123,11 @@ export function MiniCards({ count }: { count: number }) {
             className="absolute -top-2 right-3 z-20 flex gap-0.5"
         >
             {Array.from({ length: count }, (_, i) => (
-                <div key={i} className="h-5 w-3.5 rounded-sm border border-card bg-card-back" />
+                // past two they overlap, so Omaha's fit the seat
+                <div
+                    key={i}
+                    className={classNames("h-5 w-3.5 rounded-sm border border-card bg-card-back", i > 0 && count > 2 && "-ml-2")}
+                />
             ))}
         </div>
     );
@@ -177,7 +193,14 @@ export default function Card({ card, placeholder, folded, hidden, highlight, big
         </div>
     );
     return (
-        <div role="img" aria-label={label} className={classNames(box, "motion:animate-deal", flipping && "perspective-[40rem]")} style={delay}>
+        // isolate: a folded card's faded rank and suit are a layer of their own,
+        // which would paint over the cards stacked on top of it
+        <div
+            role="img"
+            aria-label={label}
+            className={classNames(box, "isolate motion:animate-deal", flipping && "perspective-[40rem]")}
+            style={delay}
+        >
             {flipping ? (
                 // the face and back, back to back, turning over
                 <div className="relative size-full transform-3d motion:animate-flip">

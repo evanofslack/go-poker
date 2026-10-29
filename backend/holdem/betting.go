@@ -26,7 +26,7 @@ type Legal struct {
 	Call  uint `json:"call"` // chips to call, 0 when checking; less than owed when all in
 	// RaiseMin and RaiseMax bound a bet or raise, as the whole bet this street.
 	// Both 0 when the player can't raise. A short stack can only go all in, at
-	// RaiseMax, below RaiseMin.
+	// RaiseMax, below RaiseMin. Pot limit caps RaiseMax at the pot.
 	RaiseMin uint `json:"raiseMin"`
 	RaiseMax uint `json:"raiseMax"`
 }
@@ -43,9 +43,22 @@ func (s *State) Legal(seat int) Legal {
 	// a short all-in doesn't reopen betting for someone who already acted
 	if p.Stack > owe && !p.Acted {
 		l.RaiseMax = p.Bet + p.Stack
+		if s.Config.Game.Pot {
+			l.RaiseMax = min(l.RaiseMax, s.potRaise(owe))
+		}
 		l.RaiseMin = min(top+s.MinRaise, l.RaiseMax)
 	}
 	return l
+}
+
+// potRaise is the biggest bet or raise pot limit allows a player who owes
+// owe: the top bet, plus the pot once they've called.
+func (s *State) potRaise(owe uint) uint {
+	var pot uint
+	for _, p := range s.Players {
+		pot += p.Committed
+	}
+	return s.topBet() + pot + owe
 }
 
 // Act makes the move a for the player in seat, on their turn.
@@ -71,7 +84,7 @@ func (s *State) Act(seat int, a Action) ([]Event, error) {
 		e.Kind = KindCall
 		e.Amount = p.put(l.Call)
 	case Raise:
-		allIn := a.To == l.RaiseMax
+		allIn := a.To == l.RaiseMax && a.To == p.Bet+p.Stack
 		if l.RaiseMax == 0 || a.To > l.RaiseMax || a.To <= top || (a.To < l.RaiseMin && !allIn) {
 			return nil, ErrIllegal
 		}

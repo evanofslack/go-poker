@@ -69,8 +69,9 @@ export function styleStats(totals: Record<string, PlayerTotals>, order: string[]
         return {
             name,
             hands: t.hands,
-            vpip: pct(t.vpip, t.hands),
-            pfr: pct(t.pfr, t.hands),
+            // bomb pots have no preflop to choose in
+            vpip: pct(t.vpip, t.hands - t.bombs),
+            pfr: pct(t.pfr, t.hands - t.bombs),
             threeBet: pct(t.threeBets, t.threeBetSpots),
             af: t.calls > 0 ? (t.aggressive / t.calls).toFixed(1) : t.aggressive > 0 ? "∞" : "–",
             wtsd: pct(t.showdowns, t.sawFlop),

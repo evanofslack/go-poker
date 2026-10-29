@@ -2,6 +2,7 @@ import { ReactNode, useContext, useState } from "react";
 import { FiCopy } from "react-icons/fi";
 import { AppContext } from "../../providers/AppStore";
 import { copyInvite } from "../../lib/invite";
+import { bountyHand, gameTitle } from "../../lib/settings";
 import { Button } from "@mantine/core";
 import EditSettings from "../EditSettings";
 
@@ -36,7 +37,7 @@ export default function Settings() {
                 </Button>
             </span>,
         ],
-        ["game", "no limit texas hold'em"],
+        ["game", gameTitle(s)],
         ["stakes", `${chips(s.sb)}/${chips(s.bb)}`],
         ["ante", s.ante ? chips(s.ante) : "none"],
         [
@@ -56,7 +57,7 @@ export default function Settings() {
         ["password", game.hasPassword ? "on" : "off"],
         ["rebuys", s.approveRebuys ? "host approves" : "automatic"],
         ["duck hunt", s.duckHunt ? "allowed" : "off"],
-        ["7-2 game", s.sevenDeuce ? `${chips(s.sevenDeuce)} each` : "off"],
+        [`${bountyHand(s)} game`, s.sevenDeuce ? `${chips(s.sevenDeuce)} each` : "off"],
         ["straddles", s.straddle],
         ["run it", s.runIt ? "up to 4 times" : "off"],
         ["to decide", seconds(s.decisionTime)],

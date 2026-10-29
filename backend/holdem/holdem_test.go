@@ -29,7 +29,7 @@ func stackDeck(t *testing.T, order string) {
 	}
 	chunks = append(chunks, first[n:n+3], first[n+3:n+4], first[n+4:])
 	old := shuffle
-	shuffle = func([32]byte, int) []Card {
+	shuffle = func([]Card, [32]byte, int) []Card {
 		deck := slices.DeleteFunc(slices.Clone(eval.DefaultDeck), func(c Card) bool { return slices.Contains(first, c) })
 		// draw takes cards off the end, so the first chunk goes last
 		for i := len(chunks) - 1; i >= 0; i-- {
@@ -62,7 +62,7 @@ func must(t *testing.T, events []Event, err error) []Event {
 
 func start(t *testing.T, s *State) []Event {
 	t.Helper()
-	events, err := s.StartHand(0)
+	events, err := s.StartHand(Deal{})
 	return must(t, events, err)
 }
 
@@ -249,7 +249,7 @@ func TestBustedSitsOut(t *testing.T) {
 	if !s.Player(1).SittingOut || s.Player(2).SittingOut {
 		t.Fatal("the busted player should sit out")
 	}
-	if _, err := s.StartHand(0); !errors.Is(err, ErrNotEnoughPlayers) {
+	if _, err := s.StartHand(Deal{}); !errors.Is(err, ErrNotEnoughPlayers) {
 		t.Fatalf("one player left with chips: %v", err)
 	}
 }
@@ -373,7 +373,7 @@ func TestOutOfTurnAndBetweenHands(t *testing.T) {
 	if err := s.AddChips(1, 100); !errors.Is(err, ErrInHand) {
 		t.Fatalf("adding chips mid-hand: %v", err)
 	}
-	if _, err := s.StartHand(0); !errors.Is(err, ErrInHand) {
+	if _, err := s.StartHand(Deal{}); !errors.Is(err, ErrInHand) {
 		t.Fatalf("starting a hand mid-hand: %v", err)
 	}
 	act(t, s, 1, Fold{})
@@ -388,7 +388,7 @@ func TestOutOfTurnAndBetweenHands(t *testing.T) {
 
 func TestNotEnoughPlayers(t *testing.T) {
 	s := game(t, 1000, 0)
-	if _, err := s.StartHand(0); !errors.Is(err, ErrNotEnoughPlayers) {
+	if _, err := s.StartHand(Deal{}); !errors.Is(err, ErrNotEnoughPlayers) {
 		t.Fatalf("got %v", err)
 	}
 	if err := s.SetSittingOut(2, false); !errors.Is(err, ErrBadAmount) {
@@ -400,10 +400,10 @@ func TestViewHidesCards(t *testing.T) {
 	s := game(t, 1000, 1000)
 	events := start(t, s)
 	v := s.View(1)
-	if v.Players[0].Cards == [2]Card{} || v.Players[1].Cards != [2]Card{} {
+	if hidden(v.Players[0].Cards) || !hidden(v.Players[1].Cards) {
 		t.Fatal("player 1 should see only their own cards")
 	}
-	if spec := s.View(0); spec.Players[0].Cards != [2]Card{} {
+	if spec := s.View(0); !hidden(spec.Players[0].Cards) {
 		t.Fatal("spectators see no hole cards")
 	}
 	for _, e := range events {
@@ -432,5 +432,47 @@ func TestSitAndLeave(t *testing.T) {
 	}
 	if err := s.Leave(5); err != nil || s.Player(5) != nil {
 		t.Fatal("leave failed")
+	}
+}
+
+// hidden reports whether cards are face down, or none.
+func hidden(cards []Card) bool {
+	return !slices.ContainsFunc(cards, func(c Card) bool { return c != 0 })
+}
+
+// TestNoSmallBlind plays antes and a big blind: nobody posts a small blind,
+// and the seat after the button still acts after the big blind's left.
+func TestNoSmallBlind(t *testing.T) {
+	s := game(t, 1000, 1000, 1000)
+	s.Config.SmallBlind, s.Config.Ante = 0, 5
+	events := start(t, s)
+	for _, e := range events {
+		if a, ok := e.(Acted); ok && a.Kind == KindSmallBlind {
+			t.Fatalf("posted %+v", a)
+		}
+	}
+	// button 1, the small blind's seat 2 posts only the ante, big blind 3
+	if p := s.Player(2); p.Committed != 5 || p.Bet != 0 {
+		t.Fatalf("seat 2 put in %d, bet %d", p.Committed, p.Bet)
+	}
+	if s.ToAct != 1 || s.Legal(1).Call != 20 {
+		t.Fatalf("seat %d to act, legal %+v", s.ToAct, s.Legal(1))
+	}
+	// everyone limps, and the big blind checks to close it
+	act(t, s, 1, Call{})
+	act(t, s, 2, Call{})
+	act(t, s, 3, Check{})
+	if s.Betting || s.Pots[0].Amount != 75 {
+		t.Fatalf("betting %v, pots %+v", s.Betting, s.Pots)
+	}
+}
+
+func TestNoSmallBlindHeadsUp(t *testing.T) {
+	s := game(t, 1000, 1000)
+	s.Config.SmallBlind = 0
+	start(t, s)
+	// the button posts nothing and acts first
+	if s.ToAct != s.Button || s.Legal(s.Button).Call != 20 || s.Player(s.Button).Committed != 0 {
+		t.Fatalf("seat %d to act, button %d, legal %+v", s.ToAct, s.Button, s.Legal(s.ToAct))
 	}
 }

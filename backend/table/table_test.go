@@ -3,6 +3,7 @@ package table
 import (
 	"encoding/json"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -369,11 +370,17 @@ func TestViewsHideCards(t *testing.T) {
 	h.join("watcher")
 	res := h.ok(Start{Person: h.ids["a"]})
 	va := ViewFor(h.s, h.ids["a"], h.now)
-	if va.You != 1 || va.Players[0].Cards == [2]holdem.Card{} || va.Players[1].Cards != [2]holdem.Card{} || !va.Legal.Turn {
+	if va.You != 1 || hidden(va.Players[0].Cards) || !hidden(va.Players[1].Cards) || !va.Legal.Turn {
 		t.Fatalf("a's view %+v", va)
 	}
-	if vw := ViewFor(h.s, h.ids["watcher"], h.now); vw.Players[0].Cards != [2]holdem.Card{} || vw.Watchers[0] != "watcher" {
+	if vw := ViewFor(h.s, h.ids["watcher"], h.now); !hidden(vw.Players[0].Cards) || vw.Watchers[0] != "watcher" {
 		t.Fatal("watcher sees cards")
+	}
+	if len(va.MadeHand) != 1 || va.MadeHand[0] == "" {
+		t.Fatalf("a's made hand %v", va.MadeHand)
+	}
+	if vw := ViewFor(h.s, h.ids["watcher"], h.now); len(vw.MadeHand) != 0 {
+		t.Fatalf("watcher sees a made hand %v", vw.MadeHand)
 	}
 	for _, e := range EventsFor(h.s, res.Events, h.ids["watcher"]) {
 		if _, ok := e.(holdem.Dealt); ok {
@@ -475,4 +482,9 @@ func TestAggressor(t *testing.T) {
 	if got := (*HandRecord)(nil).aggressor(holdem.Flop); got != 0 {
 		t.Errorf("aggressor with no hand = %d", got)
 	}
+}
+
+// hidden reports whether cards are face down, or none.
+func hidden(cards []holdem.Card) bool {
+	return !slices.ContainsFunc(cards, func(c holdem.Card) bool { return c != 0 })
 }

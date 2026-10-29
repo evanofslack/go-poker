@@ -6,6 +6,7 @@ import "strconv"
 // stats like how often they put money in. Kept by name, like the ledger.
 type Totals struct {
 	Hands         int    `json:"hands"`         // dealt in
+	Bombs         int    `json:"bombs"`         // of them bomb pots, which have no preflop to count for VPIP and PFR
 	VPIP          int    `json:"vpip"`          // hands they chose to put money in preflop
 	PFR           int    `json:"pfr"`           // hands they raised preflop
 	ThreeBetSpots int    `json:"threeBetSpots"` // hands they acted preflop facing one raise
@@ -33,7 +34,7 @@ func tally(totals map[string]*Totals, r *HandRecord) {
 	vpip, pfr, spot, threeBet, foldedPreflop := map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}
 	raises := 0
 	for _, a := range r.Actions {
-		if a.Kind == "ante" || a.Kind == "small blind" || a.Kind == "big blind" || a.Kind == "straddle" {
+		if a.Kind == "ante" || a.Kind == "small blind" || a.Kind == "big blind" || a.Kind == "straddle" || a.Kind == "bomb" {
 			continue
 		}
 		if a.Street == "preflop" {
@@ -69,6 +70,7 @@ func tally(totals map[string]*Totals, r *HandRecord) {
 	for _, p := range r.Players {
 		s := totalsFor(totals, p.Name)
 		s.Hands++
+		s.Bombs += count(r.Bomb > 0)
 		s.Net += p.Net
 		s.VPIP += count(vpip[p.Name])
 		s.PFR += count(pfr[p.Name])
