@@ -67,9 +67,20 @@ after `AUDIT_RETAIN_DAYS` (default 30).
 
 `ADMIN_ADDR` (off by default) serves a read-only admin page at `/admin` on its own address: open
 tables, who is behind each name with their IP, and the audit. It has no login, so keep it off the
-internet: bind it to `127.0.0.1:2113` and reach it over an SSH tunnel (`ssh -L 2113:localhost:2113
-host`), or to a private network such as Tailscale. In Docker, don't publish its port. The public port
-never serves it. With `just start` it's at `localhost:3000/admin`, and with `just serve` at
+internet and reach it over an SSH tunnel (`ssh -L 2113:localhost:2113 host`) or a private network
+such as Tailscale. Outside Docker, set `ADMIN_ADDR=127.0.0.1:2113`. In Docker, the container has to
+listen on every interface, so set `ADMIN_ADDR=:2113` and publish the port on the host's loopback
+only:
+
+```yaml
+    ports:
+      - 8080:8080
+      - 127.0.0.1:2113:2113
+    environment:
+      ADMIN_ADDR: ":2113"
+```
+
+The public port never serves it. With `just start` it's at `localhost:3000/admin`, and with `just serve` at
 `localhost:2113/admin`.
 
 ## metrics
