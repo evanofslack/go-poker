@@ -16,6 +16,8 @@ const bRec = record(bob);
 const turnTime = 15000;
 const setup = async (p) => {
     await p.click(`fieldset:has(input[name="turnTime"]) >> text="${turnTime / 1000}s"`);
+    // no time bank, so the turn timer acts right away
+    await p.click('fieldset:has(input[name="timeBank"]) >> text="off"');
     await quick(p);
 };
 

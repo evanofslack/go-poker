@@ -1,7 +1,7 @@
 import { useState, useContext, useEffect, useRef } from "react";
 import classNames from "classnames";
 import { AppContext } from "../providers/AppStore";
-import { playerCall, playerCheck, playerFold, playerRaise } from "../actions/actions";
+import { addTime, playerCall, playerCheck, playerFold, playerRaise } from "../actions/actions";
 import { useSocket } from "../hooks/useSocket";
 import { bettingInfo } from "../lib/betting";
 import { Pre, owed, preOptions, preStreet, resolvePre } from "../lib/preaction";
@@ -17,6 +17,7 @@ const hints: Record<string, string> = {
     F: "pointer-fine:after:content-['F']",
     C: "pointer-fine:after:content-['C']",
     R: "pointer-fine:after:content-['R']",
+    T: "pointer-fine:after:content-['T']",
 };
 
 // typing somewhere, like the chat, isn't a shortcut
@@ -87,7 +88,8 @@ export default function Input() {
         // the raise panel has its own keys, and the buttons ignore input as they appear
         if (showRaise || Date.now() - turnAt.current < 300) return false;
         const b = bettingInfo(view);
-        if (key === "f" && b.toCall > 0) playerFold(socket);
+        if (key === "t" && me.timeCards > 0 && view.turnEndsIn > 0) addTime(socket);
+        else if (key === "f" && b.toCall > 0) playerFold(socket);
         else if (key === "c") b.toCall > 0 ? playerCall(socket) : playerCheck(socket);
         else if ((key === "r" || key === "b") && b.canRaise && b.fullRaise) setShowRaise(true);
         else return false;
@@ -181,9 +183,24 @@ export default function Input() {
         callLabel = b.toCall === b.player.stack ? `all in ${b.toCall}` : `call ${b.toCall}`;
     }
 
+    const time = view.settings.timeCard / 1000;
     // the buttons ignore clicks for a moment, so a tap meant for a pick doesn't land on them
     return (
         <div role="group" aria-label="your turn" className="flex w-full animate-arm gap-2 sm:w-auto">
+            {me && me.timeCards > 0 && view.turnEndsIn > 0 && (
+                <Button
+                    size="md"
+                    className={classNames(bar, "px-3")}
+                    classNames={{ label: keyed("T") }}
+                    aria-keyshortcuts="T"
+                    aria-label={`add ${time} seconds, ${me.timeCards} left`}
+                    title={`${me.timeCards} time ${me.timeCards === 1 ? "card" : "cards"} left`}
+                    onClick={() => addTime(socket)}
+                >
+                    +{time}s
+                    <span className="ml-1 text-xs font-normal opacity-60">×{me.timeCards}</span>
+                </Button>
+            )}
             <Button
                 size="md"
                 className={btn}

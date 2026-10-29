@@ -15,11 +15,12 @@
 | 11 | Straddle and run it N times (`straddle.md`) | done |
 | 12 | Mantine UI (`mantine.md`) and light mode | done |
 | 13 | Table polish (`table-polish.md`) | done |
-| 14 | Time bank (`extensions.md`) | planned |
+| 14 | Time bank (`extensions.md`) | done |
 | 15 | Game refactor (`extensions.md`) | done |
 | 16 | Pot-limit Omaha (`extensions.md`) | done |
 | 17 | Bomb pots and double board (`extensions.md`) | done |
 | 18 | Short deck (`extensions.md`) | done |
+| 19 | Extension follow-ups | done |
 | - | Backlog | unranked |
 
 ## How items are ranked
@@ -645,8 +646,8 @@ where the smallest pick wins. Run it is on by default.
 Planned in `extensions.md`: time cards that add to the turn timer, earned as you play, spent with a
 button or automatically when time runs out. Parallel with stage 15.
 
-- [ ] PR 1: time bank table and server
-- [ ] PR 2: time bank web
+- [x] PR 1: time bank table and server (#171)
+- [x] PR 2: time bank web (#172)
 
 # Stage 15: game refactor
 

@@ -16,6 +16,7 @@ protect what you run them on.
 | `standup.mjs` | stand-up rounds: starting one, showing to sit down, the payout, running it again |
 | `turn.mjs` | turn countdown |
 | `variants.mjs` | pot limit Omaha and Omaha 5: cards on desktop and phones, the header, pot limit presets; short deck |
+| `timebank.mjs` | time bank: adding time, running out of cards, a card spent when the timer runs out |
 | `seat.mjs` | seat menu: sit out and in, rebuy, sit out next hand, leave |
 | `forms.mjs` | join, create table and buy-in forms |
 | `password.mjs` | password tables and invite links |
