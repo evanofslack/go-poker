@@ -65,11 +65,12 @@ type HandPot struct {
 // HandStats is a snapshot taken as a hand ends. Stats are worked out from
 // these on the client.
 type HandStats struct {
-	Hand    int             `json:"hand"`    // counts from 1
-	Started int64           `json:"started"` // unix ms
-	Stacks  map[string]uint `json:"stacks"`  // everyone seated, after the pots are paid
-	Played  []string        `json:"played"`  // names dealt in
-	Won     map[string]uint `json:"won"`     // pots each winner took, their own chips included
+	Hand    int              `json:"hand"`    // counts from 1
+	Started int64            `json:"started"` // unix ms
+	Stacks  map[string]uint  `json:"stacks"`  // everyone seated, after the pots are paid
+	Played  []string         `json:"played"`  // names dealt in
+	Won     map[string]uint  `json:"won"`     // pots each winner took, their own chips included
+	Net     map[string]int64 `json:"net"`     // everyone seated, chips won or lost so far: the ledger's net
 }
 
 // HandDone is a hand finishing: its record, as the receiver may see it, its
@@ -270,9 +271,15 @@ func (r *reducer) finishHand() {
 		s.History = s.History[len(s.History)-MaxHands:]
 	}
 
-	st := HandStats{Hand: h.Hand, Started: h.Started, Stacks: map[string]uint{}, Played: h.played(), Won: map[string]uint{}}
+	st := HandStats{Hand: h.Hand, Started: h.Started, Stacks: map[string]uint{}, Played: h.played(), Won: map[string]uint{}, Net: map[string]int64{}}
 	for _, p := range s.Game.Players {
 		st.Stacks[s.Seats[p.Seat].Name] = p.Stack
+	}
+	// buy-ins and rebuys aren't winnings, so the chart follows the net
+	for _, row := range Ledger(s).Rows {
+		if _, ok := st.Stacks[row.Name]; ok {
+			st.Net[row.Name] = row.Net
+		}
 	}
 	for _, pot := range h.Pots {
 		// odd chips aren't tracked; this is close enough for stats

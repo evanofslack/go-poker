@@ -95,7 +95,7 @@ func TestHandFlow(t *testing.T) {
 	if !reflect.DeepEqual(kinds, want) || rec.Pots[0].Winners[0] != "b" || rec.Players[1].Net != 20 {
 		t.Fatalf("record %+v", rec)
 	}
-	if h.s.Totals["a"].Hands != 1 || h.s.Stats[0].Won["b"] != 140 {
+	if h.s.Totals["a"].Hands != 1 || h.s.Stats[0].Won["b"] != 140 || h.s.Stats[0].Net["b"] != 20 || h.s.Stats[0].Net["a"] != -20 {
 		t.Fatalf("totals %+v stats %+v", h.s.Totals["a"], h.s.Stats[0])
 	}
 }
@@ -229,6 +229,17 @@ func TestRebuy(t *testing.T) {
 	h.ok(Start{Person: h.ids["a"]})
 	if msg := h.refused(Rebuy{Person: h.ids["b"], Amount: 10}); msg != "can't rebuy during a hand" {
 		t.Fatal(msg)
+	}
+}
+
+func TestStatsNetLeavesOutRebuys(t *testing.T) {
+	h := pair(t)
+	h.ok(Rebuy{Person: h.ids["a"], Amount: 3000})
+	h.ok(Start{Person: h.ids["a"]})
+	h.play(holdem.Fold{}) // a, on the button, folds the small blind
+	st := h.s.Stats[0]
+	if st.Stacks["a"] != 3990 || st.Net["a"] != -10 || st.Net["b"] != 10 {
+		t.Fatalf("stats %+v", st)
 	}
 }
 

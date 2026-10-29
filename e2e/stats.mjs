@@ -1,4 +1,4 @@
-// Stats tab: chips over time and per-player totals, built from a snapshot per hand.
+// Stats tab: net over time and per-player totals, built from a snapshot per hand.
 import { btn, check, finish, fold, has, join, launch, open, panel, quick, seat, shot } from "./lib.mjs";
 
 const browser = await launch();
@@ -16,16 +16,20 @@ check("counts the hands", await has(alice, "text=3 hands"));
 const rows = alice.locator('table[aria-label="player stats"] tbody tr');
 check("a row per player", (await rows.count()) === 2);
 const aliceRow = await rows.filter({ hasText: "alice" }).innerText();
-check("hands played", /alice\s+3\s/.test(aliceRow), aliceRow);
-check("a line per player", (await alice.locator('svg[aria-label="chips over time per player"] path').count()) === 2);
+check("hands played", /^alice(\s+you)?\s+3\s/.test(aliceRow), aliceRow);
+check("a signed net", /\s[+-]\d+\s+\d+$/.test(aliceRow.trim()), aliceRow);
+check("a line per player", (await alice.locator('svg[aria-label="net over time per player"] path').count()) === 2);
 const style = alice.locator('table[aria-label="play style"] tbody tr');
 check("a play style row per player", (await style.count()) === 2);
 const bobStyle = await style.filter({ hasText: "bob" }).innerText();
-check("few hands hide play style", /more hands$/.test(bobStyle.trim()), bobStyle);
-check("columns explain themselves", (await alice.locator('abbr[title^="voluntarily put money in"]').count()) === 1);
+check("few hands show play style, marked", /%/.test(bobStyle) && (await style.filter({ hasText: "bob" }).locator('[aria-label="few hands"]').count()) === 1, bobStyle);
+await alice.locator('table[aria-label="play style"] th span:text-is("VPIP")').hover();
+check("columns explain themselves", await has(alice, '[role=tooltip]:has-text("voluntarily put money in")'));
+await alice.mouse.move(0, 0);
+await alice.waitForSelector("[role=tooltip]", { state: "detached" });
 check("short tables label the lines", (await alice.locator('svg text:text-is("bob")').count()) === 1);
 
-const chart = alice.locator('svg[aria-label="chips over time per player"] rect');
+const chart = alice.locator('svg[aria-label="net over time per player"] rect');
 const box = await chart.boundingBox();
 await alice.mouse.move(box.x + box.width - 2, box.y + box.height / 2);
 check("hover shows each stack", await has(alice, "[role=tooltip] >> text=hand 3"));

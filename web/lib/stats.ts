@@ -1,4 +1,4 @@
-import { HandStats, PlayerTotals } from "../interfaces/index";
+import { HandStats, LedgerRow, PlayerTotals } from "../interfaces/index";
 
 // the chart has 8 series colors; anyone past them is drawn in gray
 export const seriesColors = 8;
@@ -8,6 +8,7 @@ export type PlayerStats = {
     played: number; // hands dealt in
     won: number; // hands won, splits included
     biggestPot: number;
+    net: number; // from the ledger, so buy-ins don't count
     stack: number | null; // after the last hand, null if they've left
 };
 
@@ -27,10 +28,42 @@ export function seriesColor(i: number): string {
     return i < seriesColors ? `var(--color-series-${i + 1})` : "var(--color-subtle)";
 }
 
-export function playerStats(hands: HandStats[]): PlayerStats[] {
+// chartValue is what the chart plots for name after hand h: their net, or their
+// stack for hands saved before nets were. undefined if they weren't seated.
+export type chartValue = (h: HandStats, name: string) => number | undefined;
+
+// chartValues picks what the chart plots: nets when every hand has them
+export function chartValues(hands: HandStats[]): { net: boolean; value: chartValue } {
+    if (hands.every((h) => h.net)) return { net: true, value: (h, n) => h.net[n] };
+    return { net: false, value: (h, n) => h.stacks[n] };
+}
+
+// niceTicks spans lo to hi in a few round steps: 1, 2 or 5 times a power of ten
+export function niceTicks(lo: number, hi: number): number[] {
+    const raw = Math.max(hi - lo, 10) / 4;
+    const mag = 10 ** Math.floor(Math.log10(raw));
+    const step = [1, 2, 5, 10].map((m) => m * mag).find((s) => s >= raw)!;
+    const ticks = [];
+    for (let t = Math.floor(lo / step) * step; ; t += step) {
+        ticks.push(t);
+        if (t >= hi) break;
+    }
+    return ticks;
+}
+
+// playerStats totals each player's hands, biggest first by net
+export function playerStats(hands: HandStats[], ledger: LedgerRow[]): PlayerStats[] {
     const last = hands[hands.length - 1];
-    return names(hands).map((name) => {
-        const s: PlayerStats = { name, played: 0, won: 0, biggestPot: 0, stack: last?.stacks[name] ?? null };
+    const nets = new Map(ledger.map((r) => [r.name, r.net]));
+    const stats = names(hands).map((name) => {
+        const s: PlayerStats = {
+            name,
+            played: 0,
+            won: 0,
+            biggestPot: 0,
+            net: nets.get(name) ?? last?.net?.[name] ?? 0,
+            stack: last?.stacks[name] ?? null,
+        };
         for (const h of hands) {
             if (h.played.includes(name)) s.played++;
             const won = h.won[name];
@@ -41,14 +74,17 @@ export function playerStats(hands: HandStats[]): PlayerStats[] {
         }
         return s;
     });
+    return stats.sort((a, b) => b.net - a.net);
 }
 
-// fewHands is how many hands a player needs before their style stats are shown
+// fewHands is how many hands a player needs before their style stats settle;
+// under it they show, marked as rough
 export const fewHands = 10;
 
 export type StyleStats = {
     name: string;
     hands: number;
+    low: boolean; // too few hands to go by
     vpip: string;
     pfr: string;
     threeBet: string;
@@ -69,6 +105,7 @@ export function styleStats(totals: Record<string, PlayerTotals>, order: string[]
         return {
             name,
             hands: t.hands,
+            low: t.hands < fewHands,
             // bomb pots have no preflop to choose in
             vpip: pct(t.vpip, t.hands - t.bombs),
             pfr: pct(t.pfr, t.hands - t.bombs),
@@ -82,7 +119,7 @@ export function styleStats(totals: Record<string, PlayerTotals>, order: string[]
     });
 }
 
-// styleColumns label the play style table, with what each one means on hover
+// styleColumns label the play style table, with what each one means
 export const styleColumns = [
     ["VPIP", "voluntarily put money in: hands they called or raised before the flop"],
     ["PFR", "preflop raise: hands they raised before the flop"],
