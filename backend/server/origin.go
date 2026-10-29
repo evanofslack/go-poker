@@ -11,6 +11,10 @@ import (
 // allowed to open a websocket, e.g. a frontend dev server.
 var allowedOrigins = parseOrigins(os.Getenv("ALLOWED_ORIGINS"))
 
+// adminOrigins lists origins (comma separated in ADMIN_ORIGINS) allowed to
+// read the admin API: the web dev server, never the public site.
+var adminOrigins = parseOrigins(os.Getenv("ADMIN_ORIGINS"))
+
 func parseOrigins(s string) map[string]bool {
 	origins := make(map[string]bool)
 	for _, o := range strings.Split(s, ",") {

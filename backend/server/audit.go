@@ -12,22 +12,6 @@ import (
 	"github.com/evanofslack/go-poker/table"
 )
 
-// AuditEntry is something a connection did or tried, for the operator: who,
-// from where, and whether it was refused. Players never see these.
-type AuditEntry struct {
-	ID        int64           `json:"id"`        // assigned when written, in order
-	Time      int64           `json:"time"`      // unix ms
-	Table     string          `json:"table"`     // table id, empty before joining one
-	TableName string          `json:"tableName"` // empty when the message named none
-	Person    string          `json:"person"`    // person id, empty before joining
-	Name      string          `json:"name"`
-	IP        string          `json:"ip"`
-	Conn      string          `json:"conn"`  // the connection's id
-	Kind      string          `json:"kind"`  // the command, like "take-seat", or "limit"
-	Error     string          `json:"error"` // why it was refused, empty if it wasn't
-	Data      json.RawMessage `json:"data,omitempty"`
-}
-
 // AuditQuery picks audit entries, newest first. Empty fields match anything.
 type AuditQuery struct {
 	Table   string // a table id or name

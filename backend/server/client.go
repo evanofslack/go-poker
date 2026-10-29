@@ -35,13 +35,14 @@ var upgrader = websocket.Upgrader{
 
 // Client is a middleman between the websocket connection and the hub.
 type Client struct {
-	hub  *Hub
-	conn *websocket.Conn // Websocket connection
-	send chan []byte     // Buffered channel of outbound bytes
-	quit chan struct{}   // closed by the hub on shutdown
-	done chan struct{}   // closed when writePump returns
-	ip   string          // remote address, counted against the per-ip limits
-	id   string          // names the connection in the audit
+	hub   *Hub
+	conn  *websocket.Conn // Websocket connection
+	send  chan []byte     // Buffered channel of outbound bytes
+	quit  chan struct{}   // closed by the hub on shutdown
+	done  chan struct{}   // closed when writePump returns
+	ip    string          // remote address, counted against the per-ip limits
+	id    string          // names the connection in the audit
+	since time.Time       // when it connected
 
 	// owned by readPump
 	table  *tableActor // the table joined, nil before
@@ -51,13 +52,14 @@ type Client struct {
 
 func newClient(conn *websocket.Conn, hub *Hub, ip string) *Client {
 	c := &Client{
-		hub:  hub,
-		conn: conn,
-		send: make(chan []byte, 1024),
-		ip:   ip,
-		id:   uuid.NewString()[:8],
-		quit: make(chan struct{}),
-		done: make(chan struct{}),
+		hub:   hub,
+		conn:  conn,
+		send:  make(chan []byte, 1024),
+		ip:    ip,
+		id:    uuid.NewString()[:8],
+		since: time.Now(),
+		quit:  make(chan struct{}),
+		done:  make(chan struct{}),
 	}
 	return c
 }

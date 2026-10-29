@@ -63,6 +63,14 @@ The same store keeps an audit of what each connection did and tried, refused mes
 its IP: for settling disputes, never shown to players. Entries outlive their table and are deleted
 after `AUDIT_RETAIN_DAYS` (default 30).
 
+## admin
+
+`ADMIN_ADDR` (off by default) serves a read-only admin page at `/admin` on its own address: open
+tables, who is behind each name with their IP, and the audit. It has no login, so keep it off the
+internet: bind it to `127.0.0.1:2113` and reach it over an SSH tunnel (`ssh -L 2113:localhost:2113
+host`), or to a private network such as Tailscale. In Docker, don't publish its port. The public port
+never serves it.
+
 ## metrics
 
 Prometheus metrics are served at `/metrics` on a separate port, `METRICS_ADDR` (default `:2112`, or set it empty to turn off).

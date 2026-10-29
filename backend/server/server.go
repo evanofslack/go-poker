@@ -35,6 +35,10 @@ type Server struct {
 	// serves /metrics on its own address, nil when metrics are off
 	metrics         *http.Server
 	metricsListener net.Listener
+
+	// serves the admin page on its own address, nil when it's off
+	admin         *http.Server
+	adminListener net.Listener
 }
 
 func New() (*Server, error) {
@@ -90,6 +94,17 @@ func New() (*Server, error) {
 		s.metrics = &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	}
 
+	if adminAddr != "" {
+		if s.adminListener, err = net.Listen("tcp4", adminAddr); err != nil {
+			ln.Close()
+			if s.metricsListener != nil {
+				s.metricsListener.Close()
+			}
+			return nil, err
+		}
+		s.admin = &http.Server{Handler: adminRouter(hub, s.staticDir), ReadHeaderTimeout: 10 * time.Second}
+	}
+
 	return s, nil
 }
 
@@ -102,7 +117,7 @@ func (s *Server) Run() <-chan error {
 	s.stop = stop
 	go s.hub.prune(ctx)
 
-	errc := make(chan error, 2)
+	errc := make(chan error, 3)
 	go func() {
 		if err := s.server.Serve(s.listener); !errors.Is(err, http.ErrServerClosed) {
 			errc <- err
@@ -116,6 +131,14 @@ func (s *Server) Run() <-chan error {
 			}
 		}()
 		slog.Default().Info("serving metrics", "addr", metricsAddr)
+	}
+	if s.admin != nil {
+		go func() {
+			if err := s.admin.Serve(s.adminListener); !errors.Is(err, http.ErrServerClosed) {
+				errc <- err
+			}
+		}()
+		slog.Default().Info("serving admin", "addr", adminAddr)
 	}
 	return errc
 }
@@ -134,6 +157,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	}
 	if s.metrics != nil {
 		s.metrics.Shutdown(ctx)
+	}
+	if s.admin != nil {
+		s.admin.Shutdown(ctx)
 	}
 	return s.server.Shutdown(ctx)
 }
@@ -199,16 +225,27 @@ func (s *Server) serveWebsocket(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) mountStatic() {
-	s.router.Handle("/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.router.Handle("/*", staticHandler(s.staticDir, true))
+}
+
+// staticHandler serves the static site in dir. hideAdmin leaves out the admin
+// page, which is only on the admin listener.
+func staticHandler(dir string, hideAdmin bool) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
 		// Skip API and WebSocket routes
-		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/ws/") {
+		if strings.HasPrefix(p, "/api/") || strings.HasPrefix(p, "/ws/") ||
+			hideAdmin && (p == "/admin" || p == "/admin.html" || strings.HasPrefix(p, "/admin/")) {
 			http.NotFound(w, r)
 			return
 		}
 
-		path := filepath.Join(s.staticDir, r.URL.Path)
-		_, err := os.Stat(path)
-		if err == nil {
+		path := filepath.Join(dir, p)
+		if _, err := os.Stat(path); err != nil {
+			// a page, like /admin for admin.html
+			path += ".html"
+		}
+		if info, err := os.Stat(path); err == nil && !info.IsDir() {
 			ext := filepath.Ext(path)
 			if mimeType := mime.TypeByExtension(ext); mimeType != "" {
 				w.Header().Set("Content-Type", mimeType)
@@ -218,10 +255,10 @@ func (s *Server) mountStatic() {
 		}
 
 		// If file not found, serve index.html for client-side routing
-		indexPath := filepath.Join(s.staticDir, "index.html")
+		indexPath := filepath.Join(dir, "index.html")
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		http.ServeFile(w, r, indexPath)
-	}))
+	})
 }
 
 func registerExtensions() {

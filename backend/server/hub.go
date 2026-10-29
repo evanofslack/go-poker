@@ -32,6 +32,7 @@ type Hub struct {
 	store  Store
 	timing table.Timing
 
+	started     time.Time
 	audits      chan AuditEntry    // waiting to be written by writeAudits
 	flushAudits chan chan struct{} // asks writeAudits to write now
 }
@@ -46,6 +47,7 @@ func newHub(store Store) *Hub {
 		conns:       make(map[string]int),
 		store:       store,
 		timing:      timing,
+		started:     time.Now(),
 		audits:      make(chan AuditEntry, auditQueueLen),
 		flushAudits: make(chan chan struct{}),
 	}

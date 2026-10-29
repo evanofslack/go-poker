@@ -16,6 +16,7 @@ var (
 	maxTablesPerIP  = 3       // open tables created from one address
 	trustProxy      = false   // take the client address from X-Forwarded-For
 	metricsAddr     = ":2112" // where /metrics is served, empty for off; never the public port
+	adminAddr       = ""      // where the admin page is served, empty for off; never the public port
 	retainDays      = 30      // closed tables are kept this long
 	auditRetainDays = 30      // audit entries are kept this long, even past their table
 	databaseURL     = ""      // postgres://… or sqlite:path; empty keeps tables in memory
@@ -42,6 +43,7 @@ func loadConfig() {
 	if s, ok := os.LookupEnv("METRICS_ADDR"); ok {
 		metricsAddr = s
 	}
+	adminAddr = os.Getenv("ADMIN_ADDR")
 }
 
 func envInt(key string, v *int) {

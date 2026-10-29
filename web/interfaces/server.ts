@@ -2,6 +2,76 @@
 import type * as table from "./table";
 
 //////////
+// source: adminapi.go
+
+/**
+ * AdminOverview is the server and every open table.
+ */
+export interface AdminOverview {
+  started: number /* int64 */; // unix ms
+  store: string; // "memory", "sqlite" or "postgres"
+  connections: number /* int */;
+  connsByIp: { [key: string]: number /* int */};
+  tables: AdminTableRow[];
+}
+/**
+ * AdminTableRow is a table in the overview.
+ */
+export interface AdminTableRow {
+  id: string;
+  summary: table.Summary;
+  creatorIp: string;
+  public: boolean;
+  ended: boolean;
+  connections: number /* int */;
+}
+/**
+ * AdminTable is one table in full, as a watcher sees it plus who is behind
+ * each name.
+ */
+export interface AdminTable {
+  id: string;
+  name: string;
+  creatorIp: string;
+  host: string;
+  banker: string;
+  settings: table.Settings;
+  view: table.View;
+  people: AdminPerson[];
+  ledger: table.LedgerEntry[];
+  logs: table.Log[]; // the last adminLogs
+}
+/**
+ * AdminPerson is someone at a table and their connection.
+ */
+export interface AdminPerson {
+  id: string;
+  name: string;
+  seat: number /* int */; // 0 when watching
+  connected: boolean;
+  ip: string; // empty while disconnected
+  conn: string; // the connection's id in the audit
+  since: number /* int64 */; // unix ms the connection opened, 0 while disconnected
+}
+/**
+ * AuditEntry is something a connection did or tried, for the operator: who,
+ * from where, and whether it was refused. Players never see these.
+ */
+export interface AuditEntry {
+  id: number /* int64 */; // assigned when written, in order
+  time: number /* int64 */; // unix ms
+  table: string; // table id, empty before joining one
+  tableName: string; // empty when the message named none
+  person: string; // person id, empty before joining
+  name: string;
+  ip: string;
+  conn: string; // the connection's id
+  kind: string; // the command, like "take-seat", or "limit"
+  error: string; // why it was refused, empty if it wasn't
+  data?: unknown; // the command and what it logged
+}
+
+//////////
 // source: messages.go
 
 /**

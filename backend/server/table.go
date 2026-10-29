@@ -49,11 +49,13 @@ type armedTimer struct {
 
 // envelope is a command for the table, or a shutdown when cmd is nil. client
 // is who sent it, for a Join, Leave or Disconnect; reply, when set, gets the
-// result once the command is done.
+// result once the command is done. inspect, when set, is run in the actor
+// instead, to read its state.
 type envelope struct {
-	cmd    table.Command
-	client *Client
-	reply  chan reply
+	cmd     table.Command
+	client  *Client
+	reply   chan reply
+	inspect func()
 }
 
 type reply struct {
@@ -86,9 +88,20 @@ func newTableActor(h *Hub, s *table.State) *tableActor {
 
 // ask sends cmd and waits for it to be done.
 func (a *tableActor) ask(cmd table.Command, c *Client) reply {
+	return a.call(envelope{cmd: cmd, client: c})
+}
+
+// inspect runs f in the actor, so f can read its state, and waits for it.
+func (a *tableActor) inspect(f func()) error {
+	return a.call(envelope{inspect: f}).err
+}
+
+// call sends env and waits for it to be done.
+func (a *tableActor) call(env envelope) reply {
 	r := make(chan reply, 1)
+	env.reply = r
 	select {
-	case a.inbox <- envelope{cmd, c, r}:
+	case a.inbox <- env:
 	case <-a.done:
 		return reply{err: errClosed}
 	}
@@ -136,6 +149,10 @@ func (a *tableActor) handle(env envelope) {
 			env.reply <- r
 		}
 	}()
+	if env.inspect != nil {
+		env.inspect()
+		return
+	}
 	if env.cmd == nil {
 		a.save()
 		a.close("shutdown", table.Error{Code: table.CodeRestarting, Message: "the server is restarting"}, false)

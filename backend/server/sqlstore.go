@@ -27,12 +27,15 @@ var migrations embed.FS
 func openStore(ctx context.Context, url string) (Store, error) {
 	var db *sql.DB
 	var err error
+	var kind string
 	switch {
 	case url == "":
 		return newMemStore(), nil
 	case strings.HasPrefix(url, "postgres://"), strings.HasPrefix(url, "postgresql://"):
+		kind = "postgres"
 		db, err = sql.Open("pgx", url)
 	case strings.HasPrefix(url, "sqlite:"):
+		kind = "sqlite"
 		file := strings.TrimPrefix(strings.TrimPrefix(url, "sqlite:"), "//")
 		db, err = sql.Open("sqlite", "file:"+file+"?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)")
 		// SQLite takes one writer at a time
@@ -43,7 +46,7 @@ func openStore(ctx context.Context, url string) (Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &sqlStore{db}
+	s := &sqlStore{db, kind}
 	if err := s.migrate(ctx); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
@@ -53,7 +56,8 @@ func openStore(ctx context.Context, url string) (Store, error) {
 
 // sqlStore keeps tables in Postgres or SQLite. Both take the same SQL.
 type sqlStore struct {
-	db *sql.DB
+	db   *sql.DB
+	kind string // "postgres" or "sqlite"
 }
 
 // migrate applies the migrations not yet applied, in order. Each is named

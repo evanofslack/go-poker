@@ -20,7 +20,7 @@ packages:
       holdem.Event: "unknown"
   - path: "github.com/evanofslack/go-poker/server"
     output_path: "../web/interfaces/server.ts"
-    include_files: [messages.go]
+    include_files: [messages.go, adminapi.go]
     frontmatter: |
       import type * as table from "./table";
     type_mappings:
@@ -31,3 +31,5 @@ packages:
       table.HandRecord: "table.HandRecord"
       table.Summary: "table.Summary"
       table.ChatMessage: "table.ChatMessage"
+      table.Settings: "table.Settings"
+      table.LedgerEntry: "table.LedgerEntry"
