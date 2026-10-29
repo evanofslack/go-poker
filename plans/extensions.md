@@ -37,8 +37,8 @@ hands, before any table or web work, as in `straddle.md`.
 - A-6-7-8-9 is the lowest straight (and straight flush).
 - Trips vs straight varies by room. Default Triton: trips beat a straight. A setting
   `ShortTrips` flips it. (Leave out if nobody asks for it.)
-- Often played with antes and a button blind and no SB/BB. First version uses the table's normal
-  blinds and ante; the button blind comes later (backlog).
+- Often played with antes and a button blind and no SB/BB. A small blind of 0 (#183) gives antes
+  and a big blind; the button blind comes later (backlog).
 
 ### Bomb pots
 - Everyone dealt in puts in the bomb amount as dead money, like an ante. No blinds, ante or
@@ -244,12 +244,15 @@ exactly as now, which the existing tests prove.
 - Deck math for double board: `Hole * players + 10`.
 
 ### Table
-- Settings: `BombPot uint` (amount in chips, 1-20 bb), `BombEvery uint` (every N hands, 0 for only
-  when the host asks), `BombDouble bool` (bomb pots are double board), `DoubleBoard bool` (every
-  hand double board). Validate deck math with 2 boards when either is on.
-- Host action `bomb-pot`: the next hand is a bomb pot. `State.BombNext bool`, shown to everyone,
-  host can cancel. `BombEvery` sets it in `afterHand` on the Nth hand. No straddle ask before a bomb.
-- `scheduleDeal`/deal builds the `Deal` from settings and `BombNext`.
+- Built differently after review (#182): double board only comes as a bomb pot, and the host runs
+  them like stand-up. Settings: `BombPot uint` (amount in chips, 1-20 bb, 0 for off, set at create
+  time or live from the host tab), `Special` (`bomb` or `double-bomb`), `SpecialEvery` and
+  `SpecialUnit` (every N hands or orbits, 0 for only when the host calls one). Validate deck math
+  with 2 boards for a scheduled double board.
+- Host action `special-hand` (and `cancel-special-hand`): the next hand is a bomb pot.
+  `State.SpecialNext`, shown to everyone. The schedule sets it in `afterHand`, counting only normal
+  hands. No straddle ask before a bomb.
+- `scheduleDeal`/deal builds the `Deal` from settings and `SpecialNext`.
 - Records: `HandRecord.Bomb uint`; `Boards` already recorded; `HandPlayer.Hand` per board when
   there are two (`Hands []string`).
 - Stats: bomb pots don't count for VPIP and PFR (no preflop decision); they count for hands and

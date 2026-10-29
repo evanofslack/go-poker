@@ -680,6 +680,14 @@ Planned in `extensions.md`: 36 cards, flush beats full house, A-6-7-8-9 straight
 - [x] PR 11: short deck engine (#180)
 - [x] PR 12: short deck table and web (#181)
 
+# Stage 19: extension follow-ups
+
+From playing the stack locally.
+
+- [x] Bomb pots run by the host, on one board or two, called or every N hands or orbits (#182)
+- [x] Tables with no small blind, for short deck's antes and big blind (#183)
+- [x] Tucked folded hands, same size double boards, game and stakes lines in the header (#184)
+
 # Backlog (unranked)
 
 - More house rules: see stages 9 and 11
