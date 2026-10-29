@@ -59,9 +59,9 @@ export default function CreateTable({ tablename, username, onClose }: createTabl
                         {invalid || appState.error}
                     </p>
                 )}
-                <div className="flex flex-wrap items-center justify-end gap-2 border-t border-raised pt-3">
+                <div className="sticky bottom-0 z-10 -mx-4 -mb-4 flex flex-wrap items-center justify-end gap-2 border-t border-line bg-(--mantine-color-body) px-4 py-3">
                     {!invalid && (
-                        <p className="mr-auto text-xs text-subtle tabular-nums" aria-label="summary">
+                        <p className="basis-full text-xs text-subtle tabular-nums" aria-label="summary">
                             {summary(form, password)}
                         </p>
                     )}

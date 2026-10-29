@@ -226,3 +226,30 @@ export const isDouble = (kind: string) => kind === "double-bomb";
 export function specialName(kind: string): string {
     return { bomb: "bomb pot", "double-bomb": "double board bomb pot" }[kind] ?? "";
 }
+
+// paceSummary sums up the form's pace in a line, for its section while it's closed
+export function paceSummary(f: SettingsForm): string {
+    const parts = [f.turnTime ? `${f.turnTime / 1000}s timer` : "no timer"];
+    if (f.turnTime && f.timeMax) parts.push(f.timeBank === 1 ? "1 time card" : `${f.timeBank} time cards`);
+    parts.push(`${f.nextHandDelay / 1000}s between hands`);
+    return parts.join(" · ");
+}
+
+// rulesSummary sums up the form's house rules in a line
+export function rulesSummary(f: SettingsForm): string {
+    const parts = [];
+    if (f.game === "holdem" && f.sevenDeuce) parts.push(`${f.sevenDeuce} bb ${bountyHand(f)} bounty`);
+    if (f.straddle !== "off") parts.push(`${f.straddle} straddles`);
+    if (f.runIt) parts.push("run it");
+    if (f.duckHunt) parts.push("duck hunt");
+    return parts.join(" · ") || "none";
+}
+
+// bombSummary sums up the form's bomb pots in a line
+export function bombSummary(f: SettingsForm): string {
+    if (!f.bombPot) return "off";
+    const parts = [`${f.bombPot} bb`];
+    if (isDouble(f.special)) parts.push("two boards");
+    parts.push(f.specialEvery ? `every ${f.specialEvery} ${f.specialUnit}` : "when called");
+    return parts.join(" · ");
+}

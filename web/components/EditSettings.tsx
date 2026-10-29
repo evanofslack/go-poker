@@ -45,8 +45,8 @@ export default function EditSettings({ onClose }: { onClose: () => void }) {
                         {invalid}
                     </p>
                 )}
-                <div className="flex flex-wrap items-center justify-end gap-2 border-t border-raised pt-3">
-                    {midHand && <p className="mr-auto text-xs text-subtle">changes apply after this hand</p>}
+                <div className="sticky bottom-0 z-10 -mx-4 -mb-4 flex flex-wrap items-center justify-end gap-2 border-t border-line bg-(--mantine-color-body) px-4 py-3">
+                    {midHand && <p className="basis-full text-xs text-subtle">changes apply after this hand</p>}
                     <Button type="button" variant="subtle" onClick={onClose}>
                         cancel
                     </Button>
