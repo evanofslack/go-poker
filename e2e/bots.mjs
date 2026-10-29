@@ -28,11 +28,11 @@ check("bots default to medium, with an icon", await has(alice, 'p:has-text("harp
 await alice.locator("button", { hasText: "+ bot" }).filter({ hasText: "3" }).click();
 const second = await alice.inputValue('input[maxlength="20"]');
 check("suggested name skips taken ones", second !== "harper", second);
-await alice.click('label:has-text("easy")');
+await alice.click('label:has-text("hard")');
 await alice.click(btn("add bot"));
 await until(() => last(aRec)?.players.length === 3);
-check("server sends each bot's level", JSON.stringify(levels(aRec)) === '["easy","medium"]', JSON.stringify(levels(aRec)));
-check("easy bot shows its level on hover", await alice.locator('[data-seat] [title="easy bot"]').count() === 1);
+check("server sends each bot's level", JSON.stringify(levels(aRec)) === '["hard","medium"]', JSON.stringify(levels(aRec)));
+check("hard bot shows its level on hover", await alice.locator('[data-seat] [title="hard bot"]').count() === 1);
 check("seats don't spell out bot levels", await alice.locator("[data-seat] >> text=/(easy|medium|hard) bot/").count() === 0);
 
 // the host's remove buttons sit clear of the badges

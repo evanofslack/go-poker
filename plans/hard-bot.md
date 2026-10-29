@@ -1,6 +1,6 @@
 # Hard bot
 
-**Status: planned.** A third bot level that reads ranges, not just pots, and plays every game the
+**Status: done.** A third bot level that reads ranges, not just pots, and plays every game the
 table deals. Also fixes medium's leak to big bets. Replaces "Later: hard bot" in `todo.md` 5.2.
 
 ## Where medium stands
@@ -66,3 +66,31 @@ Stacked:
 2. **hard**: `bot/hard.go`, percentiles, weighted ranges, sizes, push/fold, sims.
 3. **table and web**: `hard` level valid on the server, add-bot picker, home page bots tile,
    `e2e/bots.mjs`, todo.
+
+## Results
+
+`BOTSIM=1 go test ./bot -run TestSimHard -v`, 10 shards of 500 hands, each played twice, in bb/100
+a seat with a 95% interval, at the end of the work:
+
+| hard against | heads up | six handed |
+| --- | --- | --- |
+| medium, NLH | +32.9 ± 13.5 | +14.1 ± 5.3 |
+| medium, PLO | +203.6 ± 37.0 | +123.7 ± 19.8 |
+| medium, short deck | +40.0 ± 23.0 | +33.2 ± 11.3 |
+| medium, double board bomb pots | +10.4 ± 11.9 | +37.3 ± 11.8 |
+| station | +173.3 ± 31.1 | +310.9 ± 30.4 |
+| jammer | +31.6 ± 24.7 | +12.8 ± 9.4 |
+| nit | +48.6 ± 10.6 | +8.7 ± 6.2 |
+| trapper | +32.3 ± 29.3 | +15.7 ± 9.3 |
+
+Six handed it plays about 25% VPIP, 16% PFR, 7% 3-bet, a solid regular's numbers.
+
+Differences from the plan:
+- The jammer showed polar overbets beat medium because they're good, not because medium folds
+  too much: after the fix medium's calls against them break even. Hard overbets the river itself.
+- The fold model was the hard part. Hand strength against random hands overrated folds; it now
+  defends each opponent's own range as often as they've folded to bets, which needed a new
+  total, fold-to-bet, and leaving bomb pots out of preflop stats.
+- Double board strength is the percentile of a hand's average over the two boards.
+- Two card charts are generated (`go test ./bot -run TestChart -update`) and checked in, since
+  working them out takes half a second.

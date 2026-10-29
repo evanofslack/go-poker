@@ -142,17 +142,26 @@ function Games() {
 const botLevels = [
     { label: "easy", value: "easy" },
     { label: "medium", value: "medium" },
+    { label: "hard", value: "hard" },
 ];
+
+// each level's typical move, and how it plays
+const botPlay: Record<string, { chips: number; move: string; text: string }> = {
+    easy: { chips: 20, move: "call 20", text: "easy calls too much." },
+    medium: { chips: 60, move: "raise to 60", text: "medium plays the odds." },
+    hard: { chips: 180, move: "3-bet to 180", text: "hard reads ranges and learns how you play." },
+};
 
 // pill sits on the felt like a seat's bet
 const pill = "flex items-center gap-1.5 rounded-full bg-felt-dark/80 px-2 py-0.5 text-sm font-semibold whitespace-nowrap";
 
 function Bots() {
     const [level, setLevel] = useState("medium");
+    const play = botPlay[level];
     return (
         <Tile
             title="bots"
-            text="fill empty seats, or practice on your own."
+            text={`fill empty seats, or practice on your own. ${play.text}`}
             stage={
                 <div className="flex items-center gap-3">
                     <div className="w-24 rounded-xl bg-panel px-2 py-1.5 text-center text-fg">
@@ -163,8 +172,8 @@ function Bots() {
                         <p className="text-lg leading-tight font-semibold">1840</p>
                     </div>
                     <span className={pill}>
-                        <Chips amount={level === "easy" ? 20 : 60} bb={20} className="size-5" />
-                        {level === "easy" ? "call 20" : "raise to 60"}
+                        <Chips amount={play.chips} bb={20} className="size-5" />
+                        {play.move}
                     </span>
                 </div>
             }

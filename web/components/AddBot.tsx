@@ -13,6 +13,7 @@ const maxNameLength = 20;
 const levels = [
     { label: "easy", value: "easy" },
     { label: "medium", value: "medium" },
+    { label: "hard", value: "hard" },
 ];
 
 type addBotProps = {
