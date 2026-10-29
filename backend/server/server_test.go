@@ -418,6 +418,8 @@ func TestPlay(t *testing.T) {
 	if e := b.errorMsg(); e.Message != "not your turn" {
 		t.Fatalf("error %+v", e)
 	}
+	a.send(`{"action":"add-time"}`)
+	w.update(func(v table.View) bool { return v.Players[0].TimeCards == table.DefaultSettings.TimeBank-1 })
 	a.send(`{"action":"player-raise","to":100}`)
 	b.update(func(v table.View) bool { return v.Players[0].Bet == 100 && v.Legal.Turn })
 	b.send(`{"action":"player-fold"}`)

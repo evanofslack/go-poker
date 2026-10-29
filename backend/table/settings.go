@@ -42,6 +42,12 @@ type Settings struct {
 	Special      string `json:"special"`      // which bomb pot: SpecialBomb or SpecialDoubleBomb
 	SpecialEvery uint   `json:"specialEvery"` // one every this many hands or orbits, 0 for only when the host calls one
 	SpecialUnit  string `json:"specialUnit"`  // UnitHands or UnitOrbits
+
+	// time bank: cards that each add TimeCard to a player's turn timer
+	TimeMax   uint `json:"timeMax"`   // the most cards a player holds, 0 for no time bank
+	TimeBank  uint `json:"timeBank"`  // cards a player sits down with
+	TimeEvery uint `json:"timeEvery"` // hands dealt in to earn a card, 0 to never earn one
+	TimeCard  uint `json:"timeCard"`  // what a card adds
 }
 
 // Special hands, and the units of their schedule
@@ -132,6 +138,10 @@ var DefaultSettings = Settings{
 	Deck:          DeckFull,
 	Special:       SpecialBomb,
 	SpecialUnit:   UnitHands,
+	TimeMax:       5,
+	TimeBank:      2,
+	TimeEvery:     20,
+	TimeCard:      20000,
 }
 
 // settings limits, mirrored by the create table form
@@ -149,6 +159,10 @@ const (
 	maxBombBB        = 20  // the most a bomb pot can be, in big blinds
 	maxEveryHands    = 100 // the most hands between scheduled special hands
 	maxEveryOrbits   = 20
+	maxTimeCards     = 10
+	maxTimeEvery     = 100
+	minTimeCard      = 5000
+	maxTimeCard      = 60_000
 )
 
 // Validate returns why s can't be used for a new table, if it can't.
@@ -202,6 +216,14 @@ func (s Settings) Validate() error {
 		return fmt.Errorf("%s deals too many cards for two boards at %d seats", GameName(s), s.Seats)
 	case s.SevenDeuce > 0 && holeCards[s.Game] != 2:
 		return errors.New("the worst hand bounty is for hold'em")
+	case s.TimeMax > maxTimeCards:
+		return fmt.Errorf("a player can hold at most %d time cards", maxTimeCards)
+	case s.TimeBank > s.TimeMax:
+		return errors.New("players can't start with more time cards than they can hold")
+	case s.TimeEvery > maxTimeEvery:
+		return fmt.Errorf("earning a time card can take at most %d hands", maxTimeEvery)
+	case s.TimeMax > 0 && (s.TimeCard < minTimeCard || s.TimeCard > maxTimeCard):
+		return fmt.Errorf("a time card must add between %d and %d seconds", minTimeCard/1000, maxTimeCard/1000)
 	}
 	return nil
 }
@@ -249,6 +271,11 @@ func (r *reducer) applySettings(who string, set Settings) {
 	}
 	if !set.scheduled() {
 		s.SpecialHands = 0
+	}
+	for _, seat := range s.Seats {
+		if seat != nil {
+			seat.TimeCards = min(seat.TimeCards, set.TimeMax)
+		}
 	}
 	s.Game.SetConfig(set.config())
 	if changes != "" {
@@ -303,6 +330,12 @@ func settingsChanges(old, set Settings) string {
 		add(old.Special != set.Special || old.SpecialEvery != set.SpecialEvery || old.SpecialUnit != set.SpecialUnit,
 			"a %s every %s", specialNames[set.Special], every(set.SpecialEvery, set.SpecialUnit))
 	}
+	if set.TimeMax == 0 {
+		add(old.TimeMax != 0, "the time bank off")
+	} else {
+		add(old.TimeMax != set.TimeMax || old.TimeBank != set.TimeBank || old.TimeEvery != set.TimeEvery || old.TimeCard != set.TimeCard,
+			"the time bank to %s of %ds, %s", plural(int(set.TimeBank), "card"), set.TimeCard/1000, timeEarn(set))
+	}
 	return strings.Join(c, ", ")
 }
 
@@ -335,4 +368,12 @@ func (r *reducer) setPassword(p *Person, password string) error {
 	}
 	r.send("", NewPassword{password})
 	return nil
+}
+
+// timeEarn says how players earn time cards, like "one more every 20 hands up to 5".
+func timeEarn(set Settings) string {
+	if set.TimeEvery == 0 {
+		return "none earned"
+	}
+	return fmt.Sprintf("one more every %d hands up to %d", set.TimeEvery, set.TimeMax)
 }

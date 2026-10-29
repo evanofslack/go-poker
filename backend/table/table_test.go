@@ -102,6 +102,7 @@ func TestHandFlow(t *testing.T) {
 
 func TestTurnTimeout(t *testing.T) {
 	h := pair(t)
+	h.s.Seats[1].TimeCards, h.s.Seats[2].TimeCards = 0, 0 // no time bank to spend
 	h.ok(Start{Person: h.ids["a"]})
 	// a, on the button, owes the small blind's difference: folds
 	h.advance(30 * time.Second)

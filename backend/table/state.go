@@ -55,7 +55,9 @@ type Seat struct {
 	Token      string `json:"token"`    // hash of the token that reclaims the seat
 	Leaving    bool   `json:"leaving"`  // folded on their turn and removed after the hand
 	SitOutNext bool   `json:"sitOutNext"`
-	Straddle   string `json:"straddle"` // PresetAsk (or empty), PresetAlways or PresetNever
+	Straddle   string `json:"straddle"`  // PresetAsk (or empty), PresetAlways or PresetNever
+	TimeCards  uint   `json:"timeCards"` // time bank cards left
+	TimeHands  uint   `json:"timeHands"` // hands dealt in since the last card earned
 }
 
 // Timer names a deadline. The runtime arms one timer per entry in

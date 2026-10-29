@@ -296,6 +296,8 @@ func (c *Client) command(in Inbound) (table.Command, error) {
 		return table.Show{Person: p}, nil
 	case ActionDuckHunt:
 		return table.Hunt{Person: p}, nil
+	case ActionAddTime:
+		return table.AddTime{Person: p}, nil
 	case ActionStraddle:
 		return table.Straddle{Person: p, Yes: in.Yes}, nil
 	case ActionPreset:

@@ -56,6 +56,10 @@ export type SettingsForm = {
     special: string; // which bomb pot: bomb, or double-bomb on two boards
     specialEvery: number; // 0 for only when the host calls one
     specialUnit: string; // hands or orbits
+    timeMax: number; // time cards a player can hold, 0 for no time bank
+    timeBank: number; // time cards to sit down with
+    timeEvery: number; // hands to earn a card, 0 for never
+    timeCard: number; // ms a card adds
 };
 
 // the server's defaults
@@ -83,6 +87,10 @@ export const defaultForm: SettingsForm = {
     special: "bomb",
     specialEvery: 0,
     specialUnit: "hands",
+    timeMax: 5,
+    timeBank: 2,
+    timeEvery: 20,
+    timeCard: 20000,
 };
 
 // blinds are the form's small and big blind
@@ -137,6 +145,10 @@ export function toSettings(f: SettingsForm): Settings {
         // a schedule of bomb pots needs them on
         specialEvery: f.bombPot ? f.specialEvery : 0,
         specialUnit: f.specialUnit,
+        timeMax: f.timeMax,
+        timeBank: f.timeBank,
+        timeEvery: f.timeEvery,
+        timeCard: f.timeCard,
     };
 }
 
@@ -172,6 +184,10 @@ export function fromSettings(s: Settings): SettingsForm {
         special: s.special,
         specialEvery: s.specialEvery,
         specialUnit: s.specialUnit,
+        timeMax: s.timeMax,
+        timeBank: s.timeBank,
+        timeEvery: s.timeEvery,
+        timeCard: s.timeCard,
     };
 }
 

@@ -75,6 +75,10 @@ export const ActionDuckHunt = "duck-hunt"; // between hands, on tables that allo
 /**
  * inbound (client) actions
  */
+export const ActionAddTime = "add-time"; // on your turn, spends a time card
+/**
+ * inbound (client) actions
+ */
 export const ActionStraddle = "straddle"; // yes answers the straddle ask
 /**
  * inbound (client) actions
