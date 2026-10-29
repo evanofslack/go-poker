@@ -33,3 +33,4 @@ packages:
       table.ChatMessage: "table.ChatMessage"
       table.Settings: "table.Settings"
       table.LedgerEntry: "table.LedgerEntry"
+      table.LedgerView: "table.LedgerView"

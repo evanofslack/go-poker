@@ -1,6 +1,7 @@
 package server
 
 import (
+	"cmp"
 	"context"
 	"slices"
 	"sync"
@@ -21,6 +22,13 @@ type Store interface {
 	// Open is every table not closed, with its last table.MaxHands hands and
 	// table.MaxLogs log lines.
 	Open(ctx context.Context) ([]Saved, error)
+	// Closed is the closed tables not yet pruned, last closed first: those
+	// closed before before (unix ms, 0 for any), at most limit.
+	Closed(ctx context.Context, before int64, limit int) ([]ClosedTable, error)
+	// Load is the table with id, open or closed, with its last
+	// table.MaxHands hands and table.MaxLogs log lines; errNoTable if it's
+	// not kept.
+	Load(ctx context.Context, id string) (Saved, error)
 	// Prune deletes the tables closed before closedBefore, and says how many.
 	// Their audit entries stay.
 	Prune(ctx context.Context, closedBefore time.Time) (int, error)
@@ -77,6 +85,7 @@ const maxMemAudit = 10_000
 
 type memTable struct {
 	Saved
+	created  time.Time
 	closedAt time.Time
 	reason   string
 }
@@ -90,7 +99,7 @@ func (m *memStore) Save(_ context.Context, c Checkpoint) error {
 	defer m.mu.Unlock()
 	t := m.tables[c.ID]
 	if t == nil {
-		t = &memTable{Saved: Saved{ID: c.ID, Name: c.Name}}
+		t = &memTable{Saved: Saved{ID: c.ID, Name: c.Name}, created: c.At}
 		m.tables[c.ID] = t
 	}
 	t.Version, t.State = c.Version, c.State
@@ -129,6 +138,37 @@ func (m *memStore) Open(context.Context) ([]Saved, error) {
 		}
 	}
 	return out, nil
+}
+
+func (m *memStore) Closed(_ context.Context, before int64, limit int) ([]ClosedTable, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []ClosedTable
+	for _, t := range m.tables {
+		closed := t.closedAt.UnixMilli()
+		if t.closedAt.IsZero() || before > 0 && closed >= before {
+			continue
+		}
+		c := ClosedTable{ID: t.ID, Name: t.Name, Created: t.created.UnixMilli(), Closed: closed, Reason: t.reason}
+		if n := len(t.Hands); n > 0 {
+			c.Hands = t.Hands[n-1].Record.Hand
+		}
+		out = append(out, c)
+	}
+	slices.SortFunc(out, func(a, b ClosedTable) int { return cmp.Or(cmp.Compare(b.Closed, a.Closed), cmp.Compare(a.ID, b.ID)) })
+	return out[:min(len(out), limit)], nil
+}
+
+func (m *memStore) Load(_ context.Context, id string) (Saved, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	t := m.tables[id]
+	if t == nil {
+		return Saved{}, errNoTable
+	}
+	s := t.Saved
+	s.Hands, s.Logs = slices.Clone(s.Hands), slices.Clone(s.Logs)
+	return s, nil
 }
 
 func (m *memStore) Prune(_ context.Context, closedBefore time.Time) (int, error) {

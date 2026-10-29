@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"path"
 	"slices"
 	"strconv"
@@ -235,6 +236,50 @@ func (s *sqlStore) logs(ctx context.Context, id string) ([]table.Log, error) {
 	}
 	slices.Reverse(logs)
 	return logs, rows.Err()
+}
+
+func (s *sqlStore) Closed(ctx context.Context, before int64, limit int) ([]ClosedTable, error) {
+	if before <= 0 {
+		before = math.MaxInt64
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		select id, name, created_at, closed_at, coalesce(close_reason, ''),
+			coalesce((select max(hand) from hands where table_id = tables.id), 0)
+		from tables where closed_at is not null and closed_at < $1
+		order by closed_at desc, id limit $2`, before, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ClosedTable
+	for rows.Next() {
+		var c ClosedTable
+		if err := rows.Scan(&c.ID, &c.Name, &c.Created, &c.Closed, &c.Reason, &c.Hands); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+func (s *sqlStore) Load(ctx context.Context, id string) (Saved, error) {
+	t := Saved{ID: id}
+	var state string
+	err := s.db.QueryRowContext(ctx, `select name, version, state from tables where id = $1`, id).Scan(&t.Name, &t.Version, &state)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Saved{}, errNoTable
+	}
+	if err != nil {
+		return Saved{}, err
+	}
+	t.State = []byte(state)
+	if t.Hands, err = s.hands(ctx, id); err != nil {
+		return Saved{}, err
+	}
+	if t.Logs, err = s.logs(ctx, id); err != nil {
+		return Saved{}, err
+	}
+	return t, nil
 }
 
 func (s *sqlStore) Prune(ctx context.Context, closedBefore time.Time) (int, error) {

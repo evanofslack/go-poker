@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"io"
 	"path/filepath"
 	"reflect"
@@ -124,6 +125,34 @@ func testStore(t *testing.T, s Store) {
 		t.Fatalf("reused name got %+v", got)
 	}
 
+	// closed tables are listed, last closed first, and load like open ones
+	if err := s.MarkClosed(ctx, "b", "ended", at.Add(3*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	closed, err := s.Closed(ctx, 0, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantClosed := []ClosedTable{
+		{ID: "b", Name: "t", Created: at.UnixMilli(), Closed: at.Add(3 * time.Hour).UnixMilli(), Reason: "ended", Hands: 1},
+		{ID: "a", Name: "t", Created: at.UnixMilli(), Closed: at.Add(time.Hour).UnixMilli(), Reason: "idle", Hands: table.MaxHands + 5},
+	}
+	if !reflect.DeepEqual(closed, wantClosed) {
+		t.Fatalf("closed %+v\nwant %+v", closed, wantClosed)
+	}
+	if closed, err := s.Closed(ctx, at.Add(3*time.Hour).UnixMilli(), 10); err != nil || len(closed) != 1 || closed[0].ID != "a" {
+		t.Fatalf("closed before b: %+v, %v", closed, err)
+	}
+	if closed, err := s.Closed(ctx, 0, 1); err != nil || len(closed) != 1 || closed[0].ID != "b" {
+		t.Fatalf("one closed: %+v, %v", closed, err)
+	}
+	if sv, err := s.Load(ctx, "a"); err != nil || sv.Name != "t" || len(sv.Hands) != table.MaxHands || len(sv.Logs) != table.MaxLogs {
+		t.Fatalf("load a: %d hands, %d logs, %v", len(sv.Hands), len(sv.Logs), err)
+	}
+	if _, err := s.Load(ctx, "nope"); !errors.Is(err, errNoTable) {
+		t.Fatalf("load nope: %v", err)
+	}
+
 	// pruning deletes closed tables older than the retention
 	if n, err := s.Prune(ctx, at.Add(time.Hour)); err != nil || n != 0 {
 		t.Fatalf("pruned %d, %v", n, err)
@@ -131,8 +160,8 @@ func testStore(t *testing.T, s Store) {
 	if n, err := s.Prune(ctx, at.Add(2*time.Hour)); err != nil || n != 1 {
 		t.Fatalf("pruned %d, %v", n, err)
 	}
-	if got := open()["t"]; got.ID != "b" || len(got.Hands) != 1 {
-		t.Fatalf("pruning touched the open table: %+v", got)
+	if closed, err := s.Closed(ctx, 0, 10); err != nil || len(closed) != 1 || closed[0].ID != "b" {
+		t.Fatalf("pruning left %+v, %v", closed, err)
 	}
 
 	testAuditStore(t, s)

@@ -2,8 +2,10 @@ package server
 
 import (
 	"cmp"
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"maps"
 	"net/http"
@@ -17,6 +19,20 @@ import (
 
 // adminLogs is how many of a table's log lines the admin API sends.
 const adminLogs = 50
+
+// maxClosedPage is the most closed tables one request lists, and the default.
+const maxClosedPage = 50
+
+func queryInt(s string) (int64, error) {
+	if s == "" {
+		return 0, nil
+	}
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%q isn't a number", s)
+	}
+	return n, nil
+}
 
 // adminRouter serves the admin API and, for the admin page, the static site.
 // It's only ever on ADMIN_ADDR, which is never the public port: it has no
@@ -34,6 +50,38 @@ func adminRouter(h *Hub, staticDir string) http.Handler {
 			return
 		}
 		writeJSON(w, t)
+	})
+	r.Get("/admin/api/closed", func(w http.ResponseWriter, r *http.Request) {
+		v := r.URL.Query()
+		before, err1 := queryInt(v.Get("before"))
+		limit, err2 := queryInt(v.Get("limit"))
+		if err := cmp.Or(err1, err2); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if limit <= 0 || limit > maxClosedPage {
+			limit = maxClosedPage
+		}
+		tables, err := h.store.Closed(r.Context(), before, int(limit))
+		if err != nil {
+			slog.Default().Error("read closed tables", "error", err)
+			http.Error(w, "reading closed tables failed", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, nonNil(tables))
+	})
+	r.Get("/admin/api/closed/{id}", func(w http.ResponseWriter, r *http.Request) {
+		c, err := h.adminClosed(r.Context(), chi.URLParam(r, "id"))
+		if errors.Is(err, errNoTable) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			slog.Default().Error("read closed table", "error", err)
+			http.Error(w, "reading the table failed", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, c)
 	})
 	r.Get("/admin/api/audit", func(w http.ResponseWriter, r *http.Request) {
 		q, err := auditQuery(r)
@@ -146,6 +194,21 @@ func (h *Hub) adminTable(name string) (AdminTable, error) {
 		return AdminTable{}, errNoTable
 	}
 	return t, nil
+}
+
+// adminClosed is what the store kept of the table with id.
+func (h *Hub) adminClosed(ctx context.Context, id string) (AdminClosed, error) {
+	sv, err := h.store.Load(ctx, id)
+	if err != nil {
+		return AdminClosed{}, err
+	}
+	c := AdminClosed{Logs: nonNil(sv.Logs[max(len(sv.Logs)-adminLogs, 0):])}
+	var s table.State
+	if sv.Version == table.Version && json.Unmarshal(sv.State, &s) == nil {
+		ledger := table.Ledger(&s)
+		c.Settings, c.Ledger = s.Settings, &ledger
+	}
+	return c, nil
 }
 
 // storeKind names the store for the overview.

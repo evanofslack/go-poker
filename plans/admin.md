@@ -100,6 +100,12 @@ tokens never reach `data`; an accepted `Play` isn't recorded.
   the refused row on the admin page.
 - README: the env vars and how to reach the port.
 
+## PR 4: closed tables (`feat/admin-closed`)
+Closed tables are kept until `RETAIN_DAYS`, so the page lists them too, last closed first: when
+they opened and closed, why, and how many hands. One opens to its final ledger (from its saved
+state), the end of its log, and its audit by table id. `Store.Closed` and `Store.Load` read them;
+`GET /admin/api/closed` and `/admin/api/closed/{id}` serve them.
+
 ## Later: admin actions
 Close a table, drop a connection, remove a player: admin commands through the actor's inbox, each
 recorded with kind `admin-*`.

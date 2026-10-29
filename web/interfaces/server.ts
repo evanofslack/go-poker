@@ -54,6 +54,25 @@ export interface AdminPerson {
   since: number /* int64 */; // unix ms the connection opened, 0 while disconnected
 }
 /**
+ * ClosedTable is a closed table as listed.
+ */
+export interface ClosedTable {
+  id: string;
+  name: string;
+  created: number /* int64 */; // unix ms
+  closed: number /* int64 */; // unix ms
+  reason: string; // like "ended", "idle" or "empty"
+  hands: number /* int */; // the last hand's number
+}
+/**
+ * AdminClosed is what's kept of a closed table: how it ended.
+ */
+export interface AdminClosed {
+  settings: table.Settings;
+  ledger?: table.LedgerView; // nil when it was saved by another version
+  logs: table.Log[]; // the last adminLogs
+}
+/**
  * AuditEntry is something a connection did or tried, for the operator: who,
  * from where, and whether it was refused. Players never see these.
  */

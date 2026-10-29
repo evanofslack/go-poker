@@ -54,6 +54,23 @@ type AdminPerson struct {
 	Since     int64  `json:"since"` // unix ms the connection opened, 0 while disconnected
 }
 
+// ClosedTable is a closed table as listed.
+type ClosedTable struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Created int64  `json:"created"` // unix ms
+	Closed  int64  `json:"closed"`  // unix ms
+	Reason  string `json:"reason"`  // like "ended", "idle" or "empty"
+	Hands   int    `json:"hands"`   // the last hand's number
+}
+
+// AdminClosed is what's kept of a closed table: how it ended.
+type AdminClosed struct {
+	Settings table.Settings    `json:"settings"`
+	Ledger   *table.LedgerView `json:"ledger"` // nil when it was saved by another version
+	Logs     []table.Log       `json:"logs"`   // the last adminLogs
+}
+
 // AuditEntry is something a connection did or tried, for the operator: who,
 // from where, and whether it was refused. Players never see these.
 type AuditEntry struct {

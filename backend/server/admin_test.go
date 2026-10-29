@@ -117,3 +117,35 @@ func TestAdmin(t *testing.T) {
 		t.Errorf("bad before: %d", code)
 	}
 }
+
+func TestAdminClosed(t *testing.T) {
+	ws, hub := newTestServerHub(t, newMemStore())
+	srv := httptest.NewServer(adminRouter(hub, testSite(t)))
+	defer srv.Close()
+
+	host := create(t, ws, "t", "host")
+	host.send(seatMsg(1))
+	host.update(func(v table.View) bool { return len(v.Players) == 1 })
+	host.send(`{"action":"leave-table"}`)
+
+	var closed []ClosedTable
+	eventually(t, func() bool {
+		getJSON(t, srv.URL+"/admin/api/closed", &closed)
+		return len(closed) == 1
+	}, "the table isn't listed as closed")
+	if c := closed[0]; c.Name != "t" || c.Reason != "empty" || c.Created == 0 || c.Closed < c.Created {
+		t.Fatalf("closed %+v", c)
+	}
+
+	var c AdminClosed
+	getJSON(t, srv.URL+"/admin/api/closed/"+closed[0].ID, &c)
+	if c.Ledger == nil || len(c.Ledger.Rows) != 1 || c.Ledger.Rows[0].CashedOut != 1000 || len(c.Logs) == 0 {
+		t.Fatalf("closed table %+v, ledger %+v", c, c.Ledger)
+	}
+	if code, _ := get(t, srv.URL+"/admin/api/closed/nope"); code != http.StatusNotFound {
+		t.Errorf("missing table: %d", code)
+	}
+	if code, _ := get(t, srv.URL+"/admin/api/closed?before=x"); code != http.StatusBadRequest {
+		t.Errorf("bad before: %d", code)
+	}
+}

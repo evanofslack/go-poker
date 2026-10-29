@@ -1,15 +1,13 @@
 import { Table } from "@mantine/core";
-import classNames from "classnames";
 import type { AdminTable } from "../../interfaces/server";
 import { useAdmin } from "../../hooks/useAdmin";
 import { AuditFilter, pollMs } from "../../lib/admin";
-import { signed } from "../../lib/ledger";
-import { clock, stamp } from "../../lib/time";
+import { stamp } from "../../lib/time";
 import Section from "../Section";
 import AuditList from "./AuditList";
+import Ledger from "./Ledger";
+import LogList from "./LogList";
 import { Link, th } from "./Link";
-
-const num = "text-right tabular-nums";
 
 type tableDetailProps = {
     name: string;
@@ -23,7 +21,7 @@ export default function TableDetail({ name, onLookup }: tableDetailProps) {
 
     return (
         <div className="flex flex-col gap-5">
-            {error && <p className="text-sm text-subtle">not open now: only its audit is left</p>}
+            {error && <p className="text-sm text-subtle">not open now: it may be under closed tables</p>}
             {t && (
                 <>
                     <p className="text-xs text-muted">
@@ -73,47 +71,11 @@ export default function TableDetail({ name, onLookup }: tableDetailProps) {
                     </Section>
                     {t.view.ledger.rows.length > 0 && (
                         <Section title="ledger">
-                            <div className="overflow-x-auto rounded-md bg-panel px-1 py-0.5">
-                                <Table fz="xs" verticalSpacing={2} horizontalSpacing={6} withRowBorders={false} aria-label="ledger">
-                                    <Table.Thead>
-                                        <Table.Tr>
-                                            <Table.Th className={th}>name</Table.Th>
-                                            <Table.Th className={classNames(th, num)}>bought in</Table.Th>
-                                            <Table.Th className={classNames(th, num)}>cashed out</Table.Th>
-                                            <Table.Th className={classNames(th, num)}>stack</Table.Th>
-                                            <Table.Th className={classNames(th, num)}>net</Table.Th>
-                                        </Table.Tr>
-                                    </Table.Thead>
-                                    <Table.Tbody className="text-fg">
-                                        {t.view.ledger.rows.map((r) => (
-                                            <Table.Tr key={r.name}>
-                                                <Table.Td className="font-semibold">{r.name}</Table.Td>
-                                                <Table.Td className={num}>{r.boughtIn}</Table.Td>
-                                                <Table.Td className={num}>{r.cashedOut}</Table.Td>
-                                                <Table.Td className={num}>{r.stack}</Table.Td>
-                                                <Table.Td className={classNames(num, r.net > 0 && "text-gain", r.net < 0 && "text-loss")}>
-                                                    {signed(r.net)}
-                                                </Table.Td>
-                                            </Table.Tr>
-                                        ))}
-                                    </Table.Tbody>
-                                </Table>
-                            </div>
+                            <Ledger rows={t.view.ledger.rows} />
                         </Section>
                     )}
                     <Section title="log">
-                        {t.logs.length === 0 ? (
-                            <p className="text-sm text-subtle">nothing logged yet</p>
-                        ) : (
-                            <ol className="flex max-h-48 flex-col gap-0.5 overflow-y-auto rounded-md bg-panel p-2 text-xs">
-                                {t.logs.map((l) => (
-                                    <li key={l.id}>
-                                        <span className="tabular-nums text-subtle">{clock(l.time)}</span>{" "}
-                                        <span className="text-fg">{l.message}</span>
-                                    </li>
-                                ))}
-                            </ol>
-                        )}
+                        <LogList logs={t.logs} />
                     </Section>
                 </>
             )}
