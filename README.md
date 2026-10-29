@@ -69,7 +69,8 @@ after `AUDIT_RETAIN_DAYS` (default 30).
 tables, who is behind each name with their IP, and the audit. It has no login, so keep it off the
 internet: bind it to `127.0.0.1:2113` and reach it over an SSH tunnel (`ssh -L 2113:localhost:2113
 host`), or to a private network such as Tailscale. In Docker, don't publish its port. The public port
-never serves it.
+never serves it. With `just start` it's at `localhost:3000/admin`, and with `just serve` at
+`localhost:2113/admin`.
 
 ## metrics
 

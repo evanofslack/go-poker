@@ -1,6 +1,6 @@
 # Audit log and admin page
 
-**Status: planned.** Stage 20 in `todo.md`.
+**Status: done**, but for admin actions. Stage 20 in `todo.md`.
 
 Disputes ("who was really behind bob?", "did someone try to act out of turn?") can't be answered
 today. The table log already records every host and seat action publicly, but by name only: no

@@ -191,14 +191,12 @@ func (c *Client) auditRefused(in Inbound, err error) {
 }
 
 // redact is cmd without the passwords and tokens in it.
-func redact(cmd table.Command) table.Command {
+func redact(cmd table.Command) any {
 	switch c := cmd.(type) {
 	case table.Join:
-		c.Password, c.Token = "", ""
-		return c
+		return struct{ ID, Name string }{c.ID, c.Name}
 	case table.SetPassword:
-		c.Password = ""
-		return c
+		return struct{ Person string }{c.Person}
 	}
 	return cmd
 }

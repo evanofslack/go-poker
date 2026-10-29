@@ -21,7 +21,7 @@
 | 17 | Bomb pots and double board (`extensions.md`) | done |
 | 18 | Short deck (`extensions.md`) | done |
 | 19 | Extension follow-ups | done |
-| 20 | Audit log and admin page (`admin.md`) | planned |
+| 20 | Audit log and admin page (`admin.md`) | done |
 | - | Backlog | unranked |
 
 ## How items are ranked
@@ -696,7 +696,7 @@ included, saved for 30 days; and a read-only admin page on a private port.
 
 - [x] PR 1: audit log
 - [x] PR 2: admin API
-- [ ] PR 3: admin page
+- [x] PR 3: admin page
 - [ ] Later: admin actions (close a table, drop a connection, remove a player)
 
 # Backlog (unranked)
